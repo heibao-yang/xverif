@@ -51,6 +51,9 @@ WAVEFORM_SRCS = src/waveform/main.cpp \
                 src/waveform/session/session_transport.cpp \
                 src/waveform/client/client.cpp \
                 src/waveform/commands/cmd_ai.cpp \
+                src/waveform/service/action_support.cpp \
+                src/waveform/service/config_support.cpp \
+                src/waveform/service/router.cpp \
                 src/waveform/server/server.cpp \
                 src/waveform/server/fsdb_value_reader.cpp \
                 src/waveform/server/fsdb_scan_utils.cpp \
