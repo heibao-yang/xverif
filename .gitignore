@@ -20,6 +20,8 @@ regression/*
 !xdebug/tests/**
 !xdebug/testdata/
 !xdebug/testdata/**
+!xbit/tests/
+!xbit/tests/**
 xdebug/testdata/**/out/
 xdebug/testdata/**/csrc/
 xdebug/testdata/**/ucli.key
@@ -42,6 +44,8 @@ NPI_TRACING_KNOWLEDGE.md
 
 *.o
 *.a
+__pycache__/
+*.py[cod]
 
 xdebug/build/
 xdebug/xdebug
