@@ -2,6 +2,7 @@
 #include "../protocol/protocol.h"
 #include "../session/session_manager.h"
 #include "../session/session_transport.h"
+#include "logging/action_log.h"
 
 #include <cstdio>
 #include <cstring>
@@ -82,14 +83,26 @@ bool send_command_and_print(const std::string& session_id, const char* cmd) {
 bool send_command_capture(const std::string& session_id, const char* cmd, std::string& payload) {
     payload.clear();
     SessionManager manager;
-    if (!manager.ensure_session_current(session_id)) return false;
+    if (!manager.ensure_session_current(session_id)) {
+        xdebug_core::log_transport_event("waveform", session_id, "send_command.ensure_session_failed", false,
+                                         {{"cmd", std::string(cmd ? cmd : "")}});
+        return false;
+    }
 
     int fd = session_connect(session_id);
-    if (fd < 0) return false;
+    if (fd < 0) {
+        SessionHealth health = manager.diagnose_session(session_id);
+        xdebug_core::log_transport_event("waveform", session_id, "send_command.connect_failed", false,
+                                         {{"status", session_health_status_name(health.status)},
+                                          {"message", health.message}, {"cmd", std::string(cmd ? cmd : "")}});
+        return false;
+    }
 
     std::string msg = std::string(cmd) + "\n";
     if (write(fd, msg.c_str(), msg.length()) < 0) {
         close(fd);
+        xdebug_core::log_transport_event("waveform", session_id, "send_command.write_failed", false,
+                                         {{"cmd", std::string(cmd ? cmd : "")}});
         return false;
     }
 
@@ -109,6 +122,16 @@ bool send_command_capture(const std::string& session_id, const char* cmd, std::s
         }
     }
     close(fd);
+    if (payload.empty() && !server_error) {
+        xdebug_core::log_transport_event("waveform", session_id, "send_command.read_or_marker_failed", false,
+                                         {{"cmd", std::string(cmd ? cmd : "")}});
+        return false;
+    }
+    xdebug_core::log_transport_event("waveform", session_id,
+                                     server_error ? "send_command.server_error" : "send_command.ok",
+                                     !server_error,
+                                     {{"cmd", std::string(cmd ? cmd : "")},
+                                      {"payload_preview", payload.substr(0, 512)}});
     return !server_error;
 }
 
@@ -119,6 +142,7 @@ bool session_ping(const std::string& session_id) {
     const char* ping = CMD_PING "\n";
     if (write(fd, ping, strlen(ping)) < 0) {
         close(fd);
+        xdebug_core::log_transport_event("waveform", session_id, "ping.write_failed", false);
         return false;
     }
 
@@ -139,6 +163,7 @@ bool session_ping(const std::string& session_id) {
     }
 
     close(fd);
+    xdebug_core::log_transport_event("waveform", session_id, got_pong ? "ping.ok" : "ping.timeout_or_invalid", got_pong);
     return got_pong;
 }
 

@@ -1,7 +1,9 @@
 #include "api/dispatcher.h"
 #include "api/action_catalog.h"
 #include "api/response.h"
+#include "logging/action_log.h"
 
+#include <chrono>
 #include <limits.h>
 #include <string>
 #include <unistd.h>
@@ -40,6 +42,38 @@ void stabilize_resource_paths(Json& target) {
     if (has_string(target, "fsdb")) {
         target["fsdb"] = stable_resource_path(target["fsdb"].get<std::string>());
     }
+}
+
+std::string request_log_session_id(const Json& request, const Json& response = Json()) {
+    Json target = request.value("target", Json::object());
+    Json args = request.value("args", Json::object());
+    if (has_string(target, "session_id")) return target["session_id"].get<std::string>();
+    if (has_string(args, "session_id")) return args["session_id"].get<std::string>();
+    if (has_string(args, "id") && args["id"].get<std::string>() != "all") return args["id"].get<std::string>();
+    if (has_string(args, "name")) return args["name"].get<std::string>();
+    if (has_string(target, "name")) return target["name"].get<std::string>();
+    if (response.is_object()) {
+        Json session = response.value("session", Json::object());
+        if (has_string(session, "id")) return session["id"].get<std::string>();
+        if (has_string(session, "session_id")) return session["session_id"].get<std::string>();
+        Json summary = response.value("summary", Json::object());
+        if (has_string(summary, "session_id")) return summary["session_id"].get<std::string>();
+        if (has_string(summary, "id")) return summary["id"].get<std::string>();
+    }
+    return "adhoc";
+}
+
+std::string target_mode_for_log(const Json& request, const Json& response = Json()) {
+    Json target = request.value("target", Json::object());
+    if (has_string(target, "mode")) return target["mode"].get<std::string>();
+    Json summary = response.value("summary", Json::object());
+    if (has_string(summary, "mode")) return summary["mode"].get<std::string>();
+    bool daidir = has_string(target, "daidir");
+    bool fsdb = has_string(target, "fsdb");
+    if (daidir && fsdb) return "combined";
+    if (daidir) return "design";
+    if (fsdb) return "waveform";
+    return "";
 }
 
 } // namespace
@@ -144,6 +178,7 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
         SessionRecord existing;
         if (sessions_.get(name, existing)) {
             if (action == "session.ensure" && existing.mode == mode) {
+                xdebug_core::update_public_session_manifest(existing.id, existing.mode, existing.daidir, existing.fsdb);
                 Json response = make_response(request, action);
                 response["session"] = session_record_json(existing);
                 response["summary"] = {{"session_id", name}, {"mode", mode}, {"reused", true}};
@@ -180,6 +215,7 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
         if (!sessions_.put(record)) {
             return make_error(request, action, "SESSION_STORE_FAILED", "failed to store xdebug session");
         }
+        xdebug_core::update_public_session_manifest(record.id, record.mode, record.daidir, record.fsdb);
         Json response = make_response(request, action);
         response["session"] = session_record_json(record);
         response["summary"] = {{"session_id", name}, {"mode", mode}, {"reused", false}};
@@ -241,7 +277,7 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
     return make_error(request, action, "UNKNOWN_ACTION", "unknown session action: " + action);
 }
 
-Json Dispatcher::dispatch(const Json& request) {
+Json Dispatcher::dispatch_impl(const Json& request) {
     const std::string action = request.value("action", std::string());
     if (action == "schema") return catalog_schema_response(request);
     if (action == "actions") return catalog_actions_response(request);
@@ -267,6 +303,7 @@ Json Dispatcher::dispatch(const Json& request) {
             record.daidir = target.value("daidir", std::string());
             record.fsdb = target.value("fsdb", std::string());
             sessions_.put(record);
+            xdebug_core::update_public_session_manifest(record.id, record.mode, record.daidir, record.fsdb);
         }
         return response;
     }
@@ -283,10 +320,47 @@ Json Dispatcher::dispatch(const Json& request) {
             record.daidir = target.value("daidir", std::string());
             record.fsdb = target.value("fsdb", std::string());
             sessions_.put(record);
+            xdebug_core::update_public_session_manifest(record.id, record.mode, record.daidir, record.fsdb);
         }
         return response;
     }
     return make_error(request, action, "UNKNOWN_ACTION", "unknown action: " + action);
+}
+
+Json Dispatcher::dispatch(const Json& request) {
+    using clock = std::chrono::steady_clock;
+    const auto begin = clock::now();
+    const std::string action = request.value("action", std::string());
+    const std::string begin_session = request_log_session_id(request);
+    Json begin_context = {
+        {"request", xdebug_core::request_summary_for_log(request)}
+    };
+    xdebug_core::log_action_event("public", "xdebug", begin_session, action, "begin", true, 0, begin_context);
+
+    Json response;
+    try {
+        response = dispatch_impl(request);
+    } catch (const std::exception& e) {
+        response = make_error(request, action, "INTERNAL_ERROR", e.what(), false);
+    } catch (...) {
+        response = make_error(request, action, "INTERNAL_ERROR", "unhandled exception", false);
+    }
+
+    const auto end = clock::now();
+    long long elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+    const bool ok = response.value("ok", false);
+    const std::string session_id = request_log_session_id(request, response);
+    Json context = {
+        {"request", xdebug_core::request_summary_for_log(request)},
+        {"response", xdebug_core::response_summary_for_log(response)},
+        {"mode", target_mode_for_log(request, response)}
+    };
+    if (!ok) {
+        context["request_compact"] = xdebug_core::sanitize_for_log(request);
+        context["response_compact"] = xdebug_core::sanitize_for_log(response);
+    }
+    xdebug_core::log_action_event("public", "xdebug", session_id, action, "end", ok, elapsed_ms, context);
+    return response;
 }
 
 } // namespace xdebug

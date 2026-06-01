@@ -1,4 +1,5 @@
 #include "server_internal.h"
+#include "logging/action_log.h"
 
 namespace xdebug_waveform {
 
@@ -19,6 +20,8 @@ int server_main(int argc, char** argv) {
     }
     server_debug_open_log();
     server_debug_log("server_main: parsed_session_id=%s", g_session_id.c_str());
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "server.start", true,
+                                     {{"argc", argc}});
     arg_idx++;
 
     // Parse FSDB file
@@ -42,9 +45,15 @@ int server_main(int argc, char** argv) {
     }
     server_debug_log("server_main: transport=%s bind=%s host=%s port=%d",
                      g_transport.c_str(), g_bind_host.c_str(), g_host.c_str(), g_port);
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "server.transport_config", true,
+                                     {{"transport", g_transport}, {"bind_host", g_bind_host},
+                                      {"host", g_host}, {"port", g_port}});
     stat_fsdb(g_fsdb_mtime, g_fsdb_size, g_fsdb_dev, g_fsdb_inode);
     server_debug_log("server_main: fsdb=%s stat mtime=%ld size=%lld dev=%llu inode=%llu",
                      fsdb_file, g_fsdb_mtime, g_fsdb_size, g_fsdb_dev, g_fsdb_inode);
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "server.fsdb_stat", true,
+                                     {{"fsdb", fsdb_file}, {"mtime", g_fsdb_mtime}, {"size", g_fsdb_size},
+                                      {"dev", g_fsdb_dev}, {"inode", g_fsdb_inode}});
 
     // Redirect stdout to capture NPI init messages, but keep a copy
     int stdout_copy = dup(STDOUT_FILENO);
@@ -53,9 +62,11 @@ int server_main(int argc, char** argv) {
     int npi_argc = 1;
     char** npi_argv = argv;
     server_debug_log("server_main: npi_init_begin");
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "npi_init.begin", true);
     int result = npi_init(npi_argc, npi_argv);
     if (result == 0) {
         server_debug_log("server_main: npi_init_failed");
+        xdebug_core::log_lifecycle_event("waveform", g_session_id, "npi_init.failed", false);
         dprintf(stdout_copy, "[Session %s] ERROR: npi_init failed\n", g_session_id.c_str());
         close(stdout_copy);
         if (g_debug_log) {
@@ -65,11 +76,16 @@ int server_main(int argc, char** argv) {
         return 1;
     }
     server_debug_log("server_main: npi_init_ok");
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "npi_init.ok", true);
 
     server_debug_log("server_main: npi_fsdb_open_begin fsdb=%s", fsdb_file);
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "npi_fsdb_open.begin", true,
+                                     {{"fsdb", fsdb_file}});
     g_fsdb_file = npi_fsdb_open(fsdb_file);
     if (!g_fsdb_file) {
         server_debug_log("server_main: npi_fsdb_open_failed fsdb=%s", fsdb_file);
+        xdebug_core::log_lifecycle_event("waveform", g_session_id, "npi_fsdb_open.failed", false,
+                                         {{"fsdb", fsdb_file}});
         dprintf(stdout_copy, "[Session %s] ERROR: npi_fsdb_open failed: %s\n", g_session_id.c_str(), fsdb_file);
         npi_end();
         close(stdout_copy);
@@ -80,11 +96,16 @@ int server_main(int argc, char** argv) {
         return 1;
     }
     server_debug_log("server_main: npi_fsdb_open_ok");
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "npi_fsdb_open.ok", true,
+                                     {{"fsdb", fsdb_file}});
 
     npiFsdbTime minTime, maxTime;
     npi_fsdb_min_time(g_fsdb_file, &minTime);
     npi_fsdb_max_time(g_fsdb_file, &maxTime);
     server_debug_log("server_main: fsdb_time min=%llu max=%llu", minTime, maxTime);
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "npi_fsdb_time", true,
+                                     {{"min", static_cast<unsigned long long>(minTime)},
+                                      {"max", static_cast<unsigned long long>(maxTime)}});
 
     dprintf(stdout_copy, "[Session %s] Ready (FSDB: %llu ~ %llu)\n", g_session_id.c_str(), minTime, maxTime);
     fflush(stdout);
@@ -111,6 +132,8 @@ int server_main(int argc, char** argv) {
         int gai = getaddrinfo(g_bind_host.c_str(), port_s.c_str(), &hints, &res);
         if (gai != 0) {
             server_debug_log("server_main: tcp_getaddrinfo_failed %s", gai_strerror(gai));
+            xdebug_core::log_lifecycle_event("waveform", g_session_id, "transport.tcp_getaddrinfo_failed", false,
+                                             {{"message", gai_strerror(gai)}, {"bind_host", g_bind_host}, {"port", g_port}});
             npi_fsdb_close(g_fsdb_file);
             npi_end();
             return 1;
@@ -127,6 +150,8 @@ int server_main(int argc, char** argv) {
         freeaddrinfo(res);
         if (g_srv_fd < 0) {
             server_debug_log("server_main: tcp_bind_failed errno=%d(%s)", errno, strerror(errno));
+            xdebug_core::log_lifecycle_event("waveform", g_session_id, "transport.tcp_bind_failed", false,
+                                             {{"errno", errno}, {"message", strerror(errno)}, {"bind_host", g_bind_host}, {"port", g_port}});
             npi_fsdb_close(g_fsdb_file);
             npi_end();
             return 1;
@@ -141,11 +166,15 @@ int server_main(int argc, char** argv) {
             }
         }
         server_debug_log("server_main: tcp_bind_ok host=%s port=%d", g_host.c_str(), g_port);
+        xdebug_core::log_lifecycle_event("waveform", g_session_id, "transport.tcp_bind_ok", true,
+                                         {{"host", g_host}, {"port", g_port}});
     } else {
         server_debug_log("server_main: uds_socket_create_begin");
         g_srv_fd = socket(AF_UNIX, SOCK_STREAM, 0);
         if (g_srv_fd < 0) {
             server_debug_log("server_main: socket_create_failed errno=%d(%s)", errno, strerror(errno));
+            xdebug_core::log_lifecycle_event("waveform", g_session_id, "transport.uds_socket_failed", false,
+                                             {{"errno", errno}, {"message", strerror(errno)}});
             npi_fsdb_close(g_fsdb_file);
             npi_end();
             if (g_debug_log) {
@@ -162,6 +191,8 @@ int server_main(int argc, char** argv) {
         strncpy(addr.sun_path, g_sock_path, sizeof(addr.sun_path) - 1);
         if (bind(g_srv_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
             server_debug_log("server_main: socket_bind_failed errno=%d(%s)", errno, strerror(errno));
+            xdebug_core::log_lifecycle_event("waveform", g_session_id, "transport.uds_bind_failed", false,
+                                             {{"socket_path", g_sock_path}, {"errno", errno}, {"message", strerror(errno)}});
             close(g_srv_fd);
             npi_fsdb_close(g_fsdb_file);
             npi_end();
@@ -173,11 +204,16 @@ int server_main(int argc, char** argv) {
         }
         chmod(g_sock_path, 0600);
         server_debug_log("server_main: uds_bind_ok");
+        xdebug_core::log_lifecycle_event("waveform", g_session_id, "transport.uds_bind_ok", true,
+                                         {{"socket_path", g_sock_path}});
     }
 
     server_debug_log("server_main: socket_listen_begin");
     if (listen(g_srv_fd, 8) < 0) {
         server_debug_log("server_main: socket_listen_failed errno=%d(%s)", errno, strerror(errno));
+        xdebug_core::log_lifecycle_event("waveform", g_session_id, "transport.listen_failed", false,
+                                         {{"transport", g_transport}, {"socket_path", g_sock_path},
+                                          {"host", g_host}, {"port", g_port}, {"errno", errno}, {"message", strerror(errno)}});
         close(g_srv_fd);
         unlink(g_sock_path);
         npi_fsdb_close(g_fsdb_file);
@@ -189,6 +225,8 @@ int server_main(int argc, char** argv) {
         return 1;
     }
     server_debug_log("server_main: socket_listen_ok");
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "transport.listen_ok", true,
+                                     {{"transport", g_transport}, {"socket_path", g_sock_path}, {"host", g_host}, {"port", g_port}});
 
     {
         SessionInfo endpoint;
@@ -202,9 +240,13 @@ int server_main(int argc, char** argv) {
         endpoint.auth_token = g_transport == "tcp" ? g_auth_token : "";
         if (!write_endpoint_file(endpoint)) {
             server_debug_log("server_main: endpoint_write_failed");
+            xdebug_core::log_lifecycle_event("waveform", g_session_id, "endpoint.write_failed", false);
         } else {
             server_debug_log("server_main: endpoint_write_ok transport=%s host=%s port=%d",
                              endpoint.transport.c_str(), endpoint.host.c_str(), endpoint.port);
+            xdebug_core::log_lifecycle_event("waveform", g_session_id, "endpoint.write_ok", true,
+                                             {{"transport", endpoint.transport}, {"socket_path", endpoint.socket_path},
+                                              {"host", endpoint.host}, {"port", endpoint.port}});
         }
     }
 
@@ -212,6 +254,8 @@ int server_main(int argc, char** argv) {
     int idle_timeout = env_timeout ? atoi(env_timeout) : 1800;
     if (idle_timeout <= 0) idle_timeout = 1800;
     server_debug_log("server_main: idle_timeout_sec=%d", idle_timeout);
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "server.idle_timeout_config", true,
+                                     {{"idle_timeout_sec", idle_timeout}});
     time_t last_active = time(nullptr);
     bool idle_timeout_exit = false;
     bool quit_requested = false;
@@ -232,6 +276,9 @@ int server_main(int argc, char** argv) {
                 server_debug_log("server_main: idle_timeout_exit idle_sec=%ld timeout_sec=%d",
                                   static_cast<long>(time(nullptr) - last_active),
                                   idle_timeout);
+                xdebug_core::log_lifecycle_event("waveform", g_session_id, "server.idle_timeout_exit", true,
+                                                 {{"idle_sec", static_cast<long>(time(nullptr) - last_active)},
+                                                  {"timeout_sec", idle_timeout}});
                 break;
             }
             continue;
@@ -248,6 +295,7 @@ int server_main(int argc, char** argv) {
         if (quit) {
             quit_requested = true;
             server_debug_log("server_main: quit_requested");
+            xdebug_core::log_lifecycle_event("waveform", g_session_id, "server.quit_requested", true);
             break;
         }
     }
@@ -256,6 +304,8 @@ int server_main(int argc, char** argv) {
     server_debug_log("server_main: cleanup_begin reason=%s",
                      idle_timeout_exit ? "idle_timeout" :
                      (quit_requested ? "quit" : "loop_exit"));
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "server.cleanup_begin", true,
+                                     {{"reason", idle_timeout_exit ? "idle_timeout" : (quit_requested ? "quit" : "loop_exit")}});
     close(g_srv_fd);
     unlink(g_sock_path);
     if (g_fsdb_file) {
@@ -269,6 +319,7 @@ int server_main(int argc, char** argv) {
     npi_end();
     if (g_debug_log) {
         server_debug_log("server_main: normal_exit");
+        xdebug_core::log_lifecycle_event("waveform", g_session_id, "server.normal_exit", true);
         fclose(g_debug_log);
         g_debug_log = nullptr;
     }

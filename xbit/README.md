@@ -19,15 +19,56 @@
 
 ## Quick Start
 
-仓库内默认优先使用 `~/miniconda3/bin/python`，没有该路径时回退到 `python3`。
+`xbit` wrapper 默认优先使用已配置的 Miniconda Python；没有可用配置时回退到 `python3`。如果已经按下面的 Shell 命令入口配置过，可以直接运行 `xbit ...`；否则在仓库根目录临时使用 `xbit/xbit ...`。
 
 ```bash
 make -C xbit test
 
+xbit conv "8'shff" --json
+xbit slice "32'hdead_beef" 15 8 --json
+xbit eval "data[15:8] == 8'hbe" --var data=32'hdead_beef --json
+xbit check --expr "valid && ready" --var valid=1'b1 --var ready=1'b0 --json
+```
+
+未安装 shell 命令时的仓库内临时入口：
+
+```bash
 xbit/xbit conv "8'shff" --json
-xbit/xbit slice "32'hdead_beef" 15 8 --json
-xbit/xbit eval "data[15:8] == 8'hbe" --var data=32'hdead_beef --json
-xbit/xbit check --expr "valid && ready" --var valid=1'b1 --var ready=1'b0 --json
+```
+
+### Shell 命令入口
+
+为了在任意目录调用，建议把 `xbit` 安装成 shell function 或 alias。下面示例里的 `<xverif-root>` 表示本仓库根目录，请按本机实际路径替换；文档和 skill 中不固定记录个人机器路径。
+
+Bash：加入 `~/.bashrc`。
+
+```bash
+export XVERIF_HOME=<xverif-root>
+export XBIT_ENTRY="$XVERIF_HOME/xbit/xbit"
+xbit() { "$XBIT_ENTRY" "$@"; }
+```
+
+Zsh：加入 `~/.zshrc`。
+
+```zsh
+export XVERIF_HOME=<xverif-root>
+export XBIT_ENTRY="$XVERIF_HOME/xbit/xbit"
+xbit() { "$XBIT_ENTRY" "$@"; }
+```
+
+Tcsh：加入 `~/.tcshrc`。
+
+```tcsh
+setenv XVERIF_HOME <xverif-root>
+setenv XBIT_ENTRY "$XVERIF_HOME/xbit/xbit"
+alias xbit '"$XBIT_ENTRY" \!*'
+```
+
+配置后可以直接使用：
+
+```bash
+xbit conv "8'shff" --json
+xbit eval "data[15:8] == 8'hbe" --var data=32'hdead_beef --json
 ```
 
 JSON 成功响应：
@@ -70,9 +111,9 @@ JSON 成功响应：
 ### Value conversion
 
 ```bash
-xbit/xbit conv "16'hff80" --json
-xbit/xbit conv "8'shff" --json
-xbit/xbit conv "32'd-1" --json
+xbit conv "16'hff80" --json
+xbit conv "8'shff" --json
+xbit conv "32'd-1" --json
 ```
 
 `result` 默认同时给 `width`、`signed`、`unsigned`、`signed_value`、`hex`、`bin`、`sv`。
@@ -80,32 +121,32 @@ xbit/xbit conv "32'd-1" --json
 ### Bit operation
 
 ```bash
-xbit/xbit slice "32'hdead_beef" 15 8 --json
-xbit/xbit index "8'h80" 7 --json
-xbit/xbit concat "4'ha" "4'h5" --json
-xbit/xbit repeat 4 "2'b10" --json
-xbit/xbit trunc "16'h12ff" --to 8 --json
-xbit/xbit zext "8'h80" --to 16 --json
-xbit/xbit sext "8'h80" --to 16 --json
-xbit/xbit reverse "8'b1000_0001" --json
-xbit/xbit mask --width 13 --json
-xbit/xbit align "13'd17" --to 8 --json
-xbit/xbit popcount "32'hdead_beef" --json
-xbit/xbit onehot "8'h20" --json
-xbit/xbit onehot0 "8'h00" --json
-xbit/xbit gray2bin "4'b1110" --json
-xbit/xbit bin2gray "4'b1011" --json
+xbit slice "32'hdead_beef" 15 8 --json
+xbit index "8'h80" 7 --json
+xbit concat "4'ha" "4'h5" --json
+xbit repeat 4 "2'b10" --json
+xbit trunc "16'h12ff" --to 8 --json
+xbit zext "8'h80" --to 16 --json
+xbit sext "8'h80" --to 16 --json
+xbit reverse "8'b1000_0001" --json
+xbit mask --width 13 --json
+xbit align "13'd17" --to 8 --json
+xbit popcount "32'hdead_beef" --json
+xbit onehot "8'h20" --json
+xbit onehot0 "8'h00" --json
+xbit gray2bin "4'b1110" --json
+xbit bin2gray "4'b1011" --json
 ```
 
 ### Expression evaluation
 
 ```bash
-xbit/xbit eval "8'shff >>> 1" --json
-xbit/xbit eval "{4{2'b10}}" --json
-xbit/xbit eval "{4'hA, 4'h5}" --json
-xbit/xbit eval "ADDR_W + ID_W - 1" --var ADDR_W=32 --var ID_W=4 --json
-xbit/xbit eval "valid && ready" --var valid=1'b1 --var ready=1'b0 --json
-xbit/xbit eval "data[15:8] == 8'hbe" --var data=32'hdead_beef --json
+xbit eval "8'shff >>> 1" --json
+xbit eval "{4{2'b10}}" --json
+xbit eval "{4'hA, 4'h5}" --json
+xbit eval "ADDR_W + ID_W - 1" --var ADDR_W=32 --var ID_W=4 --json
+xbit eval "valid && ready" --var valid=1'b1 --var ready=1'b0 --json
+xbit eval "data[15:8] == 8'hbe" --var data=32'hdead_beef --json
 ```
 
 支持范围：
@@ -128,7 +169,7 @@ xbit/xbit eval "data[15:8] == 8'hbe" --var data=32'hdead_beef --json
 `check` 用于吃波形或 xdebug/xwave compact values，并判断某个条件。
 
 ```bash
-xbit/xbit check \
+xbit check \
   --expr "valid && ready && data[15:8] == 8'hbe" \
   --var valid=1'b1 \
   --var ready=1'b1 \
@@ -161,7 +202,7 @@ xbit/xbit check \
 ### Agent stdio
 
 ```bash
-xbit/xbit agent serve --stdio
+xbit agent serve --stdio
 ```
 
 输入一行 JSON request，输出一行 JSON response：

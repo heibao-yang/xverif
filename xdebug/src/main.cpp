@@ -1,6 +1,7 @@
 #include "api/dispatcher.h"
 #include "api/request_parser.h"
 #include "api/response.h"
+#include "logging/action_log.h"
 
 #include <fstream>
 #include <iostream>
@@ -50,15 +51,22 @@ int main(int argc, char** argv) {
     xdebug::Json request;
     std::string error;
     if (!xdebug::parse_request_text(input, request, error)) {
-        std::cout << xdebug::make_error(xdebug::Json::object(), "", "INVALID_JSON", error).dump(2) << "\n";
+        xdebug::Json response = xdebug::make_error(xdebug::Json::object(), "", "INVALID_JSON", error);
+        xdebug_core::log_action_event("public", "xdebug", "adhoc", "", "parse_failed", false, 0,
+                                      {{"error", response["error"]}});
+        std::cout << response.dump(2) << "\n";
         return 1;
     }
     std::string action;
     if (!xdebug::validate_request(request, action, error)) {
         const std::string code = request.value("api_version", std::string()) == xdebug::kApiVersion
             ? "INVALID_REQUEST" : "UNSUPPORTED_API_VERSION";
-        std::cout << xdebug::make_error(request, request.value("action", std::string()),
-                                         code, error, false).dump(2) << "\n";
+        xdebug::Json response = xdebug::make_error(request, request.value("action", std::string()),
+                                                   code, error, false);
+        xdebug_core::log_action_event("public", "xdebug", "adhoc", request.value("action", std::string()),
+                                      "validate_failed", false, 0,
+                                      {{"request", xdebug_core::sanitize_for_log(request)}, {"error", response["error"]}});
+        std::cout << response.dump(2) << "\n";
         return 1;
     }
 

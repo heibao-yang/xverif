@@ -6,6 +6,7 @@
 #include "../port/port_analyzer.h"
 #include "../session/session_registry.h"
 #include "../session/session_transport.h"
+#include "logging/action_log.h"
 #include "json.hpp"
 
 #include <cstdio>
@@ -74,6 +75,8 @@ static void server_debug_log(const char* fmt, ...) {
 
 static void cleanup_and_exit(int sig) {
     server_debug_log("signal_exit sig=%d", sig);
+    xdebug_core::log_lifecycle_event("design", g_session_id, "server.signal_exit", false,
+                                     {{"signal", sig}});
     if (g_srv_fd >= 0) {
         close(g_srv_fd);
     }
@@ -231,6 +234,8 @@ int server_main(int argc, char** argv) {
     arg_idx++;
     server_debug_open_log();
     server_debug_log("server_main: parsed session_id=%s argc=%d", g_session_id.c_str(), argc);
+    xdebug_core::log_lifecycle_event("design", g_session_id, "server.start", true,
+                                     {{"argc", argc}});
 
     std::vector<std::string> design_args;
     while (arg_idx < argc) {
@@ -250,6 +255,9 @@ int server_main(int argc, char** argv) {
     }
     server_debug_log("server_main: transport=%s bind=%s host=%s port=%d",
                      g_transport.c_str(), g_bind_host.c_str(), g_host.c_str(), g_port);
+    xdebug_core::log_lifecycle_event("design", g_session_id, "server.transport_config", true,
+                                     {{"transport", g_transport}, {"bind_host", g_bind_host},
+                                      {"host", g_host}, {"port", g_port}});
 
     // Build design args for NPI: [exe, ...design_args...]
     int npi_argc = static_cast<int>(design_args.size()) + 1;
@@ -264,23 +272,30 @@ int server_main(int argc, char** argv) {
 
     // Initialize NPI
     server_debug_log("npi_init: begin argc=%d", npi_argc);
+    xdebug_core::log_lifecycle_event("design", g_session_id, "npi_init.begin", true,
+                                     {{"argc", npi_argc}});
     int result = npi_init(npi_argc, npi_argv);
     if (result == 0) {
         server_debug_log("npi_init: failed");
+        xdebug_core::log_lifecycle_event("design", g_session_id, "npi_init.failed", false);
         delete[] npi_argv;
         return 1;
     }
     server_debug_log("npi_init: ok");
+    xdebug_core::log_lifecycle_event("design", g_session_id, "npi_init.ok", true);
 
     server_debug_log("npi_load_design: begin");
+    xdebug_core::log_lifecycle_event("design", g_session_id, "npi_load_design.begin", true);
     result = npi_load_design(npi_argc, npi_argv);
     if (result == 0) {
         server_debug_log("npi_load_design: failed");
+        xdebug_core::log_lifecycle_event("design", g_session_id, "npi_load_design.failed", false);
         npi_end();
         delete[] npi_argv;
         return 1;
     }
     server_debug_log("npi_load_design: ok");
+    xdebug_core::log_lifecycle_event("design", g_session_id, "npi_load_design.ok", true);
 
     delete[] npi_argv;
 
@@ -300,6 +315,8 @@ int server_main(int argc, char** argv) {
         int gai = getaddrinfo(g_bind_host.c_str(), port_s.c_str(), &hints, &res);
         if (gai != 0) {
             server_debug_log("tcp getaddrinfo failed: %s", gai_strerror(gai));
+            xdebug_core::log_lifecycle_event("design", g_session_id, "transport.tcp_getaddrinfo_failed", false,
+                                             {{"message", gai_strerror(gai)}, {"bind_host", g_bind_host}, {"port", g_port}});
             npi_end();
             return 1;
         }
@@ -315,6 +332,8 @@ int server_main(int argc, char** argv) {
         freeaddrinfo(res);
         if (g_srv_fd < 0) {
             server_debug_log("tcp bind failed");
+            xdebug_core::log_lifecycle_event("design", g_session_id, "transport.tcp_bind_failed", false,
+                                             {{"bind_host", g_bind_host}, {"port", g_port}});
             npi_end();
             return 1;
         }
@@ -325,10 +344,13 @@ int server_main(int argc, char** argv) {
             else if (ss.ss_family == AF_INET6) g_port = ntohs(reinterpret_cast<struct sockaddr_in6*>(&ss)->sin6_port);
         }
         server_debug_log("tcp bind ok host=%s port=%d", g_host.c_str(), g_port);
+        xdebug_core::log_lifecycle_event("design", g_session_id, "transport.tcp_bind_ok", true,
+                                         {{"host", g_host}, {"port", g_port}});
     } else {
         g_srv_fd = socket(AF_UNIX, SOCK_STREAM, 0);
         if (g_srv_fd < 0) {
             server_debug_log("socket: failed");
+            xdebug_core::log_lifecycle_event("design", g_session_id, "transport.uds_socket_failed", false);
             npi_end();
             return 1;
         }
@@ -340,22 +362,30 @@ int server_main(int argc, char** argv) {
         strncpy(addr.sun_path, g_sock_path, sizeof(addr.sun_path) - 1);
         if (bind(g_srv_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
             server_debug_log("bind: failed path=%s", g_sock_path);
+            xdebug_core::log_lifecycle_event("design", g_session_id, "transport.uds_bind_failed", false,
+                                             {{"socket_path", g_sock_path}});
             close(g_srv_fd);
             npi_end();
             return 1;
         }
         chmod(g_sock_path, 0600);
         server_debug_log("bind: ok");
+        xdebug_core::log_lifecycle_event("design", g_session_id, "transport.uds_bind_ok", true,
+                                         {{"socket_path", g_sock_path}});
     }
 
     if (listen(g_srv_fd, 8) < 0) {
         server_debug_log("listen: failed");
+        xdebug_core::log_lifecycle_event("design", g_session_id, "transport.listen_failed", false,
+                                         {{"transport", g_transport}, {"socket_path", g_sock_path}, {"port", g_port}});
         close(g_srv_fd);
         unlink(g_sock_path);
         npi_end();
         return 1;
     }
     server_debug_log("listen: ok");
+    xdebug_core::log_lifecycle_event("design", g_session_id, "transport.listen_ok", true,
+                                     {{"transport", g_transport}, {"socket_path", g_sock_path}, {"host", g_host}, {"port", g_port}});
 
     {
         SessionInfo endpoint;
@@ -367,7 +397,12 @@ int server_main(int argc, char** argv) {
         endpoint.port = g_transport == "tcp" ? g_port : 0;
         endpoint.server_host = current_host_name();
         endpoint.auth_token = g_transport == "tcp" ? g_auth_token : "";
-        write_endpoint_file(endpoint);
+        bool endpoint_ok = write_endpoint_file(endpoint);
+        xdebug_core::log_lifecycle_event("design", g_session_id,
+                                         endpoint_ok ? "endpoint.write_ok" : "endpoint.write_failed",
+                                         endpoint_ok,
+                                         {{"transport", endpoint.transport}, {"socket_path", endpoint.socket_path},
+                                          {"host", endpoint.host}, {"port", endpoint.port}});
     }
 
     // Accept loop
@@ -384,10 +419,12 @@ int server_main(int argc, char** argv) {
 
     // Cleanup
     server_debug_log("normal_exit: cleanup begin");
+    xdebug_core::log_lifecycle_event("design", g_session_id, "server.cleanup_begin", true);
     close(g_srv_fd);
     unlink(g_sock_path);
     npi_end();
     server_debug_log("normal_exit: cleanup done");
+    xdebug_core::log_lifecycle_event("design", g_session_id, "server.normal_exit", true);
     if (g_debug_log) {
         fclose(g_debug_log);
         g_debug_log = nullptr;

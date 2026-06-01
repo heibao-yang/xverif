@@ -36,13 +36,15 @@ description: 当 AI agent 需要确定性计算 bit、SV literal、signed/unsign
 
 ## 调用入口
 
-仓库内入口：
+优先使用 shell 中已安装的 `xbit` 命令。`xbit` 应指向仓库里的 `xbit/xbit` wrapper，由用户在 `~/.bashrc`、`~/.zshrc` 或 `~/.tcshrc` 中配置。skill 和回答里不要暴露本机绝对路径；需要描述路径时使用 `<xverif-root>`、`<repo-root>` 或 `$XVERIF_HOME` 这类占位符。
 
 ```bash
-xbit/xbit conv "8'shff" --json
+xbit conv "8'shff" --json
 ```
 
-`xbit/xbit` 默认优先使用 `~/miniconda3/bin/python`，没有该路径时回退到 `python3`。实现只依赖 Python 标准库。
+如果当前 shell 尚未安装 `xbit`，并且当前工作目录就是仓库根目录，可以临时使用 `xbit/xbit conv "8'shff" --json`。
+
+`xbit/xbit` 默认优先使用已配置的 Miniconda Python；没有可用配置时回退到 `python3`。实现只依赖 Python 标准库。
 
 ## JSON 响应读取
 
@@ -94,49 +96,49 @@ xbit/xbit conv "8'shff" --json
 ### 进制与 signed
 
 ```bash
-xbit/xbit conv "8'shff" --json
-xbit/xbit conv "16'hff80" --json
-xbit/xbit conv "32'd-1" --json
+xbit conv "8'shff" --json
+xbit conv "16'hff80" --json
+xbit conv "32'd-1" --json
 ```
 
 ### Slice / concat / repeat
 
 ```bash
-xbit/xbit slice "32'hdead_beef" 15 8 --json
-xbit/xbit concat "4'ha" "4'h5" --json
-xbit/xbit repeat 4 "2'b10" --json
+xbit slice "32'hdead_beef" 15 8 --json
+xbit concat "4'ha" "4'h5" --json
+xbit repeat 4 "2'b10" --json
 ```
 
 ### 扩展和截断
 
 ```bash
-xbit/xbit trunc "16'h12ff" --to 8 --json
-xbit/xbit zext "8'h80" --to 16 --json
-xbit/xbit sext "8'h80" --to 16 --json
+xbit trunc "16'h12ff" --to 8 --json
+xbit zext "8'h80" --to 16 --json
+xbit sext "8'h80" --to 16 --json
 ```
 
 ### Mask / popcount / onehot
 
 ```bash
-xbit/xbit mask --width 13 --json
-xbit/xbit popcount "32'hdead_beef" --json
-xbit/xbit onehot "8'h20" --json
-xbit/xbit onehot0 "8'h00" --json
+xbit mask --width 13 --json
+xbit popcount "32'hdead_beef" --json
+xbit onehot "8'h20" --json
+xbit onehot0 "8'h00" --json
 ```
 
 ### 表达式
 
 ```bash
-xbit/xbit eval "8'shff >>> 1" --json
-xbit/xbit eval "{4{2'b10}}" --json
-xbit/xbit eval "data[15:8] == 8'hbe" --var data=32'hdead_beef --json
-xbit/xbit eval "valid && ready" --var valid=1'b1 --var ready=1'b0 --json
+xbit eval "8'shff >>> 1" --json
+xbit eval "{4{2'b10}}" --json
+xbit eval "data[15:8] == 8'hbe" --var data=32'hdead_beef --json
+xbit eval "valid && ready" --var valid=1'b1 --var ready=1'b0 --json
 ```
 
 ### 波形条件 check
 
 ```bash
-xbit/xbit check \
+xbit check \
   --expr "valid && ready && data[15:8] == 8'hbe" \
   --var valid=1'b1 \
   --var ready=1'b1 \
@@ -147,13 +149,13 @@ xbit/xbit check \
 如果有 xdebug/xwave compact values 文件：
 
 ```bash
-xbit/xbit check --values values.json --expr "valid && ready && opcode == 4'ha" --json
+xbit check --values values.json --expr "valid && ready && opcode == 4'ha" --json
 ```
 
 ## Agent stdio
 
 ```bash
-xbit/xbit agent serve --stdio
+xbit agent serve --stdio
 ```
 
 单行请求：

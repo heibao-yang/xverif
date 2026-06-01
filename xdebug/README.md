@@ -25,6 +25,41 @@ printf '%s\n' '{"api_version":"xdebug.v1","action":"value.at","target":{"fsdb":"
 tools/xdebug-env request.json
 ```
 
+### Shell 命令入口
+
+为了在任意目录调用，建议把 `xdebug` 安装成 shell function。下面示例里的 `<xverif-root>` 表示本仓库根目录，请按本机实际路径替换；文档和 skill 中不固定记录个人机器路径。
+
+Bash：加入 `~/.bashrc`。
+
+```bash
+export XVERIF_HOME=<xverif-root>
+export XDEBUG_ENTRY="$XVERIF_HOME/tools/xdebug-env"
+xdebug() { "$XDEBUG_ENTRY" "$@"; }
+```
+
+Zsh：加入 `~/.zshrc`。
+
+```zsh
+export XVERIF_HOME=<xverif-root>
+export XDEBUG_ENTRY="$XVERIF_HOME/tools/xdebug-env"
+xdebug() { "$XDEBUG_ENTRY" "$@"; }
+```
+
+Tcsh：加入 `~/.tcshrc`。
+
+```tcsh
+setenv XVERIF_HOME <xverif-root>
+setenv XDEBUG_ENTRY "$XVERIF_HOME/tools/xdebug-env"
+alias xdebug '"$XDEBUG_ENTRY" \!*'
+```
+
+配置后可以直接使用：
+
+```bash
+printf '%s\n' '{"api_version":"xdebug.v1","action":"actions"}' | xdebug -
+xdebug request.json
+```
+
 重复调试建议先打开 session，再用 `target.session_id` 访问：
 
 ```json
@@ -366,6 +401,28 @@ compact payload 优先返回 evidence，而不是大段源码：
   }
 }
 ```
+
+## 日志与排障
+
+xdebug 默认静默记录结构化日志。日志只写文件，不打印到 stdout/stderr，不改变 JSON API 响应；日志写入失败也不会影响 action 执行。
+
+主要位置：
+
+- public action：`~/.xdebug/sessions/<session_id>/logs/actions.ndjson`
+- 无 session 或解析失败：`~/.xdebug/sessions/adhoc/logs/actions.ndjson`
+- 设计后端生命周期：`~/.xdebug/design/sessions/<hashed-session>/logs/lifecycle.ndjson`
+- 波形后端生命周期：`~/.xdebug/waveform/sessions/<hashed-session>/logs/lifecycle.ndjson`
+- 后端连接与请求：`~/.xdebug/{design,waveform}/sessions/<hashed-session>/logs/transport.ndjson`
+- 旧有 daemon debug 文本：`~/.xdebug/{design,waveform}/sessions/<hashed-session>/debug.log`
+
+每行都是一个 JSON event，常见字段包括 `ts`、`event_id`、`layer`、`component`、`session_id`、`action`、`phase`、`elapsed_ms`、`ok`、`context`。成功 action 默认只记录摘要、路由、耗时和 `summary/meta`；失败 action 会额外记录裁剪后的 request/response。
+
+定位工具问题时推荐顺序：
+
+1. 先看 public `actions.ndjson`，确认 action、session、路由和最终 error。
+2. 如果是 `session.open/session.ensure`、`SESSION_UNHEALTHY` 或 `INTERNAL_ENGINE_FAILED`，再看后端 `lifecycle.ndjson`。
+3. 如果怀疑 socket/TCP/ping/daemon 连接问题，看 `transport.ndjson`。
+4. 如果卡在 Verdi/NPI 初始化或 daemon bind/listen，结合 `lifecycle.ndjson` 和 `debug.log`。
 
 ## 参考文档
 

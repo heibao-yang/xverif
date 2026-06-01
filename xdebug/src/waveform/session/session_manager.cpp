@@ -2,6 +2,7 @@
 #include "session_transport.h"
 #include "../common/xdebug_waveform_paths.h"
 #include "../protocol/protocol.h"
+#include "logging/action_log.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -134,6 +135,8 @@ WaitForServerResult SessionManager::wait_for_server(const std::string& session_i
 
     debug_log("wait_for_server: session=%s pid=%d timeout_sec=%d",
               session_id.c_str(), pid, timeout_sec);
+    xdebug_core::log_lifecycle_event("waveform", session_id, "wait_for_server.begin", true,
+                                     {{"pid", static_cast<int>(pid)}, {"timeout_sec", timeout_sec}});
 
     for (int i = 0; i < iterations; ++i) {
         usleep(100000);
@@ -161,6 +164,11 @@ WaitForServerResult SessionManager::wait_for_server(const std::string& session_i
                     result.ok = true;
                     result.reason = "ready";
                     result.endpoint = endpoint;
+                    xdebug_core::log_lifecycle_event("waveform", session_id, "wait_for_server.ready", true,
+                                                     {{"elapsed_ms", result.elapsed_ms}, {"socket_exists", result.socket_exists},
+                                                      {"connect_ok", result.connect_ok}, {"ping_ok", result.ping_ok},
+                                                      {"transport", endpoint.transport}, {"socket_path", endpoint.socket_path},
+                                                      {"host", endpoint.host}, {"port", endpoint.port}});
                     return result;
                 }
             } else {
@@ -177,6 +185,10 @@ WaitForServerResult SessionManager::wait_for_server(const std::string& session_i
             debug_log("wait_for_server: child_exited status=%d elapsed_ms=%ld socket_exists=%d connect_ok=%d ping_ok=%d",
                       status, result.elapsed_ms, result.socket_exists ? 1 : 0,
                       result.connect_ok ? 1 : 0, result.ping_ok ? 1 : 0);
+            xdebug_core::log_lifecycle_event("waveform", session_id, "wait_for_server.child_exited", false,
+                                             {{"elapsed_ms", result.elapsed_ms}, {"child_status", status},
+                                              {"socket_exists", result.socket_exists}, {"connect_ok", result.connect_ok},
+                                              {"ping_ok", result.ping_ok}});
             return result;
         }
     }
@@ -190,6 +202,10 @@ WaitForServerResult SessionManager::wait_for_server(const std::string& session_i
               result.socket_exists ? 1 : 0,
               result.connect_ok ? 1 : 0,
               result.ping_ok ? 1 : 0);
+    xdebug_core::log_lifecycle_event("waveform", session_id, "wait_for_server.timeout", false,
+                                     {{"reason", result.reason}, {"elapsed_ms", result.elapsed_ms},
+                                      {"socket_exists", result.socket_exists}, {"connect_ok", result.connect_ok},
+                                      {"ping_ok", result.ping_ok}});
     if (kill(pid, 0) == 0 && result.reason == "timeout_waiting_endpoint") {
         char log_path[SOCK_PATH_LEN];
         get_debug_log_path(log_path, session_id);
@@ -270,18 +286,25 @@ std::string SessionManager::create_session(const std::string& fsdb_file,
                                            const SessionTransportOptions& transport_options) {
     if (!SessionRegistry::is_valid_session_name(session_id)) {
         debug_log("create_session: reason=invalid_session_id session=%s", session_id.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.invalid_session_id", false);
         return "";
     }
     if (transport_options.transport != "uds" && transport_options.transport != "tcp") {
         debug_log("create_session: reason=invalid_transport transport=%s", transport_options.transport.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.invalid_transport", false,
+                                         {{"transport", transport_options.transport}});
         return "";
     }
     std::string canonical = canonicalize_fsdb_path(fsdb_file);
     debug_log("create_session: input_fsdb=%s canonical_fsdb=%s", fsdb_file.c_str(), canonical.c_str());
+    xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.canonicalized", true,
+                                     {{"fsdb", canonical}, {"input_fsdb", fsdb_file}});
     SessionInfo metadata;
     if (!populate_fsdb_metadata(canonical, metadata)) {
         debug_log("create_session: reason=fsdb_stat_failed path=%s errno=%d(%s)",
                   canonical.c_str(), errno, strerror(errno));
+        xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.fsdb_stat_failed", false,
+                                         {{"fsdb", canonical}, {"errno", errno}, {"message", strerror(errno)}});
         return "";
     }
 
@@ -291,10 +314,14 @@ std::string SessionManager::create_session(const std::string& fsdb_file,
         get_registry_lock_path(lock_path);
         debug_log("create_session: reason=registry_lock_open_failed lock=%s errno=%d(%s)",
                   lock_path, errno, strerror(errno));
+        xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.registry_lock_open_failed", false,
+                                         {{"lock_path", lock_path}, {"errno", errno}, {"message", strerror(errno)}});
         return "";
     }
     if (flock(lock_fd, LOCK_EX) != 0) {
         debug_log("create_session: reason=registry_lock_failed errno=%d(%s)", errno, strerror(errno));
+        xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.registry_lock_failed", false,
+                                         {{"errno", errno}, {"message", strerror(errno)}});
         close(lock_fd);
         return "";
     }
@@ -302,12 +329,14 @@ std::string SessionManager::create_session(const std::string& fsdb_file,
     cleanup();
     if (registry_->exists(session_id)) {
         debug_log("create_session: reason=session_id_exists session=%s", session_id.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.session_id_exists", false);
         flock(lock_fd, LOCK_UN);
         close(lock_fd);
         return "";
     }
     if (!xdebug_waveform_ensure_session_dir(session_id)) {
         debug_log("create_session: reason=session_dir_create_failed session=%s", session_id.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.session_dir_failed", false);
         flock(lock_fd, LOCK_UN);
         close(lock_fd);
         return "";
@@ -330,6 +359,8 @@ std::string SessionManager::create_session(const std::string& fsdb_file,
     pid_t pid = spawn_server(session_id, canonical, endpoint);
     if (pid < 0) {
         debug_log("create_session: reason=spawn_failed session=%s errno=%d(%s)", session_id.c_str(), errno, strerror(errno));
+        xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.spawn_failed", false,
+                                         {{"errno", errno}, {"message", strerror(errno)}});
         xdebug_waveform_remove_session_dir(session_id);
         flock(lock_fd, LOCK_UN);
         close(lock_fd);
@@ -342,6 +373,10 @@ std::string SessionManager::create_session(const std::string& fsdb_file,
     get_debug_log_path(debug_log_path, session_id);
     debug_log("create_session: spawned_server session=%s pid=%d socket=%s debug_log=%s",
               session_id.c_str(), pid, sock_path, debug_log_path);
+    xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.spawned_server", true,
+                                     {{"pid", static_cast<int>(pid)}, {"socket_path", sock_path},
+                                      {"debug_log", debug_log_path}, {"transport", endpoint.transport},
+                                      {"host", endpoint.host}, {"port", endpoint.port}});
 
     WaitForServerResult wait = wait_for_server(session_id, pid);
     if (!wait.ok) {
@@ -349,6 +384,11 @@ std::string SessionManager::create_session(const std::string& fsdb_file,
                   wait.reason.c_str(), wait.elapsed_ms, wait.child_exited ? 1 : 0,
                   wait.child_status, wait.socket_exists ? 1 : 0,
                   wait.connect_ok ? 1 : 0, wait.ping_ok ? 1 : 0);
+        xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.startup_failed", false,
+                                         {{"reason", wait.reason}, {"elapsed_ms", wait.elapsed_ms},
+                                          {"child_exited", wait.child_exited}, {"child_status", wait.child_status},
+                                          {"socket_exists", wait.socket_exists}, {"connect_ok", wait.connect_ok},
+                                          {"ping_ok", wait.ping_ok}});
         kill(pid, SIGTERM);
         unlink(sock_path);
         xdebug_waveform_remove_session_dir(session_id);
@@ -374,6 +414,7 @@ std::string SessionManager::create_session(const std::string& fsdb_file,
 
     if (!registry_->add(session)) {
         debug_log("create_session: reason=registry_add_failed session=%s", session_id.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.registry_add_failed", false);
         kill(pid, SIGTERM);
         unlink(sock_path);
         xdebug_waveform_remove_session_dir(session_id);
@@ -386,6 +427,8 @@ std::string SessionManager::create_session(const std::string& fsdb_file,
     if (!health.healthy) {
         debug_log("create_session: reason=post_create_health_failed session=%s status=%s message=%s",
                   session_id.c_str(), session_health_status_name(health.status), health.message.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.post_create_health_failed", false,
+                                         {{"status", session_health_status_name(health.status)}, {"message", health.message}});
         kill(pid, SIGTERM);
         registry_->remove(session_id);
         unlink(sock_path);
@@ -399,10 +442,17 @@ std::string SessionManager::create_session(const std::string& fsdb_file,
     debug_log("create_session: success session=%s pid=%d transport=%s host=%s port=%d socket=%s",
               session_id.c_str(), pid, session.transport.c_str(), session.host.c_str(),
               session.port, session.socket_path.c_str());
+    xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.success", true,
+                                     {{"pid", static_cast<int>(pid)}, {"fsdb", session.fsdb_file},
+                                      {"transport", session.transport}, {"socket_path", session.socket_path},
+                                      {"host", session.host}, {"port", session.port}});
     return session_id;
 }
 
 bool SessionManager::stop_process(const SessionInfo& session, bool remove_record, bool remove_events) {
+    xdebug_core::log_lifecycle_event("waveform", session.session_id, "stop_process.begin", true,
+                                     {{"pid", session.server_pid}, {"remove_record", remove_record},
+                                      {"remove_events", remove_events}, {"socket_path", session.socket_path}});
     send_quit_to_endpoint(session);
 
     int status;
@@ -413,10 +463,14 @@ bool SessionManager::stop_process(const SessionInfo& session, bool remove_record
             usleep(100000);
         }
         if (kill(session.server_pid, 0) == 0) {
+            xdebug_core::log_lifecycle_event("waveform", session.session_id, "stop_process.sigterm", true,
+                                             {{"pid", session.server_pid}});
             kill(session.server_pid, SIGTERM);
             usleep(300000);
         }
         if (kill(session.server_pid, 0) == 0) {
+            xdebug_core::log_lifecycle_event("waveform", session.session_id, "stop_process.sigkill", true,
+                                             {{"pid", session.server_pid}});
             kill(session.server_pid, SIGKILL);
             usleep(100000);
         }
@@ -426,20 +480,26 @@ bool SessionManager::stop_process(const SessionInfo& session, bool remove_record
     unlink(session.socket_path.c_str());
     if (remove_record) registry_->remove(session.session_id);
     if (!remove_record && remove_events) xdebug_waveform_remove_session_dir(session.session_id);
+    xdebug_core::log_lifecycle_event("waveform", session.session_id, "stop_process.end", true);
     return true;
 }
 
 bool SessionManager::restart_session(const std::string& session_id) {
     debug_log("restart_session: begin session=%s", session_id.c_str());
+    xdebug_core::log_lifecycle_event("waveform", session_id, "restart_session.begin", true);
     int lock_fd = open_registry_lock();
     if (lock_fd < 0) {
         debug_log("restart_session: reason=registry_lock_open_failed errno=%d(%s)",
                   errno, strerror(errno));
+        xdebug_core::log_lifecycle_event("waveform", session_id, "restart_session.registry_lock_open_failed", false,
+                                         {{"errno", errno}, {"message", strerror(errno)}});
         return false;
     }
     if (flock(lock_fd, LOCK_EX) != 0) {
         debug_log("restart_session: reason=registry_lock_failed errno=%d(%s)",
                   errno, strerror(errno));
+        xdebug_core::log_lifecycle_event("waveform", session_id, "restart_session.registry_lock_failed", false,
+                                         {{"errno", errno}, {"message", strerror(errno)}});
         close(lock_fd);
         return false;
     }
@@ -447,6 +507,7 @@ bool SessionManager::restart_session(const std::string& session_id) {
     SessionInfo old_session;
     if (!registry_->get(session_id, old_session)) {
         debug_log("restart_session: reason=registry_missing session=%s", session_id.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "restart_session.registry_missing", false);
         flock(lock_fd, LOCK_UN);
         close(lock_fd);
         return false;
@@ -456,6 +517,8 @@ bool SessionManager::restart_session(const std::string& session_id) {
     if (!current_fsdb_metadata(old_session, metadata)) {
         debug_log("restart_session: reason=fsdb_stat_failed path=%s errno=%d(%s)",
                   old_session.fsdb_file.c_str(), errno, strerror(errno));
+        xdebug_core::log_lifecycle_event("waveform", session_id, "restart_session.fsdb_stat_failed", false,
+                                         {{"fsdb", old_session.fsdb_file}, {"errno", errno}, {"message", strerror(errno)}});
         flock(lock_fd, LOCK_UN);
         close(lock_fd);
         return false;
@@ -471,6 +534,8 @@ bool SessionManager::restart_session(const std::string& session_id) {
     if (!is_local_session_host(old_session)) {
         debug_log("restart_session: reason=remote_restart_required server_host=%s current_host=%s",
                   old_session.server_host.c_str(), current_host_name().c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "restart_session.remote_restart_required", false,
+                                         {{"server_host", old_session.server_host}, {"current_host", current_host_name()}});
         flock(lock_fd, LOCK_UN);
         close(lock_fd);
         return false;
@@ -480,17 +545,26 @@ bool SessionManager::restart_session(const std::string& session_id) {
     if (pid < 0) {
         debug_log("restart_session: reason=spawn_failed errno=%d(%s)",
                   errno, strerror(errno));
+        xdebug_core::log_lifecycle_event("waveform", session_id, "restart_session.spawn_failed", false,
+                                         {{"errno", errno}, {"message", strerror(errno)}});
         flock(lock_fd, LOCK_UN);
         close(lock_fd);
         return false;
     }
     debug_log("restart_session: spawned_server pid=%d", pid);
+    xdebug_core::log_lifecycle_event("waveform", session_id, "restart_session.spawned_server", true,
+                                     {{"pid", static_cast<int>(pid)}});
     WaitForServerResult wait = wait_for_server(session_id, pid);
     if (!wait.ok) {
         debug_log("restart_session: reason=%s elapsed_ms=%ld child_exited=%d child_status=%d socket_exists=%d connect_ok=%d ping_ok=%d",
                   wait.reason.c_str(), wait.elapsed_ms, wait.child_exited ? 1 : 0,
                   wait.child_status, wait.socket_exists ? 1 : 0,
                   wait.connect_ok ? 1 : 0, wait.ping_ok ? 1 : 0);
+        xdebug_core::log_lifecycle_event("waveform", session_id, "restart_session.startup_failed", false,
+                                         {{"reason", wait.reason}, {"elapsed_ms", wait.elapsed_ms},
+                                          {"child_exited", wait.child_exited}, {"child_status", wait.child_status},
+                                          {"socket_exists", wait.socket_exists}, {"connect_ok", wait.connect_ok},
+                                          {"ping_ok", wait.ping_ok}});
         kill(pid, SIGTERM);
         char sock_path[SOCK_PATH_LEN];
         get_sock_path(sock_path, session_id);
@@ -521,6 +595,8 @@ bool SessionManager::restart_session(const std::string& session_id) {
     bool ok = registry_->upsert(session);
     debug_log("restart_session: registry_upsert=%d session=%s pid=%d",
               ok ? 1 : 0, session_id.c_str(), pid);
+    xdebug_core::log_lifecycle_event("waveform", session_id, "restart_session.registry_upsert", ok,
+                                     {{"pid", static_cast<int>(pid)}});
     flock(lock_fd, LOCK_UN);
     close(lock_fd);
     return ok;
@@ -528,9 +604,11 @@ bool SessionManager::restart_session(const std::string& session_id) {
 
 bool SessionManager::ensure_session_current(const std::string& session_id) {
     debug_log("ensure_session_current: begin session=%s", session_id.c_str());
+    xdebug_core::log_lifecycle_event("waveform", session_id, "ensure_session_current.begin", true);
     SessionInfo session;
     if (!registry_->get(session_id, session)) {
         debug_log("ensure_session_current: reason=registry_missing session=%s", session_id.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "ensure_session_current.registry_missing", false);
         return false;
     }
 
@@ -538,19 +616,25 @@ bool SessionManager::ensure_session_current(const std::string& session_id) {
     if (!current_fsdb_metadata(session, current)) {
         debug_log("ensure_session_current: reason=fsdb_stat_failed path=%s errno=%d(%s)",
                   session.fsdb_file.c_str(), errno, strerror(errno));
+        xdebug_core::log_lifecycle_event("waveform", session_id, "ensure_session_current.fsdb_stat_failed", false,
+                                         {{"fsdb", session.fsdb_file}, {"errno", errno}, {"message", strerror(errno)}});
         return false;
     }
     if (!fsdb_metadata_matches(session, current)) {
-        fprintf(stderr, "FSDB changed, restarting session %s...\n", session_id.c_str());
         debug_log("ensure_session_current: fsdb_changed session=%s old_mtime=%ld new_mtime=%ld old_size=%lld new_size=%lld",
                   session_id.c_str(), session.fsdb_mtime, current.fsdb_mtime,
                   session.fsdb_size, current.fsdb_size);
+        xdebug_core::log_lifecycle_event("waveform", session_id, "ensure_session_current.fsdb_changed_restart", true,
+                                         {{"old_mtime", session.fsdb_mtime}, {"new_mtime", current.fsdb_mtime},
+                                          {"old_size", session.fsdb_size}, {"new_size", current.fsdb_size}});
         return restart_session(session_id);
     }
     SessionHealth health = diagnose_session(session_id);
     debug_log("ensure_session_current: diagnose status=%s healthy=%d message=%s",
               session_health_status_name(health.status), health.healthy ? 1 : 0,
               health.message.c_str());
+    xdebug_core::log_lifecycle_event("waveform", session_id, "ensure_session_current.diagnose", health.healthy,
+                                     {{"status", session_health_status_name(health.status)}, {"message", health.message}});
     return health.healthy;
 }
 
@@ -560,9 +644,11 @@ bool SessionManager::touch_session(const std::string& session_id) {
 
 bool SessionManager::kill_session(const std::string& session_id) {
     debug_log("kill_session: begin session=%s", session_id.c_str());
+    xdebug_core::log_lifecycle_event("waveform", session_id, "kill_session.begin", true);
     SessionInfo session;
     if (!registry_->get(session_id, session)) {
         debug_log("kill_session: reason=registry_missing session=%s", session_id.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "kill_session.registry_missing", false);
         return false;
     }
 
@@ -573,11 +659,15 @@ bool SessionManager::kill_session(const std::string& session_id) {
     if (!health.healthy) {
         if (is_local_session_host(session) && kill(session.server_pid, 0) == 0) {
             debug_log("kill_session: stale_process_alive pid=%d sending SIGTERM", session.server_pid);
+            xdebug_core::log_lifecycle_event("waveform", session_id, "kill_session.stale_sigterm", true,
+                                             {{"pid", session.server_pid}});
             kill(session.server_pid, SIGTERM);
             usleep(300000);
             if (kill(session.server_pid, 0) == 0) kill(session.server_pid, SIGKILL);
         }
         registry_->remove(session_id);
+        xdebug_core::log_lifecycle_event("waveform", session_id, "kill_session.removed_unhealthy", true,
+                                         {{"status", session_health_status_name(health.status)}, {"message", health.message}});
         return true;
     }
 
@@ -587,10 +677,13 @@ bool SessionManager::kill_session(const std::string& session_id) {
 bool SessionManager::kill_all_sessions() {
     std::vector<SessionInfo> sessions = list_sessions();
     debug_log("kill_all_sessions: count=%zu", sessions.size());
+    xdebug_core::log_lifecycle_event("waveform", "adhoc", "kill_all.begin", true,
+                                     {{"count", sessions.size()}});
     for (const auto& session : sessions) {
         kill_session(session.session_id);
     }
     registry_->clear_all();
+    xdebug_core::log_lifecycle_event("waveform", "adhoc", "kill_all.end", true);
     return true;
 }
 
@@ -611,11 +704,14 @@ std::vector<SessionInfo> SessionManager::list_sessions() {
 
 bool SessionManager::gc_sessions() {
     debug_log("gc_sessions: begin");
+    xdebug_core::log_lifecycle_event("waveform", "adhoc", "gc.begin", true);
     cleanup();
     const char* env_timeout = getenv("XDEBUG_WAVEFORM_IDLE_TIMEOUT_SEC");
     int timeout = env_timeout ? atoi(env_timeout) : 1800;
     if (timeout <= 0) timeout = 1800;
     debug_log("gc_sessions: idle_timeout_sec=%d", timeout);
+    xdebug_core::log_lifecycle_event("waveform", "adhoc", "gc.timeout", true,
+                                     {{"idle_timeout_sec", timeout}});
     std::vector<SessionInfo> sessions;
     registry_->load_all(sessions);
     time_t now = time(nullptr);
@@ -627,11 +723,16 @@ bool SessionManager::gc_sessions() {
                       session.server_pid,
                       static_cast<long>(now - last),
                       timeout);
+            xdebug_core::log_lifecycle_event("waveform", session.session_id, "gc.removing_idle", true,
+                                             {{"pid", session.server_pid},
+                                              {"idle_sec", static_cast<long>(now - last)},
+                                              {"timeout_sec", timeout}});
             stop_process(session, true, true);
         }
     }
     cleanup();
     debug_log("gc_sessions: done");
+    xdebug_core::log_lifecycle_event("waveform", "adhoc", "gc.end", true);
     return true;
 }
 
@@ -647,6 +748,7 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
         debug_log("diagnose_session: status=%s message=%s",
                   session_health_status_name(health.status),
                   health.message.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "diagnose.registry_missing", false);
         return health;
     }
 
@@ -666,6 +768,8 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
         debug_log("diagnose_session: status=%s message=%s",
                   session_health_status_name(health.status),
                   health.message.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "diagnose.fsdb_missing", false,
+                                         {{"fsdb", session.fsdb_file}});
         return health;
     }
     debug_log("diagnose_session: fsdb_stat old_mtime=%ld new_mtime=%ld old_size=%lld new_size=%lld old_dev=%llu new_dev=%llu old_inode=%llu new_inode=%llu",
@@ -683,6 +787,8 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
         debug_log("diagnose_session: status=%s message=%s",
                   session_health_status_name(health.status),
                   health.message.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "diagnose.fsdb_changed", false,
+                                         {{"fsdb", session.fsdb_file}});
         return health;
     }
 
@@ -694,6 +800,8 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
                   session.server_pid,
                   errno,
                   strerror(errno));
+        xdebug_core::log_lifecycle_event("waveform", session_id, "diagnose.process_exited", false,
+                                         {{"pid", session.server_pid}, {"errno", errno}, {"message", strerror(errno)}});
         return health;
     }
     debug_log("diagnose_session: process_alive_or_remote pid=%d", session.server_pid);
@@ -706,6 +814,8 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
                   session.socket_path.c_str(),
                   errno,
                   strerror(errno));
+        xdebug_core::log_lifecycle_event("waveform", session_id, "diagnose.socket_missing", false,
+                                         {{"socket_path", session.socket_path}, {"errno", errno}, {"message", strerror(errno)}});
         return health;
     }
     debug_log("diagnose_session: endpoint_exists path=%s", session.socket_path.c_str());
@@ -717,6 +827,9 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
         debug_log("diagnose_session: status=%s socket=%s",
                   session_health_status_name(health.status),
                   session.socket_path.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "diagnose.connect_failed", false,
+                                         {{"transport", session.transport}, {"socket_path", session.socket_path},
+                                          {"host", session.host}, {"port", session.port}});
         return health;
     }
     close(fd);
@@ -728,6 +841,8 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
         debug_log("diagnose_session: status=%s socket=%s",
                   session_health_status_name(health.status),
                   session.socket_path.c_str());
+        xdebug_core::log_lifecycle_event("waveform", session_id, "diagnose.ping_failed", false,
+                                         {{"socket_path", session.socket_path}});
         return health;
     }
     debug_log("diagnose_session: ping_ok socket=%s", session.socket_path.c_str());
@@ -738,6 +853,8 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
     debug_log("diagnose_session: status=%s message=%s",
               session_health_status_name(health.status),
                   health.message.c_str());
+    xdebug_core::log_lifecycle_event("waveform", session_id, "diagnose.healthy", true,
+                                     {{"pid", session.server_pid}, {"transport", session.transport}});
     return health;
 }
 
@@ -755,9 +872,13 @@ void SessionManager::cleanup() {
     std::vector<SessionInfo> before;
     registry_->load_all(before);
     debug_log("cleanup: before_count=%zu", before.size());
+    xdebug_core::log_lifecycle_event("waveform", "adhoc", "cleanup.begin", true,
+                                     {{"before_count", before.size()}});
     registry_->cleanup_stale();
     std::vector<SessionInfo> after;
     registry_->load_all(after);
+    xdebug_core::log_lifecycle_event("waveform", "adhoc", "cleanup.end", true,
+                                     {{"before_count", before.size()}, {"after_count", after.size()}});
     debug_log("cleanup: after_count=%zu", after.size());
 }
 

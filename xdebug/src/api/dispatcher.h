@@ -15,6 +15,7 @@ public:
     Json dispatch(const Json& request);
 
 private:
+    Json dispatch_impl(const Json& request);
     Json handle_session(const Json& request, const std::string& action);
     Json handle_batch(const Json& request);
     Json forward_action(const Json& request, EngineKind kind);

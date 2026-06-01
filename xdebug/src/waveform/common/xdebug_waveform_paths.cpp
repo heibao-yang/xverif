@@ -169,14 +169,14 @@ bool xdebug_waveform_remove_session_dir(const std::string& session_id) {
     std::string dir = xdebug_waveform_session_dir(session_id);
     remove_file_if_exists(dir + "/session.json");
     remove_file_if_exists(dir + "/socket");
-    remove_file_if_exists(dir + "/debug.log");
     remove_file_if_exists(dir + "/lists.json");
     remove_file_if_exists(dir + "/apb.json");
     remove_file_if_exists(dir + "/axi.json");
     remove_file_if_exists(dir + "/events.json");
     remove_file_if_exists(dir + "/cursors.json");
-    if (rmdir(dir.c_str()) == 0) return true;
-    return access(dir.c_str(), F_OK) != 0;
+    remove_file_if_exists(dir + "/endpoint.json");
+    // Preserve debug.log and logs/ for post-failure diagnostics.
+    return true;
 }
 
 bool xdebug_waveform_legacy_registry_has_session(int session_id) {

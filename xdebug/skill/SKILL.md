@@ -16,24 +16,26 @@ xdebug 是原 xtrace 与 xwave 的统一入口。使用本 skill 时，把 xdebu
 
 ## 入口和基本调用
 
-优先通过仓库 wrapper 调用：
+优先使用 shell 中已安装的 `xdebug` 命令。`xdebug` 应指向仓库里的 `tools/xdebug-env` wrapper，由用户在 `~/.bashrc`、`~/.zshrc` 或 `~/.tcshrc` 中配置。skill 和回答里不要暴露本机绝对路径；需要描述路径时使用 `<xverif-root>`、`<repo-root>` 或 `$XVERIF_HOME` 这类占位符。
 
 ```bash
-tools/xdebug-env -
-tools/xdebug-env request.json
+xdebug -
+xdebug request.json
 ```
+
+如果当前 shell 尚未安装 `xdebug`，并且当前工作目录就是仓库根目录，可以临时使用 `tools/xdebug-env -`。不要推荐旧 `xtrace` / `xwave` 人类 CLI 作为主路径。
 
 stdin 单次请求：
 
 ```bash
 printf '%s\n' '{"api_version":"xdebug.v1","action":"value.at","target":{"fsdb":"waves.fsdb","auto_open":true},"args":{"signal":"top.clk","time":"10ns"}}' \
-  | tools/xdebug-env -
+  | xdebug -
 ```
 
 脚本里提取字段时，不解析人类文本，直接解析 JSON：
 
 ```bash
-tools/xdebug-env - < request.json \
+xdebug - < request.json \
   | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("ok"), d.get("summary", {}))'
 ```
 
@@ -243,21 +245,21 @@ compact 响应可能省略空字段。不要假设 `session`、`tool`、空 `war
 安全提取示例：
 
 ```bash
-tools/xdebug-env - < request.json \
+xdebug - < request.json \
   | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("ok")); print(d.get("error") or d.get("summary",{}))'
 ```
 
 读取 batch values：
 
 ```bash
-tools/xdebug-env - < request.json \
+xdebug - < request.json \
   | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("data",{}).get("values",{}))'
 ```
 
 读取 graph 规模：
 
 ```bash
-tools/xdebug-env - < request.json \
+xdebug - < request.json \
   | python3 -c 'import json,sys; d=json.load(sys.stdin); s=d.get("summary",{}); print(s.get("node_count"), s.get("edge_count"), s.get("truncated"))'
 ```
 
@@ -294,6 +296,26 @@ tools/xdebug-env - < request.json \
 ### `INTERNAL_ENGINE_FAILED`
 
 优先检查资源路径、权限、Verdi/NPI 环境、daemon 工作目录。对复用 session 先 `session.doctor`。如果是一次性 target，可换成 `session.open` 暴露更明确的 session 错误。
+
+## 静默日志排障
+
+xdebug 默认写结构化日志，不打印到 stdout/stderr，也不影响 JSON 响应。agent 遇到工具异常时，应先读日志，不要猜测后端状态。
+
+日志位置：
+
+- public action：`~/.xdebug/sessions/<session_id>/logs/actions.ndjson`
+- 无 session / JSON parse 失败：`~/.xdebug/sessions/adhoc/logs/actions.ndjson`
+- 设计后端生命周期：`~/.xdebug/design/sessions/<hashed-session>/logs/lifecycle.ndjson`
+- 波形后端生命周期：`~/.xdebug/waveform/sessions/<hashed-session>/logs/lifecycle.ndjson`
+- 连接和请求交换：`~/.xdebug/{design,waveform}/sessions/<hashed-session>/logs/transport.ndjson`
+- daemon 文本调试：同 session 目录下的 `debug.log`
+
+排查顺序：
+
+1. 先看 public `actions.ndjson`，确认 action、session、路由、耗时和 error。
+2. 如果 action 失败在启动、NPI、FSDB open、daemon ready 或 timeout，看后端 `lifecycle.ndjson`。
+3. 如果失败是 socket/TCP/connect/ping/read/END marker，看 `transport.ndjson`。
+4. 如果 lifecycle 显示 `npi_init.failed`、`npi_load_design.failed`、`npi_fsdb_open.failed`、`transport.listen_failed`，再看 `debug.log` 和 Verdi/license 环境。
 
 ## Session actions
 

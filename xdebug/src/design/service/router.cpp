@@ -1,4 +1,7 @@
 #include "action_support.h"
+#include "logging/action_log.h"
+
+#include <chrono>
 
 namespace xdebug_design {
 
@@ -114,7 +117,19 @@ json actions_payload() {
     return {{"api_version", API_VERSION}, {"implemented", implemented}, {"experimental", json::array()}};
 }
 
-json handle_request(const json& request) {
+namespace {
+
+std::string log_session_id(const json& request) {
+    json target = request.value("target", json::object());
+    json args = request.value("args", json::object());
+    if (target.contains("session_id") && target["session_id"].is_string()) return target["session_id"].get<std::string>();
+    if (args.contains("session_id") && args["session_id"].is_string()) return args["session_id"].get<std::string>();
+    if (args.contains("name") && args["name"].is_string()) return args["name"].get<std::string>();
+    if (target.contains("name") && target["name"].is_string()) return target["name"].get<std::string>();
+    return "adhoc";
+}
+
+json handle_request_impl(const json& request) {
     std::string action = request.value("action", "");
     if (request.value("api_version", std::string(API_VERSION)) != API_VERSION) {
         return error_response(request, action, "UNSUPPORTED_API_VERSION", "expected xdebug.internal.v1", false);
@@ -142,6 +157,24 @@ json handle_request(const json& request) {
     if (action == "counter.explain") return run_counter_explain_action(request);
     if (action == "port.trace" || action == "instance.map" || action == "interface.resolve") return run_port_like_action(request, action);
     return error_response(request, action, "UNKNOWN_ACTION", "unknown action: " + action, true);
+}
+
+} // namespace
+
+json handle_request(const json& request) {
+    using clock = std::chrono::steady_clock;
+    const auto begin = clock::now();
+    std::string action = request.value("action", "");
+    std::string sid = log_session_id(request);
+    xdebug_core::log_action_event("backend", "design", sid, action, "begin", true, 0,
+                                  {{"request", xdebug_core::request_summary_for_log(request)}});
+    json response = handle_request_impl(request);
+    long long elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - begin).count();
+    bool ok = response.value("ok", false);
+    xdebug_core::log_action_event("backend", "design", sid, action, "end", ok, elapsed_ms,
+                                  {{"response", xdebug_core::response_summary_for_log(response)},
+                                   {"request", ok ? xdebug_core::request_summary_for_log(request) : xdebug_core::sanitize_for_log(request)}});
+    return response;
 }
 
 } // namespace xdebug_design

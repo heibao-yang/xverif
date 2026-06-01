@@ -99,9 +99,8 @@ bool xdebug_design_remove_session_dir(const std::string& session_id) {
     remove_file_if_exists(dir + "/session.json");
     remove_file_if_exists(dir + "/socket");
     remove_file_if_exists(dir + "/endpoint.json");
-    remove_file_if_exists(dir + "/debug.log");
-    if (rmdir(dir.c_str()) == 0) return true;
-    return access(dir.c_str(), F_OK) != 0;
+    // Preserve debug.log and logs/ for post-failure diagnostics.
+    return true;
 }
 
 } // namespace xdebug_design

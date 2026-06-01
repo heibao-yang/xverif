@@ -11,6 +11,7 @@ EXE      = xdebug
 
 CORE_SRCS = src/core/common/tool_config.cpp \
             src/core/common/path_utils.cpp \
+            src/core/logging/action_log.cpp \
             src/core/session/session_types.cpp \
             src/core/ai/ai_response.cpp
 
@@ -93,7 +94,7 @@ all: $(EXE) internal-engines
 
 internal-engines: $(LIBEXEC)/xdebug-design-engine $(LIBEXEC)/xdebug-waveform-engine
 
-$(EXE): $(APP_OBJS)
+$(EXE): $(CORE_OBJS) $(APP_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(LIBEXEC)/xdebug-design-engine: $(CORE_OBJS) $(DESIGN_OBJS)
@@ -112,6 +113,8 @@ unit-test: $(CORE_OBJS)
 	mkdir -p $(BUILD)/tests
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_core_types tests/unit/test_core_types.cpp $(CORE_OBJS)
 	$(BUILD)/tests/test_core_types
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_action_log tests/unit/test_action_log.cpp $(CORE_OBJS)
+	$(BUILD)/tests/test_action_log
 
 clean:
 	rm -rf $(BUILD) $(LIBEXEC) $(EXE)

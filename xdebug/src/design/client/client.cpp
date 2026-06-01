@@ -3,6 +3,7 @@
 #include "../protocol/protocol.h"
 #include "../session/session_manager.h"
 #include "../session/session_transport.h"
+#include "logging/action_log.h"
 
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -53,6 +54,7 @@ bool send_request_capture(const std::string& session_id,
     if (!manager.get_session(session_id, session)) {
         status = "session_not_found";
         message = "session not found";
+        xdebug_core::log_transport_event("design", session_id, "send_request.session_not_found", false);
         return false;
     }
     int fd = connect_session_endpoint(session);
@@ -60,6 +62,10 @@ bool send_request_capture(const std::string& session_id,
         SessionHealth health = manager.diagnose_session(session_id);
         status = session_health_status_name(health.status);
         message = health.message;
+        xdebug_core::log_transport_event("design", session_id, "send_request.connect_failed", false,
+                                         {{"status", status}, {"message", message}, {"transport", session.transport},
+                                          {"socket_path", session.socket_path}, {"host", session.host},
+                                          {"port", session.port}, {"pid", session.server_pid}});
         return false;
     }
 
@@ -72,15 +78,25 @@ bool send_request_capture(const std::string& session_id,
     if (!received) {
         status = "transport_failed";
         message = "failed to exchange JSON request with session";
+        xdebug_core::log_transport_event("design", session_id, "send_request.exchange_failed", false,
+                                         {{"action", request.value("action", std::string())},
+                                          {"transport", session.transport}, {"socket_path", session.socket_path},
+                                          {"host", session.host}, {"port", session.port}});
         return false;
     }
     if (!response.value("ok", false)) {
         status = response.value("status", std::string("server_error"));
         message = response.value("error", Json::object()).value("message", std::string("server request failed"));
+        xdebug_core::log_transport_event("design", session_id, "send_request.server_error", false,
+                                         {{"action", request.value("action", std::string())},
+                                          {"status", status}, {"message", message},
+                                          {"response", xdebug_core::sanitize_for_log(response)}});
         return false;
     }
     data = response.value("data", Json::object());
     manager.touch_session(session_id);
+    xdebug_core::log_transport_event("design", session_id, "send_request.ok", true,
+                                     {{"action", request.value("action", std::string())}});
     status = "ok";
     message.clear();
     return true;

@@ -72,3 +72,15 @@ xdebug 负责 exact resolve 和事实查询。候选信号名应先用外部 `rg
 ```
 
 如果 `SIGNAL_NOT_FOUND`，先在外部确认层级路径再重试。如果时间解析失败，使用明确时间如 `100ns`，或先做 time resolve。
+
+## 工具问题排障
+
+xdebug 会静默写结构化日志，不会污染 JSON 输出。遇到工具自身问题时按这个顺序看日志：
+
+1. public action log：`~/.xdebug/sessions/<session_id>/logs/actions.ndjson`
+2. 无 session 或 JSON parse/validate 失败：`~/.xdebug/sessions/adhoc/logs/actions.ndjson`
+3. 后端生命周期：`~/.xdebug/design/sessions/<hashed-session>/logs/lifecycle.ndjson` 或 `~/.xdebug/waveform/sessions/<hashed-session>/logs/lifecycle.ndjson`
+4. 后端连接请求：`~/.xdebug/{design,waveform}/sessions/<hashed-session>/logs/transport.ndjson`
+5. daemon 文本细节：对应 session 目录下的 `debug.log`
+
+重点看 `phase` 字段。启动服务、NPI 初始化、FSDB 打开、wait ready、connect/ping、自动 restart、gc/kill 都会形成 lifecycle 或 transport event。

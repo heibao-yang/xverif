@@ -1,5 +1,6 @@
 #include "backend/engine_adapter.h"
 #include "api/response.h"
+#include "logging/action_log.h"
 #include "runtime/work_dir.h"
 
 #include <cerrno>
@@ -9,6 +10,31 @@
 #include <unistd.h>
 
 namespace xdebug {
+
+namespace {
+
+std::string engine_component(EngineKind kind) {
+    return kind == EngineKind::Design ? "design" : "waveform";
+}
+
+std::string request_session_id_for_log(const Json& request) {
+    Json target = request.value("target", Json::object());
+    Json args = request.value("args", Json::object());
+    auto get_str = [](const Json& obj, const char* key) -> std::string {
+        auto it = obj.find(key);
+        return it != obj.end() && it->is_string() ? it->get<std::string>() : std::string();
+    };
+    std::string sid = get_str(target, "session_id");
+    if (!sid.empty()) return sid;
+    sid = get_str(args, "session_id");
+    if (!sid.empty()) return sid;
+    sid = get_str(args, "name");
+    if (!sid.empty()) return sid;
+    sid = get_str(target, "name");
+    return sid.empty() ? "adhoc" : sid;
+}
+
+} // namespace
 
 EngineAdapter::EngineAdapter(const std::string& executable_dir)
     : executable_dir_(executable_dir) {}
@@ -43,10 +69,14 @@ bool EngineAdapter::invoke(EngineKind kind,
                            const Json& xdebug_request,
                            Json& response,
                            std::string& error) const {
+    const std::string component = engine_component(kind);
+    const std::string log_sid = request_session_id_for_log(xdebug_request);
     int input_pipe[2];
     int output_pipe[2];
     if (pipe(input_pipe) != 0 || pipe(output_pipe) != 0) {
         error = std::string("failed to create engine pipe: ") + std::strerror(errno);
+        xdebug_core::log_lifecycle_event(component, log_sid, "engine.pipe_failed", false,
+                                         {{"errno", errno}, {"message", error}});
         return false;
     }
 
@@ -54,6 +84,8 @@ bool EngineAdapter::invoke(EngineKind kind,
     const std::string workdir = engine_workdir(kind);
     if (!ensure_runtime_work_dir(workdir)) {
         error = std::string("failed to create engine working directory: ") + workdir;
+        xdebug_core::log_lifecycle_event(component, log_sid, "engine.workdir_failed", false,
+                                         {{"workdir", workdir}, {"engine_path", path}});
         close(input_pipe[0]);
         close(input_pipe[1]);
         close(output_pipe[0]);
@@ -63,6 +95,8 @@ bool EngineAdapter::invoke(EngineKind kind,
     pid_t pid = fork();
     if (pid < 0) {
         error = std::string("failed to fork engine: ") + std::strerror(errno);
+        xdebug_core::log_lifecycle_event(component, log_sid, "engine.fork_failed", false,
+                                         {{"errno", errno}, {"message", error}, {"engine_path", path}});
         close(input_pipe[0]);
         close(input_pipe[1]);
         close(output_pipe[0]);
@@ -81,6 +115,10 @@ bool EngineAdapter::invoke(EngineKind kind,
         execl(path.c_str(), path.c_str(), "ai", "query", "-", static_cast<char*>(nullptr));
         _exit(127);
     }
+
+    xdebug_core::log_lifecycle_event(component, log_sid, "engine.spawned", true,
+                                     {{"pid", static_cast<int>(pid)}, {"engine_path", path}, {"workdir", workdir},
+                                      {"action", xdebug_request.value("action", std::string())}});
 
     close(input_pipe[0]);
     close(output_pipe[1]);
@@ -112,8 +150,17 @@ bool EngineAdapter::invoke(EngineKind kind,
         if (WIFEXITED(status)) {
             error += " (exit=" + std::to_string(WEXITSTATUS(status)) + ")";
         }
+        Json ctx = {{"message", error}, {"output", output}, {"action", xdebug_request.value("action", std::string())}};
+        if (WIFEXITED(status)) ctx["exit_status"] = WEXITSTATUS(status);
+        if (WIFSIGNALED(status)) ctx["signal"] = WTERMSIG(status);
+        xdebug_core::log_lifecycle_event(component, log_sid, "engine.response_parse_failed", false, ctx);
         return false;
     }
+    Json ctx = {{"action", xdebug_request.value("action", std::string())},
+                {"ok", response.value("ok", false)}};
+    if (WIFEXITED(status)) ctx["exit_status"] = WEXITSTATUS(status);
+    if (WIFSIGNALED(status)) ctx["signal"] = WTERMSIG(status);
+    xdebug_core::log_lifecycle_event(component, log_sid, "engine.completed", response.value("ok", true), ctx);
     return true;
 }
 
