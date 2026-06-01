@@ -1,85 +1,106 @@
-# xdebug
+# xverif
 
-`xdebug` 是基于 Verdi/NPI 的统一调试工具。公开入口只接受 JSON 请求，并返回 JSON 响应。
+`xverif` 是面向芯片验证 debug agent 的本地工具仓库，当前包含两个互补工具：
 
-## 构建与调用
+- [`xdebug`](xdebug/README.md)：查询设计数据库和波形数据库里的事实。
+- [`xbit`](xbit/README.md)：确定性计算 bit、literal、slice、表达式和 expected value。
+
+简单说：`xdebug` 负责“事实从哪里来、某时刻发生了什么”，`xbit` 负责“这些值按 SystemVerilog 规则算出来到底是多少”。
+
+## 工具概览
+
+### xdebug
+
+`xdebug` 是 xtrace 与 xwave 合并后的统一调试工具。它通过 JSON API 查询 Verdi/VCS `daidir` 设计事实、FSDB 波形事实，或在两者同时存在时做 combined/debug join。
+
+适合的问题：
+
+- 查信号 driver、load、依赖图、路径和源码 evidence。
+- 查波形值、事件、窗口验证、signal changes、handshake 异常。
+- 查 APB/AXI 协议异常、latency、outstanding、error response。
+- 在具体波形时间点定位当前生效 RTL driver：`trace.active_driver`。
+
+入口示例：
 
 ```bash
-export VERDI_HOME=/path/to/verdi
-make
-
+tools/xdebug-env -h
 printf '%s\n' '{"api_version":"xdebug.v1","action":"actions"}' | tools/xdebug-env -
-tools/xdebug-env request.json
 ```
 
-不提供文本子命令模式。状态统一位于 `~/.xdebug/`，运行日志位于
-`~/.xdebug/work/{design,waveform,combined}/`。
+完整说明见 [`xdebug/README.md`](xdebug/README.md)。
 
-## 资源模式
+### xbit
 
-| `target` | 模式 | 主要能力 |
-| --- | --- | --- |
-| `daidir` | `design` | 信号解析、驱动/负载追踪、控制依赖、时序/FSM/计数器解释 |
-| `fsdb` | `waveform` | 值查询、范围检查、列表、事件、APB/AXI、异常与握手分析 |
-| `daidir` 与 `fsdb` | `combined` | 单资源能力加动态生效驱动追踪 |
+`xbit` 是确定性 bit/value/expression 计算器。它不读取 RTL、不分析层次结构，只负责把输入值按明确规则算对，避免 agent 靠心算处理位宽、符号位和表达式。
 
-设计动作使用精确层次路径；候选名称应先通过源码中的 `rg` 搜索定位。
-`signal.search` 明确不支持。
+适合的问题：
 
-## 请求示例
+- SV literal、hex/bin/decimal 转换。
+- signed/unsigned 解释。
+- bit slice/index、concat、repeat、mask、popcount、onehot。
+- 常量表达式、valid-ready 条件、expected value 比较。
+- 对 `xdebug` 返回的 compact values 做二次计算。
 
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.active_driver",
-  "target": {
-    "daidir": "/path/to/simv.daidir",
-    "fsdb": "/path/to/waves.fsdb"
-  },
-  "args": {
-    "signal": "top.u_dut.valid",
-    "requested_time": "22us",
-    "include_control": true,
-    "include_parity": false
-  }
-}
-```
-
-仅提供 `daidir` 时可执行 `trace.driver`、`trace.expand`、
-`sequential.update` 等设计动作；仅提供 `fsdb` 时可执行
-`value.at`、`signal.statistics`、`event.export` 等波形动作。
-
-`trace.active_driver` 返回请求时刻、实际生效时刻、可信驱动语句与控制证据。
-当只确认控制分支而无法确认赋值语句时，`driver_status` 为
-`control_only`，工具不会推测赋值来源。
-
-## 代码结构
-
-```text
-xdebug/
-├── skill/SKILL.md
-├── third_party/json.hpp
-├── src/
-│   ├── api/          # xdebug.v1 解析、响应与路由
-│   ├── core/         # 路径、基础类型与通信公共件
-│   ├── session/      # 统一会话索引
-│   ├── runtime/      # 工作目录与日志隔离
-│   ├── backend/      # 私有服务进程适配
-│   ├── design/       # 设计数据库查询能力
-│   ├── waveform/     # 波形及协议查询能力
-│   └── combined/     # 联合动态追踪能力
-├── tests/            # unit/design/waveform/combined/realdata
-└── testdata/         # 仓库自带可生成夹具
-```
-
-`xdebug/libexec/` 仅包含构建生成的私有后端程序，不能作为公开调用入口。
-
-## 测试
+入口示例：
 
 ```bash
-make test       # 单元测试与自带联合夹具
-make full-test  # 加入设计、波形及可用真实数据回归
+xbit/xbit conv "8'shff" --json
+xbit/xbit eval "data[15:8] == 8'hbe" --var data=32'hdead_beef --json
 ```
 
-完整回归日志写入 `/tmp/xdebug_full_regression_<timestamp>/`。需要真实
-NPI/FSDB 执行的用例必须在具备 Synopsys 运行环境和 license 的机器上运行。
+完整说明见 [`xbit/README.md`](xbit/README.md)。
+
+## 推荐 Shell 入口
+
+为了在任意目录调用，建议在 shell rc 文件中配置统一入口。示例中的 `<xverif-root>` 表示本仓库根目录，请按本机实际路径替换。
+
+Bash / Zsh：
+
+```bash
+export XVERIF_HOME=<xverif-root>
+export XDEBUG_ENTRY="$XVERIF_HOME/tools/xdebug-env"
+export XBIT_ENTRY="$XVERIF_HOME/xbit/xbit"
+xdebug() { "$XDEBUG_ENTRY" "$@"; }
+xbit() { "$XBIT_ENTRY" "$@"; }
+```
+
+Tcsh：
+
+```tcsh
+setenv XVERIF_HOME <xverif-root>
+setenv XDEBUG_ENTRY "$XVERIF_HOME/tools/xdebug-env"
+setenv XBIT_ENTRY "$XVERIF_HOME/xbit/xbit"
+alias xdebug '"$XDEBUG_ENTRY" \!*'
+alias xbit '"$XBIT_ENTRY" \!*'
+```
+
+配置后：
+
+```bash
+xdebug -h
+xbit conv "8'shff" --json
+```
+
+## 构建与测试
+
+`xdebug` 需要可用的 Verdi/NPI 环境；`xbit` 只依赖 Python 标准库，优先使用已配置的 Miniconda Python，失败时回退到 `python3`。
+
+```bash
+make -C xdebug
+make -C xdebug unit-test
+
+make -C xbit test
+
+make test
+make full-test
+```
+
+`make test` 覆盖仓库内常规单测和自带夹具；`make full-test` 会加入更多设计、波形和真实数据回归，要求本机具备相应 Synopsys 运行环境和 license。
+
+## 文档入口
+
+- xdebug 用户文档：[`xdebug/README.md`](xdebug/README.md)
+- xdebug agent skill：[`xdebug/skill/SKILL.md`](xdebug/skill/SKILL.md)
+- xdebug JSON API 速查：[`xdebug/skill/references/json-api-reference.md`](xdebug/skill/references/json-api-reference.md)
+- xbit 用户文档：[`xbit/README.md`](xbit/README.md)
+- xbit agent skill：[`xbit/skill/SKILL.md`](xbit/skill/SKILL.md)
