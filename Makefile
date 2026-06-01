@@ -9,6 +9,8 @@ xbit:
 	$(MAKE) -C xbit
 
 test: xdebug xbit
+	$(MAKE) -C xdebug schema-test
+	$(MAKE) -C xdebug contract-test
 	$(MAKE) -C xdebug unit-test
 	$(MAKE) -C xbit test
 	$(MAKE) -C xdebug/testdata/combined/active_driver fixture

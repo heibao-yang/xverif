@@ -1,0 +1,1421 @@
+{
+  "version": "xdebug.action_specs.v1",
+  "actions": [
+    {
+      "name": "actions",
+      "category": "builtin",
+      "status": "stable",
+      "requires": "none",
+      "handler_kind": "actions",
+      "schemas": {
+        "request": "schemas/v1/actions/actions.request.schema.json",
+        "response": "schemas/v1/actions/actions.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "apb.config.list",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "apb.config.load",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "apb.cursor",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "apb.query",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "apb.transfer_window",
+      "category": "waveform",
+      "status": "experimental",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "axi.analysis",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "axi.channel_stall",
+      "category": "waveform",
+      "status": "experimental",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "axi.config.list",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "axi.config.load",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "axi.cursor",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "axi.latency_outlier",
+      "category": "waveform",
+      "status": "experimental",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "axi.outstanding_timeline",
+      "category": "waveform",
+      "status": "experimental",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "axi.query",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "axi.request_response_pair",
+      "category": "waveform",
+      "status": "experimental",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "batch",
+      "category": "builtin",
+      "status": "stable",
+      "requires": "none",
+      "handler_kind": "batch",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "control.explain",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "counter.explain",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "cursor.delete",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "cursor.get",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "cursor.list",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "cursor.set",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "cursor.use",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "detect_anomaly",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "event.config.list",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "event.config.load",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "event.export",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "event.find",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "expr.eval_at",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "expr.normalize",
+      "category": "design",
+      "status": "stable",
+      "requires": "none",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "fsm.explain",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "handshake.inspect",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "inspect_signal",
+      "category": "waveform",
+      "status": "deprecated",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "instance.map",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "interface.resolve",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "list.add",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "list.create",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "list.delete",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "list.diff",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "list.show",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "list.validate",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "list.value_at",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "port.trace",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "procedural.assignment",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "sampled_pulse.inspect",
+      "category": "waveform",
+      "status": "experimental",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "schema",
+      "category": "builtin",
+      "status": "stable",
+      "requires": "none",
+      "handler_kind": "schema",
+      "schemas": {
+        "request": "schemas/v1/actions/schema.request.schema.json",
+        "response": "schemas/v1/actions/schema.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/schema.basic.json"
+        ],
+        "response": [
+          "examples/responses/schema.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "scope.list",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "sequential.update",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "session.close",
+      "category": "session",
+      "status": "stable",
+      "requires": "session",
+      "handler_kind": "session",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "session.doctor",
+      "category": "session",
+      "status": "stable",
+      "requires": "session",
+      "handler_kind": "session",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "session.ensure",
+      "category": "session",
+      "status": "stable",
+      "requires": "any",
+      "handler_kind": "session",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "session.gc",
+      "category": "session",
+      "status": "stable",
+      "requires": "none",
+      "handler_kind": "session",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "session.kill",
+      "category": "session",
+      "status": "stable",
+      "requires": "session",
+      "handler_kind": "session",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "session.list",
+      "category": "session",
+      "status": "stable",
+      "requires": "session",
+      "handler_kind": "session",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "session.open",
+      "category": "session",
+      "status": "stable",
+      "requires": "any",
+      "handler_kind": "session",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "signal.canonicalize",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "signal.changes",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "signal.resolve",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "signal.stability",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "signal.statistics",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "signal.trend",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "source.context",
+      "category": "design",
+      "status": "stable",
+      "requires": "none",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "trace.active_driver",
+      "category": "combined",
+      "status": "stable",
+      "requires": "combined",
+      "handler_kind": "active_trace",
+      "schemas": {
+        "request": "schemas/v1/actions/trace.active_driver.request.schema.json",
+        "response": "schemas/v1/actions/trace.active_driver.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/trace.active_driver.basic.json"
+        ],
+        "response": [
+          "examples/responses/trace.active_driver.exact_assignment.json",
+          "examples/responses/trace.active_driver.control_only.json"
+        ]
+      }
+    },
+    {
+      "name": "trace.driver",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/actions/trace.driver.request.schema.json",
+        "response": "schemas/v1/actions/trace.driver.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/trace.driver.basic.json"
+        ],
+        "response": [
+          "examples/responses/trace.driver.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "trace.expand",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "trace.explain",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "trace.graph",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "trace.load",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "trace.path",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "trace.query",
+      "category": "design",
+      "status": "stable",
+      "requires": "design",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "value.at",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/actions/value.at.request.schema.json",
+        "response": "schemas/v1/actions/value.at.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/value.at.basic.json"
+        ],
+        "response": [
+          "examples/responses/value.at.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "value.batch_at",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "verify.conditions",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "window.verify",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/xdebug.request.schema.json",
+        "response": "schemas/v1/xdebug.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/actions.basic.json"
+        ],
+        "response": [
+          "examples/responses/actions.basic.json"
+        ]
+      }
+    },
+    {
+      "name": "signal.search",
+      "category": "design",
+      "status": "removed",
+      "requires": "design",
+      "handler_kind": "removed",
+      "schemas": {},
+      "examples": {}
+    }
+  ]
+}

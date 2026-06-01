@@ -112,7 +112,7 @@ APP_OBJS = $(APP_SRCS:%.cpp=$(BUILD)/%.o)
 DESIGN_OBJS = $(DESIGN_SRCS:%.cpp=$(BUILD)/%.o)
 WAVEFORM_OBJS = $(WAVEFORM_SRCS:%.cpp=$(BUILD)/%.o)
 
-.PHONY: all internal-engines unit-test schema-test clean
+.PHONY: all internal-engines unit-test schema-test contract-test clean
 
 all: $(EXE) internal-engines
 
@@ -145,6 +145,9 @@ unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o
 schema-test:
 	python3 tools/validate_schema.py schemas/v1
 	python3 tools/validate_examples.py examples schemas/v1
+
+contract-test: $(EXE) schema-test
+	python3 tools/check_action_contract.py specs/actions $(CURDIR)/$(EXE)
 
 clean:
 	rm -rf $(BUILD) $(LIBEXEC) $(EXE)
