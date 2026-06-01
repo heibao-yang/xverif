@@ -1,160 +1,105 @@
 ---
 name: xloc
 description: >
-  当 AI agent 需要解析 UVM 仿真日志中由 xloc 替换的 loc_id（L_XXXXXXXX）时使用。
-  提供 resolve（还原源码位置）、context（查看源码上下文）、stats（统计热点位置）、
-  annotate（给日志加位置注释）四个子命令。也用于指导用户如何在 UVM 环境中集成
-  xloc_report_server 以生成带 loc_id 的仿真日志。
+  当 AI agent 处理 UVM/仿真日志里的 xloc 位置 ID（L_XXXXXXXX）、需要把压缩后的 log
+  位置还原为源码 file/line、查看源码上下文、统计报错热点或给日志加位置注释时使用。
+  xloc 是 xverif 的日志位置工具，不负责 RTL 因果、波形查询或 bit 计算。
 ---
 
-# xloc Skill
+# xloc
 
-`xloc` 是面向 LLM debug agent 的 UVM 日志位置压缩与恢复工具。它把 UVM 仿真日志中冗长的文件路径+行号替换为简短 `L_XXXXXXXX` ID，通过 sidecar JSONL 映射文件支持按需恢复源码上下文。
+`xloc` 用来把 UVM 仿真日志里的 `L_XXXXXXXX` 还原成源码位置。它只回答“这条 log 来自哪个文件哪一行”和“哪些位置最常出现”，不要用它分析 RTL、读 FSDB、计算 bit；这些任务分别交给 `xdebug` 和 `xbit`。
 
 ## 何时使用
 
-遇到以下情况时使用本 skill：
+使用 xloc：
 
-- 用户提供了带有 `L_XXXXXXXX` 标记的 UVM 仿真日志，需要还原具体源码位置
-- 需要查看某个 loc_id 对应的源码上下文
-- 需要统计日志中高频报错位置
-- 需要给带 loc_id 的日志添加可读的位置注释
-- 用户询问如何在 UVM 环境中集成 xloc_report_server
+- 用户给了包含 `L_00000001` 这类 loc_id 的仿真日志。
+- 需要知道某个 loc_id 对应的 `file/line/msg_id`。
+- 需要查看 loc_id 附近源码上下文。
+- 需要统计日志中最常出现的报错/告警位置。
+- 需要把压缩日志临时注释成人类可读日志。
 
-## 工具定位
+不要使用 xloc：
 
-`xloc` 和 `xdebug`、`xbit` 同属于 xverif 体系，职责清晰：
+- 查询设计 driver/load/path/波形值：用 `xdebug`。
+- 计算 SV literal、slice、mask、expected value：用 `xbit`。
+- 日志里没有 `L_XXXXXXXX`，且用户没有 sidecar map。
 
-| 工具 | 作用 |
-|------|------|
-| xdebug | 查询设计/波形事实 |
-| xbit | 确定性 bit/value/expression 计算 |
-| **xloc** | UVM 日志位置压缩与恢复 |
+## 程序入口
 
-## 调用入口
+优先调用已安装的命令：
 
-优先使用 shell 中已安装的 `xloc` 命令。`xloc` 应指向仓库里的 `PYTHONPATH=<xverif-root>/xloc python3 -m xloc`，由用户在 shell rc 中配置。skill 和回答里不要暴露本机绝对路径；需要描述路径时使用 `<xverif-root>`、`<repo-root>` 或 `$XVERIF_HOME` 这类占位符。
+```bash
+xloc <command> ...
+```
+
+如果当前 shell 没有 `xloc` 函数，而当前目录是 xverif 仓库根目录，可用临时入口：
+
+```bash
+PYTHONPATH=xloc python3 -m xloc <command> ...
+```
+
+回答和文档里不要暴露本机绝对路径；需要说明路径时用 `<xverif-root>`、`<project-root>`、`$XVERIF_HOME`。
+
+## 命令速查
+
+还原单个 loc_id：
 
 ```bash
 xloc resolve L_00000001 --map out/sim.log.xloc.jsonl
-xloc context L_00000001 --map out/sim.log.xloc.jsonl
-xloc stats out/sim.log
-xloc annotate out/sim.log
 ```
 
-如果当前 shell 尚未安装 `xloc`，并且当前工作目录就是仓库根目录，可以临时使用：
+查看源码上下文：
 
 ```bash
-PYTHONPATH=xloc python3 -m xloc <command> <args>
+xloc context L_00000001 --map out/sim.log.xloc.jsonl --before 5 --after 5
 ```
 
-实现只依赖 Python 标准库。
-
-## 四个子命令
-
-### `resolve <loc_id>`
-
-查 sidecar JSONL，输出 file/line/msg_id：
-
-```bash
-xloc resolve L_00000005 --map out/sim.log.xloc.jsonl
-```
-
-输出：
-
-```text
-loc_id:  L_00000005
-file:    /path/to/tb/simple_test.sv
-line:    3
-msg_id:  PKT_MISMATCH
-```
-
-### `context <loc_id>`
-
-先 resolve，再读取源码文件附近行：
-
-```bash
-xloc context L_00000005 --map out/sim.log.xloc.jsonl --before 2 --after 2
-```
-
-输出 resolve 信息 + 源码片段，目标行以 `>>>` 标记。
-
-### `stats <sim.log>`
-
-统计 log 中所有 loc_id 出现频率：
+统计日志热点。若未传 `--map`，默认找 `<log>.xloc.jsonl`：
 
 ```bash
 xloc stats out/sim.log --top 20
 ```
 
-自动查找同目录下的 `sim.log.xloc.jsonl`（或通过 `--map` 指定）。
-输出 loc_id、出现次数、对应文件、msg_id。
-
-### `annotate <sim.log>`
-
-在 log 中每个首次出现的 loc_id 前插入 `[loc]` 注释行：
+给压缩日志加 `[loc]` 注释，输出到 stdout：
 
 ```bash
-xloc annotate out/sim.log
+xloc annotate out/sim.log --map out/sim.log.xloc.jsonl
 ```
 
-输出到 stdout，可重定向：
+## Agent 决策流程
 
-```bash
-xloc annotate out/sim.log > annotated.log
+1. 如果用户给的是一整段压缩日志，先保存或定位日志文件，再跑 `xloc stats <log> --top N` 找高频 loc_id。
+2. 对最关键的 loc_id 用 `xloc resolve <loc_id> --map <map.jsonl>`，不要靠猜。
+3. 只有需要源码证据时再跑 `xloc context <loc_id> --before 5 --after 5`。
+4. 如果用户要可读日志，用 `xloc annotate <log>`，但不要默认把整份长日志贴回对话。
+5. 回答时引用 `loc_id + file:line + msg_id`，例如：`L_00000005 -> tb/scoreboard.sv:238 [PKT_MISMATCH]`。
+
+## Map 文件规则
+
+- sidecar map 通常叫 `<log>.xloc.jsonl`，例如 `sim.log.xloc.jsonl`。
+- `resolve` 和 `context` 必须传 `--map`。
+- `stats` 和 `annotate` 可以省略 `--map`，工具会尝试查找 `<log>.xloc.jsonl`。
+- 如果 map 缺失，先告诉用户无法还原源码位置；仍可用 `stats` 统计 loc_id 出现频率。
+
+## 结果读取
+
+`resolve` 输出通常包含：
+
+```text
+loc_id:  L_00000001
+file:    tb/scoreboard.sv
+line:    238
+msg_id:  PKT_MISMATCH
 ```
 
-## Agent 使用原则
+`context` 会在目标源码行前标记 `>>>`。最终结论优先引用这行，而不是引用整段上下文。
 
-1. **不要在脑子里猜 loc_id 对应的文件**。用 `xloc resolve` 查询。
-2. **只解析对 debug 有价值的 loc_id**。不需要把所有 loc_id 都 resolve 一遍。
-3. **解析前先 stats**，了解哪些位置是高频热点，优先查这些。
-4. **需要源码证据时用 context**，只是想知道文件在哪用 resolve。
-5. **回答用户时引用 loc_id + 文件位置**，不要让用户自己查。
+`stats` 输出热点表；先处理 count 高、severity 高、或用户点名的 loc_id。
 
-## 典型工作流
+## 错误处理
 
-### 用户给你带 loc_id 的 log
-
-1. `xloc stats sim.log` — 看热点位置
-2. `xloc resolve L_XXXXXXXX` — 查具体位置
-3. `xloc context L_XXXXXXXX --before 5 --after 5` — 看源码上下文
-4. 结合 loc_id 和源码内容，给用户结论
-
-### 用户想在自己的 UVM 环境中集成
-
-指引用户：
-
-1. 将 `sv/xloc_pkg.sv` 和 `sv/xloc_report_server.sv` 复制到验证环境
-2. 在 testbench 顶层 `initial` 块中注册 server：
-   ```systemverilog
-   import xloc_pkg::*;
-   xloc_report_server loc_svr;
-   initial begin
-     loc_svr = new();
-     loc_svr.copy(uvm_coreservice_t::get().get_report_server());
-     uvm_coreservice_t::get().set_report_server(loc_svr);
-   end
-   ```
-3. 运行仿真，产物：
-   - `sim.log` — 路径已替换为 `L_XXXXXXXX`
-   - `sim.log.xloc.jsonl` — sidecar 映射文件
-
-## loc_id 格式与机制
-
-- 格式：`L_XXXXXXXX`（8 位 hex 序列号，如 `L_0000001F`）
-- SV 侧用 static 关联数组去重：同一 file:line:msg_id 首次遇到时生成新 ID 并追加写 JSONL，后续命中直接复用
-- JSONL 格式：
-  ```jsonl
-  {"loc_id":"L_00000001","file":"tb/scoreboard.sv","line":238,"msg_id":"PKT_MISMATCH"}
-  ```
-- `map_path` 默认 `sim.log.xloc.jsonl`（相对于仿真工作目录），可通过 `set_map_path()` 自定义
-
-## 构建与测试
-
-```bash
-make -C xloc test       # Python 单元测试
-make -f xloc/Makefile.test   # UVM 测试环境（需要 VCS + UVM）
-```
-
-UVM 测试环境位于 `xloc/tb/`，所有产物输出到 `xloc/out/`。
+- `not found in <map>`：loc_id 不在该 map 中。检查是否拿错了 `sim.log.xloc.jsonl`。
+- 找不到源码文件：map 仍能证明原始 `file/line`，但当前机器缺少源码；回答时说明只能定位，不能展示上下文。
+- 命令不存在：在 xverif 仓库根目录用 `PYTHONPATH=xloc python3 -m xloc ...` 临时调用。
