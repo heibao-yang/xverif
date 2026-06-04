@@ -185,7 +185,11 @@
         },
         "reopen": {
           "type": "boolean",
-          "description": "When true, explicitly reopen/replace an existing same-name session; otherwise same-name open may reuse the current session."
+          "description": "When true, explicitly reopen/replace an existing same-name session."
+        },
+        "reuse": {
+          "type": "boolean",
+          "description": "When true, reuse a matching healthy same-name session or rebuild a stale matching session."
         }
       },
       "additionalProperties": true

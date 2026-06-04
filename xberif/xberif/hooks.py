@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -23,11 +24,71 @@ def _root() -> Path:
 
 
 def _tool_path(data: dict[str, Any]) -> Path | None:
+    return _tool_path_for_root(data, _root())
+
+
+def _tool_path_for_root(data: dict[str, Any], root: Path) -> Path | None:
     tool_input = data.get("tool_input", {})
     path = tool_input.get("file_path")
     if not path:
         return None
-    return Path(path).resolve()
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    return candidate.resolve()
+
+
+def _is_under(path: Path, directory: Path) -> bool:
+    try:
+        path.resolve().relative_to(directory.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+XBERIF_BASH_RE = re.compile(r"(?:^|[\s'\"=:/])(?:\./)?\.xberif(?:/|[\s'\"()]|$)")
+
+
+def _bash_mentions_xberif(command: str) -> bool:
+    return bool(XBERIF_BASH_RE.search(command))
+
+
+def _deny_guard() -> int:
+    message = (
+        "Blocked direct access to .xberif. .xberif is xberif-managed state; "
+        "do not read or edit it directly. Use the xberif skill or CLI instead: "
+        "read with `xberif status`, `xberif brief`, `xberif list-topics`, "
+        "`xberif get <topic>`, or `xberif detail <topic>`; modify with the "
+        "xberif card/detail workflow, `xberif repair-catalog`, and `xberif validate`."
+    )
+    print(
+        json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                },
+                "systemMessage": message,
+            },
+            ensure_ascii=False,
+        )
+    )
+    return 0
+
+
+def guard_state_access() -> int:
+    root = _root()
+    data = _hook_input()
+    tool_name = data.get("tool_name", "")
+    if tool_name in {"Read", "Write", "Edit", "MultiEdit", "NotebookEdit"}:
+        path = _tool_path_for_root(data, root)
+        if path is not None and _is_under(path, state_dir(root)):
+            return _deny_guard()
+    if tool_name == "Bash":
+        command = data.get("tool_input", {}).get("command", "")
+        if isinstance(command, str) and _bash_mentions_xberif(command):
+            return _deny_guard()
+    return 0
 
 
 def _generated_kind(root: Path, path: Path) -> str | None:
@@ -83,12 +144,14 @@ def validate_stop() -> int:
 
 def main() -> int:
     if len(sys.argv) != 2:
-        print("usage: python -m xberif.hooks <validate-card-write|validate-stop>", file=sys.stderr)
+        print("usage: python -m xberif.hooks <validate-card-write|validate-stop|guard-state-access>", file=sys.stderr)
         return 2
     if sys.argv[1] == "validate-card-write":
         return validate_card_write()
     if sys.argv[1] == "validate-stop":
         return validate_stop()
+    if sys.argv[1] == "guard-state-access":
+        return guard_state_access()
     print(f"unknown hook command: {sys.argv[1]}", file=sys.stderr)
     return 2
 

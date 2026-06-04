@@ -435,6 +435,8 @@ xdebug 默认写结构化日志，不打印到 stdout/stderr，也不影响 JSON
 
 打开一个 named session。重复调试建议始终先 open，再用 `target.session_id`。
 
+同名 `session.open` 默认返回 `SESSION_ID_EXISTS`。如果确认资源相同并希望复用，传 `args.reuse:true`；如果要强制替换旧 session，传 `args.reopen:true`。不要把同名 open 当成默认复用。
+
 同时打开 daidir 和 fsdb：
 
 ```json
@@ -957,6 +959,29 @@ xdebug 默认写结构化日志，不打印到 stdout/stderr，也不影响 JSON
 }
 ```
 
+聚合数组需要可读 index 时传 `"format":"array_indexed"`。成功时读 `data.value.elements[]` 或 `data.value.by_index`；普通 scalar 会返回 `data.status:"unsupported_format"` 和 `data.reason`。
+
+需要把 packed value 切成字段时传 `slice_hint`，然后按 `data.xbit_hints.commands[]` 调用 `tools/xbit`，不要靠心算切 bit：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "value.at",
+  "target": {
+    "session_id": "wave_case"
+  },
+  "args": {
+    "signal": "top.u.data",
+    "time": "100ns",
+    "format": "hex",
+    "slice_hint": {
+      "chunk_width": 32,
+      "count": 4
+    }
+  }
+}
+```
+
 ### `value.batch_at`
 
 同一时间查多个信号。优先用它替代多次 `value.at`。
@@ -976,6 +1001,8 @@ xdebug 默认写结构化日志，不打印到 stdout/stderr，也不影响 JSON
   }
 }
 ```
+
+batch 允许部分信号缺失但整体返回 ok。必须检查 `summary.missing_count`、`summary.missing_by_reason` 和 full 输出里的每个 row：`status` 可能是 `ok`、`signal_not_found`、`not_dumped_or_unreadable`、`time_out_of_range` 或 `unsupported_format`。遇到 `signal_not_found` 先用 `scope.list` 找真实 FSDB path。
 
 ### `list.value_at`
 
@@ -998,7 +1025,7 @@ xdebug 默认写结构化日志，不打印到 stdout/stderr，也不影响 JSON
 
 ### `event.find`
 
-在窗口内查满足表达式的事件。适合先找第一个异常点。
+在窗口内查满足表达式的事件。适合先找第一个异常点。已有 event config 时传 `name`；一次性查询可直接传 `expr` + `clk` + `signals`，不会留下持久 event config。
 
 ```json
 {
@@ -1021,6 +1048,33 @@ xdebug 默认写结构化日志，不打印到 stdout/stderr，也不影响 JSON
   }
 }
 ```
+
+内联表达式示例：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "event.find",
+  "target": {
+    "session_id": "wave_case"
+  },
+  "args": {
+    "expr": "valid && !ready",
+    "clk": "top.clk",
+    "signals": {
+      "valid": "top.u.valid",
+      "ready": "top.u.ready"
+    },
+    "time_range": {
+      "begin": "0ns",
+      "end": "100us"
+    },
+    "mode": "last"
+  }
+}
+```
+
+`mode` 可用 `first`、`last` 或 `all`。`last` 会按 `scan_limit` 或 `limits.max_rows` 扫描后返回最后一个匹配点。
 
 ### `event.export`
 

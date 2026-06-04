@@ -103,7 +103,7 @@ xdebug request.json
 }
 ```
 
-同名 `session.open` 默认会复用现有 session，适合多步调试避免重复打开 daidir/FSDB；如果确实需要覆盖旧 session，显式在 `args` 中传入 `"reopen": true`。
+同名 `session.open` 默认会返回 `SESSION_ID_EXISTS`，避免误连到资源不同的旧 session。需要复用时显式传 `"reuse": true`：资源匹配且健康则返回 `reused:true`，旧 session 已失效则清理后重建。需要强制覆盖时传 `"reopen": true`。
 
 ## Core Concepts
 
@@ -321,6 +321,43 @@ compact 默认不返回大字段，例如 `expanded_queries`、`raw_edges`、`al
 }
 ```
 
+`value.batch_at` 对部分信号缺失仍返回整体 ok，并在 `summary.missing_by_reason` 和每个 row 的 `status/reason/suggested_next_actions` 里说明原因。常见状态包括 `signal_not_found`、`not_dumped_or_unreadable`、`time_out_of_range`、`unsupported_format`。
+
+unpacked/聚合数组可显式请求结构化显示：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "value.at",
+  "target": {"fsdb": "waves.fsdb", "auto_open": true},
+  "args": {
+    "signal": "top.u.array_sig",
+    "time": "100ns",
+    "format": "array_indexed"
+  }
+}
+```
+
+返回会保留 raw value，并按 FSDB 打印顺序给出 `elements` 和 `by_index`。普通 scalar 请求该格式时返回 `unsupported_format` 诊断。
+
+需要把波形值交给 xbit 切字段时，显式传 `slice_hint`：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "value.at",
+  "target": {"fsdb": "waves.fsdb", "auto_open": true},
+  "args": {
+    "signal": "top.u.data",
+    "time": "100ns",
+    "format": "hex",
+    "slice_hint": {"chunk_width": 32, "count": 4}
+  }
+}
+```
+
+响应里的 `data.xbit_hints.commands[]` 是可直接用 `tools/xbit` 执行的确定性 slice 命令。
+
 验证条件：
 
 ```json
@@ -339,6 +376,31 @@ compact 默认不返回大字段，例如 `expanded_queries`、`raw_edges`、`al
 ```
 
 ### 协议与事件：event / APB / AXI
+
+`event.find` 查 first/last/all occurrence。已有 event config 时传 `name`；临时查询可直接传 `expr` + `clk` + `signals`，不会留下持久 event config：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "event.find",
+  "target": {"fsdb": "waves.fsdb", "auto_open": true},
+  "args": {
+    "expr": "valid && !ready",
+    "clk": "top.clk",
+    "signals": {
+      "valid": "top.u.valid",
+      "ready": "top.u.ready"
+    },
+    "time_range": {
+      "begin": "0ns",
+      "end": "100us"
+    },
+    "mode": "last"
+  }
+}
+```
+
+`mode` 可为 `first`、`last` 或 `all`。`last` 会按 `scan_limit` 或 `limits.max_rows` 扫描后返回最后一个匹配点。
 
 导出事件默认只返回聚合信息和少量 examples。完整 rows 必须显式请求：
 

@@ -59,6 +59,8 @@ examples/responses/<action>.basic.json
 | 跳变时间线 | `signal.changes` |
 | 窗口保持 0/1 | `window.verify` 或 `signal.statistics` |
 | first/last occurrence | `event.find` 或 `signal.changes` 的 head/tail |
+| 临时事件表达式 | `event.find` with `expr` + `clk` + `signals` |
+| packed value 切字段 | `value.at`/`value.batch_at` with `slice_hint`，再调用 `tools/xbit` |
 
 ## 输出档位
 
@@ -162,6 +164,29 @@ examples/responses/<action>.basic.json
 }
 ```
 
+传 `format:"array_indexed"` 可把 FSDB 聚合数组值转成 `elements/by_index`。传 `slice_hint` 会返回 `xbit_hints.commands[]`，用于后续确定性 bit slice。
+
+### 查找 inline event
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "event.find",
+  "target": {"fsdb": "waves.fsdb"},
+  "args": {
+    "expr": "valid && !ready",
+    "clk": "top.clk",
+    "signals": {
+      "valid": "top.u.valid",
+      "ready": "top.u.ready"
+    },
+    "begin": "0ns",
+    "end": "max",
+    "mode": "last"
+  }
+}
+```
+
 ### 导出 event rows
 
 ```json
@@ -178,6 +203,7 @@ examples/responses/<action>.basic.json
   },
   "limits": {"max_rows": 1000}
 }
+```
 ```
 
 ### trace.active_driver

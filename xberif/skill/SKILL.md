@@ -78,6 +78,8 @@ xberif brief --mode debug
 
 `.xberif/cards.json` 是 card catalog；`.xberif/details/*.md` 是展开说明；`.xberif/manifest.json` 是项目扫描和 topic manifest。
 
+`xberif init` 成功后还会生成 `.xberif/raw/claude-xberif-guard-settings.json`。这是给用户手动合并到 `.claude/settings.json` 的 hook 片段；xberif 不会自动创建或修改 `.claude/settings.json`。
+
 如果 `.xberif/cards/*.json` 和 details 已存在，但 `list-topics`/`brief` 查不到 topic，先运行：
 
 ```bash
@@ -111,6 +113,8 @@ xberif get backpressure --detail
 
 Agent 回答时默认先引用 brief/card 中的短结论；只有用户要展开、需要 evidence、或 card 信息不足时再读取 detail。
 
+不要直接 Read/Edit `.xberif` 里的状态文件。读取项目知识用 `xberif status`、`xberif brief`、`xberif list-topics`、`xberif get <topic>`、`xberif detail <topic>`；维护数据用 xberif card/detail 工作流、`repair-catalog` 和 `validate`。如果 Claude guard hook 阻止了 `.xberif` 文件访问，这是预期行为。
+
 ## Card / Detail 合同
 
 card 是短摘要，detail 是展开说明。维护合同时遵守：
@@ -134,6 +138,7 @@ xberif validate
 
 - headless agent 运行时 stdout 可能很安静；不要仅凭终端无输出判断卡住。
 - 需要确认 Claude Code 是否在跑时，查看对应 project transcript JSONL。
+- `.xberif/raw/claude-settings.json` 是 init 子进程临时 settings；`.xberif/raw/claude-xberif-guard-settings.json` 是用户手动合并到 `.claude/settings.json` 的 guard 片段。
 - Stop hook 失败常见原因是 card/detail schema、detail title、metadata 或 required section 不匹配。
 - Claude 常把 evidence 写成 `"path:start-end"` 字符串；xberif 会 normalize 成 `{"path","line_start","line_end"}`，但仍应优先鼓励严格 object 格式。
 - `brief/list-topics/get/detail` 如果提示 catalog 为空且 raw cards 存在，按提示运行 `xberif repair-catalog`。

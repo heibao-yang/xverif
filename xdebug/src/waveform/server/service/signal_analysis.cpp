@@ -145,7 +145,8 @@ Json ai_signal_changes(const Json& args, std::string& error) {
             data["truncated"] = true;
         }
         data["mode"] = mode == "tail" ? "tail" : "head";
-        data["changes"] = changes_to_json(selected, json_value_prefix(fmt), -1, false);
+        bool rows_truncated = false;
+        data["changes"] = changes_to_json(selected, json_value_prefix(fmt), -1, rows_truncated);
     }
     return data;
 }

@@ -21,6 +21,7 @@ description: 当 AI agent 需要确定性计算 bit、SV literal、signed/unsign
 - valid-ready 条件判断
 - opcode/field/mask/expected value 比较
 - 从 xdebug/xwave 返回的 compact values 做二次判断
+- xdebug `value.at` / `value.batch_at` 返回 `xbit_hints.commands[]` 或 `slice_hint` 相关提示
 
 ## 边界
 
@@ -33,6 +34,8 @@ description: 当 AI agent 需要确定性计算 bit、SV literal、signed/unsign
 - 不做 lint、formal 或仿真
 
 如果需要查信号来源、波形值或协议事件，先用 `xdebug`；如果需要计算值、字段或条件，再用 `xbit`。
+
+当 xdebug 响应里出现 `xbit_hints.commands[]` 时，直接执行其中的 `tools/xbit ... --json` 命令；不要把 packed value 的 slice、signed 或字段比较留给自然语言推理。
 
 ## 调用入口
 

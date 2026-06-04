@@ -11,8 +11,8 @@ from xberif.agent import handle
 from xberif.cards import reconcile_detail_metadata, repair_catalog, update_catalog, validate_all
 from xberif.cli import app
 from xberif.errors import WRITE_DISABLED, XberifError
-from xberif.hooks import validate_card_write
-from xberif.init_flow import _write_claude_hook_settings, initialize
+from xberif.hooks import guard_state_access, validate_card_write
+from xberif.init_flow import _write_claude_guard_settings_fragment, _write_claude_hook_settings, initialize
 from xberif.io import read_json, read_toml, write_json, write_toml
 from xberif.query import status
 from xberif.templates import KINDS, template_prompt_path, topics_for
@@ -296,6 +296,12 @@ def test_hooks_validate_direct_card_and_detail_write(tmp_path: Path, monkeypatch
     settings = read_json(_write_claude_hook_settings(tmp_path))
     assert "xberif hook validate-write" in settings["hooks"]["PostToolUse"][0]["hooks"][0]["command"]
     assert "xberif hook validate-stop" in settings["hooks"]["Stop"][0]["hooks"][0]["command"]
+    guard_settings = read_json(_write_claude_guard_settings_fragment(tmp_path))
+    assert "PreToolUse" in guard_settings["hooks"]
+    guard_hook = guard_settings["hooks"]["PreToolUse"][0]
+    assert guard_hook["matcher"] == "Read|Write|Edit|MultiEdit|NotebookEdit|Bash"
+    assert "xberif hook guard-state-access" in guard_hook["hooks"][0]["command"]
+    assert not (tmp_path / ".claude" / "settings.json").exists()
 
     card_path = tmp_path / ".xberif" / "cards" / "bt.backpressure.json"
     detail_path = tmp_path / ".xberif" / "details" / "bt.backpressure.md"
@@ -311,6 +317,41 @@ def test_hooks_validate_direct_card_and_detail_write(tmp_path: Path, monkeypatch
     reconcile_detail_metadata(tmp_path)
     update_catalog(tmp_path)
     assert not any("backpressure" in err for err in validate_all(tmp_path) if "CARD_REQUIRED_MISSING" not in err)
+
+
+def test_guard_state_access_blocks_xberif_file_tools_and_bash(tmp_path: Path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+    (tmp_path / ".xberif").mkdir()
+
+    def run_hook(payload: dict) -> tuple[int, str]:
+        monkeypatch.setattr(sys, "stdin", type("Input", (), {"read": lambda self: json.dumps(payload)})())
+        rc = guard_state_access()
+        return rc, capsys.readouterr().out
+
+    rc, out = run_hook({"tool_name": "Read", "tool_input": {"file_path": ".xberif/cards.json"}})
+    assert rc == 0
+    result = json.loads(out)
+    assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
+    assert "xberif status" in result["systemMessage"]
+
+    rc, out = run_hook(
+        {"tool_name": "Edit", "tool_input": {"file_path": str(tmp_path / "subdir" / ".." / ".xberif" / "cards.json")}}
+    )
+    assert rc == 0
+    assert json.loads(out)["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+    rc, out = run_hook({"tool_name": "Bash", "tool_input": {"command": "grep backpressure .xberif/cards.json"}})
+    assert rc == 0
+    assert json.loads(out)["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+    rc, out = run_hook({"tool_name": "Read", "tool_input": {"file_path": "rtl/top.sv"}})
+    assert rc == 0
+    assert out == ""
+
+    rc, out = run_hook({"tool_name": "Bash", "tool_input": {"command": "echo hello"}})
+    assert rc == 0
+    assert out == ""
 
 
 def test_rpc_write_mode_for_card_key_items_and_detail(tmp_path: Path, monkeypatch):

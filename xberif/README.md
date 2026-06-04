@@ -93,6 +93,9 @@ xberif init --model opus
 - `.xberif/details/*.md`：每个 topic 的展开说明。
 - `.xberif/manifest.json`：项目扫描和 topic manifest。
 - `.xberif/kind.json`：当前 env kind 状态。
+- `.xberif/raw/claude-xberif-guard-settings.json`：可手动合并到 `.claude/settings.json` 的 Claude hook 片段，用于阻止 Claude 直接读写 `.xberif`。
+
+`xberif init` 不会创建或修改 `.claude/settings.json`。如果希望 Claude 普通任务不能直接 Read/Edit `.xberif`，请把 `.xberif/raw/claude-xberif-guard-settings.json` 里的 `hooks` 片段手动合并到项目 `.claude/settings.json`。
 
 ### 3. 查询 context
 
@@ -114,6 +117,8 @@ xberif detail backpressure
 - `get <topic> --detail`：直接输出 detail markdown。
 - `detail <topic>`：输出 detail markdown。
 - `repair-catalog`：当 `.xberif/cards/*.json` 和 details 已存在但 `.xberif/cards.json` 为空或不同步时，重新 reconcile/update/validate。
+
+`.xberif/` 是 xberif 管理的状态目录。初始化完成后的 Claude 普通任务不应直接读取或编辑 `.xberif/cards.json`、`.xberif/cards/*.json` 或 `.xberif/details/*.md`；读取请使用 `xberif status/brief/list-topics/get/detail`，维护请使用 xberif card/detail 工作流、`repair-catalog` 和 `validate`。
 
 ### 4. Agent/RPC 入口
 
@@ -143,6 +148,12 @@ cat card.json | xberif card upsert --stdin
 cat detail.md | xberif detail upsert backpressure --stdin
 xberif validate
 ```
+
+## Claude Hook 片段
+
+- `.xberif/raw/claude-settings.json` 只用于 `xberif init` 子进程的临时 validate hook。
+- `.xberif/raw/claude-xberif-guard-settings.json` 是给用户手动合并的持久 guard 片段；xberif 不会自动改 `.claude/settings.json`。
+- 如果 guard hook 阻止 Claude 访问 `.xberif`，改用 xberif skill 或 CLI 查询/维护数据，不要绕过 hook 直接读写状态文件。
 
 ## 构建与测试
 

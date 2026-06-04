@@ -145,6 +145,12 @@
         "include_raw": {
           "type": "boolean"
         },
+        "include_xbit_hints": {
+          "type": "boolean"
+        },
+        "slice_hint": {
+          "type": "object"
+        },
         "include_signal_meta": {
           "type": "boolean"
         },

@@ -220,6 +220,34 @@ xdebug/examples/responses/<action>.basic.json
 }
 ```
 
+`value.batch_at` 部分缺失仍返回 ok；检查 `summary.missing_by_reason` 和 full 输出每个 row 的 `status/reason`。需要 xbit 切字段时给 `value.at` 或 `value.batch_at` 加：
+
+```json
+"slice_hint": {"chunk_width": 32, "count": 4}
+```
+
+响应里的 `xbit_hints.commands[]` 可直接交给 `tools/xbit`。
+
+### event.find inline
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "event.find",
+  "target": {"fsdb": "waves.fsdb", "auto_open": true},
+  "args": {
+    "expr": "valid && !ready",
+    "clk": "top.clk",
+    "signals": {
+      "valid": "top.u.valid",
+      "ready": "top.u.ready"
+    },
+    "time_range": {"begin": "0ns", "end": "100us"},
+    "mode": "last"
+  }
+}
+```
+
 ### event.export
 
 ```json

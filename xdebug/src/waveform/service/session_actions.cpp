@@ -63,25 +63,42 @@ int run_session_action(const Json& req, const std::string& action, const Json& t
 
     if (action == "session.gc") {
         SessionManager manager;
+        Json before = Json::array();
+        for (const auto& s : manager.list_sessions()) before.push_back(session_info_json(s));
         manager.gc_sessions();
+        Json after = Json::array();
+        for (const auto& s : manager.list_sessions()) after.push_back(session_info_json(s));
         Json out = ok_out();
-        out["summary"] = {{"status", "completed"}};
+        out["summary"] = {{"status", "completed"}, {"before_count", before.size()},
+                          {"after_count", after.size()}, {"removed_count", before.size() >= after.size() ? before.size() - after.size() : 0}};
+        out["data"] = {{"before", before}, {"after", after}};
         return emit(out);
     }
 
     if (action == "session.kill") {
         SessionManager manager;
         bool ok = false;
+        Json results = Json::array();
         if (string_or(args, "id", "") == "all" || string_or(args, "session_id", "") == "all") {
+            for (const auto& s : manager.list_sessions()) {
+                bool removed = manager.kill_session(s.session_id);
+                results.push_back({{"session_id", s.session_id}, {"removed", removed}});
+            }
             ok = manager.kill_all_sessions();
         } else {
             std::string sid = string_or(target, "session_id", string_or(args, "session_id", string_or(args, "id", "")));
             if (sid.empty()) return print_error_and_return(req, action, "MISSING_FIELD", "session.kill requires target.session_id or args.id", elapsed_ms);
+            SessionHealth health = manager.diagnose_session(sid);
             ok = manager.kill_session(sid);
+            results.push_back({{"session_id", sid}, {"removed", ok},
+                               {"health", {{"healthy", health.healthy},
+                                            {"status", session_health_status_name(health.status)},
+                                            {"message", health.message}}}});
         }
         if (!ok) return print_error_and_return(req, action, "SESSION_UNHEALTHY", "failed to kill session", elapsed_ms);
         Json out = ok_out();
-        out["summary"] = {{"status", "removed"}};
+        out["summary"] = {{"status", "removed"}, {"removed_count", results.size()}};
+        out["data"]["results"] = results;
         return emit(out);
     }
 

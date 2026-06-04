@@ -175,12 +175,14 @@ def agent_serve(stdio: bool = typer.Option(False, "--stdio"), write: bool = type
 
 @app.command("hook", hidden=True)
 def hook_cmd(action: str) -> None:
-    from .hooks import validate_card_write, validate_stop
+    from .hooks import guard_state_access, validate_card_write, validate_stop
 
     if action == "validate-write":
         raise typer.Exit(validate_card_write())
     if action == "validate-stop":
         raise typer.Exit(validate_stop())
+    if action == "guard-state-access":
+        raise typer.Exit(guard_state_access())
     raise typer.BadParameter("unknown hook action")
 
 

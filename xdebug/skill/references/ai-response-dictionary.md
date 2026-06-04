@@ -800,6 +800,7 @@ compact：
 | `summary.x_or_z_count` | number | X/Z 信号数 |
 | `summary.unknown_count` | number | 兼容字段，同 X/Z 数 |
 | `summary.missing_count` | number | 查询失败信号数 |
+| `summary.missing_by_reason` | object | `status -> count`，例如 `signal_not_found` |
 | `data.values` | object | `signal -> value/null` map |
 
 full 或 `include_raw:true`：
@@ -810,9 +811,12 @@ full 或 `include_raw:true`：
 | `data.values[]` | array | per-signal item |
 | `data.values[].signal` | string | 信号 |
 | `data.values[].time` | string | 时间 |
-| `data.values[].status` | string | `ok` 或 `not_found` |
+| `data.values[].status` | string | `ok`、`signal_not_found`、`not_dumped_or_unreadable`、`time_out_of_range` 或 `unsupported_format` |
+| `data.values[].reason` | string | 失败或 unsupported 的可读原因 |
+| `data.values[].suggested_next_actions` | array | 下一步建议 |
 | `data.values[].value` | object/null | value object |
 | `data.values[].error` | string | 失败原因 |
+| `data.values[].xbit_hints` | object | 传 `slice_hint` 时生成的 xbit 命令 |
 
 ## 7. Waveform List 命令
 

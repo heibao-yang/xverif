@@ -14,14 +14,17 @@ from .paths import config_dir, state_dir
 from .prompt import render_prompt
 
 
-def _write_claude_hook_settings(root: Path) -> Path:
-    settings_path = state_dir(root) / "raw" / "claude-settings.json"
+def _xberif_command() -> str:
     repo_root = Path(__file__).resolve().parents[2]
     wrapper = repo_root / "tools" / "xberif"
     if wrapper.exists():
-        xberif = shlex.quote(str(wrapper))
-    else:
-        xberif = f"{shlex.quote(sys.executable)} -m xberif"
+        return shlex.quote(str(wrapper))
+    return f"{shlex.quote(sys.executable)} -m xberif"
+
+
+def _write_claude_hook_settings(root: Path) -> Path:
+    settings_path = state_dir(root) / "raw" / "claude-settings.json"
+    xberif = _xberif_command()
     write_json(
         settings_path,
         {
@@ -51,6 +54,31 @@ def _write_claude_hook_settings(root: Path) -> Path:
                     }
                 ],
             },
+        },
+    )
+    return settings_path
+
+
+def _write_claude_guard_settings_fragment(root: Path) -> Path:
+    settings_path = state_dir(root) / "raw" / "claude-xberif-guard-settings.json"
+    xberif = _xberif_command()
+    write_json(
+        settings_path,
+        {
+            "hooks": {
+                "PreToolUse": [
+                    {
+                        "matcher": "Read|Write|Edit|MultiEdit|NotebookEdit|Bash",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": f"{xberif} hook guard-state-access",
+                                "timeout": 10,
+                            }
+                        ],
+                    }
+                ]
+            }
         },
     )
     return settings_path
@@ -102,6 +130,7 @@ def initialize(root: Path, model: str) -> None:
     errors = validate_all(root)
     if errors:
         raise XberifError(VALIDATION_FAILED, "; ".join(errors))
+    guard_settings = _write_claude_guard_settings_fragment(root)
     write_json(
         sdir / "lock.json",
         {
@@ -111,3 +140,4 @@ def initialize(root: Path, model: str) -> None:
             "manifest_sha256": manifest["files"][0]["sha256"] if manifest.get("files") else "",
         },
     )
+    print(f"xberif Claude guard settings fragment: {guard_settings}")

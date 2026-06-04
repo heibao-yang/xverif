@@ -123,16 +123,57 @@ int run_protocol_action(const Json& req, const std::string& action, const Json& 
         }
         return emit(out);
     }
-    if (name.empty()) em.get_latest_event(sid, info.fsdb_file, name);
-    if (name.empty()) return print_error_and_return(req, action, "MISSING_FIELD", "event action requires args.name or latest config", elapsed_ms);
     std::string expr; if (!get_string(args, "expr", expr)) return print_error_and_return(req, action, "MISSING_FIELD", "event.find/export requires args.expr", elapsed_ms);
     expr = compact_expr_ws(expr);
+    bool inline_event = false;
+    if (name.empty() && args.contains("signals") && args["signals"].is_object()) {
+        EventConfig cfg;
+        cfg.name = "__inline_" + sid;
+        cfg.clk = string_or(args, "clk", "");
+        cfg.rst_n = string_or(args, "rst_n", "");
+        std::string edge = string_or(args, "edge", "posedge");
+        cfg.posedge = edge != "negedge";
+        for (auto it = args["signals"].begin(); it != args["signals"].end(); ++it) {
+            if (!it.value().is_string()) {
+                return print_error_and_return(req, action, "INVALID_REQUEST", "event.find inline signals must map alias to string path", elapsed_ms);
+            }
+            if (it.key() == "clk" && cfg.clk.empty()) {
+                cfg.clk = it.value().get<std::string>();
+                continue;
+            }
+            if (it.key() == "rst_n" && cfg.rst_n.empty()) {
+                cfg.rst_n = it.value().get<std::string>();
+                continue;
+            }
+            cfg.signals[it.key()] = it.value().get<std::string>();
+        }
+        if (cfg.clk.empty()) {
+            return print_error_and_return(req, action, "MISSING_FIELD", "event.find inline mode requires args.clk or args.signals.clk", elapsed_ms);
+        }
+        if (cfg.signals.empty()) {
+            return print_error_and_return(req, action, "MISSING_FIELD", "event.find inline mode requires args.signals alias map", elapsed_ms);
+        }
+        if (!em.create_event(sid, info.fsdb_file, cfg)) {
+            return print_error_and_return(req, action, "INTERNAL_ERROR", "failed to create temporary inline event config", elapsed_ms);
+        }
+        name = cfg.name;
+        inline_event = true;
+    }
+    if (name.empty()) em.get_latest_event(sid, info.fsdb_file, name);
+    if (name.empty()) return print_error_and_return(req, action, "MISSING_FIELD", "event action requires args.name or inline args.expr + args.signals", elapsed_ms);
     std::string begin, end;
     bool around_window = false;
     if (!build_range_specs(args, begin, end, around_window, err)) {
         return print_error_and_return(req, action, "TIME_SPEC_INVALID", err, elapsed_ms);
     }
-    int limit = action == "event.find" ? 1 : int_or(limits, "max_rows", int_or(args, "limit", 1000));
+    std::string find_mode = string_or(args, "mode", "first");
+    if (find_mode == "head") find_mode = "first";
+    if (find_mode == "tail") find_mode = "last";
+    bool fast_find = action == "event.find" && find_mode == "first";
+    int limit = fast_find ? 1 : int_or(args, "limit", int_or(limits, "max_rows", 1000));
+    if (action == "event.find" && find_mode == "last") {
+        limit = int_or(args, "scan_limit", int_or(limits, "max_rows", 10000));
+    }
     if (compact_mode(req) && action == "event.export" && !bool_or(args, "include_rows", false)) {
         limit = max_items_arg(args, limits, 20);
     }
@@ -142,11 +183,20 @@ int run_protocol_action(const Json& req, const std::string& action, const Json& 
         std::string window = string_or(ctx, "window", "0ns");
         std::string axi = string_or(ctx, "axi", "-"); if (axi.empty()) axi = "-";
         std::string apb = string_or(ctx, "apb", "-"); if (apb.empty()) apb = "-";
-        cmd = std::string(action == "event.find" ? CMD_EVENT_FIND_CTX : CMD_EVENT_EXPORT_CTX) + " " + name + " " + begin + " " + end + " " + std::to_string(limit) + " json " + window + " " + axi + " " + apb + " expr " + expr;
+        cmd = std::string(fast_find ? CMD_EVENT_FIND_CTX : CMD_EVENT_EXPORT_CTX) + " " + name + " " + begin + " " + end + " " + std::to_string(limit) + " json " + window + " " + axi + " " + apb + " expr " + expr;
     } else {
-        cmd = std::string(action == "event.find" ? CMD_EVENT_FIND : CMD_EVENT_EXPORT) + " " + name + " " + begin + " " + end + " " + std::to_string(limit) + " json expr " + expr;
+        cmd = std::string(fast_find ? CMD_EVENT_FIND : CMD_EVENT_EXPORT) + " " + name + " " + begin + " " + end + " " + std::to_string(limit) + " json expr " + expr;
     }
-    Json data; if (!capture_server_json(sid, cmd, data, err)) return print_error_and_return(req, action, "WAVE_QUERY_FAILED", err, elapsed_ms);
+    Json data;
+    if (!capture_server_json(sid, cmd, data, err)) {
+        if (inline_event) em.delete_event(sid, info.fsdb_file, name);
+        return print_error_and_return(req, action, "WAVE_QUERY_FAILED", err, elapsed_ms);
+    }
+    if (inline_event) em.delete_event(sid, info.fsdb_file, name);
+    if (action == "event.find" && find_mode == "last" && data.is_array() && data.size() > 1) {
+        Json last = data.back();
+        data = Json::array({last});
+    }
     Json aggregate = Json::object();
     bool has_aggregate = action == "event.export" && args.contains("aggregate") && args["aggregate"].is_object();
     bool include_events = true;
@@ -155,7 +205,8 @@ int run_protocol_action(const Json& req, const std::string& action, const Json& 
         include_events = args["aggregate"].value("events", true);
     }
     Json out = ok_out();
-    out["summary"] = {{"name", name}, {"begin", begin}, {"end", end}};
+    out["summary"] = {{"name", name}, {"begin", begin}, {"end", end}, {"inline", inline_event},
+                      {"mode", find_mode}, {"sampling_mode", "clock_edge"}};
     if (data.is_array()) {
         out["summary"]["event_count"] = data.size();
         if (!data.empty()) {

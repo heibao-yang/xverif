@@ -131,6 +131,8 @@ class AiRunner(object):
         session = data.get("session") or data.get("data", {}).get("session", {})
         self.sid = session["id"]
         self.query("session.open", target={"fsdb": self.fsdb}, args={"name": self.name}, expect_ok=False, allow_no_sid=True)
+        reused = self.query("session.open", target={"fsdb": self.fsdb}, args={"name": self.name, "reuse": True}, expect_ok=True, allow_no_sid=True)
+        require(reused["summary"]["reused"] is True, "session.open reuse:true did not reuse healthy session")
         return data
 
 
@@ -185,6 +187,13 @@ def run_nonaxi(xdebug, fsdb):
             expect_ok=True,
         )
         require(batch["summary"]["missing_count"] == 1 and batch["summary"]["unknown_count"] == 1, "batch missing/unknown mismatch")
+        require(batch["summary"]["missing_by_reason"]["signal_not_found"] == 1, "batch missing reason mismatch")
+        missing_rows = [row for row in batch["data"]["values"] if row["status"] != "ok"]
+        require(missing_rows and missing_rows[0]["reason"], "batch missing row lacks reason")
+        hint = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "time": "75ns", "format": "hex", "slice_hint": {"chunk_width": 4, "count": 2}})
+        require(hint["data"]["xbit_hints"]["status"] == "ready", "xbit hints not generated")
+        unsupported = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "time": "75ns", "format": "array_indexed"})
+        require(unsupported["data"]["status"] == "unsupported_format", "array_indexed unsupported diagnostic missing")
         r.query("value.at", args={"signal": "ai_complex_top.no_such", "time": "10ns"}, expect_ok=False)
 
         r.query("list.create", args={"name": "basic"})
@@ -214,6 +223,18 @@ def run_nonaxi(xdebug, fsdb):
         r.query("event.config.list", args={"name": "evt0"})
         found = r.query("event.find", args={"name": "evt0", "expr": "vld && !rdy && payload_lo != 0", "time_range": {"begin": "0ns", "end": "200ns"}})
         require(len(found["data"]["events"]) == 1, "event.find did not return one event")
+        inline = r.query("event.find", args={
+            "expr": "vld && !rdy",
+            "clk": "ai_complex_top.clk",
+            "rst_n": "ai_complex_top.rst_n",
+            "signals": {
+                "vld": "ai_complex_top.event_vld",
+                "rdy": "ai_complex_top.event_rdy"
+            },
+            "time_range": {"begin": "0ns", "end": "200ns"},
+            "mode": "last"
+        })
+        require(inline["summary"]["inline"] is True and len(inline["data"]["events"]) == 1, "inline event.find failed")
         exported = r.query("event.export", args={"name": "evt0", "expr": "vld && !rdy", "time_range": {"begin": "0ns", "end": "200ns"}, "limit": 1})
         require(len(exported["data"]["events"]) == 1, "event.export limit failed")
         require(set(exported["data"]["events"][0]["signals"]["vld"].keys()) == set(["value", "known"]), "event signal value is not compact")

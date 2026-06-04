@@ -21,6 +21,7 @@ Rules:
 11. A card summary must stay short and clear; do not expand full analysis into the card.
 12. A detail must expand the card with paths, conditions, verification/debug guidance, and evidence.
 13. Metadata is fixed by the Topics section: copy id, env_kind, topic, title, card_id, and detail path exactly; never translate, rename, or rephrase a title.
+14. This initialization session may write .xberif/cards and .xberif/details as instructed; after initialization, ordinary Claude access to .xberif should go through the xberif skill/CLI instead of direct Read/Edit.
 """
 
 

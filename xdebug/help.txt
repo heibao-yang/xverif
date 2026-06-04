@@ -181,13 +181,20 @@ Examples
       "args":{"signal":"top.clk","time":"10ns"}
     }' | xdebug -
 
-  Open and reuse a session:
+  Open a session, then reuse it explicitly:
 
     printf '%s\n' '{
       "api_version":"xdebug.v1",
       "action":"session.open",
       "target":{"daidir":"simv.daidir","fsdb":"waves.fsdb"},
       "args":{"name":"case_a"}
+    }' | xdebug -
+
+    printf '%s\n' '{
+      "api_version":"xdebug.v1",
+      "action":"session.open",
+      "target":{"daidir":"simv.daidir","fsdb":"waves.fsdb"},
+      "args":{"name":"case_a","reuse":true}
     }' | xdebug -
 
     printf '%s\n' '{
