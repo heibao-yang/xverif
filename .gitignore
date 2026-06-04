@@ -24,6 +24,8 @@ regression/*
 !xbit/tests/**
 !xentry/tests/
 !xentry/tests/**
+!xberif/tests/
+!xberif/tests/**
 xdebug/testdata/**/out/
 xdebug/testdata/**/csrc/
 xdebug/testdata/**/ucli.key
@@ -52,6 +54,10 @@ __pycache__/
 xdebug/build/
 xdebug/xdebug
 xdebug/libexec/
+*_probeLog/
+experiments/
+no_push_skill.md
+not_push_skill.md
 
 *.log
 *~

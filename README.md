@@ -1,13 +1,14 @@
 # xverif
 
-`xverif` 是面向芯片验证 debug agent 的本地工具仓库，当前包含四个互补工具：
+`xverif` 是面向芯片验证 debug agent 的本地工具仓库，当前包含五个互补工具：
 
 - [`xdebug`](xdebug/README.md)：查询设计数据库和波形数据库里的事实。
 - [`xbit`](xbit/README.md)：确定性计算 bit、literal、slice、表达式和 expected value。
 - [`xentry`](xentry/README.md)：按配置解析多拍 byte fragments，输出 raw entry 域段。
 - [`xloc`](xloc/README.md)：UVM 日志位置压缩与恢复，降低 LLM token 噪声。
+- [`xberif`](xberif/README.md)：生成和查询项目 summary cards/detail context，给 agent 提供可控上下文。
 
-简单说：`xdebug` 负责“事实从哪里来、某时刻发生了什么”，`xbit` 负责“这些值按 SystemVerilog 规则算出来到底是多少”，`xentry` 负责“这个 entry 的 bit 域段按配置切出来是什么”，`xloc` 负责“这条 log 在哪个文件的哪一行，但只在需要时才查”。
+简单说：`xdebug` 负责“事实从哪里来、某时刻发生了什么”，`xbit` 负责“这些值按 SystemVerilog 规则算出来到底是多少”，`xentry` 负责“这个 entry 的 bit 域段按配置切出来是什么”，`xloc` 负责“这条 log 在哪个文件的哪一行，但只在需要时才查”，`xberif` 负责“项目知识先用短卡片喂给 agent，细节按 topic 再展开”。
 
 ## 工具概览
 
@@ -92,6 +93,27 @@ PYTHONPATH=xloc python3 -m xloc stats out/sim.log
 
 完整说明见 [`xloc/README.md`](xloc/README.md)。
 
+### xberif
+
+`xberif` 是项目级 agent context summary card 工具。它按 BT/IT/ST/SoC 等验证环境模板生成 topic prompts，把项目知识保存成短 summary cards 和可展开 detail markdown，供后续 agent 按需查询。
+
+适合的问题：
+
+- 给新 agent 快速注入当前项目的关键 topic 和验证上下文。
+- 按 mode 输出紧凑 brief，避免每次塞入大量重复背景。
+- 查询某个 topic 的 summary、key items、evidence 和 detail。
+- 通过 `init --model <model>` 调用真实 agent 生成 cards/details，并用 hook/validate 守住输出合同。
+
+入口示例：
+
+```bash
+PYTHONPATH=xberif ~/miniconda3/bin/python -m xberif config init --kind bt
+PYTHONPATH=xberif ~/miniconda3/bin/python -m xberif init --model opus
+PYTHONPATH=xberif ~/miniconda3/bin/python -m xberif brief --mode debug
+```
+
+完整说明见 [`xberif/README.md`](xberif/README.md)。
+
 ## 推荐 Shell 入口
 
 为了在任意目录调用，建议在 shell rc 文件中配置统一入口。示例中的 `<xverif-root>` 表示本仓库根目录，请按本机实际路径替换。
@@ -104,10 +126,13 @@ export XDEBUG_ENTRY="$XVERIF_HOME/tools/xdebug-env"
 export XBIT_ENTRY="$XVERIF_HOME/xbit/xbit"
 export XENTRY_ENTRY="$XVERIF_HOME/xentry/xentry"
 export XLOC_ENTRY="$XVERIF_HOME/xloc"
+export XBERIF_ENTRY="$XVERIF_HOME/xberif"
+export XVERIF_PYTHON="$HOME/miniconda3/bin/python"
 xdebug() { "$XDEBUG_ENTRY" "$@"; }
 xbit() { "$XBIT_ENTRY" "$@"; }
 xentry() { "$XENTRY_ENTRY" "$@"; }
 xloc() { PYTHONPATH="$XLOC_ENTRY" python3 -m xloc "$@"; }
+xberif() { PYTHONPATH="$XBERIF_ENTRY" "$XVERIF_PYTHON" -m xberif "$@"; }
 ```
 
 Tcsh：
@@ -118,10 +143,13 @@ setenv XDEBUG_ENTRY "$XVERIF_HOME/tools/xdebug-env"
 setenv XBIT_ENTRY "$XVERIF_HOME/xbit/xbit"
 setenv XENTRY_ENTRY "$XVERIF_HOME/xentry/xentry"
 setenv XLOC_ENTRY "$XVERIF_HOME/xloc"
+setenv XBERIF_ENTRY "$XVERIF_HOME/xberif"
+setenv XVERIF_PYTHON "$HOME/miniconda3/bin/python"
 alias xdebug '"$XDEBUG_ENTRY" \!*'
 alias xbit '"$XBIT_ENTRY" \!*'
 alias xentry '"$XENTRY_ENTRY" \!*'
 alias xloc 'PYTHONPATH=$XLOC_ENTRY python3 -m xloc \!*'
+alias xberif 'PYTHONPATH=$XBERIF_ENTRY "$XVERIF_PYTHON" -m xberif \!*'
 ```
 
 配置后：
@@ -131,11 +159,12 @@ xdebug -h
 xbit conv "8'shff" --json
 xentry '{"api_version":"xentry.v1","action":"explain","config_path":"xentry/examples/entry.yaml"}'
 xloc resolve L_00000001 --map out/sim.log.xloc.jsonl
+xberif config init --kind bt
 ```
 
 ## 构建与测试
 
-`xdebug` 需要可用的 Verdi/NPI 环境；`xbit` 只依赖 Python 标准库，优先使用已配置的 Miniconda Python，失败时回退到 `python3`。
+`xdebug` 需要可用的 Verdi/NPI 环境；`xbit` 只依赖 Python 标准库，优先使用已配置的 Miniconda Python，失败时回退到 `python3`。`xberif` 要求 Python 3.11+，依赖 Python CLI/schema 相关包，真实 `init` 还需要可用的 agent 命令和显式 `--model` 参数。
 
 ```bash
 make -C xdebug
@@ -146,6 +175,7 @@ make -C xdebug unit-test
 make -C xbit test
 make -C xentry test
 make -C xloc test
+make -C xberif test
 
 make test
 make full-test
@@ -164,3 +194,4 @@ make full-test
 - xentry agent skill：[`xentry/skill/SKILL.md`](xentry/skill/SKILL.md)
 - xloc 用户文档：[`xloc/README.md`](xloc/README.md)
 - xloc agent skill：[`xloc/skill/SKILL.md`](xloc/skill/SKILL.md)
+- xberif 用户文档：[`xberif/README.md`](xberif/README.md)
