@@ -1,0 +1,3 @@
+property p_delay_range;
+  req |-> ##[1:4] ack;
+endproperty

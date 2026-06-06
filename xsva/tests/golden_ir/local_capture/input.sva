@@ -1,0 +1,4 @@
+property p_local_capture;
+  logic [31:0] v;
+  (req, v = data) |-> ##[1:4] ack && rsp == v;
+endproperty

@@ -1,0 +1,3 @@
+property p_past;
+  req |-> ##2 rsp == $past(data, 2);
+endproperty

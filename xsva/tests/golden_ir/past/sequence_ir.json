@@ -1,0 +1,34 @@
+{
+  "name": "p_past",
+  "nodes": [
+    {
+      "kind": "expr",
+      "expr": "req",
+      "delay": null,
+      "children_count": 0
+    },
+    {
+      "kind": "implication",
+      "expr": null,
+      "delay": null,
+      "children_count": 0
+    },
+    {
+      "kind": "delay",
+      "expr": null,
+      "delay": {
+        "min": 2,
+        "max": 2,
+        "unbounded": false
+      },
+      "children_count": 0
+    },
+    {
+      "kind": "expr",
+      "expr": "rsp == $past ( data , 2 )",
+      "delay": null,
+      "children_count": 0
+    }
+  ],
+  "lowering_status": "exact"
+}

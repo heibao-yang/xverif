@@ -1,0 +1,27 @@
+{
+  "schema_version": "xsva.timeline_ir.v1",
+  "property": "p_intersect",
+  "kind": "property",
+  "clock": {
+    "edge": "unknown",
+    "signal": ""
+  },
+  "disable_expr": "",
+  "trigger": {
+    "cycle": 0,
+    "expr": "a && b intersect c && d",
+    "captures": []
+  },
+  "obligations": [],
+  "match_paths": [
+    {
+      "id": "path_0",
+      "description": "Path 0: (empty)",
+      "is_partial": false,
+      "obligations": []
+    }
+  ],
+  "failure_conditions": [],
+  "lowering_status": "exact",
+  "diagnostics": []
+}

@@ -1,0 +1,40 @@
+{
+  "name": "p_first_match",
+  "nodes": [
+    {
+      "kind": "expr",
+      "expr": "req",
+      "delay": null,
+      "children_count": 0
+    },
+    {
+      "kind": "implication",
+      "expr": null,
+      "delay": null,
+      "children_count": 0
+    },
+    {
+      "kind": "first_match",
+      "expr": null,
+      "delay": null,
+      "children_count": 1
+    },
+    {
+      "kind": "delay",
+      "expr": null,
+      "delay": {
+        "min": 1,
+        "max": 1,
+        "unbounded": false
+      },
+      "children_count": 0
+    },
+    {
+      "kind": "expr",
+      "expr": "done",
+      "delay": null,
+      "children_count": 0
+    }
+  ],
+  "lowering_status": "exact"
+}

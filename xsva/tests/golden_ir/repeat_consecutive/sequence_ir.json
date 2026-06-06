@@ -1,0 +1,24 @@
+{
+  "name": "p_repeat_consecutive",
+  "nodes": [
+    {
+      "kind": "expr",
+      "expr": "req",
+      "delay": null,
+      "children_count": 0
+    },
+    {
+      "kind": "implication",
+      "expr": null,
+      "delay": null,
+      "children_count": 0
+    },
+    {
+      "kind": "expr",
+      "expr": "ack [* 3 ]",
+      "delay": null,
+      "children_count": 0
+    }
+  ],
+  "lowering_status": "exact"
+}

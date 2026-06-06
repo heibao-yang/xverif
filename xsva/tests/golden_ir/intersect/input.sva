@@ -1,0 +1,3 @@
+property p_intersect;
+  a ##[1:3] b intersect c ##2 d;
+endproperty

@@ -1,0 +1,3 @@
+property p_nonoverlap;
+  req |=> ack;
+endproperty

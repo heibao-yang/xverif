@@ -1,0 +1,4 @@
+property p_local_capture_range_path;
+  logic [7:0] v;
+  req |-> ##[1:3] (ack, v = id) ##1 done_id == v;
+endproperty

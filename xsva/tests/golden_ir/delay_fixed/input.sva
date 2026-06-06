@@ -1,0 +1,3 @@
+property p_delay_fixed;
+  req |-> ##2 ack;
+endproperty

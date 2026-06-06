@@ -1,0 +1,34 @@
+{
+  "name": "p_local_capture",
+  "nodes": [
+    {
+      "kind": "match_item",
+      "expr": null,
+      "delay": null,
+      "children_count": 0
+    },
+    {
+      "kind": "implication",
+      "expr": null,
+      "delay": null,
+      "children_count": 0
+    },
+    {
+      "kind": "delay",
+      "expr": null,
+      "delay": {
+        "min": 1,
+        "max": 4,
+        "unbounded": false
+      },
+      "children_count": 0
+    },
+    {
+      "kind": "expr",
+      "expr": "ack & & rsp == v",
+      "delay": null,
+      "children_count": 0
+    }
+  ],
+  "lowering_status": "exact"
+}

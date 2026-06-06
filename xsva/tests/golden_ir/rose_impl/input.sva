@@ -1,0 +1,4 @@
+property p_rose;
+  @(posedge clk)
+  $rose(req) |=> ack;
+endproperty

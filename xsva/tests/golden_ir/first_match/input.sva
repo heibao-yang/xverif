@@ -1,0 +1,3 @@
+property p_first_match;
+  req |-> first_match(##[1:4] ack) ##1 done;
+endproperty

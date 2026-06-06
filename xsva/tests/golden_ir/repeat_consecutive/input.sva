@@ -1,0 +1,3 @@
+property p_repeat_consecutive;
+  req |-> ack[*3];
+endproperty

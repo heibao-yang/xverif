@@ -1,0 +1,3 @@
+property p_stable;
+  valid && !ready |=> valid && $stable(data);
+endproperty

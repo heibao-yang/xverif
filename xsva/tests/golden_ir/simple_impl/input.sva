@@ -1,0 +1,3 @@
+property p_simple;
+  req |-> ack;
+endproperty

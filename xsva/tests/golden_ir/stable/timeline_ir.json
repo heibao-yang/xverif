@@ -1,0 +1,40 @@
+{
+  "schema_version": "xsva.timeline_ir.v1",
+  "property": "p_stable",
+  "kind": "property",
+  "clock": {
+    "edge": "unknown",
+    "signal": ""
+  },
+  "disable_expr": "",
+  "trigger": {
+    "cycle": 0,
+    "expr": "valid & & ! ready",
+    "captures": []
+  },
+  "obligations": [
+    {
+      "id": "ob_0_1",
+      "kind": "stable",
+      "expr": "valid & & $stable ( data )",
+      "has_window": false,
+      "window": null,
+      "depends_on_captures": [],
+      "requirement": "",
+      "failure_condition": null
+    }
+  ],
+  "match_paths": [
+    {
+      "id": "path_0",
+      "description": "Path 0: valid & & $stable ( data ) (value equals previous ",
+      "is_partial": false,
+      "obligations": [
+        "stable"
+      ]
+    }
+  ],
+  "failure_conditions": [],
+  "lowering_status": "exact",
+  "diagnostics": []
+}

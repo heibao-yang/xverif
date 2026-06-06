@@ -1,0 +1,4 @@
+property p_ranged;
+  @(posedge clk) disable iff (!rst_n)
+  req |-> ##[1:4] ack;
+endproperty

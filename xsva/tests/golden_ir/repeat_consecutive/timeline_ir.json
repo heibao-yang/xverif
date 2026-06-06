@@ -1,0 +1,42 @@
+{
+  "schema_version": "xsva.timeline_ir.v1",
+  "property": "p_repeat_consecutive",
+  "kind": "property",
+  "clock": {
+    "edge": "unknown",
+    "signal": ""
+  },
+  "disable_expr": "",
+  "trigger": {
+    "cycle": 0,
+    "expr": "req",
+    "captures": []
+  },
+  "obligations": [
+    {
+      "id": "ob_0_0",
+      "kind": "point",
+      "expr": "ack [* 3 ]",
+      "has_window": false,
+      "window": null,
+      "depends_on_captures": [],
+      "requirement": "",
+      "failure_condition": "ack [* 3 ] is false at cycle +0"
+    }
+  ],
+  "match_paths": [
+    {
+      "id": "path_0",
+      "description": "Path 0: ack [* 3 ] must be true at cycle +0",
+      "is_partial": false,
+      "obligations": [
+        "point"
+      ]
+    }
+  ],
+  "failure_conditions": [
+    "ack [* 3 ] is false at cycle +0"
+  ],
+  "lowering_status": "exact",
+  "diagnostics": []
+}
