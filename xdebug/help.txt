@@ -132,13 +132,17 @@ Session transport
       "transport": "file"
     }
 
-  file transport stores requests, claims, responses, failed items, locks and
-  heartbeat under ~/.xdebug/{design,waveform}/sessions/<session_id>/transport/.
-  Endpoint, request and response files are written via tmp file plus atomic
-  rename so readers do not consume half-written files.
+  file transport stores requests, claims, responses, done history, failed
+  items, tmp files and heartbeat under
+  ~/.xdebug/{design,waveform}/sessions/<session_id>/transport/.
+  Request, response and heartbeat files are written via tmp file plus atomic
+  publish so readers do not consume half-written files. Old locks/ directories
+  from earlier sessions can be ignored.
   File request timeout defaults to 300s and can be changed with
   XDEBUG_FILE_TRANSPORT_TIMEOUT_MS. Ping/quit timeout defaults to 2s and can be
-  changed with XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS.
+  changed with XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS. History is kept by
+  default; set XDEBUG_FILE_KEEP_HISTORY=0 to discard successful response
+  archives.
 
 Common actions
 --------------

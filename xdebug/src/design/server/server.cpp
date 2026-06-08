@@ -153,21 +153,6 @@ static bool send_response(int fd, const Json& response) {
 
 static bool handle_client(int client_fd, bool& should_quit);
 
-static bool read_json_file_local(const std::string& path, Json& out) {
-    FILE* fp = fopen(path.c_str(), "r");
-    if (!fp) return false;
-    std::string text;
-    char buf[4096];
-    while (fgets(buf, sizeof(buf), fp)) text += buf;
-    fclose(fp);
-    try {
-        out = Json::parse(text);
-        return out.is_object();
-    } catch (...) {
-        return false;
-    }
-}
-
 static bool run_file_request_through_handler(const Json& request, Json& response, bool& should_quit) {
     should_quit = false;
     int sv[2] = {-1, -1};
@@ -222,29 +207,42 @@ static int file_transport_loop(const std::string& file_dir) {
     xdebug_core::log_lifecycle_event("design", g_session_id, "transport.file_loop_begin", true,
                                      {{"file_dir", file_dir}});
     while (true) {
-        xdebug_core::atomic_write_json_file(file_dir + "/heartbeat.json",
-                                            {{"ok", true}, {"session_id", g_session_id},
-                                             {"transport", "file"}, {"server_host", current_host_name()},
-                                             {"pid", getpid()}, {"updated_at", static_cast<long long>(time(nullptr))}});
-        std::string req_id;
-        std::string claim_path;
-        if (!xdebug_core::file_exchange_claim_one(file_dir, agent_id, req_id, claim_path)) {
-            usleep(100000);
+        xdebug_core::Json worker = {{"agent_id", agent_id}, {"host", current_host_name()},
+                                    {"pid", static_cast<int>(getpid())}};
+        xdebug_core::atomic_write_json_file_ex(file_dir + "/heartbeat/" + agent_id + ".json",
+                                               {{"version", xdebug_core::kFileRpcVersion},
+                                                {"ok", true}, {"session_id", g_session_id},
+                                                {"transport", "file"}, {"worker", worker},
+                                                {"updated_at_us", xdebug_core::file_exchange_now_us()}},
+                                               xdebug_core::AtomicWriteMode::Replace,
+                                               file_dir + "/tmp");
+        xdebug_core::file_exchange_scan_stale_claims(
+            file_dir, agent_id, xdebug_core::file_exchange_claim_timeout_ms(0));
+        xdebug_core::FileClaimResult claim = xdebug_core::file_exchange_claim_one(file_dir, agent_id);
+        if (!claim.claimed) {
+            usleep(static_cast<useconds_t>(xdebug_core::file_exchange_poll_interval_ms()) * 1000);
             continue;
         }
-        Json wrapper;
         Json response = error_response("INVALID_REQUEST", "invalid file transport request");
         bool quit = false;
-        bool ok = read_json_file_local(claim_path, wrapper) &&
-                  wrapper.contains("request") && wrapper["request"].is_object() &&
-                  run_file_request_through_handler(wrapper["request"], response, quit);
-        Json out = {
-            {"id", req_id},
-            {"ok", ok && response.value("ok", false)},
-            {"response", response}
-        };
-        xdebug_core::atomic_write_json_file(file_dir + "/responses/" + req_id + ".json", out);
-        unlink(claim_path.c_str());
+        bool ok = claim.ready &&
+                  run_file_request_through_handler(Json::parse(claim.request.dump()), response, quit);
+        std::string status = ok && response.value("ok", false) ? "ok" :
+                             (ok ? "action_error" : "server_error");
+        std::string message = ok ? std::string() : "file transport handler returned invalid response";
+        xdebug_core::Json error = xdebug_core::Json::object();
+        if (status != "ok") {
+            if (response.contains("error") && response["error"].is_object()) {
+                error = xdebug_core::Json::parse(response["error"].dump());
+            } else {
+                error = {{"code", status}, {"message", message}};
+            }
+        }
+        if (claim.ready) {
+            xdebug_core::file_exchange_complete_claim(file_dir, claim,
+                                                      xdebug_core::Json::parse(response.dump()),
+                                                      status == "ok", status, message, worker, error);
+        }
         if (quit) break;
     }
     xdebug_core::log_lifecycle_event("design", g_session_id, "transport.file_loop_end", true);

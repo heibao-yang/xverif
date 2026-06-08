@@ -57,7 +57,7 @@ JSON
 - 集群计算节点查询但本机无法连接节点 TCP 端口：仍用 `xdebug`，但打开 session 时设置 `args.transport:"file"`，或设置 `XDEBUG_TRANSPORT=file` 作为新建 session 默认值。
 - AI 客户端支持 MCP 且需要多 session 管理：用 `tools/xdebug-mcp`；MCP 内部仍调用 `tools/xdebug --json -`。
 
-file transport 是 xdebug 原生 session transport，不需要额外 agent。它在 `~/.xdebug/{design,waveform}/sessions/<session_id>/transport/` 下用 `requests/claims/responses/failed/locks` 交换文件；request/response/endpoint/heartbeat 都用 tmp 文件加 atomic rename，避免读到半文件。
+file transport 是 xdebug 原生 session transport，不需要额外 agent。它在 `~/.xdebug/{design,waveform}/sessions/<session_id>/transport/` 下用 `requests/claims/responses/done/failed/tmp/heartbeat` 交换文件；request/response/heartbeat 都先写入 tmp，再 atomic publish，避免读到半文件。旧 session 目录中如果有 `locks/`，按历史残留处理，不作为当前协议依赖。
 
 如果当前 AI 客户端支持 MCP，可以使用 `tools/xdebug-mcp`。它是 stdio MCP wrapper，内部仍调用 `tools/xdebug --json -`，但会帮 agent 管理多个命名 session 和默认 session。MCP 场景下优先使用：
 
@@ -284,7 +284,7 @@ export XDEBUG_TRANSPORT=file
 
 JSON 显式 `args.transport` / `target.transport` 优先级高于 `XDEBUG_TRANSPORT`。
 
-file transport 普通请求默认等待 300 秒，可用 `XDEBUG_FILE_TRANSPORT_TIMEOUT_MS` 调整；ping/quit 默认等待 2 秒，可用 `XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS` 调整。大窗口查询优先调普通请求 timeout，不要随意放大 ping timeout。
+file transport 普通请求默认等待 300 秒，可用 `XDEBUG_FILE_TRANSPORT_TIMEOUT_MS` 调整；ping/quit 默认等待 2 秒，可用 `XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS` 调整。大窗口查询优先调普通请求 timeout，不要随意放大 ping timeout。`XDEBUG_FILE_KEEP_HISTORY=1` 默认保留 done/failed 证据；`XDEBUG_FILE_CLAIM_TIMEOUT_MS` 控制 stale claim 判定；`XDEBUG_FILE_MAX_JSON_BYTES` 默认 64 MiB。
 
 登录机和 LSF 计算节点访问同一个共享路径时，`dev/inode` 可能不同。xdebug 的资源 freshness 判定以 `mtime + size` 为准；`dev/inode` 只用于诊断日志。看到 `identity_changed:true` 不要直接判定资源已变，除非同时有 mtime 或 size 变化。
 

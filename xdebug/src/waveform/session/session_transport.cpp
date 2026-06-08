@@ -217,6 +217,7 @@ bool send_file_command_to_endpoint(const SessionInfo& session,
     };
     int effective_timeout_ms = timeout_ms > 0 ? timeout_ms : file_transport_request_timeout_ms();
     xdebug_core::FileExchangeResult result = xdebug_core::file_exchange_send_request(dir, request, effective_timeout_ms);
+    if (!(result.status == "ok" || result.status == "action_error" || result.status == "server_error")) return false;
     if (!result.response.is_object()) return false;
     payload = result.response.value("payload", std::string());
     server_error = result.response.value("server_error", false);

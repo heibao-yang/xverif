@@ -57,6 +57,7 @@ xdebug/xdebug
 xdebug/libexec/
 xdebug/signal.rc
 *_probeLog/
+*-engineLog/
 experiments/
 no_push_skill.md
 not_push_skill.md

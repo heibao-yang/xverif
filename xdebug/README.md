@@ -141,9 +141,9 @@ xdebug request.json
 export XDEBUG_TRANSPORT=file
 ```
 
-file transport 目录使用 `requests/claims/responses/failed/locks` 分区。request/response/endpoint/heartbeat 写入采用 tmp 文件加 atomic rename；daemon 通过 rename 把 request claim 到 `claims/`，避免多个处理者看到半文件或重复处理。
+file transport v2 使用 `requests/claims/responses/done/failed/tmp/heartbeat` 状态目录。request 先写到 `tmp/`，再 atomic publish 到 `requests/`；daemon 用 `rename()` 把 request 抢到 `claims/`；response 默认归档到 `done/`，过期、坏请求、stale claim 和 client timeout 进入 `failed/`。如果旧 session 目录里还有 `locks/`，它只是历史残留，可以忽略。
 
-普通 file transport 请求默认等待 300 秒，可用 `XDEBUG_FILE_TRANSPORT_TIMEOUT_MS` 调整；ping/quit 默认等待 2 秒，可用 `XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS` 调整。大窗口 `axi.analysis`、`signal.changes` 或深层 `trace.graph` 如果确实需要更久，优先调普通请求 timeout，不要改 ping timeout。
+普通 file transport 请求默认等待 300 秒，可用 `XDEBUG_FILE_TRANSPORT_TIMEOUT_MS` 调整；ping/quit 默认等待 2 秒，可用 `XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS` 调整。大窗口 `axi.analysis`、`signal.changes` 或深层 `trace.graph` 如果确实需要更久，优先调普通请求 timeout，不要改 ping timeout。`XDEBUG_FILE_KEEP_HISTORY=1` 默认保留证据链；`XDEBUG_FILE_CLAIM_TIMEOUT_MS`、`XDEBUG_FILE_POLL_INTERVAL_MS`、`XDEBUG_FILE_MAX_JSON_BYTES`、`XDEBUG_FILE_DONE_TTL_SEC`、`XDEBUG_FILE_FAILED_TTL_SEC` 可用于高级排障和清理。
 
 ### MCP wrapper
 

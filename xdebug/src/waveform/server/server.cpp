@@ -8,21 +8,6 @@ namespace xdebug_waveform {
 
 namespace {
 
-bool read_json_file_local(const std::string& path, Json& out) {
-    FILE* fp = fopen(path.c_str(), "r");
-    if (!fp) return false;
-    std::string text;
-    char buf[4096];
-    while (fgets(buf, sizeof(buf), fp)) text += buf;
-    fclose(fp);
-    try {
-        out = Json::parse(text);
-        return out.is_object();
-    } catch (...) {
-        return false;
-    }
-}
-
 bool run_file_command_through_handler(const std::string& command, std::string& payload, bool& server_error, bool& should_quit) {
     payload.clear();
     server_error = false;
@@ -81,43 +66,50 @@ int file_transport_loop(const std::string& file_dir) {
     xdebug_core::log_lifecycle_event("waveform", g_session_id, "transport.file_loop_begin", true,
                                      {{"file_dir", file_dir}, {"idle_timeout_sec", idle_timeout}});
     while (true) {
-        xdebug_core::atomic_write_json_file(file_dir + "/heartbeat.json",
-                                            {{"ok", true}, {"session_id", g_session_id},
-                                             {"transport", "file"}, {"server_host", current_host_name()},
-                                             {"pid", getpid()}, {"updated_at", static_cast<long long>(time(nullptr))}});
-        std::string req_id;
-        std::string claim_path;
-        if (!xdebug_core::file_exchange_claim_one(file_dir, agent_id, req_id, claim_path)) {
+        xdebug_core::Json worker = {{"agent_id", agent_id}, {"host", current_host_name()},
+                                    {"pid", static_cast<int>(getpid())}};
+        xdebug_core::atomic_write_json_file_ex(file_dir + "/heartbeat/" + agent_id + ".json",
+                                               {{"version", xdebug_core::kFileRpcVersion},
+                                                {"ok", true}, {"session_id", g_session_id},
+                                                {"transport", "file"}, {"worker", worker},
+                                                {"updated_at_us", xdebug_core::file_exchange_now_us()}},
+                                               xdebug_core::AtomicWriteMode::Replace,
+                                               file_dir + "/tmp");
+        xdebug_core::file_exchange_scan_stale_claims(
+            file_dir, agent_id, xdebug_core::file_exchange_claim_timeout_ms(0));
+        xdebug_core::FileClaimResult claim = xdebug_core::file_exchange_claim_one(file_dir, agent_id);
+        if (!claim.claimed) {
             if (time(nullptr) - last_active > idle_timeout) {
                 xdebug_core::log_lifecycle_event("waveform", g_session_id, "server.idle_timeout_exit", true,
                                                  {{"idle_sec", static_cast<long>(time(nullptr) - last_active)},
                                                   {"timeout_sec", idle_timeout}});
                 break;
             }
-            usleep(100000);
+            usleep(static_cast<useconds_t>(xdebug_core::file_exchange_poll_interval_ms()) * 1000);
             continue;
         }
-        Json wrapper;
         std::string payload;
         bool server_error = true;
         bool quit = false;
-        bool ok = read_json_file_local(claim_path, wrapper) &&
-                  wrapper.contains("request") && wrapper["request"].is_object() &&
-                  wrapper["request"].contains("command") && wrapper["request"]["command"].is_string() &&
-                  run_file_command_through_handler(wrapper["request"]["command"].get<std::string>(),
+        bool ok = claim.ready &&
+                  claim.request.contains("command") && claim.request["command"].is_string() &&
+                  run_file_command_through_handler(claim.request["command"].get<std::string>(),
                                                    payload, server_error, quit);
-        Json response = {
+        xdebug_core::Json response = {
             {"payload", payload},
             {"server_error", server_error}
         };
-        Json out = {
-            {"id", req_id},
-            {"ok", ok && !server_error},
-            {"response", response}
-        };
-        if (!ok) out["message"] = "invalid file transport request or response";
-        xdebug_core::atomic_write_json_file(file_dir + "/responses/" + req_id + ".json", out);
-        unlink(claim_path.c_str());
+        std::string status = ok && !server_error ? "ok" :
+                             (ok ? "action_error" :
+                              (claim.ready ? "server_error" : claim.status));
+        std::string message = ok ? std::string() :
+                              (claim.ready ? "invalid file transport request or response" : claim.message);
+        xdebug_core::Json error = xdebug_core::Json::object();
+        if (status != "ok") error = {{"code", status}, {"message", message}};
+        if (claim.ready) {
+            xdebug_core::file_exchange_complete_claim(file_dir, claim, response,
+                                                      status == "ok", status, message, worker, error);
+        }
         last_active = time(nullptr);
         if (quit) break;
     }

@@ -190,6 +190,7 @@ bool send_file_request_to_endpoint(const SessionInfo& session, const Json& reque
         : session.file_dir;
     int effective_timeout_ms = timeout_ms > 0 ? timeout_ms : file_transport_request_timeout_ms();
     xdebug_core::FileExchangeResult result = xdebug_core::file_exchange_send_request(dir, request, effective_timeout_ms);
+    if (!(result.status == "ok" || result.status == "action_error" || result.status == "server_error")) return false;
     if (!result.response.is_object()) return false;
     response = result.response;
     return true;
