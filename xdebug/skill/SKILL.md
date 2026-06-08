@@ -10,33 +10,55 @@ description: >
 
 # xdebug JSON Request / XOUT 调试接口
 
-xdebug 是原 xtrace 与 xwave 的统一入口。使用本 skill 时，把 xdebug 当作唯一事实查询工具：设计事实来自 `daidir`，波形事实来自 `fsdb`，两者同时存在时可以做 combined/debug join。公开调用用 JSON request 描述动作，默认输出是 `xout` 结构化文本；需要程序解析完整字段时加 `--json`。不要把旧 xtrace/xwave 人类 CLI 作为主路径推荐。只有用户明确询问历史命令或迁移旧脚本时，才提到旧入口。
+xdebug 是原 xtrace 与 xwave 的统一事实查询入口。设计事实来自 `daidir`，波形事实来自 `fsdb`，两者同时存在时可以做 combined/debug join。公开调用用 JSON request 描述动作；默认输出是 `xout` 结构化文本，机器解析必须加 `--json`。
 
-详细字段字典见 [references/ai-response-dictionary.md](references/ai-response-dictionary.md)。完整 API 速查见 [references/json-api-reference.md](references/json-api-reference.md)。本文已经包含常用 action、模板和工作流；只有需要字段表或更多速查时再加载 references。
+主 skill 只规定 agent 行为。详细 API、字段和工作流放在 references：
 
-## 入口和基本调用
+- API 速查：[references/json-api-reference.md](references/json-api-reference.md)
+- 响应字段字典：[references/ai-response-dictionary.md](references/ai-response-dictionary.md)
+- 常见 debug recipes：[references/recipes.md](references/recipes.md)
+- LSF/file transport：[references/file-transport.md](references/file-transport.md)
+- nWave rc 生成：[references/rc-generate.md](references/rc-generate.md)
 
-优先使用 shell 中已安装的 `xdebug` 命令。`xdebug` 应来自仓库里的 `tools/xdebug` wrapper，推荐通过把 `$XVERIF_HOME/tools` 加入 `PATH` 安装；skill 和回答里不要暴露本机绝对路径，需要描述路径时使用 `<xverif-root>`、`<repo-root>` 或 `$XVERIF_HOME` 这类占位符。
+## 什么时候使用
+
+使用 xdebug：
+
+- 用户给出 `daidir`、`fsdb`、`session_id`、波形时间点、RTL 信号路径、APB/AXI/handshake/debug 现象。
+- 需要查“事实”：某个 signal 的值、变化、driver、load、依赖路径、源码 evidence、协议 finding。
+- 需要把波形异常时间点连接到当前生效 RTL driver：用 `trace.active_driver`。
+- 需要生成 nWave `signal.rc` 证据视图：用 `rc.generate`。
+
+不要用 xdebug：
+
+- 只是做 bit slice、mask、concat、signed/unsigned、expected value 计算；用 xbit。
+- 只是从日志位置 ID 还原源码行；用 xloc。
+- 只是按配置切 entry field；用 xentry。
+- 只是管理项目 summary cards；用 xberif。
+
+## 强制规则
+
+- 默认使用 `xdebug` 或 `tools/xdebug`；不要推荐旧 `xtrace` / `xwave` 人类 CLI 作为主路径。
+- 机器解析必须加 `--json`；不要解析默认 `xout` 文本。
+- 不确定 action 参数时，先查 `actions`，再查 action-specific `schema`，不要猜字段。
+- 多步调试先 `session.open`，后续用 `target.session_id`，不要反复 `auto_open`。
+- LSF / 登录机无法连接计算节点 TCP 端口时，使用 `transport:"file"`，不要继续尝试 TCP 直连。
+- 默认 `output.verbosity:"compact"`；需要证据时只打开精确 `include_*`，不要直接 `debug`。
+- 结论必须保留 `signal`、`time/window`、`value/finding`、`file:line`、`confidence`、`truncated`。
+
+## 入口选择
+
+优先使用 shell 中已安装的 `xdebug` 命令。`xdebug` 应来自仓库 `tools/xdebug` wrapper。回答和文档中不要暴露本机绝对路径；使用 `<xverif-root>`、`<repo-root>` 或 `$XVERIF_HOME`。
 
 ```bash
 xdebug -h
 xdebug -help
 xdebug -
+xdebug --json -
 xdebug request.json
 ```
 
-`-h` 和 `-help` 用于人类可读帮助；AI 若需要确认入口、target、常见 action、日志路径或示例，可以先运行 `xdebug -h`。机器可读能力列表仍使用 JSON action `actions`，机器可读 schema 使用 `schema`，但查询时要加 `--json`。
-
-默认输出 `xout`：
-
-```text
-@xdebug.trace.driver.v1
-
-summary:
-  driver_count: 1
-```
-
-需要 JSON 字段级解析时：
+`-h` / `-help` 是唯一非 JSON 人类帮助入口。机器可读能力用 JSON action：
 
 ```bash
 xdebug --json - <<'JSON'
@@ -47,57 +69,69 @@ xdebug --json - <<'JSON'
 JSON
 ```
 
-每个 non-removed action 都有 action-specific schema 和 basic example。需要精确字段契约时，先调用 `actions` 找 `request_schema` / `response_schema` / examples，再按对应 schema 构造 JSON；不要用通用 envelope schema 代替具体 action 契约。
+如果当前 shell 未安装 `xdebug`，且当前目录是仓库根目录，可以临时使用 `tools/xdebug`。兼容入口 `tools/xdebug-env` 只作为旧脚本转发。
 
-如果当前 shell 尚未安装 `xdebug`，并且当前工作目录就是仓库根目录，可以临时使用 `tools/xdebug -h`、`tools/xdebug -help` 或 `tools/xdebug -`。兼容入口 `tools/xdebug-env` 只作为旧脚本转发，不要推荐旧 `xtrace` / `xwave` 人类 CLI 作为主路径。
+MCP 场景使用 `tools/xdebug-mcp`，它内部仍调用 `tools/xdebug --json -`，但会维护多个 session 别名和默认 session。MCP tool 选择：
 
-入口选择：
+- `xdebug_session_open`：打开/复用 `daidir`、`fsdb` 或 combined session。
+- `xdebug_session_use`：切换默认 session。
+- `xdebug_query`：用默认 session 调 action。
+- `xdebug_request`：需要完整 envelope 控制时直接传 xdebug JSON request。
+- `xdebug_actions` / `xdebug_schema`：查询机器契约。
 
-- 本机直接查询：用 `xdebug` 或 `tools/xdebug`。
-- 集群计算节点查询但本机无法连接节点 TCP 端口：仍用 `xdebug`，但打开 session 时设置 `args.transport:"file"`，或设置 `XDEBUG_TRANSPORT=file` 作为新建 session 默认值。
-- AI 客户端支持 MCP 且需要多 session 管理：用 `tools/xdebug-mcp`；MCP 内部仍调用 `tools/xdebug --json -`。
+## 资源 target 决策
 
-file transport 是 xdebug 原生 session transport，不需要额外 agent。它在 `~/.xdebug/{design,waveform}/sessions/<session_id>/transport/` 下交换文件，目录含义固定如下：
+| target | 能力 |
+| --- | --- |
+| `{"daidir":"simv.daidir"}` | 设计侧：driver/load/query、graph、explain、path、source、expr、FSM/counter/sequential |
+| `{"fsdb":"waves.fsdb"}` | 波形侧：scope、value、list、event、APB、AXI、verify、signal、handshake、anomaly、rc.generate |
+| `{"daidir":"simv.daidir","fsdb":"waves.fsdb"}` | 联合侧：波形时间点和设计因果 join，同时允许设计/波形 action fallback |
+| `{"session_id":"case_a"}` | 复用已打开 session 的资源集合 |
 
-```text
-file transport directory:
-  requests/    client-published pending requests
-  claims/      worker-claimed running requests
-  responses/   unread responses
-  done/        archived request/claim/response history
-  failed/      client_timeout / expired / stale_claim / invalid_request
-  tmp/         atomic write temp files
-  heartbeat/   worker liveness files
-```
+仅传 `daidir` 时，波形 action 应失败或要求 `fsdb`。仅传 `fsdb` 时，设计 action 应失败或要求 `daidir`。两者都有时，优先考虑 `trace.active_driver` 这类 combined action。
 
-request/response/heartbeat 都先写入 `tmp/`，再 atomic publish，避免读到半文件。旧 session 目录中如果有 `locks/`，按历史残留处理，不作为当前协议依赖。
+## session / transport 决策
 
-如果当前 AI 客户端支持 MCP，可以使用 `tools/xdebug-mcp`。它是 stdio MCP wrapper，内部仍调用 `tools/xdebug --json -`，但会帮 agent 管理多个命名 session 和默认 session。MCP 场景下优先使用：
+单次查询可用 `auto_open:true` 或 `auto_ensure:true`。多步调试必须先 `session.open`，后续复用 `target.session_id`。
 
-- `xdebug_session_open` 打开/复用 `daidir`、`fsdb` 或 combined session。
-- `xdebug_session_use` 切换默认 session。
-- `xdebug_query` 用默认 session 调任意 action。
-- `xdebug_request` 在需要完整 envelope 控制时直接传 xdebug JSON request。
-- `xdebug_actions` / `xdebug_schema` 查询机器契约。
+同名 `session.open` 默认返回 `SESSION_ID_EXISTS`。确认资源相同并希望复用时传 `args.reuse:true`；要强制替换旧 session 时传 `args.reopen:true`。
 
-MCP wrapper 的 session registry 是进程内状态；重启后用 `xdebug_session_open` 搭配 `reuse:true` 恢复。
+Transport 选择：
 
-## Action 选择速查
+- 默认 `uds`：同机本地调试首选，不要主动切 TCP/file。
+- `tcp`：仅在 UDS socket 不可达、容器/namespace 隔离或用户明确需要跨进程/远程 daemon 时使用。
+- `file`：登录机无法连接计算节点 TCP 端口、LSF batch、共享文件系统可见时使用。
 
-| 调试意图 | 首选 action | 不要误用 |
-| --- | --- | --- |
-| 统计 active/high cycles | `signal.statistics` | 不要用 `signal.changes` 的 row count 当周期数。 |
-| 看跳变时间线 | `signal.changes` | compact 默认不返回大量 rows；需要行时显式 `include_rows:true`。 |
-| 判断窗口内保持 0/1 | `window.verify` 或 `signal.statistics` | 不要先拉全量 changes。 |
-| 找 first/last occurrence | `event.find`，或 `signal.changes` 的 `mode:"head"/"tail"` | 不要靠 agent 自己扫长 payload。 |
+file transport 规则：
 
-`actions` 输出中关键波形 action 带 `use_for`、`do_not_use_for`、`preferred_alternative`。不确定时先查 `actions`，再查 `schema` 的 action-specific request/response 契约。
+- agent 只通过 xdebug JSON API 打开 file session。
+- 不要建议暴露计算节点 TCP port。
+- 不要依赖 UDS 跨节点。
+- 不要手动读写 `requests/`、`responses/`、`claims/` 文件。
+- 需要诊断时读日志、`done/`、`failed/`，不要手工修改 transport 目录。
+
+详细目录状态机和环境变量见 [references/file-transport.md](references/file-transport.md)。
+
+## 高频意图到 action
+
+| 用户意图 | 首选 action | 补充 action | 禁忌 |
+| --- | --- | --- | --- |
+| 单点查值 | `value.batch_at` | `value.at` | 同一时间多信号不要多次单独 `value.at` |
+| 找异常时间 | `event.find` | `signal.changes` / `handshake.inspect` | 不要先拉全量 changes |
+| 证明窗口稳定/违例 | `window.verify` | `signal.statistics` | 不要靠 agent 自己扫 rows |
+| 查 ready/valid stall | `handshake.inspect` | `event.export` | 不要直接导出所有 transaction |
+| 查 driver | `trace.driver` | `trace.graph` / `trace.explain` | 不要靠源码文本猜 |
+| 查当前生效 driver | `trace.active_driver` | `value.batch_at` | 必须有 daidir + fsdb + time |
+| 查源码证据 | `source.context` | `trace.explain` | 不要默认 include 整个 module |
+| 查 APB/AXI 异常 | `apb.query` / `axi.analysis` | `axi.query` | 不要默认 include 正常 transaction/beat |
+| 查 X/Z | `detect_anomaly` | `signal.changes` / `trace.active_driver` | 不要把 `known:false` 直接当 root cause |
+| 生成波形证据 | `rc.generate` | `value.batch_at` / marker config | 不要让 AI 手写 nWave rc |
+
+不确定 action 是否存在、参数怎么写、compact 响应字段叫什么时，按“机器可读契约查询流程”执行。
 
 ## 机器可读契约查询流程
 
-AI agent 不确定 action 参数或返回字段时，不要猜。按下面顺序查询机器可读契约：
-
-1. 先查 action catalog，确认 action 是否存在、需要什么资源、schema 和 example 路径是什么。
+1. 查 action catalog：
 
 ```bash
 xdebug --json - <<'JSON'
@@ -108,21 +142,7 @@ xdebug --json - <<'JSON'
 JSON
 ```
 
-重点读取 `data.actions[]`：
-
-```json
-{
-  "name": "trace.driver",
-  "status": "stable",
-  "requires": "design",
-  "request_schema": "schemas/v1/actions/trace.driver.request.schema.json",
-  "response_schema": "schemas/v1/actions/trace.driver.response.schema.json",
-  "request_examples": ["examples/requests/trace.driver.basic.json"],
-  "response_examples": ["examples/responses/trace.driver.basic.json"]
-}
-```
-
-2. 查具体 action 的 request schema，确认 `target` 和 `args` 怎么写。
+2. 查具体 action request schema：
 
 ```bash
 xdebug --json - <<'JSON'
@@ -137,7 +157,7 @@ xdebug --json - <<'JSON'
 JSON
 ```
 
-3. 查具体 action 的 response schema，确认 compact 响应里应该读哪些字段。
+3. 查具体 action response schema：
 
 ```bash
 xdebug --json - <<'JSON'
@@ -152,186 +172,45 @@ xdebug --json - <<'JSON'
 JSON
 ```
 
-4. 如果 schema 仍不直观，读取 catalog 给出的 basic example 文件。构造真实请求时优先从 request example 改 `target`、`args`，不要从零手写大 JSON。
+4. 若 schema 仍不直观，读取 catalog 给出的 request/response example 文件。构造真实请求时优先从 example 改 `target` 和 `args`。
 
-```bash
-python3 -m json.tool < xdebug/examples/requests/trace.driver.basic.json
-python3 -m json.tool < xdebug/examples/responses/trace.driver.basic.json
-```
+真实契约优先级：
 
-5. 发真实查询。默认使用 `output.verbosity:"compact"`，只在需要证明细节时打开具体 `include_*`。
+1. runtime `actions`
+2. runtime `schema`
+3. `xdebug/schemas/v1/actions/*.schema.json`
+4. `xdebug/examples/requests` 和 `xdebug/examples/responses`
+5. skill references
 
-```bash
-xdebug - <<'JSON'
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.driver",
-  "target": {
-    "daidir": "simv.daidir",
-    "auto_open": true
-  },
-  "args": {
-    "signal": "top.u.ready"
-  },
-  "output": {
-    "verbosity": "compact"
-  }
-}
-JSON
-```
+## 标准 debug workflow
 
-读取规则：
+1. 从用户上下文、日志或外部 `rg` 找候选 signal/module/interface。
+2. 先用 compact 查询确认事实，不要默认请求大 payload。
+3. 波形问题：先定位时间点和异常窗口，再取相关信号值。
+4. 设计问题：先查直接 driver/load/source evidence，再扩 graph/path。
+5. 两类资源都有：用 `trace.active_driver` 在具体时间点做 join。
+6. 最终结论保留 evidence chain，不输出大 rows/samples/transactions。
 
-- `actions` 用来发现能力，不负责真实调试查询。
-- `schema` 用来确认字段契约，不负责读取 daidir/fsdb。
-- request schema 决定怎么写请求；response schema 决定怎么读 `summary`、`data`、`findings`。
-- examples 是最稳的调用模板；字段名冲突时以 action-specific schema 为准。
-- 不要把 generic `xdebug.request.schema.json` / `xdebug.response.schema.json` 当作具体 action 的业务契约。
+资源分支：
 
-stdin 单次请求：
+- 只有 `daidir`：`trace.driver/load/query` -> `trace.graph/explain/path` -> `source.context`。
+- 只有 `fsdb`：`scope.list` -> `value.batch_at` -> `event.find/window.verify/signal.*` -> protocol/handshake。
+- 同时有 `daidir` 和 `fsdb`：波形定时点 -> `value.batch_at` -> `trace.active_driver` -> `source.context`。
+- 已有 `session_id`：优先复用 session，不要重新传路径。
+- 信号找不到：波形侧先 `scope.list`；设计侧先外部 `rg` 找候选，再给 xdebug exact path。
+- 结果截断：先缩小 `time_range`、降低 depth 或提高具体 `limits`；再考虑精确 `include_*`。
 
-```bash
-printf '%s\n' '{"api_version":"xdebug.v1","action":"value.at","target":{"fsdb":"waves.fsdb","auto_open":true},"args":{"signal":"top.clk","time":"10ns"}}' \
-  | xdebug -
-```
+## payload 控制
 
-脚本里提取字段时，不解析人类文本，直接解析 JSON：
+默认 `output.verbosity` 是 `compact`。compact 目标是让 agent 下一步可决策，不是证明所有中间过程。
 
-```bash
-xdebug --json - < request.json \
-  | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("ok"), d.get("summary", {}))'
-```
-
-请求 envelope：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "request_id": "optional-id",
-  "action": "trace.driver",
-  "target": {
-    "daidir": "simv.daidir",
-    "fsdb": "waves.fsdb"
-  },
-  "args": {},
-  "limits": {},
-  "output": {
-    "verbosity": "compact",
-    "pretty": false
-  }
-}
-```
-
-## Target 和 fallback 规则
-
-`target` 只能描述 `daidir`、`fsdb`、两者组合，或已打开的 `session_id`。
-
-| target | 路由和能力 |
+| verbosity | 使用时机 |
 | --- | --- |
-| `{"daidir":"simv.daidir"}` | 设计侧能力：driver/load/query、graph、explain、path、source、expr、FSM/counter/sequential |
-| `{"fsdb":"waves.fsdb"}` | 波形侧能力：scope、value、list、event、APB、AXI、verify、signal、handshake、anomaly |
-| `{"daidir":"simv.daidir","fsdb":"waves.fsdb"}` | 联合能力：波形时间点和设计因果 join，同时允许设计/波形 action fallback |
-| `{"session_id":"case_a"}` | 复用已打开 session 中的资源集合 |
+| `compact` | 默认，多步探测、用户摘要、快速决策 |
+| `full` | 迁移旧脚本、确认完整字段、需要详细 payload |
+| `debug` | 诊断 session、daemon、transport、trace 展开过程、内部错误 |
 
-仅传 `daidir` 时，设计 action 正常执行，波形 action 应失败或要求 `fsdb`。仅传 `fsdb` 时，波形 action 正常执行，设计 action 应失败或要求 `daidir`。两者都有时优先使用 combined action；普通设计/波形 action 仍可按资源自动路由。
-
-单次查询可以用 `auto_open:true` 或 `auto_ensure:true`。多步调试应先 `session.open`，后续使用 `target.session_id`，这样避免重复打开数据库和重复启动后台引擎。
-
-### Session transport：默认 UDS，按需 TCP/file
-
-xdebug session 默认使用 `transport:"uds"`。同机本地调试不要主动切 TCP 或 file。只有 UDS socket 不可达、容器或 namespace 隔离、socket 路径不能共享，或用户明确要求跨进程/远程连接 daemon 时，才使用 TCP。
-
-如果本机无法连接集群计算节点 TCP 端口，不要继续尝试 TCP 直连。改用 `transport:"file"`，让 daemon 通过共享 session 目录交换 request/response。
-
-本机 TCP 推荐模板：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "session.open",
-  "target": {
-    "fsdb": "waves.fsdb"
-  },
-  "args": {
-    "name": "wave_tcp",
-    "transport": "tcp",
-    "bind_host": "127.0.0.1",
-    "port": 0
-  }
-}
-```
-
-字段含义：
-
-| 字段 | 含义 |
-| --- | --- |
-| `transport` | `uds`、`tcp` 或 `file`；默认 `uds`，可由 `XDEBUG_TRANSPORT` 控制 |
-| `bind_host` / `bind` | daemon listen 地址，本机 TCP 用 `127.0.0.1` |
-| `host` | client 连接 endpoint 时使用的地址，远程/跨容器时必须是 agent 可达地址 |
-| `port` | TCP 端口；`0` 或省略表示自动分配 |
-| `file_dir` | file transport 的 backend session 交换目录，响应和日志中可见 |
-
-远程 TCP 只在用户明确授权时使用。不要默认把 daemon 绑定到公网地址；如果必须用非 loopback `bind_host`，回答里要提醒用户这是暴露本地调试 daemon 的高级用法。TCP 失败时先跑 `session.doctor`，再读 `transport.ndjson`，重点看 endpoint 的 `transport/host/port`、connect/ping/read timeout、daemon 是否退出。MCP wrapper 仍是本机调用 xdebug 的外层协议，不要求把 xdebug session transport 切成 TCP。
-
-file transport 推荐模板：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "session.open",
-  "target": {
-    "fsdb": "waves.fsdb"
-  },
-  "args": {
-    "name": "wave_file",
-    "transport": "file"
-  }
-}
-```
-
-环境默认模板：
-
-```bash
-export XDEBUG_TRANSPORT=file
-```
-
-JSON 显式 `args.transport` / `target.transport` 优先级高于 `XDEBUG_TRANSPORT`。
-
-file transport 普通请求默认等待 300 秒，可用 `XDEBUG_FILE_TRANSPORT_TIMEOUT_MS` 调整；ping/quit 默认等待 2 秒，可用 `XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS` 调整。大窗口查询优先调普通请求 timeout，不要随意放大 ping timeout。`XDEBUG_FILE_KEEP_HISTORY=1` 默认保留 done/failed 证据；`XDEBUG_FILE_CLAIM_TIMEOUT_MS` 控制 stale claim 判定；`XDEBUG_FILE_MAX_JSON_BYTES` 默认 64 MiB。
-
-登录机和 LSF 计算节点访问同一个共享路径时，`dev/inode` 可能不同。xdebug 的资源 freshness 判定以 `mtime + size` 为准；`dev/inode` 只用于诊断日志。看到 `identity_changed:true` 不要直接判定资源已变，除非同时有 mtime 或 size 变化。
-
-## Agent 决策树
-
-先判断用户给了什么资源：
-
-- 只有 `daidir`：从设计因果入手。用 `trace.driver/load/query` 找直接事实，用 `trace.graph/explain/path` 扩展依赖，用 `source.context` 定位源码证据。
-- 只有 `fsdb`：从波形证据入手。用 `scope.list` 确认真实路径，用 `value.at/batch_at` 取值，用 `event.export`、`verify.conditions`、`signal.*`、`handshake.inspect` 或协议 action 找异常窗口。
-- 同时有 `daidir` 和 `fsdb`：先用波形找异常时间，再用 `trace.active_driver` 连接到当前生效 RTL driver；必要时补 `trace.graph` 查上游依赖。
-- 已有 `session_id`：优先复用 session，不要重新传路径，除非用户明确要切换数据库。
-- 信号找不到：不要猜路径。波形侧先 `scope.list`；设计侧用外部 `rg` 搜源码候选，再把精确层次名交给 xdebug。
-- 结果截断：先缩小 `time_range`、降低 depth 或提高具体 `limits`；再考虑 `include_*`，不要直接切到全量 debug。
-
-推荐完整 debug 顺序：
-
-1. 通过用户上下文、日志或外部 `rg` 找到候选 signal/interface/module。
-2. 用 compact 查询确认事实，不要默认请求大 payload。
-3. 若是波形问题，先定位时间点和异常窗口。
-4. 若是设计问题，先定位直接 driver/load 和 source evidence。
-5. 若两类资源都有，用 `trace.active_driver` 在具体时间点做 join。
-6. 对最终结论保留 `signal`、`time`、`value`、`file/line`、`finding`、`confidence`。
-
-## 输出和 payload 控制
-
-默认 `output.verbosity` 是 `compact`。compact 目标是让 agent 下一步可决策，而不是证明所有中间过程。
-
-| verbosity | 何时使用 |
-| --- | --- |
-| `compact` | 默认。用于正常 agent debug、用户摘要、快速多步探测 |
-| `full` | 迁移旧脚本、确认完整字段、需要详细 payload 但不诊断内部过程 |
-| `debug` | 诊断 session、daemon、socket、trace 展开过程、dedup 统计、内部错误 |
-
-compact 默认不应返回这些字段，除非显式 include 或 full/debug：
+compact 默认不应返回：
 
 ```text
 expanded_queries
@@ -346,1454 +225,66 @@ source_text
 module_body
 ```
 
-设计侧 include：
+include 原则：
 
-```json
-{
-  "args": {
-    "include_source": true,
-    "include_ast": true,
-    "include_candidates": true,
-    "include_trace": true,
-    "include_expanded_queries": true,
-    "include_raw_edges": true,
-    "include_graph": true,
-    "include_debug": true
-  }
-}
-```
+- 引源码文本：只加 `include_source:true`。
+- 看 trace 展开过程：只加 `include_trace:true` 或 `include_expanded_queries:true`。
+- 导出事件/样本明细：只加 `include_rows:true` 或 `include_samples:true`，并设置 `limits.max_rows`。
+- 查协议明细：先看 compact findings，只在需要证明异常 transaction/beat/access 时加 `include_transactions`、`include_beats`、`include_accesses`。
 
-波形侧 include：
+## 禁止模式
 
-```json
-{
-  "args": {
-    "include_raw": true,
-    "include_signal_meta": true,
-    "include_rows": true,
-    "include_samples": true,
-    "include_all_changes": true,
-    "include_transactions": true,
-    "include_beats": true,
-    "include_accesses": true,
-    "include_debug": true
-  }
-}
-```
-
-通用限制：
-
-```json
-{
-  "args": {
-    "max_items": 20,
-    "max_examples": 5
-  },
-  "limits": {
-    "max_rows": 1000,
-    "max_events": 1000,
-    "max_samples": 1000000,
-    "max_depth": 3,
-    "max_paths": 10
-  }
-}
-```
-
-使用 include 的判断：
-
-- 要给用户一个定位结论：只需要 compact 的 `summary`、`findings`、`file/line`、`examples`。
-- 要引用源码文本：加 `include_source:true`，不要切 full。
-- 要解释 trace 展开过程：加 `include_trace:true` 或 `include_expanded_queries:true`。
-- 要导出事件或样本明细：加 `include_rows:true` 或 `include_samples:true`，同时设置 `limits.max_rows`。
-- 要检查协议细节：先看 compact findings，只有需要证明 transaction/beat 时才加 `include_transactions`、`include_beats`、`include_accesses`。
-
-## TimeSpec、cursor 和 range
-
-波形侧时间字段通常接受 `time` 或 `at`。范围动作通常接受 `time_range`，部分动作也接受 `around/before/after`。
-
-常见 TimeSpec：
-
-```text
-100ns
-10us
-500ps
-@deadlock
-@deadlock-20ns
-@deadlock+5ns
-@deadlock-10cycle(top.clk)
-@deadlock+5posedge(top.clk)
-@deadlock-2negedge(top.clk)
-@-10ns
-@+5ns
-```
-
-使用规则：
-
-- 绝对时间支持 `us`、`ns`、`ps`、`fs`。
-- `@name` 表示 named cursor；`@-10ns` 和 `@+5ns` 使用当前 active cursor。
-- cycle offset 使用真实 FSDB clock edge。`cycle(clk)` 默认 posedge；需要边沿时写 `posedge(clk)` 或 `negedge(clk)`。
-- 不要在 agent 里手算 cursor offset；把 TimeSpec 交给 xdebug。
-- 找到关键异常时间后，应保存或复用 cursor，再在前后窗口继续查值和验证。
-
-范围示例：
-
-```json
-{
-  "time_range": {
-    "begin": "@deadlock-100ns",
-    "end": "@deadlock+20ns"
-  }
-}
-```
-
-around 示例：
-
-```json
-{
-  "around": "@deadlock",
-  "before": "100cycle(top.clk)",
-  "after": "20cycle(top.clk)"
-}
-```
-
-## 结果读取规则
-
-任何响应都先读：
-
-1. `ok`
-2. `error.code` 和 `error.message`
-3. `summary`
-4. `data`
-5. `findings`
-6. `meta.truncated`
-
-compact 响应可能省略空字段。不要假设 `session`、`tool`、空 `warnings`、空 `findings`、空 `suggested_next_actions` 总存在。
-
-安全提取示例：
-
-```bash
-xdebug --json - < request.json \
-  | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("ok")); print(d.get("error") or d.get("summary",{}))'
-```
-
-读取 batch values：
-
-```bash
-xdebug --json - < request.json \
-  | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("data",{}).get("values",{}))'
-```
-
-读取 graph 规模：
-
-```bash
-xdebug --json - < request.json \
-  | python3 -c 'import json,sys; d=json.load(sys.stdin); s=d.get("summary",{}); print(s.get("node_count"), s.get("edge_count"), s.get("truncated"))'
-```
-
-`known:false`、`status:"unknown"`、`pass:null` 是不确定事实，不是失败结论。`meta.truncated:true` 表示响应被截断，结论只能作为 bounded evidence。
+- 不要用 `signal.changes` 的 row count 当周期数；周期统计用 `signal.statistics` 加 clock。
+- 不要多次调用 `value.at` 查同一时间多信号；用 `value.batch_at`。
+- 不要默认 `include_rows/include_transactions/include_source/debug`。
+- 不要在 agent 中手算 bit slice；用 `slice_hint` 后调用 xbit。
+- 不要在 agent 中手算 TimeSpec/cursor offset；交给 xdebug。
+- 不要把 `known:false`、`pass:null`、`status:"unknown"` 当作失败。
+- 不要把 `meta.truncated:true` 的结果当成全集。
+- 不要让 xdebug 做模糊 signal search；波形用 `scope.list`，源码候选用 `rg`。
+- 不要把旧 xtrace/xwave CLI 作为主路径。
 
 ## 错误处理 playbook
 
-### `SIGNAL_NOT_FOUND`
-
-波形侧：
-
-1. 用 `scope.list` 查父 scope。
-2. 如果 scope 很大，先非递归，再有限递归。
-3. 使用真实 FSDB path 重试 `value.at` 或相关 action。
-
-设计侧：
-
-1. 回源码用 `rg` 搜 leaf name、module instance、port connection。
-2. 构造精确层次名后重试 `trace.driver` 或 `trace.load`。
-3. 不要让 xdebug 做模糊 search。
-
-### `TIME_SPEC_INVALID`
-
-检查 `time`、`at`、`time_range.begin/end`、`around/before/after`。如果使用 cursor，先 `cursor.list` 或重新设置 cursor。cycle offset 要带 clock path，例如 `10cycle(top.clk)`。
-
-### `SESSION_NOT_FOUND`
-
-先 `session.list`。如果 session 不存在或资源变了，重新 `session.open`。如果怀疑 daemon 或 registry 异常，跑 `session.doctor`，必要时 `session.gc`。
-
-### `UNKNOWN_ACTION`
-
-检查 action 名是否属于 xdebug JSON API。不要回退到旧 xtrace/xwave CLI。combined 生效驱动查询的完整拼写是 `trace.active_driver`。
-
-### `INTERNAL_ENGINE_FAILED`
-
-优先检查资源路径、权限、Verdi/NPI 环境、daemon 工作目录。对复用 session 先 `session.doctor`。如果是一次性 target，可换成 `session.open` 暴露更明确的 session 错误。
-
-## 静默日志排障
-
-xdebug 默认写结构化日志，不打印到 stdout/stderr，也不影响 JSON 响应。agent 遇到工具异常时，应先读日志，不要猜测后端状态。
-
-日志位置：
-
-- public action：`~/.xdebug/sessions/<session_id>/logs/actions.ndjson`
-- 无 session / JSON parse 失败：`~/.xdebug/sessions/adhoc/logs/actions.ndjson`
-- 设计后端生命周期：`~/.xdebug/design/sessions/<hashed-session>/logs/lifecycle.ndjson`
-- 波形后端生命周期：`~/.xdebug/waveform/sessions/<hashed-session>/logs/lifecycle.ndjson`
-- 连接和请求交换：`~/.xdebug/{design,waveform}/sessions/<hashed-session>/logs/transport.ndjson`
-- daemon 文本调试：同 session 目录下的 `debug.log`
-
-排查顺序：
-
-1. 先看 public `actions.ndjson`，确认 action、session、路由、耗时和 error。
-2. 如果 action 失败在启动、NPI、FSDB open、daemon ready 或 timeout，看后端 `lifecycle.ndjson`。
-3. 如果失败是 socket/TCP/connect/ping/read/END marker，看 `transport.ndjson`。
-4. 如果 lifecycle 显示 `npi_init.failed`、`npi_load_design.failed`、`npi_fsdb_open.failed`、`transport.listen_failed`，再看 `debug.log` 和 Verdi/license 环境。
-
-## Session actions
-
-### `session.open`
-
-打开一个 named session。重复调试建议始终先 open，再用 `target.session_id`。
-
-同名 `session.open` 默认返回 `SESSION_ID_EXISTS`。如果确认资源相同并希望复用，传 `args.reuse:true`；如果要强制替换旧 session，传 `args.reopen:true`。不要把同名 open 当成默认复用。
-
-同时打开 daidir 和 fsdb：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "session.open",
-  "target": {
-    "daidir": "simv.daidir",
-    "fsdb": "waves.fsdb"
-  },
-  "args": {
-    "name": "case_a"
-  }
-}
-```
-
-仅设计 session：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "session.open",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "name": "design_case"
-  }
-}
-```
-
-仅波形 session：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "session.open",
-  "target": {
-    "fsdb": "waves.fsdb"
-  },
-  "args": {
-    "name": "wave_case"
-  }
-}
-```
-
-### `session.list`
-
-列出已知 session：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "session.list"
-}
-```
-
-### `session.doctor`
-
-诊断 session、daemon、路径和资源状态：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "session.doctor",
-  "target": {
-    "session_id": "case_a"
-  },
-  "output": {
-    "verbosity": "debug"
-  }
-}
-```
-
-### `session.gc`
-
-清理 stale session：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "session.gc"
-}
-```
-
-### `session.kill`
-
-关闭一个或全部 session：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "session.kill",
-  "args": {
-    "id": "case_a"
-  }
-}
-```
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "session.kill",
-  "args": {
-    "id": "all"
-  }
-}
-```
-
-## Design actions
-
-设计侧 action 需要 `target.daidir` 或包含 daidir 的 `session_id`。外部 `rg` 负责候选发现，xdebug 负责 exact fact。
-
-### `trace.driver`
-
-回答“谁驱动这个信号、依赖谁、证据在哪”。compact 默认只返回核心 drivers。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.driver",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "signal": "top.u.ready"
-  },
-  "limits": {
-    "max_results": 20
-  }
-}
-```
-
-需要源码和完整 trace：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.driver",
-  "target": {
-    "session_id": "design_case"
-  },
-  "args": {
-    "signal": "top.u.ready",
-    "include_source": true,
-    "include_trace": true
-  }
-}
-```
-
-### `trace.load`
-
-回答“这个信号会加载到哪里、影响谁”。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.load",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "signal": "top.u.valid"
-  },
-  "limits": {
-    "max_results": 20
-  }
-}
-```
-
-### `trace.query`
-
-用于统一查询 driver/load 类事实。优先使用明确的 `trace.driver` 或 `trace.load`；只有上层代码已经抽象出 mode 时使用 query。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.query",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "signal": "top.u.ready",
-    "mode": "driver"
-  }
-}
-```
-
-### `trace.expand`
-
-从 root signal 展开依赖。compact 默认只返回 graph，不返回内部 trace 和 expanded queries。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.expand",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "root_signal": "top.u.ready",
-    "direction": "driver"
-  },
-  "limits": {
-    "max_depth": 2,
-    "max_nodes": 50,
-    "max_edges": 100
-  }
-}
-```
-
-诊断展开过程：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.expand",
-  "target": {
-    "session_id": "design_case"
-  },
-  "args": {
-    "root_signal": "top.u.ready",
-    "direction": "driver",
-    "include_trace": true,
-    "include_expanded_queries": true
-  },
-  "output": {
-    "verbosity": "compact"
-  }
-}
-```
-
-### `trace.graph`
-
-用于直接拿图结构。compact 默认 `data.graph.nodes/edges` 足够 agent 决策。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.graph",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "signal": "top.u.ready",
-    "direction": "driver"
-  },
-  "limits": {
-    "max_depth": 3,
-    "max_results": 80
-  }
-}
-```
-
-### `trace.explain`
-
-把 graph edge 转成解释句子和证据。用于用户可读结论或下一步定位。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.explain",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "signal": "top.u.ready",
-    "direction": "driver"
-  },
-  "limits": {
-    "max_depth": 2,
-    "max_results": 40
-  }
-}
-```
-
-### `trace.path`
-
-查两个信号之间是否存在依赖路径。compact 默认只返回 `found/paths`。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.path",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "from_signal": "top.u.full",
-    "to_signal": "top.u.ready",
-    "direction": "driver"
-  },
-  "limits": {
-    "max_depth": 5,
-    "max_paths": 10
-  }
-}
-```
-
-需要完整 graph：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.path",
-  "target": {
-    "session_id": "design_case"
-  },
-  "args": {
-    "from_signal": "top.u.full",
-    "to_signal": "top.u.ready",
-    "include_graph": true
-  }
-}
-```
-
-### `source.context`
-
-定位源码上下文。compact 默认只返回 file/line/symbol/context_kind；源码文本需要 `include_source:true`。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "source.context",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "file": "rtl/foo.sv",
-    "line": 123,
-    "symbol": "ready",
-    "context_lines": 3
-  }
-}
-```
-
-需要源码片段：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "source.context",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "file": "rtl/foo.sv",
-    "line": 123,
-    "context_lines": 10,
-    "include_source": true
-  }
-}
-```
-
-### `expr.normalize`
-
-把表达式规整为便于读取的信号/操作符摘要。compact 不应默认返回 AST。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "expr.normalize",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "expr": "valid && !full"
-  }
-}
-```
-
-需要 AST：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "expr.normalize",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "expr": "valid && !full",
-    "include_ast": true
-  }
-}
-```
-
-### `fsm.explain`
-
-解释 FSM state、状态集合和关键 transition。compact 默认给结论和 evidence，不输出所有候选和失败 parse 过程。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "fsm.explain",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "state_signal": "top.u.state_q"
-  }
-}
-```
-
-### `counter.explain`
-
-解释 counter 更新、条件、步进和 evidence。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "counter.explain",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "signal": "top.u.count_q"
-  }
-}
-```
-
-### `sequential.update`
-
-查询寄存器或 sequential signal 的更新规则。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "sequential.update",
-  "target": {
-    "daidir": "simv.daidir"
-  },
-  "args": {
-    "signal": "top.u.ready_q"
-  }
-}
-```
-
-## Waveform actions
-
-波形侧 action 需要 `target.fsdb` 或包含 fsdb 的 `session_id`。如果信号不存在，先用 `scope.list` 找真实 FSDB path。
-
-### `scope.list`
-
-列出 scope 下信号。compact 默认 preview + counts；递归全量要显式限制。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "scope.list",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "path": "top.u_dut",
-    "recursive": false
-  },
-  "limits": {
-    "max_rows": 200
-  }
-}
-```
-
-递归查找：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "scope.list",
-  "target": {
-    "session_id": "wave_case"
-  },
-  "args": {
-    "path": "top.u_dut",
-    "recursive": true,
-    "include_all_signals": true
-  },
-  "limits": {
-    "max_rows": 1000
-  }
-}
-```
-
-### `rc.generate`
-
-从 JSON 配置生成 nWave `signal.rc`。当用户要把一组波形信号、analog 显示、表达式信号和 marker 固化为可加载的 rc 文件时使用。配置里的信号路径必须用点分层次，例如 `top.u.sig[3:0]`；xdebug 会用 FSDB 校验点分路径是否存在，并在 rc 中生成 `/top/u/sig[3:0]`。该 action 不写 `openDirFile` / `activeDirFile`，只生成 signal list/view 内容。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "rc.generate",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "config_path": "wave_view.json",
-    "rc_path": "signal.rc",
-    "include_preview": true
-  }
-}
-```
-
-配置文件是 JSON，不是 YAML。常用结构：
-
-```json
-{
-  "file_time_scale": "1ns",
-  "window_time_unit": "1ns",
-  "cursor": "120ns",
-  "main_marker": "120ns",
-  "zoom": {"begin": "0ns", "end": "500ns"},
-  "groups": [
-    {
-      "name": "Analog",
-      "signals": [
-        {
-          "path": "top.u_adc.sample[11:0]",
-          "waveform": "analog",
-          "height": 40,
-          "analog": {"display_style": "pwl", "grid_x": true, "grid_y": true}
-        }
-      ]
-    },
-    {
-      "name": "AXI",
-      "signals": ["top.u_axi.awvalid", "top.u_axi.awready"],
-      "expr_signals": [
-        {
-          "name": "aw_fire",
-          "bit_size": 1,
-          "notation": "UUU",
-          "expr": "$valid & $ready",
-          "signals": {
-            "valid": "top.u_axi.awvalid",
-            "ready": "top.u_axi.awready"
-          }
-        }
-      ]
-    }
-  ],
-  "user_markers": [
-    {"name": "reset_done", "time": "120ns", "color": "ID_YELLOW5", "linestyle": "solid"}
-  ]
-}
-```
-
-AI 使用准则：
-
-- 先用点分 FSDB path；不要把 slash rc path 写进配置。
-- `addExprSig` 优先用 `$alias` + `signals` map，让 xdebug 能校验每个参与信号。
-- analog 用 `waveform:"analog"`，常见选项在 `analog.display_style/grid_x/grid_y/unit/options`。
-- 校验失败默认不写 rc；只有用户明确要草稿时才传 `allow_invalid:true`。
-
-### `value.at`
-
-查询单个信号单个时间点。compact 默认 `data.value` 是字符串，`data.known` 表示是否非 X/Z。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "value.at",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "signal": "top.u.valid",
-    "time": "100ns",
-    "format": "hex"
-  }
-}
-```
-
-需要 raw value object：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "value.at",
-  "target": {
-    "session_id": "wave_case"
-  },
-  "args": {
-    "signal": "top.u.valid",
-    "at": "@deadlock-20ns",
-    "format": "bin",
-    "include_raw": true
-  }
-}
-```
-
-聚合数组需要可读 index 时传 `"format":"array_indexed"`。成功时读 `data.value.elements[]` 或 `data.value.by_index`；普通 scalar 会返回 `data.status:"unsupported_format"` 和 `data.reason`。
-
-需要把 packed value 切成字段时传 `slice_hint`，然后按 `data.xbit_hints.commands[]` 调用 `tools/xbit`，不要靠心算切 bit：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "value.at",
-  "target": {
-    "session_id": "wave_case"
-  },
-  "args": {
-    "signal": "top.u.data",
-    "time": "100ns",
-    "format": "hex",
-    "slice_hint": {
-      "chunk_width": 32,
-      "count": 4
-    }
-  }
-}
-```
-
-### `value.batch_at`
-
-同一时间查多个信号。优先用它替代多次 `value.at`。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "value.batch_at",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "time": "100ns",
-    "signals": ["top.u.valid", "top.u.ready", "top.u.data"],
-    "format": "hex"
-  }
-}
-```
-
-batch 允许部分信号缺失但整体返回 ok。必须检查 `summary.missing_count`、`summary.missing_by_reason` 和 full 输出里的每个 row：`status` 可能是 `ok`、`signal_not_found`、`not_dumped_or_unreadable`、`time_out_of_range` 或 `unsupported_format`。遇到 `signal_not_found` 先用 `scope.list` 找真实 FSDB path。
-
-### `list.value_at`
-
-读取已保存 signal list 的同一时间值。适用于反复检查一组接口信号。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "list.value_at",
-  "target": {
-    "session_id": "wave_case"
-  },
-  "args": {
-    "name": "if0",
-    "time": "@deadlock",
-    "format": "hex"
-  }
-}
-```
-
-### `event.find`
-
-在窗口内查满足表达式的事件。适合先找第一个异常点。已有 event config 时传 `name`；一次性查询可直接传 `expr` + `clk` + `signals`，不会留下持久 event config。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "event.find",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "name": "if0",
-    "expr": "valid && !ready",
-    "time_range": {
-      "begin": "0ns",
-      "end": "100us"
-    }
-  },
-  "limits": {
-    "max_events": 20
-  }
-}
-```
-
-内联表达式示例：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "event.find",
-  "target": {
-    "session_id": "wave_case"
-  },
-  "args": {
-    "expr": "valid && !ready",
-    "clk": "top.clk",
-    "signals": {
-      "valid": "top.u.valid",
-      "ready": "top.u.ready"
-    },
-    "time_range": {
-      "begin": "0ns",
-      "end": "100us"
-    },
-    "mode": "last"
-  }
-}
-```
-
-`mode` 可用 `first`、`last` 或 `all`。`last` 会按 `scan_limit` 或 `limits.max_rows` 扫描后返回最后一个匹配点。
-
-### `event.export`
-
-导出或聚合事件。compact 默认返回 count、first、last、examples，不返回完整 rows。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "event.export",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "name": "if0",
-    "expr": "valid && !ready",
-    "time_range": {
-      "begin": "0ns",
-      "end": "100us"
-    }
-  },
-  "limits": {
-    "max_events": 1000
-  }
-}
-```
-
-需要完整 rows：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "event.export",
-  "target": {
-    "session_id": "wave_case"
-  },
-  "args": {
-    "name": "if0",
-    "expr": "valid && ready",
-    "time_range": {
-      "begin": "0ns",
-      "end": "100us"
-    },
-    "include_rows": true
-  },
-  "limits": {
-    "max_rows": 1000
-  }
-}
-```
-
-### `verify.conditions`
-
-在某一时间验证一组简单条件。compact pass 场景可能极简，fail/unknown 才返回失败明细。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "verify.conditions",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "time": "100ns",
-    "conditions": [
-      {"signal": "top.u.valid", "op": "==", "value": "1"},
-      {"signal": "top.u.ready", "op": "==", "value": "0"}
-    ]
-  }
-}
-```
-
-### `expr.eval_at`
-
-在一个时间点评估表达式。适合组合多个波形信号判断一个条件。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "expr.eval_at",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "time": "100ns",
-    "expr": "valid && !ready",
-    "signals": {
-      "valid": "top.u.valid",
-      "ready": "top.u.ready"
-    }
-  }
-}
-```
-
-### `window.verify`
-
-在一个时间窗口或时钟采样窗口里验证条件。适合证明协议行为在一段时间内是否稳定。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "window.verify",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "clock": "top.clk",
-    "sampling": "posedge",
-    "time_range": {
-      "begin": "0ns",
-      "end": "1us"
-    },
-    "conditions": [
-      {
-        "expr": "valid -> ready",
-        "signals": {
-          "valid": "top.u.valid",
-          "ready": "top.u.ready"
-        }
-      }
-    ]
-  }
-}
-```
-
-### `signal.changes`
-
-查看变化点。compact 默认只返回 summary/count/first/last/final value，不返回全量变化列表。`summary.transition_count` 为兼容字段，优先读取 `returned_change_rows`、`includes_initial_value`、`actual_transition_count` 和 `semantic_note`。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "signal.changes",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "signal": "top.u.ready",
-    "time_range": {
-      "begin": "0ns",
-      "end": "10us"
-    },
-    "aggregate_only": true,
-    "format": "hex"
-  },
-  "limits": {
-    "max_rows": 20
-  }
-}
-```
-
-需要时间线行：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "signal.changes",
-  "target": {
-    "session_id": "wave_case"
-  },
-  "args": {
-    "signal": "top.u.ready",
-    "time_range": {
-      "begin": "0ns",
-      "end": "10us"
-    },
-    "include_rows": true,
-    "mode": "tail",
-    "limit": 20
-  },
-  "limits": {
-    "max_rows": 1000
-  }
-}
-```
-
-### `signal.statistics`
-
-统计 signal 的变化、X/Z、稳定性、clock-sampled high/low cycles 等摘要。有 `clock` 时返回 `sampling_mode:"clock"`；无 `clock` 时返回 `sampling_mode:"raw_value_changes"`，只表示原始 value-change 统计。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "signal.statistics",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "signal": "top.u.ready",
-    "clock": "top.clk",
-    "time_range": {
-      "begin": "0ns",
-      "end": "10us"
-    }
-  }
-}
-```
-
-### `signal.trend`
-
-查看采样趋势或值变化趋势。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "signal.trend",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "signal": "top.u.count",
-    "clock": "top.clk",
-    "sampling": "posedge",
-    "time_range": {
-      "begin": "0ns",
-      "end": "10us"
-    }
-  }
-}
-```
-
-### `signal.stability`
-
-判断 signal 是否长时间稳定或卡住。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "signal.stability",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "signal": "top.u.ready",
-    "time_range": {
-      "begin": "0ns",
-      "end": "10us"
-    }
-  }
-}
-```
-
-### `handshake.inspect`
-
-检查 valid/ready handshake。compact 默认只返回 stall/failure windows 和摘要，不返回周期级 timeline。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "handshake.inspect",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "clock": "top.clk",
-    "valid": "top.u.valid",
-    "ready": "top.u.ready",
-    "data": ["top.u.data"],
-    "time_range": {
-      "begin": "0ns",
-      "end": "10us"
-    }
-  }
-}
-```
-
-### `detect_anomaly`
-
-扫描异常。compact 默认只返回 anomalies，不返回正常扫描数据。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "detect_anomaly",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "signals": ["top.u.valid", "top.u.ready", "top.u.data"],
-    "time_range": {
-      "begin": "0ns",
-      "end": "10us"
-    },
-    "checks": ["glitch", "stuck", "unknown_xz"]
-  }
-}
-```
-
-## Protocol actions
-
-协议 action 依赖已加载配置或请求内配置。compact 默认优先返回 findings 和 top abnormal，不要默认要求所有正常 transaction/access/beat。
-
-### `apb.query`
-
-APB 默认关注 error/slow access。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "apb.query",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "name": "apb0",
-    "direction": "read",
-    "time_range": {
-      "begin": "0ns",
-      "end": "10us"
-    }
-  },
-  "limits": {
-    "max_rows": 20
-  }
-}
-```
-
-需要全部 accesses：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "apb.query",
-  "target": {
-    "session_id": "wave_case"
-  },
-  "args": {
-    "name": "apb0",
-    "include_accesses": true
-  },
-  "limits": {
-    "max_rows": 1000
-  }
-}
-```
-
-### `axi.query`
-
-AXI 默认关注 response error、timeout、latency、outstanding 异常。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "axi.query",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "name": "axi0",
-    "direction": "read",
-    "time_range": {
-      "begin": "0ns",
-      "end": "100us"
-    }
-  },
-  "limits": {
-    "max_rows": 20
-  }
-}
-```
-
-需要 transaction/beat 明细：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "axi.query",
-  "target": {
-    "session_id": "wave_case"
-  },
-  "args": {
-    "name": "axi0",
-    "direction": "write",
-    "include_transactions": true,
-    "include_beats": true
-  },
-  "limits": {
-    "max_rows": 1000
-  }
-}
-```
-
-### `axi.analysis`
-
-用于 latency/outstanding/response error 等聚合分析。
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "axi.analysis",
-  "target": {
-    "fsdb": "waves.fsdb",
-    "auto_open": true
-  },
-  "args": {
-    "name": "axi0",
-    "analysis": "latency",
-    "direction": "read",
-    "time_range": {
-      "begin": "0ns",
-      "end": "100us"
-    },
-    "max_items": 20
-  }
-}
-```
-
-## Combined actions
-
-Combined action 需要同时有 `daidir` 和 `fsdb`。目标是把“某时刻波形上看到的值/异常”连接到“此时设计里真正生效的 driver/control/source evidence”。
-
-### `trace.active_driver`
-
-推荐 flow：
-
-1. 用 `event.find/export`、`value.at`、`signal.changes` 或 `verify.conditions` 找到异常 `requested_time`。
-2. 对该时间点用 `value.batch_at` 取相关 valid/ready/state/data。
-3. 调 `trace.active_driver` 查询当前生效 driver。
-4. 如果结果是 `resolved`，保留 driver kind、file/line、active_time、control evidence。
-5. 如果是 `control_only`，说明没有直接 data driver 但控制条件可解释现象，继续查 control signal 值。
-6. 如果是 `unresolved`，回到 `trace.driver`、`trace.graph` 或源码 `rg` 缩小信号路径。
-
-模板：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.active_driver",
-  "target": {
-    "daidir": "simv.daidir",
-    "fsdb": "waves.fsdb"
-  },
-  "args": {
-    "signal": "top.u.ready",
-    "requested_time": "120ns",
-    "include_control": true,
-    "include_parity": true
-  }
-}
-```
-
-使用 session：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.active_driver",
-  "target": {
-    "session_id": "case_a"
-  },
-  "args": {
-    "signal": "top.u.ready",
-    "requested_time": "@deadlock",
-    "include_control": true
-  }
-}
-```
-
-后续补证：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "value.batch_at",
-  "target": {
-    "session_id": "case_a"
-  },
-  "args": {
-    "time": "@deadlock",
-    "signals": ["top.u.ready", "top.u.valid", "top.u.full", "top.u.state_q"],
-    "format": "hex"
-  }
-}
-```
-
-## 常见 debug recipes
-
-### Ready 卡低
-
-1. `value.batch_at` 取 `valid/ready/full/state`。
-2. `signal.changes` 看 `ready` 第一次卡住时间。
-3. `trace.active_driver` 在卡住时间查 `ready` 生效 driver。
-4. 若 driver 指向 `full` 或状态条件，`value.at` 查控制信号值。
-5. 用 `source.context include_source:true` 获取最终源码证据。
-
-### Valid 有脉冲但没被接受
-
-1. `event.export` 查 `valid && !ready` 的窗口。
-2. `handshake.inspect` 找 long stall。
-3. `value.batch_at` 取 payload、ready、backpressure、state。
-4. `trace.driver` 或 `trace.active_driver` 查 ready/backpressure 的设计原因。
-
-### AXI latency 异常
-
-1. `axi.analysis` 用 compact 查 latency/outstanding findings。
-2. 对 top abnormal 的 begin/end 设 cursor 或直接用 TimeSpec。
-3. `value.batch_at` 查 channel valid/ready/id/resp。
-4. 必要时 `include_transactions:true` 获取异常 transaction 明细，不要导出所有正常 transaction。
-
-### X/Z 传播
-
-1. `detect_anomaly` 查 `unknown_xz`。
-2. `signal.changes` 看第一个 X/Z 出现时间。
-3. `trace.active_driver` 在该时间查生效 driver。
-4. `trace.graph` 向上游扩展，寻找 X/Z 源。
-
-### Counter/FSM 异常
-
-1. `value.at` 或 `signal.trend` 确认状态/计数异常。
-2. `fsm.explain` 或 `counter.explain` 获取规则。
-3. `trace.driver` 查更新条件。
-4. `source.context` 获取 file/line 证据。
-
-## 最终回答建议
-
-给用户汇报时保留高信号事实：
-
-- 问题信号和时间点。
-- 波形值和 `known` 状态。
-- driver/load 或 protocol finding。
-- 关键条件信号。
-- `file:line` evidence。
-- 是否 `truncated`，是否需要进一步 include 明细。
-
-不要把完整 rows、samples、transactions、trace、expanded_queries 粘给用户，除非用户明确要求。
+- `SIGNAL_NOT_FOUND`：波形侧先 `scope.list`；设计侧先外部 `rg` 搜源码候选，再重试 exact path。
+- `TIME_SPEC_INVALID`：检查 `time`、`at`、`time_range`、cursor 名和 clock path；cycle offset 交给 xdebug 解析。
+- `SESSION_NOT_FOUND`：先 `session.list`，再 `session.open reuse:true` 或重新 open。
+- `SESSION_UNHEALTHY`：跑 `session.doctor`；看 lifecycle/transport logs。
+- `UNKNOWN_ACTION`：查 `actions`；不要回退旧 CLI；combined 生效驱动是 `trace.active_driver`。
+- `INTERNAL_ENGINE_FAILED`：检查资源路径、权限、Verdi/NPI 环境、daemon 工作目录和日志。
+
+## 最终回答证据链格式
+
+基于 xdebug 给出 root cause 或 debug 判断时，按这个结构回答：
+
+1. 现象
+   - `signal`
+   - `time/window`
+   - observed value
+   - expected behavior
+2. 波形证据
+   - action
+   - key values
+   - event/finding
+   - `truncated`
+3. 设计证据
+   - driver/source
+   - control condition
+   - `file:line`
+   - confidence
+4. 判断
+   - root cause candidate
+   - why this explains waveform
+   - uncertainty
+5. 下一步
+   - one focused query or one manual check
+
+只给用户高信号事实。不要粘贴完整 rows、samples、transactions、trace、expanded_queries，除非用户明确要求。
+
+## 需要更多细节时读取哪些 reference
+
+- 不知道 action 参数、request envelope、TimeSpec、include 开关：读 [references/json-api-reference.md](references/json-api-reference.md)。
+- 不知道响应字段含义、compact/full/debug 读取规则：读 [references/ai-response-dictionary.md](references/ai-response-dictionary.md)。
+- 要处理 ready 卡低、valid 脉冲、AXI latency、X/Z、FSM/counter：读 [references/recipes.md](references/recipes.md)。
+- 用户提到 LSF、共享文件系统、TCP 不可达、file session：读 [references/file-transport.md](references/file-transport.md)。
+- 用户要生成 nWave `signal.rc`、marker、analog、表达式信号：读 [references/rc-generate.md](references/rc-generate.md)。

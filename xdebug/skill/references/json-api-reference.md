@@ -2,6 +2,16 @@
 
 本文是 skill 内的 API 速查。主 skill 只保留工作流；需要字段细节时再读取本文。
 
+本文不是最终契约。最终契约优先级：
+
+1. `xdebug --json -` 调用 `actions`
+2. `schema` action 返回的 action-specific schema
+3. `xdebug/schemas/v1/actions/*.schema.json`
+4. `xdebug/examples/requests/*.basic.json` 与 `xdebug/examples/responses/*.basic.json`
+5. 本 reference
+
+不确定 action 参数或返回字段时，先查 runtime `actions` / `schema`，不要猜字段。
+
 ## 请求 envelope
 
 ```json
@@ -305,7 +315,7 @@ file transport directory:
 
 `value.batch_at` 部分缺失仍返回 ok；检查 `summary.missing_by_reason` 和 full 输出每个 row 的 `status/reason`。需要 xbit 切字段时给 `value.at` 或 `value.batch_at` 加：
 
-```json
+```text
 "slice_hint": {"chunk_width": 32, "count": 4}
 ```
 

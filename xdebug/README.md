@@ -761,3 +761,6 @@ xdebug 默认静默记录结构化日志。日志只写文件，不打印到 std
 - [skill/SKILL.md](skill/SKILL.md)：Codex skill source-of-truth。
 - [skill/references/json-api-reference.md](skill/references/json-api-reference.md)：skill 内 API 速查。
 - [skill/references/ai-response-dictionary.md](skill/references/ai-response-dictionary.md)：skill 内响应字段字典。
+- [skill/references/recipes.md](skill/references/recipes.md)：常见 debug workflow。
+- [skill/references/file-transport.md](skill/references/file-transport.md)：LSF/file transport v2 说明。
+- [skill/references/rc-generate.md](skill/references/rc-generate.md)：nWave `signal.rc` 生成说明。
