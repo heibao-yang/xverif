@@ -7,6 +7,7 @@
 #include "../session/session_registry.h"
 #include "../session/session_transport.h"
 #include "logging/action_log.h"
+#include "transport/file_exchange.h"
 #include "json.hpp"
 
 #include <cstdio>
@@ -26,6 +27,8 @@
 #include <signal.h>
 #include <cstdarg>
 #include <strings.h>
+#include <thread>
+#include <ctime>
 
 #include "npi.h"
 
@@ -146,6 +149,106 @@ static Json error_response(const std::string& code, const std::string& message) 
 static bool send_response(int fd, const Json& response) {
     std::string wire = response.dump() + "\n";
     return send_all(fd, wire.c_str(), wire.size());
+}
+
+static bool handle_client(int client_fd, bool& should_quit);
+
+static bool read_json_file_local(const std::string& path, Json& out) {
+    FILE* fp = fopen(path.c_str(), "r");
+    if (!fp) return false;
+    std::string text;
+    char buf[4096];
+    while (fgets(buf, sizeof(buf), fp)) text += buf;
+    fclose(fp);
+    try {
+        out = Json::parse(text);
+        return out.is_object();
+    } catch (...) {
+        return false;
+    }
+}
+
+static bool run_file_request_through_handler(const Json& request, Json& response, bool& should_quit) {
+    should_quit = false;
+    int sv[2] = {-1, -1};
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0) return false;
+    bool handler_quit = false;
+    std::thread worker([&]() {
+        handle_client(sv[1], handler_quit);
+        shutdown(sv[1], SHUT_WR);
+        close(sv[1]);
+    });
+    std::string wire = request.dump() + "\n";
+    send_all(sv[0], wire.c_str(), wire.size());
+    shutdown(sv[0], SHUT_WR);
+    std::string output;
+    char buf[4096];
+    while (true) {
+        ssize_t n = read(sv[0], buf, sizeof(buf));
+        if (n <= 0) break;
+        output.append(buf, n);
+    }
+    close(sv[0]);
+    worker.join();
+    should_quit = handler_quit;
+    try {
+        response = Json::parse(output);
+        return response.is_object();
+    } catch (...) {
+        response = error_response("INVALID_RESPONSE", "file transport handler returned invalid JSON");
+        return false;
+    }
+}
+
+static int file_transport_loop(const std::string& file_dir) {
+    if (!xdebug_core::ensure_file_transport_layout(file_dir)) {
+        xdebug_core::log_lifecycle_event("design", g_session_id, "transport.file_layout_failed", false,
+                                         {{"file_dir", file_dir}});
+        return 1;
+    }
+    SessionInfo endpoint;
+    endpoint.session_id = g_session_id;
+    endpoint.transport = "file";
+    endpoint.file_dir = file_dir;
+    endpoint.server_host = current_host_name();
+    bool endpoint_ok = write_endpoint_file(endpoint);
+    xdebug_core::log_lifecycle_event("design", g_session_id,
+                                     endpoint_ok ? "endpoint.write_ok" : "endpoint.write_failed",
+                                     endpoint_ok,
+                                     {{"transport", endpoint.transport}, {"file_dir", endpoint.file_dir}});
+    if (!endpoint_ok) return 1;
+
+    const std::string agent_id = current_host_name() + "-" + std::to_string(getpid());
+    xdebug_core::log_lifecycle_event("design", g_session_id, "transport.file_loop_begin", true,
+                                     {{"file_dir", file_dir}});
+    while (true) {
+        xdebug_core::atomic_write_json_file(file_dir + "/heartbeat.json",
+                                            {{"ok", true}, {"session_id", g_session_id},
+                                             {"transport", "file"}, {"server_host", current_host_name()},
+                                             {"pid", getpid()}, {"updated_at", static_cast<long long>(time(nullptr))}});
+        std::string req_id;
+        std::string claim_path;
+        if (!xdebug_core::file_exchange_claim_one(file_dir, agent_id, req_id, claim_path)) {
+            usleep(100000);
+            continue;
+        }
+        Json wrapper;
+        Json response = error_response("INVALID_REQUEST", "invalid file transport request");
+        bool quit = false;
+        bool ok = read_json_file_local(claim_path, wrapper) &&
+                  wrapper.contains("request") && wrapper["request"].is_object() &&
+                  run_file_request_through_handler(wrapper["request"], response, quit);
+        Json out = {
+            {"id", req_id},
+            {"ok", ok && response.value("ok", false)},
+            {"response", response}
+        };
+        xdebug_core::atomic_write_json_file(file_dir + "/responses/" + req_id + ".json", out);
+        unlink(claim_path.c_str());
+        if (quit) break;
+    }
+    xdebug_core::log_lifecycle_event("design", g_session_id, "transport.file_loop_end", true);
+    return 0;
 }
 
 static Json trace_request(const Json& args, TraceMode mode) {
@@ -304,6 +407,18 @@ int server_main(int argc, char** argv) {
     signal(SIGINT, cleanup_and_exit);
 
     get_sock_path(g_sock_path, g_session_id);
+    if (g_transport == "file") {
+        std::string file_dir = xdebug_core::file_transport_dir(xdebug_design_session_dir(g_session_id));
+        int rc = file_transport_loop(file_dir);
+        npi_end();
+        xdebug_core::log_lifecycle_event("design", g_session_id, "server.normal_exit", rc == 0);
+        if (g_debug_log) {
+            fclose(g_debug_log);
+            g_debug_log = nullptr;
+        }
+        return rc;
+    }
+
     if (g_transport == "tcp") {
         struct addrinfo hints;
         memset(&hints, 0, sizeof(hints));

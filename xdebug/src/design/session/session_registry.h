@@ -10,8 +10,9 @@ namespace xdebug_design {
 // Session information structure
 struct SessionInfo {
     std::string session_id;     // Unique user-specified session name
-    std::string transport;      // uds or tcp
+    std::string transport;      // uds, tcp, or file
     std::string socket_path;    // Unix domain socket path
+    std::string file_dir;       // File transport request/response directory
     std::string host;
     std::string bind_host;
     int port;

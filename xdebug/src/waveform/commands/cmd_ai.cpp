@@ -97,8 +97,10 @@ void print_schema() {
     };
     schema["xdebug_waveform_transport"] = {
         {"default", "uds"},
-        {"values", Json::array({"uds", "tcp"})},
-        {"tcp", "session.open accepts args.transport=tcp with optional bind_host/host/port. port 0 or omitted lets the server bind an automatically assigned port and write it to endpoint.json."}
+        {"env_default", "XDEBUG_TRANSPORT"},
+        {"values", Json::array({"uds", "tcp", "file"})},
+        {"tcp", "session.open accepts args.transport=tcp with optional bind_host/host/port. port 0 or omitted lets the server bind an automatically assigned port and write it to endpoint.json."},
+        {"file", "session.open accepts args.transport=file. The daemon exchanges requests and responses through the session transport directory under ~/.xdebug."}
     };
     print_json(schema);
 }

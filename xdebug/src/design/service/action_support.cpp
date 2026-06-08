@@ -78,6 +78,7 @@ json session_to_json(const SessionInfo& s) {
         {"pid", s.server_pid},
         {"transport", s.transport},
         {"socket_path", s.socket_path},
+        {"file_dir", s.file_dir},
         {"host", s.host},
         {"bind_host", s.bind_host},
         {"port", s.port},
@@ -95,7 +96,7 @@ SessionTransportOptions request_transport_options(const json& request) {
     SessionTransportOptions transport;
     const json target = request.value("target", json::object());
     const json args = request.value("args", json::object());
-    transport.transport = args.value("transport", target.value("transport", std::string("uds")));
+    transport.transport = args.value("transport", target.value("transport", std::string()));
     transport.bind_host = args.value("bind_host", args.value("bind", target.value("bind_host", target.value("bind", std::string()))));
     transport.host = args.value("host", target.value("host", std::string()));
     transport.port = args.value("port", target.value("port", 0));

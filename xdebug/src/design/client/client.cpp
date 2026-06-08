@@ -57,6 +57,37 @@ bool send_request_capture(const std::string& session_id,
         xdebug_core::log_transport_event("design", session_id, "send_request.session_not_found", false);
         return false;
     }
+    Json rpc = request;
+    rpc["api_version"] = INTERNAL_API_VERSION;
+    if (is_file_transport(session)) {
+        Json response;
+        if (!send_file_request_to_endpoint(session, rpc, response)) {
+            SessionHealth health = manager.diagnose_session(session_id);
+            status = session_health_status_name(health.status);
+            message = health.message.empty() ? "failed to exchange file transport request" : health.message;
+            xdebug_core::log_transport_event("design", session_id, "send_request.file_exchange_failed", false,
+                                             {{"status", status}, {"message", message}, {"transport", session.transport},
+                                              {"file_dir", session.file_dir}, {"pid", session.server_pid}});
+            return false;
+        }
+        if (!response.value("ok", false)) {
+            status = response.value("status", std::string("server_error"));
+            message = response.value("error", Json::object()).value("message", std::string("server request failed"));
+            xdebug_core::log_transport_event("design", session_id, "send_request.server_error", false,
+                                             {{"action", request.value("action", std::string())},
+                                              {"status", status}, {"message", message},
+                                              {"response", xdebug_core::sanitize_for_log(response)}});
+            return false;
+        }
+        data = response.value("data", Json::object());
+        manager.touch_session(session_id);
+        status = "ok";
+        message.clear();
+        xdebug_core::log_transport_event("design", session_id, "send_request.ok", true,
+                                         {{"action", request.value("action", std::string())},
+                                          {"transport", session.transport}, {"file_dir", session.file_dir}});
+        return true;
+    }
     int fd = connect_session_endpoint(session);
     if (fd < 0) {
         SessionHealth health = manager.diagnose_session(session_id);
@@ -69,8 +100,6 @@ bool send_request_capture(const std::string& session_id,
         return false;
     }
 
-    Json rpc = request;
-    rpc["api_version"] = INTERNAL_API_VERSION;
     if (is_tcp_transport(session)) rpc["auth_token"] = session.auth_token;
     Json response;
     bool received = write_json_line(fd, rpc) && read_json_line(fd, response);

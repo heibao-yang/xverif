@@ -4,6 +4,7 @@
 #include "../protocol/protocol.h"
 #include "logging/action_log.h"
 #include "session/session_types.h"
+#include "transport/file_exchange.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -21,6 +22,16 @@
 namespace xdebug_design {
 
 namespace {
+
+std::string default_transport_from_env() {
+    const char* env = getenv("XDEBUG_TRANSPORT");
+    if (env && *env) return std::string(env);
+    return "uds";
+}
+
+bool valid_transport(const std::string& transport) {
+    return transport == "uds" || transport == "tcp" || transport == "file";
+}
 
 }  // namespace
 
@@ -217,6 +228,21 @@ WaitForServerResult SessionManager::wait_for_server(const std::string& session_i
         }
         result.socket_exists = endpoint_ready;
         if (endpoint_ready) {
+            if (is_file_transport(endpoint)) {
+                result.connect_ok = true;
+                result.ping_ok = ping_session_endpoint(endpoint);
+                if (result.ping_ok) {
+                    result.ok = true;
+                    result.reason = "ready";
+                    result.endpoint = endpoint;
+                    xdebug_core::log_lifecycle_event("design", session_id, "wait_for_server.ready", true,
+                                                     {{"elapsed_ms", result.elapsed_ms}, {"socket_exists", result.socket_exists},
+                                                      {"connect_ok", result.connect_ok}, {"ping_ok", result.ping_ok},
+                                                      {"transport", result.endpoint.transport},
+                                                      {"file_dir", result.endpoint.file_dir}});
+                    return result;
+                }
+            } else {
             int fd = connect_session_endpoint(endpoint);
             if (fd >= 0) {
                 result.connect_ok = true;
@@ -236,6 +262,7 @@ WaitForServerResult SessionManager::wait_for_server(const std::string& session_i
                                                       {"host", result.endpoint.host}, {"port", result.endpoint.port}});
                     return result;
                 }
+            }
             }
         }
 
@@ -297,11 +324,12 @@ SessionEnsureResult SessionManager::ensure_session(const std::vector<std::string
         xdebug_core::log_lifecycle_event("design", session_name, "ensure_session.invalid_session_id", false);
         return result;
     }
-    if (transport_options.transport != "uds" && transport_options.transport != "tcp") {
+    std::string requested_transport = transport_options.transport.empty() ? default_transport_from_env() : transport_options.transport;
+    if (!valid_transport(requested_transport)) {
         result.status = "invalid_transport";
-        result.message = "transport must be uds or tcp";
+        result.message = "transport must be uds, tcp, or file";
         xdebug_core::log_lifecycle_event("design", session_name, "ensure_session.invalid_transport", false,
-                                         {{"transport", transport_options.transport}});
+                                         {{"transport", requested_transport}});
         return result;
     }
 
@@ -334,8 +362,9 @@ SessionEnsureResult SessionManager::ensure_session(const std::vector<std::string
 
     SessionInfo endpoint;
     endpoint.session_id = session_id;
-    endpoint.transport = transport_options.transport.empty() ? "uds" : transport_options.transport;
+    endpoint.transport = requested_transport;
     endpoint.socket_path = xdebug_design_socket_path(session_id);
+    endpoint.file_dir = xdebug_core::file_transport_dir(xdebug_design_session_dir(session_id));
     endpoint.bind_host = transport_options.bind_host.empty()
         ? (endpoint.transport == "tcp" ? "127.0.0.1" : "")
         : transport_options.bind_host;
@@ -394,6 +423,7 @@ SessionEnsureResult SessionManager::ensure_session(const std::vector<std::string
     session.session_id = session_id;
     session.transport = wait.endpoint.transport.empty() ? endpoint.transport : wait.endpoint.transport;
     session.socket_path = wait.endpoint.socket_path.empty() ? sock_path : wait.endpoint.socket_path;
+    session.file_dir = wait.endpoint.file_dir.empty() ? endpoint.file_dir : wait.endpoint.file_dir;
     session.host = wait.endpoint.host.empty() ? endpoint.host : wait.endpoint.host;
     session.bind_host = wait.endpoint.bind_host.empty() ? endpoint.bind_host : wait.endpoint.bind_host;
     session.port = wait.endpoint.port ? wait.endpoint.port : endpoint.port;
@@ -569,7 +599,7 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
         return health;
     }
 
-    if (!is_tcp_transport(session) && access(session.socket_path.c_str(), F_OK) != 0) {
+    if (!is_tcp_transport(session) && !is_file_transport(session) && access(session.socket_path.c_str(), F_OK) != 0) {
         health.status = SessionHealthStatus::SocketMissing;
         health.message = "Server socket file is missing";
         xdebug_core::log_lifecycle_event("design", session_id, "diagnose.socket_missing", false,
@@ -577,6 +607,7 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
         return health;
     }
 
+    if (!is_file_transport(session)) {
     int fd = connect_session_endpoint(session);
     if (fd < 0) {
         health.status = SessionHealthStatus::ConnectFailed;
@@ -587,6 +618,7 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
         return health;
     }
     close(fd);
+    }
 
     if (!ping_session_endpoint(session)) {
         health.status = SessionHealthStatus::PingFailed;

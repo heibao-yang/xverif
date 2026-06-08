@@ -104,8 +104,9 @@ json schema_payload() {
         {"response", {{"ok", true}, {"action", "trace.driver"}, {"tool", {{"name", "xdebug_design"}, {"version", TOOL_VERSION}}},
             {"session", json::object()}, {"summary", json::object()}, {"data", json::object()}, {"findings", json::array()},
             {"suggested_next_actions", json::array()}, {"warnings", json::array()}, {"error", nullptr}, {"meta", json::object()}}},
-        {"transport", {{"default", "uds"}, {"values", json::array({"uds", "tcp"})},
-            {"tcp", "session.open/session.ensure accept args.transport=tcp with optional bind_host/host/port. port 0 or omitted lets the server bind an automatically assigned port and write it to endpoint.json."}}}};
+        {"transport", {{"default", "uds"}, {"env_default", "XDEBUG_TRANSPORT"}, {"values", json::array({"uds", "tcp", "file"})},
+            {"tcp", "session.open/session.ensure accept args.transport=tcp with optional bind_host/host/port. port 0 or omitted lets the server bind an automatically assigned port and write it to endpoint.json."},
+            {"file", "session.open/session.ensure accept args.transport=file. The daemon exchanges requests and responses through the session transport directory under ~/.xdebug."}}}};
 }
 
 json actions_payload() {

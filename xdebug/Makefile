@@ -16,14 +16,15 @@ NPI_CXXFLAGS ?=
 NPI_LDFLAGS ?=
 NPI_LIB ?=
 
-CXXFLAGS = $(COMMON_CXXFLAGS) $(NPI_CXXFLAGS) -Isrc -Isrc/core -Isrc/design -Isrc/waveform -Ithird_party
-LDFLAGS  = $(NPI_LDFLAGS) $(if $(NPI_LIB),-Xlinker -rpath -Xlinker $(NPI_LIB),)
+CXXFLAGS = $(COMMON_CXXFLAGS) $(NPI_CXXFLAGS) -pthread -Isrc -Isrc/core -Isrc/design -Isrc/waveform -Ithird_party
+LDFLAGS  = $(NPI_LDFLAGS) -pthread $(if $(NPI_LIB),-Xlinker -rpath -Xlinker $(NPI_LIB),)
 BUILD    = build
 LIBEXEC  = libexec
 EXE      = xdebug
 
 CORE_SRCS = src/core/common/tool_config.cpp \
             src/core/common/path_utils.cpp \
+            src/core/transport/file_exchange.cpp \
             src/core/logging/action_log.cpp \
             src/core/session/session_types.cpp \
             src/core/ai/ai_response.cpp
@@ -142,6 +143,8 @@ unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)
 	$(BUILD)/tests/test_core_types
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_action_log tests/unit/test_action_log.cpp $(CORE_OBJS)
 	$(BUILD)/tests/test_action_log
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_file_exchange tests/unit/test_file_exchange.cpp $(CORE_OBJS)
+	$(BUILD)/tests/test_file_exchange
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_action_registry tests/unit/test_action_registry.cpp $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o
 	$(BUILD)/tests/test_action_registry
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_text_response_builder tests/unit/test_text_response_builder.cpp $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o

@@ -4,6 +4,7 @@
 #include "../protocol/protocol.h"
 #include "logging/action_log.h"
 #include "session/session_types.h"
+#include "transport/file_exchange.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -43,6 +44,16 @@ int session_start_timeout_sec() {
     if (!env || env[0] == '\0') return 60;
     int value = atoi(env);
     return value > 0 ? value : 60;
+}
+
+std::string default_transport_from_env() {
+    const char* env = getenv("XDEBUG_TRANSPORT");
+    if (env && *env) return std::string(env);
+    return "uds";
+}
+
+bool valid_transport(const std::string& transport) {
+    return transport == "uds" || transport == "tcp" || transport == "file";
 }
 
 }  // namespace
@@ -153,6 +164,21 @@ WaitForServerResult SessionManager::wait_for_server(const std::string& session_i
         }
         result.socket_exists = endpoint_ready;
         if (endpoint_ready) {
+            if (is_file_transport(endpoint)) {
+                result.connect_ok = true;
+                result.ping_ok = ping_session_endpoint(endpoint);
+                if (result.ping_ok) {
+                    result.ok = true;
+                    result.reason = "ready";
+                    result.endpoint = endpoint;
+                    xdebug_core::log_lifecycle_event("waveform", session_id, "wait_for_server.ready", true,
+                                                     {{"elapsed_ms", result.elapsed_ms}, {"socket_exists", result.socket_exists},
+                                                      {"connect_ok", result.connect_ok}, {"ping_ok", result.ping_ok},
+                                                      {"transport", endpoint.transport}, {"file_dir", endpoint.file_dir}});
+                    return result;
+                }
+                continue;
+            }
             int fd = connect_session_endpoint(endpoint);
             if (fd >= 0) {
                 result.connect_ok = true;
@@ -290,10 +316,11 @@ std::string SessionManager::create_session(const std::string& fsdb_file,
         xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.invalid_session_id", false);
         return "";
     }
-    if (transport_options.transport != "uds" && transport_options.transport != "tcp") {
-        debug_log("create_session: reason=invalid_transport transport=%s", transport_options.transport.c_str());
+    std::string requested_transport = transport_options.transport.empty() ? default_transport_from_env() : transport_options.transport;
+    if (!valid_transport(requested_transport)) {
+        debug_log("create_session: reason=invalid_transport transport=%s", requested_transport.c_str());
         xdebug_core::log_lifecycle_event("waveform", session_id, "create_session.invalid_transport", false,
-                                         {{"transport", transport_options.transport}});
+                                         {{"transport", requested_transport}});
         return "";
     }
     std::string canonical = canonicalize_fsdb_path(fsdb_file);
@@ -345,8 +372,9 @@ std::string SessionManager::create_session(const std::string& fsdb_file,
 
     SessionInfo endpoint;
     endpoint.session_id = session_id;
-    endpoint.transport = transport_options.transport.empty() ? "uds" : transport_options.transport;
+    endpoint.transport = requested_transport;
     endpoint.socket_path = xdebug_waveform_socket_path(session_id);
+    endpoint.file_dir = xdebug_core::file_transport_dir(xdebug_waveform_session_dir(session_id));
     endpoint.bind_host = transport_options.bind_host.empty()
         ? (endpoint.transport == "tcp" ? "127.0.0.1" : "")
         : transport_options.bind_host;
@@ -402,6 +430,7 @@ std::string SessionManager::create_session(const std::string& fsdb_file,
     session.session_id = session_id;
     session.transport = wait.endpoint.transport.empty() ? endpoint.transport : wait.endpoint.transport;
     session.socket_path = wait.endpoint.socket_path.empty() ? sock_path : wait.endpoint.socket_path;
+    session.file_dir = wait.endpoint.file_dir.empty() ? endpoint.file_dir : wait.endpoint.file_dir;
     session.host = wait.endpoint.host.empty() ? endpoint.host : wait.endpoint.host;
     session.bind_host = wait.endpoint.bind_host.empty() ? endpoint.bind_host : wait.endpoint.bind_host;
     session.port = wait.endpoint.port ? wait.endpoint.port : endpoint.port;
@@ -581,6 +610,7 @@ bool SessionManager::restart_session(const std::string& session_id) {
     if (!wait.endpoint.transport.empty()) {
         session.transport = wait.endpoint.transport;
         session.socket_path = wait.endpoint.socket_path.empty() ? sock_path : wait.endpoint.socket_path;
+        session.file_dir = wait.endpoint.file_dir.empty() ? old_session.file_dir : wait.endpoint.file_dir;
         session.host = wait.endpoint.host;
         session.bind_host = wait.endpoint.bind_host;
         session.port = wait.endpoint.port;
@@ -852,7 +882,7 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
     }
     debug_log("diagnose_session: process_alive_or_remote pid=%d", session.server_pid);
 
-    if (!is_tcp_transport(session) && access(session.socket_path.c_str(), F_OK) != 0) {
+    if (!is_tcp_transport(session) && !is_file_transport(session) && access(session.socket_path.c_str(), F_OK) != 0) {
         health.status = SessionHealthStatus::SocketMissing;
         health.message = "Server socket file is missing";
         debug_log("diagnose_session: status=%s socket=%s errno=%d(%s)",
@@ -866,6 +896,7 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
     }
     debug_log("diagnose_session: endpoint_exists path=%s", session.socket_path.c_str());
 
+    if (!is_file_transport(session)) {
     int fd = connect_session_endpoint(session);
     if (fd < 0) {
         health.status = SessionHealthStatus::ConnectFailed;
@@ -879,6 +910,7 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
         return health;
     }
     close(fd);
+    }
     debug_log("diagnose_session: connect_ok transport=%s", session.transport.c_str());
 
     if (!ping_session_endpoint(session)) {

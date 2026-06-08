@@ -35,7 +35,7 @@ int run_session_action(const Json& req, const std::string& action, const Json& t
             return print_error_and_return(req, action, "SESSION_ID_EXISTS", "session id already exists: " + name, elapsed_ms);
         }
         SessionTransportOptions transport;
-        transport.transport = string_or(args, "transport", string_or(target, "transport", "uds"));
+        transport.transport = string_or(args, "transport", string_or(target, "transport", ""));
         transport.bind_host = string_or(args, "bind_host", string_or(args, "bind", string_or(target, "bind_host", string_or(target, "bind", ""))));
         transport.host = string_or(args, "host", string_or(target, "host", ""));
         transport.port = int_or(args, "port", int_or(target, "port", 0));

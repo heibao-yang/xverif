@@ -54,14 +54,17 @@ examples/responses/<action>.basic.json
 
 ## Session transport
 
-session 默认使用 `uds`。本机同用户调试不需要显式设置 transport；当 UDS socket 因容器、namespace、挂载隔离或路径不可达而无法连接时，可以用 TCP。
+session 默认使用 `uds`。本机同用户调试不需要显式设置 transport；当 UDS socket 因容器、namespace、挂载隔离或路径不可达而无法连接时，可以用 TCP。本机或登录机无法连接计算节点 TCP 端口时，用 `file` transport 通过共享 session 目录交换 request/response。
 
 | 字段 | 位置 | 说明 |
 | --- | --- | --- |
-| `transport` | `args` 或 `target` | `uds` 或 `tcp`；默认 `uds` |
+| `transport` | `args` 或 `target` | `uds`、`tcp` 或 `file`；默认 `uds`，可由 `XDEBUG_TRANSPORT` 控制 |
 | `bind_host` / `bind` | `args` 或 `target` | daemon listen 地址；本机 TCP 推荐 `127.0.0.1` |
 | `host` | `args` 或 `target` | client 连接 endpoint 时使用的地址；跨容器/远程时应是 agent 可达地址 |
 | `port` | `args` 或 `target` | TCP 端口；`0` 或省略表示自动分配 |
+| `file_dir` | response/log | file transport 的 session 交换目录，由 xdebug 生成 |
+
+`XDEBUG_TRANSPORT=uds|tcp|file` 只影响新建 session；JSON 中显式的 `args.transport` 或 `target.transport` 优先级更高。file transport 普通请求默认等待 300 秒，可用 `XDEBUG_FILE_TRANSPORT_TIMEOUT_MS` 调整；ping/quit 默认等待 2 秒，可用 `XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS` 调整。
 
 `session.open` 使用 TCP：
 
@@ -97,6 +100,22 @@ session 默认使用 `uds`。本机同用户调试不需要显式设置 transpor
   "args": {
     "signal": "top.clk",
     "time": "10ns"
+  }
+}
+```
+
+`session.open` 使用 file transport：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "session.open",
+  "target": {
+    "fsdb": "waves.fsdb"
+  },
+  "args": {
+    "name": "wave_file",
+    "transport": "file"
   }
 }
 ```

@@ -58,14 +58,17 @@ xdebug/examples/responses/<action>.basic.json
 
 ## session transport 字段
 
-默认 transport 是 `uds`。只有 UDS socket 不可达、容器/namespace 隔离或用户明确需要跨边界连接 daemon 时，才使用 TCP。
+默认 transport 是 `uds`。只有 UDS socket 不可达、容器/namespace 隔离或用户明确需要跨边界连接 daemon 时，才使用 TCP。本机或登录机无法连接计算节点 TCP 端口时，使用 `file` transport。
 
 | 字段 | 位置 | 说明 |
 | --- | --- | --- |
-| `transport` | `args` 或 `target` | `uds` / `tcp`，默认 `uds` |
+| `transport` | `args` 或 `target` | `uds` / `tcp` / `file`，默认 `uds`，可由 `XDEBUG_TRANSPORT` 控制 |
 | `bind_host` / `bind` | `args` 或 `target` | daemon listen 地址；本机 TCP 推荐 `127.0.0.1` |
 | `host` | `args` 或 `target` | client 连接地址；远程/跨容器时应是 agent 可达地址 |
 | `port` | `args` 或 `target` | TCP 端口；`0` 或省略表示自动分配 |
+| `file_dir` | response/log | file transport 的 session 交换目录，由 xdebug 生成 |
+
+`XDEBUG_TRANSPORT=uds|tcp|file` 只影响新建 session；JSON 中显式的 `args.transport` 或 `target.transport` 优先级更高。file transport 普通请求默认等待 300 秒，可用 `XDEBUG_FILE_TRANSPORT_TIMEOUT_MS` 调整；ping/quit 默认等待 2 秒，可用 `XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS` 调整。
 
 `session.open` TCP 模板：
 
@@ -101,6 +104,22 @@ xdebug/examples/responses/<action>.basic.json
   "args": {
     "signal": "top.clk",
     "time": "10ns"
+  }
+}
+```
+
+`session.open` file 模板：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "session.open",
+  "target": {
+    "fsdb": "waves.fsdb"
+  },
+  "args": {
+    "name": "wave_file",
+    "transport": "file"
   }
 }
 ```

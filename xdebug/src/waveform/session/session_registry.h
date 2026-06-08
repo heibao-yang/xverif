@@ -10,8 +10,9 @@ namespace xdebug_waveform {
 // Session information structure
 struct SessionInfo {
     std::string session_id;         // Unique session name
-    std::string transport;      // uds or tcp
+    std::string transport;      // uds, tcp, or file
     std::string socket_path;    // Unix domain socket path
+    std::string file_dir;       // File transport request/response directory
     std::string host;           // Client-visible TCP host
     std::string bind_host;      // Server bind address for TCP
     int port;                   // TCP port, 0 for UDS

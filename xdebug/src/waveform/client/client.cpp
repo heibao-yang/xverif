@@ -30,6 +30,17 @@ bool send_command_and_print(const std::string& session_id, const char* cmd) {
         return false;
     }
 
+    SessionInfo session;
+    if (manager.get_session(session_id, session) && is_file_transport(session)) {
+        std::string payload;
+        bool server_error = false;
+        if (!send_file_command_to_endpoint(session, std::string(cmd ? cmd : ""), payload, server_error)) return false;
+        FILE* stream = server_error ? stderr : stdout;
+        fwrite(payload.c_str(), 1, payload.size(), stream);
+        fflush(stream);
+        return !server_error;
+    }
+
     int fd = session_connect(session_id);
     if (fd < 0) {
         SessionHealth health = manager.diagnose_session(session_id);
@@ -89,6 +100,19 @@ bool send_command_capture(const std::string& session_id, const char* cmd, std::s
         return false;
     }
 
+    SessionInfo session;
+    if (manager.get_session(session_id, session) && is_file_transport(session)) {
+        bool server_error = false;
+        bool ok = send_file_command_to_endpoint(session, std::string(cmd ? cmd : ""), payload, server_error);
+        xdebug_core::log_transport_event("waveform", session_id,
+                                         ok && !server_error ? "send_command.ok" : "send_command.file_exchange_failed",
+                                         ok && !server_error,
+                                         {{"cmd", std::string(cmd ? cmd : "")},
+                                          {"transport", session.transport}, {"file_dir", session.file_dir},
+                                          {"payload_preview", payload.substr(0, 512)}});
+        return ok && !server_error;
+    }
+
     int fd = session_connect(session_id);
     if (fd < 0) {
         SessionHealth health = manager.diagnose_session(session_id);
@@ -136,6 +160,11 @@ bool send_command_capture(const std::string& session_id, const char* cmd, std::s
 }
 
 bool session_ping(const std::string& session_id) {
+    SessionManager manager;
+    SessionInfo session;
+    if (manager.get_session(session_id, session) && is_file_transport(session)) {
+        return ping_session_endpoint(session);
+    }
     int fd = session_connect(session_id);
     if (fd < 0) return false;
 

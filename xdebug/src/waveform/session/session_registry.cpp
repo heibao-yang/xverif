@@ -38,6 +38,7 @@ static Json session_to_json(const SessionInfo& session) {
     j["session_id"] = session.session_id;
     j["transport"] = session.transport.empty() ? "uds" : session.transport;
     j["socket_path"] = session.socket_path;
+    j["file_dir"] = session.file_dir;
     j["host"] = session.host;
     j["bind_host"] = session.bind_host;
     j["port"] = session.port;
@@ -59,6 +60,7 @@ static bool json_to_session(const Json& j, SessionInfo& session) {
     session.session_id = j.value("id", j.value("session_id", std::string()));
     session.transport = j.value("transport", std::string("uds"));
     session.socket_path = j.value("socket_path", "");
+    session.file_dir = j.value("file_dir", std::string());
     session.host = j.value("host", std::string());
     session.bind_host = j.value("bind_host", std::string());
     session.port = j.value("port", 0);
@@ -263,7 +265,7 @@ bool SessionRegistry::cleanup_stale() {
     std::vector<SessionInfo> valid_sessions;
     for (const auto& session : sessions) {
         bool is_alive = (kill(session.server_pid, 0) == 0);
-        bool endpoint_exists = session.transport == "tcp"
+        bool endpoint_exists = (session.transport == "tcp" || session.transport == "file")
             ? (access(xdebug_waveform_endpoint_path(session.session_id).c_str(), F_OK) == 0)
             : (access(session.socket_path.c_str(), F_OK) == 0);
         if (is_alive && endpoint_exists) {

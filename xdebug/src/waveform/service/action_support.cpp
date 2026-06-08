@@ -92,7 +92,7 @@ bool resolve_session(const Json& target,
             return false;
         }
         SessionTransportOptions transport;
-        transport.transport = string_or(target, "transport", "uds");
+        transport.transport = string_or(target, "transport", "");
         transport.bind_host = string_or(target, "bind_host", string_or(target, "bind", ""));
         transport.host = string_or(target, "host", "");
         transport.port = int_or(target, "port", 0);
@@ -153,6 +153,7 @@ void fill_session(Json& out, const SessionInfo& info) {
         {"pid", info.server_pid},
         {"transport", info.transport},
         {"socket_path", info.socket_path},
+        {"file_dir", info.file_dir},
         {"host", info.host},
         {"port", info.port}
     };
@@ -201,6 +202,7 @@ Json session_info_json(const SessionInfo& s) {
     j["pid"] = s.server_pid;
     j["transport"] = s.transport;
     j["socket_path"] = s.socket_path;
+    j["file_dir"] = s.file_dir;
     j["host"] = s.host;
     j["bind_host"] = s.bind_host;
     j["port"] = s.port;

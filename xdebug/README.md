@@ -110,6 +110,41 @@ xdebug request.json
 
 兼容入口 `tools/xdebug-env` 仍保留为转发 wrapper，但新文档和 skill 推荐 `tools/xdebug` 或 `PATH` 中的 `xdebug`。
 
+### Cluster file transport
+
+当本机或登录机无法直接连接计算节点 TCP 端口时，不要尝试把 xdebug daemon 暴露给本机直连；使用原生 `transport:"file"`，让 xdebug daemon 通过共享文件系统交换 request/response。默认交换目录在 backend session 目录下：
+
+```text
+~/.xdebug/design/sessions/<session_id>/transport/
+~/.xdebug/waveform/sessions/<session_id>/transport/
+```
+
+启用方式：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "session.open",
+  "target": {
+    "fsdb": "waves.fsdb"
+  },
+  "args": {
+    "name": "wave_file",
+    "transport": "file"
+  }
+}
+```
+
+也可以设置新建 session 的默认 transport：
+
+```bash
+export XDEBUG_TRANSPORT=file
+```
+
+file transport 目录使用 `requests/claims/responses/failed/locks` 分区。request/response/endpoint/heartbeat 写入采用 tmp 文件加 atomic rename；daemon 通过 rename 把 request claim 到 `claims/`，避免多个处理者看到半文件或重复处理。
+
+普通 file transport 请求默认等待 300 秒，可用 `XDEBUG_FILE_TRANSPORT_TIMEOUT_MS` 调整；ping/quit 默认等待 2 秒，可用 `XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS` 调整。大窗口 `axi.analysis`、`signal.changes` 或深层 `trace.graph` 如果确实需要更久，优先调普通请求 timeout，不要改 ping timeout。
+
 ### MCP wrapper
 
 `tools/xdebug-mcp` 是一个轻量 Python stdio MCP server。它不直接读取 NPI/FSDB/daidir，只把 MCP tool call 转成 `tools/xdebug --json -` 请求，并在 MCP 进程内维护多个 session 别名和默认 session。
@@ -176,7 +211,7 @@ xdebug 当前只支持两类输入资源：
 | 仅 `fsdb` | 使用波形侧能力，覆盖原 xwave 的 value/event/APB/AXI/verify 等事实查询 |
 | 同时有 `daidir` 与 `fsdb` | 启用 combined/debug join 能力，把波形现象连接到设计因果 |
 
-### Session Transport：UDS 与 TCP
+### Session Transport：UDS、TCP 与 file
 
 xdebug session 默认使用本机 Unix domain socket：
 
@@ -187,6 +222,8 @@ xdebug session 默认使用本机 Unix domain socket：
 ```
 
 同一台机器上的普通调试优先使用默认 UDS。只有 socket 路径不可共享、容器或 namespace 隔离导致 UDS 不可达、或确实需要跨进程边界连接 daemon 时，才显式使用 TCP。
+
+如果问题是“本机无法连接集群计算节点 TCP 端口”，不要用 TCP 直连；改用 `transport:"file"`，让计算节点上的 daemon 通过共享 session 目录交换请求。
 
 本机 TCP session 示例：
 
@@ -207,6 +244,24 @@ xdebug session 默认使用本机 Unix domain socket：
 ```
 
 `port:0` 或省略 `port` 表示由 daemon 自动分配端口；实际 endpoint 会写入 session endpoint/registry，后续查询继续通过 `target.session_id` 复用即可。远程或跨容器场景下，`bind_host` 是 daemon listen 地址，`host` 是 client 连接时使用的地址；只有用户明确需要远程访问时才设置公网或非 loopback 地址。
+
+file session 示例：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "session.open",
+  "target": {
+    "fsdb": "waves.fsdb"
+  },
+  "args": {
+    "name": "wave_file",
+    "transport": "file"
+  }
+}
+```
+
+`XDEBUG_TRANSPORT=uds|tcp|file` 只影响新建 session；JSON 中显式的 `args.transport` 或 `target.transport` 优先级更高。
 
 跨登录机和计算节点访问同一个共享路径时，`stat()` 返回的 `dev/inode` 可能不同。xdebug 只把 `dev/inode` 作为 endpoint/fingerprint 诊断信息记录，资源 freshness 判定只使用 `mtime + size`；因此这类共享挂载差异不会单独触发 session unhealthy 或自动 restart。
 

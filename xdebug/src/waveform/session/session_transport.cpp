@@ -2,10 +2,12 @@
 #include "../common/xdebug_waveform_paths.h"
 #include "json.hpp"
 #include "../protocol/protocol.h"
+#include "transport/file_exchange.h"
 
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <fcntl.h>
@@ -58,9 +60,27 @@ bool is_tcp_transport(const SessionInfo& session) {
     return session.transport == "tcp";
 }
 
+bool is_file_transport(const SessionInfo& session) {
+    return session.transport == "file";
+}
+
 bool is_local_session_host(const SessionInfo& session) {
     return session.server_host.empty() || session.server_host == current_host_name() ||
            session.server_host == "localhost" || session.server_host == "127.0.0.1";
+}
+
+static int file_transport_request_timeout_ms() {
+    const char* env = getenv("XDEBUG_FILE_TRANSPORT_TIMEOUT_MS");
+    if (!env || !*env) return 300000;
+    int value = atoi(env);
+    return value > 0 ? value : 300000;
+}
+
+static int file_transport_ping_timeout_ms() {
+    const char* env = getenv("XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS");
+    if (!env || !*env) return 2000;
+    int value = atoi(env);
+    return value > 0 ? value : 2000;
 }
 
 bool write_endpoint_file(const SessionInfo& session) {
@@ -70,6 +90,7 @@ bool write_endpoint_file(const SessionInfo& session) {
         {"endpoint", {
             {"transport", session.transport.empty() ? "uds" : session.transport},
             {"socket_path", session.socket_path},
+            {"file_dir", session.file_dir},
             {"host", session.host},
             {"bind_host", session.bind_host},
             {"port", session.port},
@@ -77,13 +98,8 @@ bool write_endpoint_file(const SessionInfo& session) {
             {"auth_token", session.auth_token}
         }}
     };
-    std::string data = root.dump(2) + "\n";
     std::string path = xdebug_waveform_endpoint_path(session.session_id);
-    int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
-    if (fd < 0) return false;
-    bool ok = write(fd, data.c_str(), data.size()) == static_cast<ssize_t>(data.size());
-    close(fd);
-    return ok;
+    return xdebug_core::atomic_write_json_file(path, root);
 }
 
 bool read_endpoint_file(const std::string& session_id, SessionInfo& endpoint) {
@@ -100,6 +116,7 @@ bool read_endpoint_file(const std::string& session_id, SessionInfo& endpoint) {
         endpoint.session_id = session_id;
         endpoint.transport = e.value("transport", std::string("uds"));
         endpoint.socket_path = e.value("socket_path", xdebug_waveform_socket_path(session_id));
+        endpoint.file_dir = e.value("file_dir", std::string());
         endpoint.host = e.value("host", std::string());
         endpoint.bind_host = e.value("bind_host", std::string());
         endpoint.port = e.value("port", 0);
@@ -171,6 +188,7 @@ static bool authenticate_tcp(int fd, const std::string& token) {
 }
 
 int connect_session_endpoint(const SessionInfo& session) {
+    if (is_file_transport(session)) return -1;
     if (is_tcp_transport(session)) {
         int fd = connect_tcp(session.host, session.port);
         if (fd < 0) return -1;
@@ -183,7 +201,35 @@ int connect_session_endpoint(const SessionInfo& session) {
     return connect_uds(session.socket_path.empty() ? xdebug_waveform_socket_path(session.session_id) : session.socket_path);
 }
 
+bool send_file_command_to_endpoint(const SessionInfo& session,
+                                   const std::string& command,
+                                   std::string& payload,
+                                   bool& server_error,
+                                   int timeout_ms) {
+    payload.clear();
+    server_error = false;
+    if (!is_file_transport(session)) return false;
+    std::string dir = session.file_dir.empty()
+        ? xdebug_core::file_transport_dir(xdebug_waveform_session_dir(session.session_id))
+        : session.file_dir;
+    Json request = {
+        {"command", command}
+    };
+    int effective_timeout_ms = timeout_ms > 0 ? timeout_ms : file_transport_request_timeout_ms();
+    xdebug_core::FileExchangeResult result = xdebug_core::file_exchange_send_request(dir, request, effective_timeout_ms);
+    if (!result.response.is_object()) return false;
+    payload = result.response.value("payload", std::string());
+    server_error = result.response.value("server_error", false);
+    return true;
+}
+
 bool ping_session_endpoint(const SessionInfo& session) {
+    if (is_file_transport(session)) {
+        std::string payload;
+        bool server_error = false;
+        return send_file_command_to_endpoint(session, CMD_PING, payload, server_error, file_transport_ping_timeout_ms()) &&
+               !server_error && payload.find("PONG") != std::string::npos;
+    }
     int fd = connect_session_endpoint(session);
     if (fd < 0) return false;
     const char* ping = CMD_PING "\n";
@@ -195,6 +241,11 @@ bool ping_session_endpoint(const SessionInfo& session) {
 }
 
 bool send_quit_to_endpoint(const SessionInfo& session) {
+    if (is_file_transport(session)) {
+        std::string payload;
+        bool server_error = false;
+        return send_file_command_to_endpoint(session, CMD_QUIT, payload, server_error, file_transport_ping_timeout_ms()) && !server_error;
+    }
     int fd = connect_session_endpoint(session);
     if (fd < 0) return false;
     const char* quit = CMD_QUIT "\n";

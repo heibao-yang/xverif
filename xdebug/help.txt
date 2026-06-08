@@ -102,6 +102,8 @@ Target modes
 Session transport
 -----------------
   Default transport is UDS. Keep the default for normal same-host debug.
+  Set XDEBUG_TRANSPORT=uds|tcp|file to choose the default transport for newly
+  opened sessions; explicit args.transport or target.transport takes priority.
 
   Use TCP only when UDS sockets are not reachable, for example container or
   namespace boundaries, inaccessible socket paths, or explicitly requested
@@ -121,6 +123,22 @@ Session transport
   daemon listen address; host is the client-reachable endpoint address for
   remote/container cases. Do not bind to public addresses unless explicitly
   needed and authorized.
+
+  Use file transport when the client cannot connect to a compute-node TCP port
+  but both sides can see the same ~/.xdebug session directory:
+
+    {
+      "name": "wave_file",
+      "transport": "file"
+    }
+
+  file transport stores requests, claims, responses, failed items, locks and
+  heartbeat under ~/.xdebug/{design,waveform}/sessions/<session_id>/transport/.
+  Endpoint, request and response files are written via tmp file plus atomic
+  rename so readers do not consume half-written files.
+  File request timeout defaults to 300s and can be changed with
+  XDEBUG_FILE_TRANSPORT_TIMEOUT_MS. Ping/quit timeout defaults to 2s and can be
+  changed with XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS.
 
 Common actions
 --------------

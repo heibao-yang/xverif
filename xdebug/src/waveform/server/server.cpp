@@ -1,7 +1,131 @@
 #include "server_internal.h"
 #include "logging/action_log.h"
+#include "transport/file_exchange.h"
+
+#include <thread>
 
 namespace xdebug_waveform {
+
+namespace {
+
+bool read_json_file_local(const std::string& path, Json& out) {
+    FILE* fp = fopen(path.c_str(), "r");
+    if (!fp) return false;
+    std::string text;
+    char buf[4096];
+    while (fgets(buf, sizeof(buf), fp)) text += buf;
+    fclose(fp);
+    try {
+        out = Json::parse(text);
+        return out.is_object();
+    } catch (...) {
+        return false;
+    }
+}
+
+bool run_file_command_through_handler(const std::string& command, std::string& payload, bool& server_error, bool& should_quit) {
+    payload.clear();
+    server_error = false;
+    should_quit = false;
+    int sv[2] = {-1, -1};
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0) return false;
+    bool handler_quit = false;
+    std::thread worker([&]() {
+        handle_client(sv[1], handler_quit);
+        shutdown(sv[1], SHUT_WR);
+        close(sv[1]);
+    });
+    std::string wire = command + "\n";
+    send_all(sv[0], wire.c_str(), wire.size());
+    shutdown(sv[0], SHUT_WR);
+    std::string output;
+    char buf[4096];
+    while (true) {
+        ssize_t n = read(sv[0], buf, sizeof(buf));
+        if (n <= 0) break;
+        output.append(buf, n);
+    }
+    close(sv[0]);
+    worker.join();
+    should_quit = handler_quit;
+    const std::string end_marker(END_MARKER);
+    size_t pos = output.find(end_marker);
+    payload = pos == std::string::npos ? output : output.substr(0, pos);
+    server_error = payload.compare(0, strlen(ERROR_PREFIX), ERROR_PREFIX) == 0;
+    return pos != std::string::npos;
+}
+
+int file_transport_loop(const std::string& file_dir) {
+    if (!xdebug_core::ensure_file_transport_layout(file_dir)) {
+        xdebug_core::log_lifecycle_event("waveform", g_session_id, "transport.file_layout_failed", false,
+                                         {{"file_dir", file_dir}});
+        return 1;
+    }
+    SessionInfo endpoint;
+    endpoint.session_id = g_session_id;
+    endpoint.transport = "file";
+    endpoint.file_dir = file_dir;
+    endpoint.server_host = current_host_name();
+    bool endpoint_ok = write_endpoint_file(endpoint);
+    xdebug_core::log_lifecycle_event("waveform", g_session_id,
+                                     endpoint_ok ? "endpoint.write_ok" : "endpoint.write_failed",
+                                     endpoint_ok,
+                                     {{"transport", endpoint.transport}, {"file_dir", endpoint.file_dir}});
+    if (!endpoint_ok) return 1;
+
+    const char* env_timeout = getenv("XDEBUG_WAVEFORM_IDLE_TIMEOUT_SEC");
+    int idle_timeout = env_timeout ? atoi(env_timeout) : 1800;
+    if (idle_timeout <= 0) idle_timeout = 1800;
+    time_t last_active = time(nullptr);
+    const std::string agent_id = current_host_name() + "-" + std::to_string(getpid());
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "transport.file_loop_begin", true,
+                                     {{"file_dir", file_dir}, {"idle_timeout_sec", idle_timeout}});
+    while (true) {
+        xdebug_core::atomic_write_json_file(file_dir + "/heartbeat.json",
+                                            {{"ok", true}, {"session_id", g_session_id},
+                                             {"transport", "file"}, {"server_host", current_host_name()},
+                                             {"pid", getpid()}, {"updated_at", static_cast<long long>(time(nullptr))}});
+        std::string req_id;
+        std::string claim_path;
+        if (!xdebug_core::file_exchange_claim_one(file_dir, agent_id, req_id, claim_path)) {
+            if (time(nullptr) - last_active > idle_timeout) {
+                xdebug_core::log_lifecycle_event("waveform", g_session_id, "server.idle_timeout_exit", true,
+                                                 {{"idle_sec", static_cast<long>(time(nullptr) - last_active)},
+                                                  {"timeout_sec", idle_timeout}});
+                break;
+            }
+            usleep(100000);
+            continue;
+        }
+        Json wrapper;
+        std::string payload;
+        bool server_error = true;
+        bool quit = false;
+        bool ok = read_json_file_local(claim_path, wrapper) &&
+                  wrapper.contains("request") && wrapper["request"].is_object() &&
+                  wrapper["request"].contains("command") && wrapper["request"]["command"].is_string() &&
+                  run_file_command_through_handler(wrapper["request"]["command"].get<std::string>(),
+                                                   payload, server_error, quit);
+        Json response = {
+            {"payload", payload},
+            {"server_error", server_error}
+        };
+        Json out = {
+            {"id", req_id},
+            {"ok", ok && !server_error},
+            {"response", response}
+        };
+        if (!ok) out["message"] = "invalid file transport request or response";
+        xdebug_core::atomic_write_json_file(file_dir + "/responses/" + req_id + ".json", out);
+        unlink(claim_path.c_str());
+        last_active = time(nullptr);
+        if (quit) break;
+    }
+    xdebug_core::log_lifecycle_event("waveform", g_session_id, "transport.file_loop_end", true);
+    return 0;
+}
+
+} // namespace
 
 int server_main(int argc, char** argv) {
     // argv: [exe, session_id, fsdb_file]
@@ -120,6 +244,27 @@ int server_main(int argc, char** argv) {
     signal(SIGINT, cleanup_and_exit);
 
     get_sock_path(g_sock_path, g_session_id);
+    if (g_transport == "file") {
+        std::string file_dir = xdebug_core::file_transport_dir(xdebug_waveform_session_dir(g_session_id));
+        int rc = file_transport_loop(file_dir);
+        if (g_fsdb_file) {
+            npi_fsdb_close(g_fsdb_file);
+            g_fsdb_file = nullptr;
+        }
+        {
+            SessionRegistry registry;
+            registry.remove(g_session_id);
+        }
+        npi_end();
+        if (g_debug_log) {
+            server_debug_log("server_main: normal_exit");
+            xdebug_core::log_lifecycle_event("waveform", g_session_id, "server.normal_exit", rc == 0);
+            fclose(g_debug_log);
+            g_debug_log = nullptr;
+        }
+        return rc;
+    }
+
     if (g_transport == "tcp") {
         server_debug_log("server_main: tcp_socket_create_begin");
         struct addrinfo hints;

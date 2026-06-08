@@ -18,7 +18,7 @@ enum class SessionHealthStatus {
 };
 
 struct SessionTransportOptions {
-    std::string transport = "uds";
+    std::string transport;
     std::string bind_host;
     std::string host;
     int port = 0;
