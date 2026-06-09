@@ -80,7 +80,7 @@ MCP 场景使用 `tools/xdebug-mcp`，它内部仍调用 `tools/xdebug --json -`
 - `xdebug_request`：需要完整 envelope 控制时直接传 xdebug JSON request。
 - `xdebug_actions` / `xdebug_schema`：查询机器契约。
 
-当用户说明 AI 客户端在登录机、查询必须跑到 LSF 计算节点、且登录机无法直连计算节点 TCP 端口时，MCP 首选 `XDEBUG_MCP_BACKEND=lsf`。这个 backend 由 `tools/xdebug-mcp` 启动 LSF router job 和 per-session endpoint job；agent 仍只调用 MCP tools，不手写 router JSONL。详细规则见 [references/lsf-mcp.md](references/lsf-mcp.md)。
+当用户需要在 LSF 计算节点上运行 xdebug 时，MCP 设置 `XDEBUG_MCP_BACKEND=lsf`。direct 和 LSF 共用同一套 `XdebugLoopSession` 实现，只在启动器层分离：`DirectLauncher` 本地启动 `xdebug --stdio-loop`，`LsfLauncher` 通过 `bsub -I xdebug --stdio-loop` 提交。详细规则见 [references/lsf-mcp.md](references/lsf-mcp.md)。
 
 ## MCP 场景
 
