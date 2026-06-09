@@ -30,8 +30,9 @@ Output format:
 - output_format=envelope — wrapper envelope with stdout/stderr/exit_code, for debugging.
 
 Backends:
-- direct (default): local tools/xdebug invocation.
-- lsf: LSF cluster with router + per-session TCP endpoint jobs.
+- direct: starts local tools/xdebug --stdio-loop.
+- lsf: starts one bsub -I tools/xdebug --stdio-loop job per session.
+Both backends share the same JSONL loop protocol. No router, no TCP endpoint.
 """
 
 mcp = FastMCP(
@@ -127,14 +128,10 @@ def xdebug_session_open(
     reopen: bool = False,
     make_default: bool = True,
 ) -> dict:
-    """Open or reuse a named xdebug session.
+    """Open a loop-backed xdebug session immediately (eager open).
 
-    Direct backend:
-      Requires daidir and/or fsdb. Session is managed in-process.
-
-    LSF backend:
-      Requires fsdb (daidir optional). Starts a per-session TCP endpoint job
-      via bsub -I. The session is registered with the router for query forwarding.
+    In direct mode, starts a local tools/xdebug --stdio-loop process.
+    In LSF mode, starts a bsub -I tools/xdebug --stdio-loop job.
 
     After opening, use xdebug_query(session=name, ...) or rely on the default session.
 
@@ -195,9 +192,8 @@ def xdebug_session_close(
     name: Optional[str] = None,
     session_id: Optional[str] = None,
 ) -> dict:
-    """Close one managed xdebug session.
-
-    In LSF mode, also unregisters from the router and terminates/bkills the job.
+    """Close the xdebug session, send stdio.quit, then terminate the loop process.
+    In LSF mode also bkills the job as fallback.
 
     Args:
         name: Session alias to close.

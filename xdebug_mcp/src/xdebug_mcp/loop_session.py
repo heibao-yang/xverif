@@ -15,8 +15,9 @@ from .launchers import LaunchConfig, Launcher, default_xdebug_bin
 Json = Dict[str, Any]
 
 
-def _safe_name(s: str) -> str:
-    return re.sub(r"[^A-Za-z0-9_]", "_", s)
+def _safe_name(s: str, max_len: int = 64) -> str:
+    x = re.sub(r"[^A-Za-z0-9_]", "_", s).strip("_")
+    return (x or "unnamed")[:max_len]
 
 
 def _error(code: str, message: str) -> Json:
@@ -43,6 +44,8 @@ class XdebugLoopSession:
     queue: Optional[str] = None
     resource: Optional[str] = None
     job_name: Optional[str] = None
+    reuse: bool = True
+    reopen: bool = False
     startup_timeout_sec: float = 60.0
     request_timeout_sec: float = 120.0
 
@@ -82,7 +85,7 @@ class XdebugLoopSession:
                 "api_version": "xdebug.v1",
                 "action": "session.open",
                 "target": {"fsdb": self.fsdb},
-                "args": {"name": self.alias, "transport": "uds", "reuse": True},
+                "args": {"name": self.alias, "transport": "uds", "reuse": self.reuse, "reopen": self.reopen},
                 "output": {"format": "json"},
             }
             if self.daidir:
@@ -138,7 +141,9 @@ class XdebugLoopSession:
     # query
     # ------------------------------------------------------------------
 
-    def query(self, action: str, args: Optional[Json], output_format: str) -> Any:
+    def query(self, action: str, args: Optional[Json] = None, target: Optional[Json] = None,
+              limits: Optional[Json] = None, output: Optional[Json] = None,
+              output_format: str = "xout") -> Any:
         if self.state != "alive" or not self.session_id:
             return _error("SESSION_DEAD", f"session is not alive: {self.alias}")
 
@@ -147,11 +152,18 @@ class XdebugLoopSession:
             "request_id": f"{_safe_name(self.alias)}-{self._seq}",
             "api_version": "xdebug.v1",
             "action": action,
-            "target": {"session_id": self.session_id},
-            "args": args or {},
         }
+        if args:
+            req["args"] = args
+        if target:
+            req["target"] = target
+        else:
+            req["target"] = {"session_id": self.session_id}
+        if limits:
+            req["limits"] = limits
+        req["output"] = dict(output or {})
         if output_format in ("json", "envelope"):
-            req["output"] = {"format": "json"}
+            req["output"]["format"] = "json"
 
         rsp = self._call_raw(req)
         if not rsp.get("ok"):

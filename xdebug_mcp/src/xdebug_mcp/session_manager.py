@@ -14,8 +14,9 @@ from .loop_session import XdebugLoopSession
 Json = Dict[str, Any]
 
 
-def _safe_name(s: str) -> str:
-    return re.sub(r"[^A-Za-z0-9_]", "_", s)
+def _safe_name(s: str, max_len: int = 64) -> str:
+    x = re.sub(r"[^A-Za-z0-9_]", "_", s).strip("_")
+    return (x or "unnamed")[:max_len]
 
 
 def _error(code: str, message: str) -> Json:
@@ -41,15 +42,17 @@ class McpSessionManager:
         self._session_resource = os.environ.get("XDEBUG_LSF_SESSION_RESOURCE")
 
         # Launcher
-        if self.mode == "lsf":
+        if self.mode == "direct":
+            self.launcher: Launcher = DirectLauncher()
+        elif self.mode == "lsf":
             bsub_cmd = os.environ.get("XDEBUG_LSF_BSUB")
             # fake LSF support
             if os.environ.get("XDEBUG_MCP_FAKE_LSF") == "1" and not bsub_cmd:
                 import sys
                 bsub_cmd = f"{sys.executable} -m xdebug_lsf.fake_bsub"
-            self.launcher: Launcher = LsfLauncher(BsubRunner(bsub_cmd))
+            self.launcher = LsfLauncher(BsubRunner(bsub_cmd))
         else:
-            self.launcher = DirectLauncher()
+            raise ValueError(f"unsupported XDEBUG_MCP_BACKEND: {self.mode}")
 
         # Stable job prefix (LSF only)
         import getpass
@@ -95,6 +98,8 @@ class McpSessionManager:
             queue=actual_queue,
             resource=actual_resource,
             job_name=job_name,
+            reuse=reuse,
+            reopen=reopen,
             startup_timeout_sec=self.startup_timeout_sec,
             request_timeout_sec=self.request_timeout_sec,
         )
@@ -129,7 +134,14 @@ class McpSessionManager:
         s = self.sessions.get(key)
         if not s:
             return _error("SESSION_NOT_FOUND", f"session not found: {key}")
-        return s.query(action, args, output_format)
+        return s.query(
+            action=action,
+            args=args,
+            target=kwargs.get("target"),
+            limits=kwargs.get("limits"),
+            output=kwargs.get("output"),
+            output_format=output_format,
+        )
 
     def close_session(self, session: str) -> Json:
         s = self.sessions.get(session)
