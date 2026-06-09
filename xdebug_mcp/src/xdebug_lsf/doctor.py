@@ -62,38 +62,41 @@ def run(fake: bool = False) -> Dict[str, object]:
         )
 
         handle = launcher.start(cfg)
-        out["process_started"] = True
+        try:
+            out["process_started"] = True
 
-        # Wait for ready
-        ready = handle.wait_ready("xdebug-stdio-loop", 30.0)
-        out["ready_pid"] = int(ready.get("pid") or 0)
+            # Wait for ready
+            ready = handle.wait_ready("xdebug-stdio-loop", 30.0)
+            out["ready_pid"] = int(ready.get("pid") or 0)
 
-        if mode == "lsf":
-            # Collect job_id from stderr/stdout
-            time.sleep(0.5)
-            for line in list(handle.stderr_tail):
-                jid = parse_lsf_job_id(line)
-                if jid:
-                    out["job_id"] = jid
-                    break
-            out["job_name"] = cfg.job_name
+            if mode == "lsf":
+                # Collect job_id from stderr/stdout
+                time.sleep(0.5)
+                for line in list(handle.stderr_tail):
+                    jid = parse_lsf_job_id(line)
+                    if jid:
+                        out["job_id"] = jid
+                        break
+                out["job_name"] = cfg.job_name
 
-        # Send one request
-        rsp = handle.request({
-            "request_id": "doctor-actions",
-            "api_version": "xdebug.v1",
-            "action": "actions",
-        }, timeout_sec=30.0)
-        out["actions_ok"] = rsp.get("ok", False)
+            # Send one request
+            rsp = handle.request({
+                "request_id": "doctor-actions",
+                "api_version": "xdebug.v1",
+                "action": "actions",
+            }, timeout_sec=30.0)
+            out["actions_ok"] = rsp.get("ok", False)
 
-        # Quit
-        rsp2 = handle.request({
-            "request_id": "doctor-quit",
-            "api_version": "xdebug.v1",
-            "action": "stdio.quit",
-        }, timeout_sec=10.0)
-        out["quit_ok"] = rsp2.get("ok", False)
-        out["stderr_tail"] = list(handle.stderr_tail)[-5:]
+            # Quit
+            rsp2 = handle.request({
+                "request_id": "doctor-quit",
+                "api_version": "xdebug.v1",
+                "action": "stdio.quit",
+            }, timeout_sec=10.0)
+            out["quit_ok"] = rsp2.get("ok", False)
+            out["stderr_tail"] = list(handle.stderr_tail)[-5:]
+        finally:
+            launcher.terminate(handle)
 
     except Exception as exc:
         out["error"] = str(exc)

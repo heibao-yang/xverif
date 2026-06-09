@@ -69,44 +69,6 @@ def _extract_session_id(response: Json, fallback: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# ManagedSession (moved from old server.py)
-# ---------------------------------------------------------------------------
-
-
-class ManagedSession:
-    """In-process session record for the direct backend."""
-
-    def __init__(
-        self,
-        name: str,
-        session_id: str,
-        mode: str = "",
-        daidir: str = "",
-        fsdb: str = "",
-        last_summary: Optional[Json] = None,
-    ) -> None:
-        self.name = name
-        self.session_id = session_id
-        self.mode = mode
-        self.daidir = daidir
-        self.fsdb = fsdb
-        self.last_used_at = time.time()
-        self.last_summary = last_summary or {}
-
-    def to_json(self) -> Json:
-        out: Json = {"name": self.name, "session_id": self.session_id, "last_used_at": self.last_used_at}
-        if self.mode:
-            out["mode"] = self.mode
-        if self.daidir:
-            out["daidir"] = self.daidir
-        if self.fsdb:
-            out["fsdb"] = self.fsdb
-        if self.last_summary:
-            out["last_summary"] = self.last_summary
-        return out
-
-
-# ---------------------------------------------------------------------------
 # XdebugRunner
 # ---------------------------------------------------------------------------
 
@@ -190,20 +152,27 @@ class XdebugRunner:
 
 
 # ---------------------------------------------------------------------------
-# DirectBackend (local tools/xdebug)
+# DirectBackend (one-shot xdebug runner, legacy compatibility)
 # ---------------------------------------------------------------------------
 
 
 class DirectBackend:
-    """Direct xdebug runner with in-process session management."""
+    """Minimal one-shot xdebug runner. Session management is handled by McpSessionManager."""
 
     def __init__(self, runner: Optional[XdebugRunner] = None) -> None:
         self.runner = runner or XdebugRunner()
-        self.sessions: Dict[str, ManagedSession] = {}
-        self.default_session: Optional[str] = None
 
     def ping(self) -> str:
         return "pong"
+
+    def query(self, action: str, args: Optional[Json] = None, **kwargs: Any) -> Any:
+        """Thin wrapper — delegates to request(). Kept for test compatibility."""
+        req: Json = {"api_version": "xdebug.v1", "action": action}
+        if args:
+            req["args"] = args
+        if kwargs.get("target"):
+            req["target"] = kwargs["target"]
+        return self.request(req, kwargs.get("output_format", "xout"))
 
     def request(self, request: Json, output_format: str = "json") -> Any:
         """Run a raw xdebug request."""
@@ -214,163 +183,8 @@ class DirectBackend:
             if output_format in ("json", "envelope"):
                 request["output"].setdefault("format", "json")
             else:
-                # xout: must NOT have "format":"json" in the JSON body,
-                # or xdebug outputs JSON even without the --json CLI flag.
                 request["output"].pop("format", None)
         return self.runner.request(request, output_format)
-
-    # -- session management --------------------------------------------------
-
-    def session_open(
-        self,
-        name: str,
-        daidir: Optional[str] = None,
-        fsdb: Optional[str] = None,
-        queue: Optional[str] = None,
-        resource: Optional[str] = None,
-        reuse: bool = True,
-        reopen: bool = False,
-        make_default: bool = True,
-    ) -> Json:
-        """Open a named xdebug session via session.open action."""
-        del queue, resource  # unused in direct mode
-        target: Json = {}
-        if daidir:
-            target["daidir"] = daidir
-        if fsdb:
-            target["fsdb"] = fsdb
-        if not target:
-            return error_payload("INVALID_ARGUMENT", "session_open requires daidir and/or fsdb")
-
-        request: Json = {
-            "api_version": "xdebug.v1",
-            "action": "session.open",
-            "target": target,
-            "args": {"name": name, "transport": "tcp", "bind_host": "127.0.0.1", "port": 0},
-            "output": {"format": "json"},
-        }
-        if reuse:
-            request["args"]["reuse"] = reuse
-        if reopen:
-            request["args"]["reopen"] = reopen
-
-        response = self.request(request, "json")
-        if not isinstance(response, dict):
-            return response
-
-        if response.get("ok"):
-            session_id = _extract_session_id(response, name)
-            record = ManagedSession(
-                name,
-                session_id,
-                mode=str(response.get("summary", {}).get("mode", "")),
-                daidir=str(target.get("daidir", "")),
-                fsdb=str(target.get("fsdb", "")),
-                last_summary=response.get("summary") if isinstance(response.get("summary"), dict) else {},
-            )
-            self.sessions[name] = record
-            self.sessions[session_id] = record
-            if make_default:
-                self.default_session = session_id
-            response.setdefault("mcp", {})
-            response["mcp"].update({
-                "default_session": self.default_session,
-                "managed_session": record.to_json(),
-            })
-        return response
-
-    def session_list(self, include_native: bool = False) -> Json:
-        """List managed sessions."""
-        rows: List[Json] = []
-        seen = set()
-        for record in self.sessions.values():
-            if id(record) in seen:
-                continue
-            seen.add(id(record))
-            rows.append(record.to_json())
-        out: Json = {"ok": True, "sessions": rows, "default_session": self.default_session}
-        if include_native:
-            out["native"] = self.request(
-                {"api_version": "xdebug.v1", "action": "session.list"},
-                "json",
-            )
-        return out
-
-    def session_use(self, key: str) -> Json:
-        """Set default session by name or session_id."""
-        record = self.sessions.get(key)
-        if not record:
-            return error_payload("SESSION_NOT_MANAGED", f"session is not known to this MCP server: {key}")
-        record.last_used_at = time.time()
-        self.default_session = record.session_id
-        return {"ok": True, "default_session": self.default_session, "session": record.to_json()}
-
-    def session_close(self, key: str) -> Json:
-        """Close a managed session."""
-        record = self.sessions.get(key)
-        session_id = record.session_id if record else key
-        response = self.request(
-            {"api_version": "xdebug.v1", "action": "session.close", "target": {"session_id": session_id}},
-            "json",
-        )
-        if isinstance(response, dict) and (response.get("ok") or record):
-            self._remove_session(session_id)
-            if record:
-                self._remove_session(record.name)
-        if isinstance(response, dict):
-            response.setdefault("mcp", {})
-            response["mcp"]["default_session"] = self.default_session
-        return response if isinstance(response, dict) else response
-
-    # -- query ---------------------------------------------------------------
-
-    def query(
-        self,
-        action: str,
-        args: Optional[Json] = None,
-        target: Optional[Json] = None,
-        session: Optional[str] = None,
-        limits: Optional[Json] = None,
-        output: Optional[Json] = None,
-        output_format: str = "xout",
-    ) -> Any:
-        """Run an xdebug action, resolving session/target."""
-        request: Json = {"api_version": "xdebug.v1", "action": action}
-        if args:
-            request["args"] = args
-        if limits:
-            request["limits"] = limits
-
-        # Resolve target
-        if target:
-            request["target"] = target
-        else:
-            record = self.sessions.get(session) if isinstance(session, str) else None
-            sid = record.session_id if record else (session if isinstance(session, str) else self.default_session)
-            if not sid:
-                return error_payload("SESSION_REQUIRED", "provide target/session or call xdebug_session_open first")
-            request["target"] = {"session_id": sid}
-            if record:
-                record.last_used_at = time.time()
-
-        # Output control
-        request["output"] = output or {}
-        if output_format in ("json", "envelope"):
-            request["output"]["format"] = "json"
-
-        return self.request(request, output_format)
-
-    # -- internal -----------------------------------------------------------
-
-    def _remove_session(self, key: str) -> None:
-        record = self.sessions.pop(key, None)
-        if record:
-            self.sessions.pop(record.name, None)
-            self.sessions.pop(record.session_id, None)
-            if self.default_session == record.session_id:
-                self.default_session = None
-        elif self.default_session == key:
-            self.default_session = None
 
 
 # ---------------------------------------------------------------------------

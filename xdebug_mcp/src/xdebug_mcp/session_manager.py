@@ -36,8 +36,7 @@ class McpSessionManager:
         self.startup_timeout_sec = startup_timeout_sec
         self.request_timeout_sec = request_timeout_sec
 
-        # Queues (LSF only)
-        self._router_queue = os.environ.get("XDEBUG_LSF_ROUTER_QUEUE", "interactive")
+        # LSF session queue
         self._session_queue = os.environ.get("XDEBUG_LSF_SESSION_QUEUE", "interactive")
         self._session_resource = os.environ.get("XDEBUG_LSF_SESSION_RESOURCE")
 
