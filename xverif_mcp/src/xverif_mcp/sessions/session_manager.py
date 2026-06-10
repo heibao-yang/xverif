@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 
 from xverif_mcp.lsf.bsub import BsubRunner
 
-from xverif_mcp.config import default_xdebug_bin
+from xverif_mcp.config import default_xdebug_bin, startup_timeout, request_timeout
 from xverif_mcp.sessions.launchers import DirectLauncher, Launcher, LsfLauncher
 from xverif_mcp.sessions.loop_session import XdebugLoopSession
 
@@ -28,8 +28,12 @@ def _error(code: str, message: str) -> Json:
 
 class McpSessionManager:
     def __init__(self, mode: Optional[str] = None, xdebug_bin: Optional[str] = None,
-                 startup_timeout_sec: float = 60.0,
-                 request_timeout_sec: float = 120.0) -> None:
+                 startup_timeout_sec: Optional[float] = None,
+                 request_timeout_sec: Optional[float] = None) -> None:
+        if startup_timeout_sec is None:
+            startup_timeout_sec = startup_timeout()
+        if request_timeout_sec is None:
+            request_timeout_sec = request_timeout()
         self.mode = mode or os.environ.get("XVERIF_MCP_BACKEND", "direct")
         self.xdebug_bin = xdebug_bin or default_xdebug_bin()
         self.startup_timeout_sec = startup_timeout_sec

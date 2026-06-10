@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 
 from xverif_mcp.lsf.protocol import JsonlProcess, ProtocolError
 
-from xverif_mcp.config import default_xdebug_bin
+from xverif_mcp.config import default_xdebug_bin, startup_timeout, request_timeout, close_timeout
 from xverif_mcp.sessions.launchers import LaunchConfig, Launcher
 from xverif_mcp.sessions.session_errors import response_says_session_terminal
 
@@ -49,8 +49,8 @@ class XdebugLoopSession:
     job_name: Optional[str] = None
     reuse: bool = True
     reopen: bool = False
-    startup_timeout_sec: float = 60.0
-    request_timeout_sec: float = 120.0
+    startup_timeout_sec: float = field(default_factory=startup_timeout)
+    request_timeout_sec: float = field(default_factory=request_timeout)
 
     session_id: Optional[str] = None
     state: str = "new"
@@ -141,14 +141,14 @@ class XdebugLoopSession:
                     "api_version": "xdebug.v1", "action": "session.close",
                     "target": {"session_id": self.session_id},
                     "output": {"format": "json"},
-                }, timeout=10.0)
+                }, timeout=close_timeout())
             except Exception:
                 pass
             try:
                 self._call_raw({
                     "request_id": f"quit-{_safe_name(self.alias)}",
                     "api_version": "xdebug.v1", "action": "stdio.quit",
-                }, timeout=5.0)
+                }, timeout=close_timeout() / 2)
             except Exception:
                 pass
         if self.handle:

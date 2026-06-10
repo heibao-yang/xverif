@@ -28,3 +28,19 @@ def enable_write() -> bool:
 
 def default_timeout() -> float:
     return float(os.environ.get("XVERIF_MCP_TIMEOUT_SEC", "120"))
+
+
+def startup_timeout() -> float:
+    return float(os.environ.get("XVERIF_MCP_STARTUP_TIMEOUT_SEC", "60"))
+
+
+def request_timeout() -> float:
+    return float(os.environ.get("XVERIF_MCP_REQUEST_TIMEOUT_SEC", "120"))
+
+
+def close_timeout() -> float:
+    return float(os.environ.get("XVERIF_MCP_CLOSE_TIMEOUT_SEC", "10"))
+
+
+def bkill_timeout() -> float:
+    return float(os.environ.get("XVERIF_MCP_BKILL_TIMEOUT_SEC", "10"))
