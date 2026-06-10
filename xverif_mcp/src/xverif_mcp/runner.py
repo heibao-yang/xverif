@@ -26,10 +26,16 @@ class StatelessCliRunner:
         input_text: Optional[str] = None,
         timeout_sec: Optional[float] = None,
         extra_env: Optional[Dict[str, str]] = None,
+        cwd: Optional[str] = None,
     ) -> Json:
-        raw = self._run_raw(tool, argv, input_text, timeout_sec, extra_env)
+        raw = self._run_raw(tool, argv, input_text, timeout_sec, extra_env,
+                            cwd=cwd)
         if raw["exit_code"] != 0 and not raw["stdout"].strip():
-            return cli_failed(tool, raw["exit_code"], raw["stdout"], raw["stderr"])
+            # Distinguish timeout from other failures
+            if "timed out" in raw.get("stderr", ""):
+                return tool_timeout(tool, timeout_sec or self.timeout_sec)
+            return cli_failed(tool, raw["exit_code"], raw["stdout"],
+                              raw["stderr"])
         try:
             payload = json.loads(raw["stdout"])
         except Exception:
@@ -45,10 +51,13 @@ class StatelessCliRunner:
         input_text: Optional[str] = None,
         timeout_sec: Optional[float] = None,
         extra_env: Optional[Dict[str, str]] = None,
+        cwd: Optional[str] = None,
     ) -> Union[str, Json]:
-        raw = self._run_raw(tool, argv, input_text, timeout_sec, extra_env)
+        raw = self._run_raw(tool, argv, input_text, timeout_sec, extra_env,
+                            cwd=cwd)
         if raw["exit_code"] != 0:
-            return cli_failed(tool, raw["exit_code"], raw["stdout"], raw["stderr"])
+            return cli_failed(tool, raw["exit_code"], raw["stdout"],
+                              raw["stderr"])
         return raw["stdout"]
 
     def _run_raw(
@@ -58,6 +67,7 @@ class StatelessCliRunner:
         input_text: Optional[str] = None,
         timeout_sec: Optional[float] = None,
         extra_env: Optional[Dict[str, str]] = None,
+        cwd: Optional[str] = None,
     ) -> dict:
         cmd = [self.tool_path(tool)] + argv
         env = dict(os.environ)
@@ -72,10 +82,12 @@ class StatelessCliRunner:
                 timeout=timeout_sec or self.timeout_sec,
                 check=False,
                 env=env,
+                cwd=cwd or os.getcwd(),
             )
         except subprocess.TimeoutExpired:
             return {"exit_code": -1, "stdout": "",
-                    "stderr": f"timed out after {timeout_sec or self.timeout_sec:g}s"}
+                    "stderr": f"timed out after "
+                              f"{timeout_sec or self.timeout_sec:g}s"}
         except OSError as exc:
             return {"exit_code": -1, "stdout": "", "stderr": str(exc)}
         return {"exit_code": proc.returncode, "stdout": proc.stdout,

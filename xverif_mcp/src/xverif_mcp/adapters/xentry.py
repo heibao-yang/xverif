@@ -33,11 +33,15 @@ def _xentry_request(action: str, config_path: Optional[str] = None,
     return runner.run_json("xentry", ["-"], json.dumps(req))
 
 
-def entry_decode(config_path: str, input_path: str,
+def entry_decode(config_path: str = "", input_path: str = "",
+                 config: Optional[dict] = None,
+                 fragments: Optional[list] = None,
                  output_format: str = "json") -> Any:
     """Decode multi-beat fragments into raw field slices per config."""
-    return _xentry_request("decode", config_path=config_path,
-                           input_path=input_path, output_format=output_format)
+    return _xentry_request("decode", config_path=config_path or None,
+                           input_path=input_path or None,
+                           config=config, fragments=fragments,
+                           output_format=output_format)
 
 
 def entry_explain(config_path: str, output_format: str = "json") -> Any:
@@ -46,8 +50,12 @@ def entry_explain(config_path: str, output_format: str = "json") -> Any:
                            output_format=output_format)
 
 
-def entry_validate(config_path: str, input_path: Optional[str] = None,
+def entry_validate(config_path: str = "", input_path: Optional[str] = None,
+                   config: Optional[dict] = None,
+                   fragments: Optional[list] = None,
                    output_format: str = "json") -> Any:
     """Validate a config (and optionally an input) without decoding."""
-    return _xentry_request("validate", config_path=config_path,
-                           input_path=input_path, output_format=output_format)
+    return _xentry_request("validate", config_path=config_path or None,
+                           input_path=input_path,
+                           config=config, fragments=fragments,
+                           output_format=output_format)

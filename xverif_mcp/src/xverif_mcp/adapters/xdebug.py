@@ -4,15 +4,21 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, Optional
 
-from xverif_mcp.config import default_xdebug_bin, mcp_backend
+from xverif_mcp.config import (default_xdebug_bin, mcp_backend,
+                                startup_timeout, request_timeout)
 from xverif_mcp.sessions.session_manager import McpSessionManager
 
 Json = Dict[str, Any]
 
 
 class XverifDebugAdapter:
-    def __init__(self, mode: Optional[str] = None, startup_timeout_sec: float = 60.0,
-                 request_timeout_sec: float = 120.0) -> None:
+    def __init__(self, mode: Optional[str] = None,
+                 startup_timeout_sec: Optional[float] = None,
+                 request_timeout_sec: Optional[float] = None) -> None:
+        if startup_timeout_sec is None:
+            startup_timeout_sec = startup_timeout()
+        if request_timeout_sec is None:
+            request_timeout_sec = request_timeout()
         self.mode = mode or mcp_backend()
         self._sessions = McpSessionManager(
             mode=self.mode, xdebug_bin=default_xdebug_bin(),

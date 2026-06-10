@@ -131,7 +131,11 @@ AI MCP client
 | `XVERIF_LSF_SESSION_QUEUE` | session job 的 LSF 队列（默认 `interactive`） |
 | `XVERIF_LSF_BKILL` | 覆盖 `bkill` 命令 |
 | `XVERIF_MCP_FAKE_LSF=1` | 本地测试用 fake LSF runner |
-| `XVERIF_MCP_TIMEOUT_SEC` | 单次请求超时（默认 120s） |
+| `XVERIF_MCP_TIMEOUT_SEC` | one-shot 请求超时（默认 360s） |
+| `XVERIF_MCP_STARTUP_TIMEOUT_SEC` | session open 超时（默认 180s） |
+| `XVERIF_MCP_REQUEST_TIMEOUT_SEC` | query 请求超时（默认 360s） |
+| `XVERIF_MCP_CLOSE_TIMEOUT_SEC` | session close 超时（默认 30s） |
+| `XVERIF_MCP_BKILL_TIMEOUT_SEC` | bkill 超时（默认 30s） |
 | `XVERIF_MCP_ENABLE_WRITE=1` | 启用 xberif 写入操作 |
 | `XVERIF_HOME` | 仓库根目录 |
 | `VERDI_HOME` | Verdi 安装目录（direct 模式需要） |

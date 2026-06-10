@@ -13,12 +13,13 @@ runner = StatelessCliRunner()
 
 def sva_list(file: str, output_format: str = "json") -> Any:
     """List all property/assertion names in a SVA source file."""
-    return runner.run_text("xsva", ["list", "--file", file])
+    text = runner.run_text("xsva", ["list", "--file", file])
+    return text  # xsva list 不支持 --json，始终返回文本
 
 
 def sva_scan(file: str, output_format: str = "json") -> Any:
-    """Scan syntax constructs used in a SVA source file."""
-    return runner.run_text("xsva", ["scan", "--file", file])
+    """Scan syntax constructs in a SVA source file."""
+    return runner.run_text("xsva", ["scan", "--file", file])  # 不支持 --json
 
 
 def sva_parse(file: str, property: str, emit: str = "timeline-ir",

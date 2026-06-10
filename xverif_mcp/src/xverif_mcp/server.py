@@ -307,16 +307,29 @@ def xverif_bit_check(expr: str, vars: Optional[dict] = None,
 
 
 @mcp.tool()
-def xverif_entry_decode(config_path: str, input_path: str,
+def xverif_entry_decode(config_path: Optional[str] = None,
+                         input_path: Optional[str] = None,
+                         config: Optional[dict] = None,
+                         fragments: Optional[list] = None,
                          output_format: str = "json") -> Any:
     """Decode multi-beat byte fragments into raw field slices per config.
+
+    Provide either (config_path + input_path) or (config + fragments).
 
     Args:
         config_path: Path to YAML/JSON entry config file.
         input_path: Path to JSONL fragments input file.
+        config: Inline entry config dict (alternative to config_path).
+        fragments: Inline fragments list (alternative to input_path).
         output_format: "json" or "xout".
     """
-    return entry_decode(config_path, input_path, output_format=output_format)
+    if not config_path and not config:
+        return _tool_error("INVALID_ARGUMENT",
+                           "provide config_path or config")
+    return entry_decode(config_path=config_path or "",
+                         input_path=input_path or "",
+                         config=config, fragments=fragments,
+                         output_format=output_format)
 
 
 @mcp.tool()
@@ -331,18 +344,29 @@ def xverif_entry_explain(config_path: str, output_format: str = "json") -> Any:
 
 
 @mcp.tool()
-def xverif_entry_validate(config_path: str,
+def xverif_entry_validate(config_path: Optional[str] = None,
                            input_path: Optional[str] = None,
+                           config: Optional[dict] = None,
+                           fragments: Optional[list] = None,
                            output_format: str = "json") -> Any:
     """Validate an entry config (and optionally an input) without decoding.
+
+    Provide either (config_path + input_path) or (config + fragments).
 
     Args:
         config_path: Path to YAML/JSON entry config file.
         input_path: Optional path to JSONL fragments for deeper validation.
+        config: Inline entry config dict (alternative to config_path).
+        fragments: Inline fragments list (alternative to input_path).
         output_format: "json" or "xout".
     """
-    return entry_validate(config_path, input_path=input_path,
-                          output_format=output_format)
+    if not config_path and not config:
+        return _tool_error("INVALID_ARGUMENT",
+                           "provide config_path or config")
+    return entry_validate(config_path=config_path or "",
+                           input_path=input_path,
+                           config=config, fragments=fragments,
+                           output_format=output_format)
 
 
 # ---------------------------------------------------------------------------
