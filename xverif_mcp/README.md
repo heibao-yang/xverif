@@ -55,7 +55,40 @@ tools/xverif-lsf-doctor
 "XVERIF_LSF_SESSION_QUEUE": "interactive"
 ```
 
-LSF 模式下不需要设置 `VERDI_HOME` 和 `LD_LIBRARY_PATH`，由计算节点环境保证。
+LSF 模式下 `VERDI_HOME` 和 `LD_LIBRARY_PATH` 由计算节点环境保证，不需要在 MCP 配置中设置。但必须将 **LSF 和 EDA license 环境变量** 从当前 shell 传递到 MCP server 子进程，否则 `bsub` 提交的 job 无法正常启动。需要显式列在 `.mcp.json`（或 Codex `.toml`）的 `env` 中：
+
+```json
+{
+  "mcpServers": {
+    "xverif": {
+      "type": "stdio",
+      "command": "<conda-env>/bin/python",
+      "args": ["-m", "xverif_mcp.server"],
+      "env": {
+        "PYTHONPATH": "<xverif>/xverif_mcp/src:<xverif>",
+        "XVERIF_HOME": "<xverif>",
+        "XVERIF_MCP_BACKEND": "lsf",
+        "XVERIF_LSF_SESSION_QUEUE": "interactive",
+
+        "LSF_ENVDIR": "<lsf-install>/conf",
+        "LSF_BINDIR": "<lsf-install>/bin",
+        "LSF_LIBDIR": "<lsf-install>/lib",
+        "LSF_SERVERDIR": "<lsf-install>/etc",
+        "PATH": "<你的完整 PATH>",
+
+        "SNPSLMD_LICENSE_FILE": "<synopsys-license>",
+        "LM_LICENSE_FILE": "<cadence-license>",
+        "MGLS_LICENSE_FILE": "<mentor-license>",
+        "CDS_LIC_FILE": "<cadence-license>",
+        "CDS_LIC_ONLY": "1",
+        "DW_WAIT_LICENSE": "1"
+      }
+    }
+  }
+}
+```
+
+> **关键**：MCP server 子进程不会自动继承 shell 的环境变量。LSF job 从 MCP server 子进程继承环境，如果这些变量缺失，计算节点上的 `xdebug` 会因找不到 NPI license 而失败。`PATH` 尤其重要——必须确保 `bsub`、`bkill` 等 LSF 命令在 `PATH` 中。
 
 ### 通用 MCP client
 
