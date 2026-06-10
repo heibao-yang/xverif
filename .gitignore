@@ -29,6 +29,8 @@ regression/*
 !xberif/tests/**
 !xverif_mcp/tests/
 !xverif_mcp/tests/**
+!xeda_runner/tests/
+!xeda_runner/tests/**
 xdebug/testdata/**/out/
 xdebug/testdata/**/csrc/
 xdebug/testdata/**/ucli.key
