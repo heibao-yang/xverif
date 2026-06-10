@@ -2,7 +2,7 @@
 """逐个测试全部 75 个 xdebug action，通过 MCP client 调用 FastMCP server。
 
 用法:
-    conda activate xdebug-mcp
+    conda activate xverif-mcp
     PYTHONPATH=xverif_mcp/src python xverif_mcp/tools/test_actions.py
     PYTHONPATH=xverif_mcp/src python xverif_mcp/tools/test_actions.py -c my_config.json
 
@@ -145,7 +145,7 @@ def _open_close(fn):
 async def _open_session(session, cfg):
     """Open session using config."""
     sn = cfg["session_name"]
-    rv = await session.call_tool("xdebug_session_open", {
+    rv = await session.call_tool("xverif_debug_session_open", {
         "name": sn, "daidir": cfg["daidir"], "fsdb": cfg["fsdb"], "reuse": True,
     })
     d = json.loads(rv.content[0].text)
@@ -158,7 +158,7 @@ async def _open_session(session, cfg):
 
 
 async def _close_session(session, cfg):
-    await session.call_tool("xdebug_session_close", {"name": cfg["session_name"]})
+    await session.call_tool("xverif_debug_session_close", {"name": cfg["session_name"]})
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +174,7 @@ async def test_all_schemas(session: ClientSession) -> tuple[int, int]:
 
     for kind in ["request", "response"]:
         for action in ALL_ACTIONS:
-            result = await session.call_tool("xdebug_schema", {
+            result = await session.call_tool("xverif_debug_schema", {
                 "action": action, "kind": kind,
             })
             data = json.loads(result.content[0].text)
@@ -201,7 +201,7 @@ async def test_l2_basic(session: ClientSession, cfg: dict, action_args: dict) ->
         return 0, 1
 
     for action, args in action_args.items():
-        result = await session.call_tool("xdebug_query", {
+        result = await session.call_tool("xverif_debug_query", {
             "action": action, "session": sn, "args": args, "output_format": "json",
         })
         data = json.loads(result.content[0].text)
@@ -248,7 +248,7 @@ async def test_with_signal(session: ClientSession, cfg: dict, signal: str) -> tu
     }
 
     for action, args in l3_actions.items():
-        result = await session.call_tool("xdebug_query", {
+        result = await session.call_tool("xverif_debug_query", {
             "action": action, "session": sn, "args": args, "output_format": "json",
         })
         data = json.loads(result.content[0].text)
@@ -267,7 +267,7 @@ async def test_with_signal(session: ClientSession, cfg: dict, signal: str) -> tu
 
     # XOUT format test
     print(f"\n{Colors.CYAN}--- 输出格式测试 ---{Colors.RESET}")
-    result = await session.call_tool("xdebug_query", {
+    result = await session.call_tool("xverif_debug_query", {
         "action": "value.at", "session": sn, "args": {"signal": signal, "time": "1ns"},
     })
     xout_text = result.content[0].text
@@ -292,7 +292,7 @@ async def discover_signal(session: ClientSession, cfg: dict) -> str | None:
     for key in ("signal", "clock"):
         sig = cfg.get(key)
         if sig:
-            result = await session.call_tool("xdebug_query", {
+            result = await session.call_tool("xverif_debug_query", {
                 "action": "value.at", "session": sn,
                 "args": {"signal": sig, "time": "1ns"}, "output_format": "json",
             })
@@ -302,7 +302,7 @@ async def discover_signal(session: ClientSession, cfg: dict) -> str | None:
                 return sig
 
     # Strategy 1: scope.list
-    result = await session.call_tool("xdebug_query", {
+    result = await session.call_tool("xverif_debug_query", {
         "action": "scope.list", "session": sn,
         "args": {"path": "", "recursive": True, "max_depth": 5}, "output_format": "json",
     })
@@ -349,7 +349,7 @@ async def main():
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            print(f"{Colors.CYAN}Connected to xdebug-mcp FastMCP server{Colors.RESET}")
+            print(f"{Colors.CYAN}Connected to xverif-mcp FastMCP server{Colors.RESET}")
 
             # --- L1: Schema (always run) ---
             if args.level in ("L1", "all") or args.schema_only:

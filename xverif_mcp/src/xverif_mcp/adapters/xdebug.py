@@ -45,7 +45,12 @@ class XverifDebugAdapter:
 
     def _one_shot(self, req: Json) -> Json:
         from xverif_mcp.runner import StatelessCliRunner
-        return StatelessCliRunner().run_json("xdebug", ["-"], json.dumps(req))
+        req = dict(req)
+        req.setdefault("output", {})
+        if isinstance(req["output"], dict):
+            req["output"]["format"] = "json"
+        return StatelessCliRunner().run_json("xdebug", ["--json", "-"],
+                                              json.dumps(req))
 
     def session_open(self, name: str, **kwargs: Any) -> Json:
         return self._sessions.open_session(name=name, **kwargs)
