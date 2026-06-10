@@ -24,7 +24,7 @@ class LaunchConfig:
 
 
 def _bkill_by_id(job_id: str) -> None:
-    bkill_cmd = os.environ.get("XDEBUG_LSF_BKILL", "bkill")
+    bkill_cmd = os.environ.get("XVERIF_LSF_BKILL", "bkill")
     try:
         subprocess.run([bkill_cmd, job_id], timeout=10, check=False)
     except Exception:
@@ -56,8 +56,8 @@ class LsfLauncher(Launcher):
     mode = "lsf"
 
     def __init__(self, bsub: Optional[BsubRunner] = None) -> None:
-        bsub_cmd = os.environ.get("XDEBUG_LSF_BSUB")
-        if bsub is None and os.environ.get("XDEBUG_MCP_FAKE_LSF") == "1" and not bsub_cmd:
+        bsub_cmd = os.environ.get("XVERIF_LSF_BSUB")
+        if bsub is None and os.environ.get("XVERIF_MCP_FAKE_LSF") == "1" and not bsub_cmd:
             bsub_cmd = f"{sys.executable} -m xdebug_lsf.fake_bsub"
         self.bsub = bsub or BsubRunner(bsub_cmd)
 
@@ -82,7 +82,7 @@ class LsfLauncher(Launcher):
             if jid:
                 _bkill_by_id(jid)
             elif jname:
-                bkill_cmd = os.environ.get("XDEBUG_LSF_BKILL", "bkill")
+                bkill_cmd = os.environ.get("XVERIF_LSF_BKILL", "bkill")
                 try:
                     subprocess.run([bkill_cmd, "-J", jname], timeout=10, check=False)
                 except Exception:

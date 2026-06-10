@@ -30,24 +30,24 @@ class McpSessionManager:
     def __init__(self, mode: Optional[str] = None, xdebug_bin: Optional[str] = None,
                  startup_timeout_sec: float = 60.0,
                  request_timeout_sec: float = 120.0) -> None:
-        self.mode = mode or os.environ.get("XDEBUG_MCP_BACKEND", "direct")
+        self.mode = mode or os.environ.get("XVERIF_MCP_BACKEND", "direct")
         self.xdebug_bin = xdebug_bin or default_xdebug_bin()
         self.startup_timeout_sec = startup_timeout_sec
         self.request_timeout_sec = request_timeout_sec
-        self._session_queue = os.environ.get("XDEBUG_LSF_SESSION_QUEUE", "interactive")
-        self._session_resource = os.environ.get("XDEBUG_LSF_SESSION_RESOURCE")
+        self._session_queue = os.environ.get("XVERIF_LSF_SESSION_QUEUE", "interactive")
+        self._session_resource = os.environ.get("XVERIF_LSF_SESSION_RESOURCE")
         if self.mode == "direct":
             self.launcher: Launcher = DirectLauncher()
         elif self.mode == "lsf":
-            bsub_cmd = os.environ.get("XDEBUG_LSF_BSUB")
-            if os.environ.get("XDEBUG_MCP_FAKE_LSF") == "1" and not bsub_cmd:
+            bsub_cmd = os.environ.get("XVERIF_LSF_BSUB")
+            if os.environ.get("XVERIF_MCP_FAKE_LSF") == "1" and not bsub_cmd:
                 import sys
                 bsub_cmd = f"{sys.executable} -m xdebug_lsf.fake_bsub"
             self.launcher = LsfLauncher(BsubRunner(bsub_cmd))
         else:
-            raise ValueError(f"unsupported XDEBUG_MCP_BACKEND: {self.mode}")
+            raise ValueError(f"unsupported XVERIF_MCP_BACKEND: {self.mode}")
         self._job_prefix = (
-            f"xdebug_{_safe_name(getpass.getuser())}_{os.getpid()}_"
+            f"xverif_{_safe_name(getpass.getuser())}_{os.getpid()}_"
             f"{_uuid.uuid4().hex[:8]}"
         )
         self.sessions: Dict[str, XdebugLoopSession] = {}

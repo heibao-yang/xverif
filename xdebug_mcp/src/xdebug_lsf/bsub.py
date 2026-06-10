@@ -41,13 +41,13 @@ class BsubOptions:
 
 class BsubRunner:
     def __init__(self, bsub_cmd: Optional[str] = None) -> None:
-        self.bsub_cmd = bsub_cmd or os.environ.get("XDEBUG_LSF_BSUB", "bsub")
+        self.bsub_cmd = bsub_cmd or os.environ.get("XVERIF_LSF_BSUB", "bsub")
 
     def build(self, command: Iterable[str], opts: Optional[BsubOptions] = None) -> List[str]:
         opts = opts or BsubOptions()
         base = shlex.split(self.bsub_cmd)
         # Default to -I (interactive).  -Is is allowed when user explicitly sets it via
-        # XDEBUG_LSF_BSUB, but we default to -I for cleaner machine-protocol output.
+        # XVERIF_LSF_BSUB, but we default to -I for cleaner machine-protocol output.
         interactive = {"-I", "-Is", "-Ip"}
         if not any(flag in base for flag in interactive):
             base.append("-I")
