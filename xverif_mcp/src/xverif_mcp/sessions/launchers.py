@@ -26,7 +26,8 @@ class LaunchConfig:
 def _bkill_by_id(job_id: str) -> None:
     bkill_cmd = os.environ.get("XVERIF_LSF_BKILL", "bkill")
     try:
-        subprocess.run([bkill_cmd, job_id], timeout=10, check=False)
+        subprocess.run([bkill_cmd, job_id], timeout=10, check=False,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception:
         pass
 
@@ -84,6 +85,7 @@ class LsfLauncher(Launcher):
             elif jname:
                 bkill_cmd = os.environ.get("XVERIF_LSF_BKILL", "bkill")
                 try:
-                    subprocess.run([bkill_cmd, "-J", jname], timeout=10, check=False)
+                    subprocess.run([bkill_cmd, "-J", jname], timeout=10, check=False,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 except Exception:
                     pass
