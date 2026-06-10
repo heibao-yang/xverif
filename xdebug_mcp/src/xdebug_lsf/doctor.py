@@ -9,7 +9,8 @@ import sys
 import time
 from typing import Dict, List, Optional
 
-from xdebug_mcp.launchers import DirectLauncher, LaunchConfig, default_xdebug_bin
+from xverif_mcp.config import default_xdebug_bin
+from xverif_mcp.sessions.launchers import DirectLauncher, LaunchConfig
 from xdebug_lsf.bsub import parse_lsf_job_id
 from xdebug_lsf.protocol import JsonlProcess
 
@@ -33,7 +34,7 @@ def _check_xdebug_bin() -> str:
 
 def run(fake: bool = False) -> Dict[str, object]:
     started = time.time()
-    mode = "lsf" if (fake or os.environ.get("XDEBUG_MCP_BACKEND") == "lsf") else "direct"
+    mode = "lsf" if (fake or os.environ.get("XVERIF_MCP_BACKEND") == "lsf") else "direct"
     out: Dict[str, object] = {
         "python_version": sys.version.split()[0],
         "mcp_sdk_import": _check_mcp_sdk(),
@@ -41,13 +42,13 @@ def run(fake: bool = False) -> Dict[str, object]:
         "xdebug_bin": _check_xdebug_bin(),
     }
 
-    old_fake = os.environ.get("XDEBUG_MCP_FAKE_LSF")
+    old_fake = os.environ.get("XVERIF_MCP_FAKE_LSF")
     if fake:
-        os.environ["XDEBUG_MCP_FAKE_LSF"] = "1"
+        os.environ["XVERIF_MCP_FAKE_LSF"] = "1"
 
     try:
         if mode == "lsf":
-            from xdebug_mcp.launchers import LsfLauncher
+            from xverif_mcp.sessions.launchers import LsfLauncher
             launcher = LsfLauncher()
             out["bsub"] = "fake" if fake else ("ok" if shutil.which("bsub") else "missing")
         else:
@@ -56,8 +57,8 @@ def run(fake: bool = False) -> Dict[str, object]:
         cfg = LaunchConfig(
             alias="doctor",
             xdebug_bin=default_xdebug_bin(),
-            queue=os.environ.get("XDEBUG_LSF_SESSION_QUEUE"),
-            job_name=f"xdebug_doctor_{os.getpid()}" if mode == "lsf" else None,
+            queue=os.environ.get("XVERIF_LSF_SESSION_QUEUE"),
+            job_name=f"xverif_doctor_{os.getpid()}" if mode == "lsf" else None,
             startup_timeout_sec=30.0,
         )
 
@@ -102,9 +103,9 @@ def run(fake: bool = False) -> Dict[str, object]:
         out["error"] = str(exc)
     finally:
         if old_fake is None:
-            os.environ.pop("XDEBUG_MCP_FAKE_LSF", None)
+            os.environ.pop("XVERIF_MCP_FAKE_LSF", None)
         else:
-            os.environ["XDEBUG_MCP_FAKE_LSF"] = old_fake
+            os.environ["XVERIF_MCP_FAKE_LSF"] = old_fake
 
     out["elapsed_ms"] = int((time.time() - started) * 1000)
     return out
