@@ -70,7 +70,7 @@ xdebug --json - <<'JSON'
 JSON
 ```
 
-如果当前 shell 未安装 `xdebug`，且当前目录是仓库根目录，可以临时使用 `tools/xdebug`。兼容入口 `tools/xdebug-env` 只作为旧脚本转发。
+如果当前 shell 未安装 `xdebug`，且当前目录是仓库根目录，可以临时使用 `tools/xdebug`。
 
 MCP 场景使用 `tools/xverif-mcp`（统一入口 `python -m xverif_mcp.server`）。xdebug 是唯一 stateful backend，其他 xverif 工具以 stateless CLI adapter 方式接入。MCP tool 选择：
 

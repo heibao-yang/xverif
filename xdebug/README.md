@@ -108,7 +108,7 @@ printf '%s\n' '{"api_version":"xdebug.v1","action":"actions"}' | xdebug --json -
 xdebug request.json
 ```
 
-兼容入口 `tools/xdebug-env` 仍保留为转发 wrapper，但新文档和 skill 推荐 `tools/xdebug` 或 `PATH` 中的 `xdebug`。
+推荐使用 `tools/xdebug` 或 `PATH` 中的 `xdebug`。
 
 ### Cluster file transport
 
