@@ -340,6 +340,7 @@ async def main():
         command=sys.executable,
         args=["-m", "xverif_mcp.server"],
         env=_server_env(),
+        cwd=ROOT,
     )
 
     total_pass = 0

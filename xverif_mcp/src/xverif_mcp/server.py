@@ -14,6 +14,7 @@ from xverif_mcp.adapters.xberif import (context_status, context_list_topics, con
                                          context_config_init, context_init, context_repair)
 from xverif_mcp.adapters.xsva import sva_list, sva_scan, sva_parse, sva_explain, sva_render
 from xverif_mcp.errors import error_payload
+from xverif_mcp.tool_policy import filtered_catalog, policy_summary, tool_enabled
 
 # ---------------------------------------------------------------------------
 # FastMCP application
@@ -51,12 +52,21 @@ def _tool_error(code: str, message: str) -> dict:
     return error_payload(code, message)
 
 
+def xverif_tool(group: str, write: bool = False):
+    """Conditionally register a FastMCP tool according to env policy."""
+    def decorator(fn):
+        if tool_enabled(group, write=write):
+            return mcp.tool()(fn)
+        return fn
+    return decorator
+
+
 # ---------------------------------------------------------------------------
 # Common
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@xverif_tool("common")
 def xverif_ping() -> str:
     """Ping the xverif MCP server. Use this to check whether the server is alive."""
     return debug.ping()
@@ -67,7 +77,7 @@ def xverif_ping() -> str:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@xverif_tool("debug")
 def xverif_debug_list_actions() -> dict:
     """Return the xdebug action catalog.
 
@@ -77,7 +87,7 @@ def xverif_debug_list_actions() -> dict:
     return debug.actions()
 
 
-@mcp.tool()
+@xverif_tool("debug")
 def xverif_debug_get_schema(action: str, kind: str = "request") -> dict:
     """Return an action-specific xdebug JSON schema.
 
@@ -90,7 +100,7 @@ def xverif_debug_get_schema(action: str, kind: str = "request") -> dict:
     return debug.schema(action, kind)
 
 
-@mcp.tool()
+@xverif_tool("debug")
 def xverif_debug_raw_request(request: dict, output_format: str = "json") -> dict:
     """Run a complete xdebug JSON request (one-shot, no session).
 
@@ -106,7 +116,7 @@ def xverif_debug_raw_request(request: dict, output_format: str = "json") -> dict
     return debug.request(request, output_format)
 
 
-@mcp.tool()
+@xverif_tool("debug")
 def xverif_session_open(
     name: str,
     daidir: Optional[str] = None,
@@ -139,7 +149,7 @@ def xverif_session_open(
     )
 
 
-@mcp.tool()
+@xverif_tool("debug")
 def xverif_session_list(include_native: bool = False) -> dict:
     """List xdebug sessions managed by this MCP server.
 
@@ -149,7 +159,7 @@ def xverif_session_list(include_native: bool = False) -> dict:
     return debug.session_list(include_native=include_native)
 
 
-@mcp.tool()
+@xverif_tool("debug")
 def xverif_session_use(
     name: Optional[str] = None,
     session_id: Optional[str] = None,
@@ -166,7 +176,7 @@ def xverif_session_use(
     return debug.session_use(key)
 
 
-@mcp.tool()
+@xverif_tool("debug")
 def xverif_session_close(
     name: Optional[str] = None,
     session_id: Optional[str] = None,
@@ -186,7 +196,7 @@ def xverif_session_close(
     return debug.session_close(key)
 
 
-@mcp.tool()
+@xverif_tool("debug")
 def xverif_debug_query(
     action: str,
     args: Optional[dict] = None,
@@ -235,7 +245,7 @@ def xverif_debug_query(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@xverif_tool("bit")
 def xverif_bit_convert(value: str, width: int = 0, signed: bool = False,
                      unsigned: bool = False, state: str = "2",
                      output_format: str = "json") -> Any:
@@ -253,7 +263,7 @@ def xverif_bit_convert(value: str, width: int = 0, signed: bool = False,
                     state=state, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("bit")
 def xverif_bit_eval(expr: str, vars: Optional[dict] = None, width: int = 0,
                      signed: bool = False, unsigned: bool = False,
                      state: str = "2", output_format: str = "json") -> Any:
@@ -272,7 +282,7 @@ def xverif_bit_eval(expr: str, vars: Optional[dict] = None, width: int = 0,
                     unsigned=unsigned, state=state, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("bit")
 def xverif_bit_slice(value: str, msb: int, lsb: int, state: str = "2",
                       output_format: str = "json") -> Any:
     """Extract a bit slice from a value.
@@ -287,7 +297,7 @@ def xverif_bit_slice(value: str, msb: int, lsb: int, state: str = "2",
     return bit_slice(value, msb, lsb, state=state, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("bit")
 def xverif_bit_check(expr: str, vars: Optional[dict] = None,
                       values: Optional[str] = None, state: str = "2",
                       output_format: str = "json") -> Any:
@@ -309,7 +319,7 @@ def xverif_bit_check(expr: str, vars: Optional[dict] = None,
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@xverif_tool("entry")
 def xverif_entry_decode(config_path: Optional[str] = None,
                          input_path: Optional[str] = None,
                          config: Optional[dict] = None,
@@ -335,7 +345,7 @@ def xverif_entry_decode(config_path: Optional[str] = None,
                          output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("entry")
 def xverif_entry_explain(config_path: str, output_format: str = "json") -> Any:
     """Explain the field layout defined by an entry config.
 
@@ -346,7 +356,7 @@ def xverif_entry_explain(config_path: str, output_format: str = "json") -> Any:
     return entry_explain(config_path, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("entry")
 def xverif_entry_validate(config_path: Optional[str] = None,
                            input_path: Optional[str] = None,
                            config: Optional[dict] = None,
@@ -377,7 +387,7 @@ def xverif_entry_validate(config_path: Optional[str] = None,
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@xverif_tool("loc")
 def xverif_loc_resolve(loc_id: str, map_path: str,
                         output_format: str = "json") -> Any:
     """Resolve a compressed loc_id (L_XXXXXXXX) to source file:line.
@@ -390,7 +400,7 @@ def xverif_loc_resolve(loc_id: str, map_path: str,
     return loc_resolve(loc_id, map_path, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("loc")
 def xverif_loc_context(loc_id: str, map_path: str, before: int = 20,
                         after: int = 20, output_format: str = "xout") -> Any:
     """Resolve a loc_id and show surrounding source code context.
@@ -406,7 +416,7 @@ def xverif_loc_context(loc_id: str, map_path: str, before: int = 20,
                        output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("loc")
 def xverif_loc_stats(log_path: str, map_path: Optional[str] = None,
                       top: int = 20, output_format: str = "json") -> Any:
     """Count loc_id frequency in a simulation log (hotspot analysis).
@@ -421,7 +431,7 @@ def xverif_loc_stats(log_path: str, map_path: Optional[str] = None,
                      output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("loc")
 def xverif_loc_annotate(log_path: str, map_path: Optional[str] = None,
                          output_format: str = "xout") -> Any:
     """Insert source location hints into a simulation log.
@@ -440,21 +450,21 @@ def xverif_loc_annotate(log_path: str, map_path: Optional[str] = None,
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@xverif_tool("context")
 def xverif_context_status(project_root: Optional[str] = None,
                            output_format: str = "json") -> Any:
     """Check xberif project status (which kinds, cards, details exist)."""
     return context_status(project_root=project_root, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("context")
 def xverif_context_topics(project_root: Optional[str] = None,
                                 output_format: str = "json") -> Any:
     """List all known context topics."""
     return context_list_topics(project_root=project_root, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("context")
 def xverif_context_brief(mode: str = "debug", project_root: Optional[str] = None,
                           output_format: str = "xout") -> Any:
     """Generate a context summary brief for the given mode.
@@ -467,7 +477,7 @@ def xverif_context_brief(mode: str = "debug", project_root: Optional[str] = None
                          output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("context")
 def xverif_context_topic(topic: str, detail: bool = False,
                         project_root: Optional[str] = None,
                         output_format: str = "xout") -> Any:
@@ -482,7 +492,7 @@ def xverif_context_topic(topic: str, detail: bool = False,
                        output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("context")
 def xverif_context_topic_detail(topic: str, project_root: Optional[str] = None,
                            output_format: str = "markdown") -> Any:
     """Get the full detail markdown for a topic.
@@ -495,26 +505,26 @@ def xverif_context_topic_detail(topic: str, project_root: Optional[str] = None,
                           output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("context")
 def xverif_context_validate(project_root: Optional[str] = None,
                              output_format: str = "json") -> Any:
     """Validate project cards and detail files for consistency."""
     return context_validate(project_root=project_root, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("context_write", write=True)
 def xverif_context_init_config(kind: str, project_root: Optional[str] = None) -> Any:
     """Initialize xberif kind.toml config. Requires XVERIF_MCP_ENABLE_WRITE=1."""
     return context_config_init(kind, project_root=project_root)
 
 
-@mcp.tool()
+@xverif_tool("context_write", write=True)
 def xverif_context_init_project(model: str, project_root: Optional[str] = None) -> Any:
     """Initialize xberif project structure. Requires XVERIF_MCP_ENABLE_WRITE=1."""
     return context_init(model, project_root=project_root)
 
 
-@mcp.tool()
+@xverif_tool("context_write", write=True)
 def xverif_context_repair_index(project_root: Optional[str] = None) -> Any:
     """Repair xberif catalog index. Requires XVERIF_MCP_ENABLE_WRITE=1."""
     return context_repair(project_root=project_root)
@@ -525,7 +535,7 @@ def xverif_context_repair_index(project_root: Optional[str] = None) -> Any:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@xverif_tool("sva")
 def xverif_sva_list_properties(file: str, output_format: str = "json") -> Any:
     """List all property/assertion names in a SVA source file.
 
@@ -535,7 +545,7 @@ def xverif_sva_list_properties(file: str, output_format: str = "json") -> Any:
     return sva_list(file, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("sva")
 def xverif_sva_scan_constructs(file: str, output_format: str = "json") -> Any:
     """Scan syntax constructs used in a SVA source file.
 
@@ -545,7 +555,7 @@ def xverif_sva_scan_constructs(file: str, output_format: str = "json") -> Any:
     return sva_scan(file, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("sva")
 def xverif_sva_parse_property(file: str, property: str, emit: str = "timeline-ir",
                       output_format: str = "json") -> Any:
     """Parse a SVA property into IR.
@@ -558,7 +568,7 @@ def xverif_sva_parse_property(file: str, property: str, emit: str = "timeline-ir
     return sva_parse(file, property, emit=emit, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("sva")
 def xverif_sva_explain_property(file: str, property: str, strict: bool = False,
                         output_format: str = "xout") -> Any:
     """Generate a human-readable explanation of a SVA property.
@@ -572,7 +582,7 @@ def xverif_sva_explain_property(file: str, property: str, strict: bool = False,
     return sva_explain(file, property, strict=strict, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("sva")
 def xverif_sva_render_property(file: str, property: str, format: str = "mermaid",
                        output_format: str = "xout") -> Any:
     """Render a SVA property as mermaid or SVG.
@@ -720,34 +730,50 @@ TOOL_CATALOG = [
      "description": "Render a SVA property as mermaid or SVG."},
 ]
 
+_WRITE_TOOL_NAMES = {
+    "xverif_context_init_config",
+    "xverif_context_init_project",
+    "xverif_context_repair_index",
+}
 
-@mcp.tool()
+for _tool in TOOL_CATALOG:
+    if _tool["name"] in _WRITE_TOOL_NAMES:
+        _tool.setdefault("group", "context_write")
+        _tool.setdefault("write", True)
+    else:
+        _tool.setdefault("group", _tool["category"])
+        _tool.setdefault("write", False)
+
+
+@xverif_tool("common")
 def xverif_tools(category: Optional[str] = None,
-                  include_write: bool = False) -> dict:
+                  include_write: bool = True) -> dict:
     """List all available xverif tools, optionally filtered by category.
 
     Args:
         category: Filter by category ("debug", "bit", "entry", "loc", "context", "sva").
-        include_write: If True, include write-protected tools.
+        include_write: If False, hide write-protected tools from this catalog view.
     """
-    tools = TOOL_CATALOG
-    if category:
-        tools = [t for t in tools if t["category"] == category]
-    if not include_write:
-        tools = [t for t in tools if "write" not in t.get("description", "").lower() or "(write)" not in t.get("description", "")]
-    return {"ok": True, "tools": tools}
+    return {
+        "ok": True,
+        "tools": filtered_catalog(TOOL_CATALOG, category=category, include_write=include_write),
+        "policy": policy_summary(),
+    }
 
 
-@mcp.tool()
+@xverif_tool("common")
 def xverif_tool_help(name: str) -> dict:
     """Get detailed help for a specific xverif tool.
 
     Args:
         name: Exact tool name (e.g. "xverif_debug_query").
     """
+    for t in filtered_catalog(TOOL_CATALOG, include_write=True):
+        if t["name"] == name:
+            return {"ok": True, "tool": t, "policy": policy_summary()}
     for t in TOOL_CATALOG:
         if t["name"] == name:
-            return {"ok": True, "tool": t}
+            return _tool_error("TOOL_NOT_ENABLED", f"tool is disabled by MCP policy: {name}")
     return _tool_error("TOOL_NOT_FOUND", f"tool not found: {name}")
 
 
@@ -756,7 +782,7 @@ def xverif_tool_help(name: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@xverif_tool("debug")
 def xverif_wave_value_at(signal: str, time: str = "0ns",
                           session: Optional[str] = None,
                           output_format: str = "xout") -> Any:
@@ -772,7 +798,7 @@ def xverif_wave_value_at(signal: str, time: str = "0ns",
                        session=session, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("debug")
 def xverif_wave_changes(signal: str, begin: str = "0ns",
                                 end: str = "100ns",
                                 session: Optional[str] = None,
@@ -791,7 +817,7 @@ def xverif_wave_changes(signal: str, begin: str = "0ns",
                        session=session, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("debug")
 def xverif_wave_generate_rc(config_path: str, rc_path: str,
                               session: Optional[str] = None,
                               output_format: str = "json") -> Any:
@@ -808,7 +834,7 @@ def xverif_wave_generate_rc(config_path: str, rc_path: str,
                        session=session, output_format=output_format)
 
 
-@mcp.tool()
+@xverif_tool("debug")
 def xverif_design_trace_driver(signal: str, time: str = "0ns",
                                 session: Optional[str] = None,
                                 output_format: str = "xout") -> Any:

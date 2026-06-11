@@ -81,6 +81,8 @@ MCP 场景使用 `tools/xverif-mcp`（统一入口 `python -m xverif_mcp.server`
 - `xverif_debug_actions` / `xverif_debug_schema`：查询机器契约。
 - `xverif_wave_value_at`、`xverif_design_trace_driver` 等高频别名。
 
+如果用户或 MCP 配置通过 `XVERIF_MCP_ENABLE_*` 关闭了部分工具组，先调用 `xverif_tools` 查看当前可见工具集；不要假设所有 xverif 工具都已暴露。
+
 当用户需要在 LSF 计算节点上运行 xdebug 时，MCP 设置 `XVERIF_MCP_BACKEND=lsf`。direct 和 LSF 共用同一套 `XdebugLoopSession` 实现，只在启动器层分离：`DirectLauncher` 本地启动 `xdebug --stdio-loop`，`LsfLauncher` 通过 `bsub -I xdebug --stdio-loop` 提交。详细规则见 [references/lsf-mcp.md](references/lsf-mcp.md)。
 
 ## MCP 场景

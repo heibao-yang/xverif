@@ -141,12 +141,53 @@ AI MCP client
 | `XVERIF_MCP_CLOSE_TIMEOUT_SEC` | session close 超时（默认 30s） |
 | `XVERIF_MCP_BKILL_TIMEOUT_SEC` | bkill 超时（默认 30s） |
 | `XVERIF_MCP_ENABLE_WRITE=1` | 启用 xberif 写入操作 |
+| `XVERIF_MCP_ENABLE_COMMON` | 暴露 common 工具，默认 `1` |
+| `XVERIF_MCP_ENABLE_DEBUG` | 暴露 xdebug/session 工具，默认 `1` |
+| `XVERIF_MCP_ENABLE_BIT` | 暴露 xbit 工具，默认 `1` |
+| `XVERIF_MCP_ENABLE_ENTRY` | 暴露 xentry 工具，默认 `1` |
+| `XVERIF_MCP_ENABLE_LOC` | 暴露 xloc 工具，默认 `1` |
+| `XVERIF_MCP_ENABLE_CONTEXT` | 暴露 xberif 只读 context 工具，默认 `1` |
+| `XVERIF_MCP_ENABLE_SVA` | 暴露 xsva 工具，默认 `1` |
+| `XVERIF_MCP_ENABLE_CONTEXT_WRITE` | 暴露 xberif 写入/修复工具，默认 `0` |
 | `XVERIF_LSF_BSUB` | 覆盖 `bsub` 命令（默认 `bsub`） |
 | `XVERIF_LSF_SESSION_QUEUE` | session job 的 LSF 队列（默认 `interactive`） |
 | `XVERIF_LSF_BKILL` | 覆盖 `bkill` 命令 |
 | `XVERIF_MCP_FAKE_LSF=1` | 本地测试用 fake LSF runner |
 | `VERDI_HOME` | Verdi 安装目录 |
 | `LD_LIBRARY_PATH` | 需包含 `<verdi-install>/share/NPI/lib/LINUX64` |
+
+## 工具暴露开关
+
+每个工具组都有独立开关，取值支持 `1/0`、`true/false`、`yes/no`、`on/off`。未设置时，read-only 工具组默认开启；写入类工具默认不暴露。
+
+```bash
+# 只暴露 xdebug + common
+XVERIF_MCP_ENABLE_BIT=0 \
+XVERIF_MCP_ENABLE_ENTRY=0 \
+XVERIF_MCP_ENABLE_LOC=0 \
+XVERIF_MCP_ENABLE_CONTEXT=0 \
+XVERIF_MCP_ENABLE_SVA=0 \
+tools/xverif-mcp
+
+# 关闭 xsva
+XVERIF_MCP_ENABLE_SVA=0 tools/xverif-mcp
+
+# 暴露 xberif 写工具
+XVERIF_MCP_ENABLE_CONTEXT=1 \
+XVERIF_MCP_ENABLE_CONTEXT_WRITE=1 \
+XVERIF_MCP_ENABLE_WRITE=1 \
+tools/xverif-mcp
+```
+
+`context_write` 工具需要同时满足：
+
+```text
+XVERIF_MCP_ENABLE_CONTEXT=1
+XVERIF_MCP_ENABLE_CONTEXT_WRITE=1
+XVERIF_MCP_ENABLE_WRITE=1
+```
+
+关闭某组后，该组工具不会注册到 FastMCP，因此不会出现在 MCP `tools/list` 中，也不能被 MCP client 直接调用。`xverif_tools` 和 `xverif_tool_help` 使用同一套策略；AI agent 不确定当前暴露范围时应先调用 `xverif_tools`。
 
 ## 测试
 

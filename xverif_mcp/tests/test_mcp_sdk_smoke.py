@@ -1,79 +1,193 @@
-"""MCP SDK client integration tests for the xverif-mcp FastMCP server."""
+"""FastMCP registration tests for xverif-mcp."""
 
 from __future__ import annotations
 
+import importlib
+import json
 import os
 import sys
+from pathlib import Path
 
+import anyio
 import pytest
 
-mcp = pytest.importorskip("mcp")
-from mcp import ClientSession, StdioServerParameters  # noqa: E402
-from mcp.client.stdio import stdio_client  # noqa: E402
+XDEBUG_DIR = Path(__file__).resolve().parents[2] / "xdebug"
+sys.path = [
+    path for path in sys.path
+    if Path(path or os.getcwd()).resolve() != XDEBUG_DIR
+]
+
+sys.modules.pop("mcp", None)
+pytest.importorskip("mcp")
 
 
-_XVERIF_MCP_SRC = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../xverif_mcp/src")
-)
+POLICY_ENV = [
+    "XVERIF_MCP_ENABLE_COMMON",
+    "XVERIF_MCP_ENABLE_DEBUG",
+    "XVERIF_MCP_ENABLE_BIT",
+    "XVERIF_MCP_ENABLE_ENTRY",
+    "XVERIF_MCP_ENABLE_LOC",
+    "XVERIF_MCP_ENABLE_CONTEXT",
+    "XVERIF_MCP_ENABLE_CONTEXT_WRITE",
+    "XVERIF_MCP_ENABLE_SVA",
+    "XVERIF_MCP_ENABLE_WRITE",
+]
 
 
-def _server_env() -> dict:
-    env = os.environ.copy()
-    existing = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = f"{_XVERIF_MCP_SRC}:{existing}".strip(":")
-    return env
+def _server(monkeypatch: pytest.MonkeyPatch, overrides: dict[str, str] | None = None):
+    for name in POLICY_ENV:
+        monkeypatch.delenv(name, raising=False)
+    for name, value in (overrides or {}).items():
+        monkeypatch.setenv(name, value)
+    if "xverif_mcp.server" in sys.modules:
+        return importlib.reload(sys.modules["xverif_mcp.server"])
+    return importlib.import_module("xverif_mcp.server")
 
 
-def _server_params() -> StdioServerParameters:
-    return StdioServerParameters(
-        command=sys.executable,
-        args=["-m", "xverif_mcp.server"],
-        env=_server_env(),
-    )
+def _tool_names(monkeypatch: pytest.MonkeyPatch, overrides: dict[str, str] | None = None) -> set[str]:
+    server = _server(monkeypatch, overrides)
+
+    async def _run() -> set[str]:
+        tools = await server.mcp.list_tools()
+        return {tool.name for tool in tools}
+
+    return anyio.run(_run)
 
 
-@pytest.mark.asyncio
-async def test_mcp_server_initialize():
-    """The FastMCP server should accept initialize and return capabilities."""
-    async with stdio_client(_server_params()) as (read, write):
-        async with ClientSession(read, write) as session:
-            result = await session.initialize()
-            assert result is not None
-            assert hasattr(result, "capabilities")
+def _call_tool(monkeypatch: pytest.MonkeyPatch, name: str, args: dict | None = None,
+               overrides: dict[str, str] | None = None):
+    server = _server(monkeypatch, overrides)
+
+    async def _run():
+        result = await server.mcp.call_tool(name, args or {})
+        if isinstance(result, tuple):
+            return result
+        return result, None
+
+    return anyio.run(_run)
 
 
-@pytest.mark.asyncio
-async def test_mcp_tools_list():
-    """tools/list must include all expected tool names."""
-    async with stdio_client(_server_params()) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            tools = await session.list_tools()
-            names = {tool.name for tool in tools.tools}
-            assert "xverif_ping" in names
-            assert "xverif_debug_query" in names
-            assert "xverif_session_open" in names
-            assert "xverif_debug_list_actions" in names
-            assert "xverif_debug_get_schema" in names
-            assert "xverif_session_list" in names
-            assert "xverif_session_use" in names
-            assert "xverif_session_close" in names
-            assert "xverif_debug_raw_request" in names
-            assert "xverif_tools" in names
-            assert "xverif_bit_eval" in names
-            assert "xverif_entry_decode" in names
-            assert "xverif_loc_resolve" in names
-            assert "xverif_context_status" in names
-            assert "xverif_sva_explain_property" in names
+def test_mcp_server_initialize(monkeypatch: pytest.MonkeyPatch):
+    server = _server(monkeypatch)
+    assert server.mcp.name == "xverif"
 
 
-@pytest.mark.asyncio
-async def test_mcp_ping_call():
+def test_mcp_tools_list(monkeypatch: pytest.MonkeyPatch):
+    """tools/list must include all expected read-only tool names by default."""
+    names = _tool_names(monkeypatch)
+    assert "xverif_ping" in names
+    assert "xverif_debug_query" in names
+    assert "xverif_session_open" in names
+    assert "xverif_debug_list_actions" in names
+    assert "xverif_debug_get_schema" in names
+    assert "xverif_session_list" in names
+    assert "xverif_session_use" in names
+    assert "xverif_session_close" in names
+    assert "xverif_debug_raw_request" in names
+    assert "xverif_tools" in names
+    assert "xverif_bit_eval" in names
+    assert "xverif_entry_decode" in names
+    assert "xverif_loc_resolve" in names
+    assert "xverif_context_status" in names
+    assert "xverif_sva_explain_property" in names
+    assert "xverif_context_init_config" not in names
+
+
+def test_mcp_ping_call(monkeypatch: pytest.MonkeyPatch):
     """Calling xverif_ping should return a string containing 'pong'."""
-    async with stdio_client(_server_params()) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            result = await session.call_tool("xverif_ping", {})
-            assert len(result.content) > 0
-            text = result.content[0].text
-            assert "pong" in text.lower()
+    content, structured = _call_tool(monkeypatch, "xverif_ping")
+    assert "pong" in content[0].text.lower()
+    assert structured["result"] == "pong"
+
+
+def test_tool_group_disable_sva(monkeypatch: pytest.MonkeyPatch):
+    env = {"XVERIF_MCP_ENABLE_SVA": "0"}
+    names = _tool_names(monkeypatch, env)
+    assert "xverif_sva_explain_property" not in names
+    assert "xverif_debug_query" in names
+
+    content, _ = _call_tool(monkeypatch, "xverif_tools", {}, env)
+    payload = json.loads(content[0].text)
+    catalog = {tool["name"] for tool in payload["tools"]}
+    assert "xverif_sva_explain_property" not in catalog
+
+
+def test_tool_group_disable_debug(monkeypatch: pytest.MonkeyPatch):
+    names = _tool_names(monkeypatch, {"XVERIF_MCP_ENABLE_DEBUG": "0"})
+    assert "xverif_debug_query" not in names
+    assert "xverif_session_open" not in names
+    assert "xverif_wave_value_at" not in names
+    assert "xverif_bit_eval" in names
+
+
+@pytest.mark.parametrize(
+    ("env_name", "missing", "present"),
+    [
+        ("XVERIF_MCP_ENABLE_BIT", "xverif_bit_eval", "xverif_entry_decode"),
+        ("XVERIF_MCP_ENABLE_ENTRY", "xverif_entry_decode", "xverif_bit_eval"),
+        ("XVERIF_MCP_ENABLE_LOC", "xverif_loc_resolve", "xverif_bit_eval"),
+        ("XVERIF_MCP_ENABLE_CONTEXT", "xverif_context_status", "xverif_bit_eval"),
+    ],
+)
+def test_tool_group_disable_stateless_groups(
+    monkeypatch: pytest.MonkeyPatch,
+    env_name: str,
+    missing: str,
+    present: str,
+):
+    names = _tool_names(monkeypatch, {env_name: "0"})
+    assert missing not in names
+    assert present in names
+
+
+def test_tool_group_disable_common(monkeypatch: pytest.MonkeyPatch):
+    names = _tool_names(monkeypatch, {"XVERIF_MCP_ENABLE_COMMON": "0"})
+    assert "xverif_ping" not in names
+    assert "xverif_tools" not in names
+    assert "xverif_tool_help" not in names
+    assert "xverif_debug_query" in names
+
+
+def test_context_write_requires_both_switches(monkeypatch: pytest.MonkeyPatch):
+    assert "xverif_context_init_config" not in _tool_names(monkeypatch)
+    assert "xverif_context_init_config" not in _tool_names(
+        monkeypatch,
+        {"XVERIF_MCP_ENABLE_CONTEXT_WRITE": "1"},
+    )
+    enabled = {
+        "XVERIF_MCP_ENABLE_CONTEXT": "1",
+        "XVERIF_MCP_ENABLE_CONTEXT_WRITE": "1",
+        "XVERIF_MCP_ENABLE_WRITE": "1",
+    }
+    names = _tool_names(monkeypatch, enabled)
+    assert "xverif_context_init_config" in names
+
+    content, _ = _call_tool(monkeypatch, "xverif_tools", {}, enabled)
+    payload = json.loads(content[0].text)
+    catalog = {tool["name"] for tool in payload["tools"]}
+    assert "xverif_context_init_config" in catalog
+
+
+def test_invalid_bool_policy_warning(monkeypatch: pytest.MonkeyPatch):
+    content, _ = _call_tool(
+        monkeypatch,
+        "xverif_tools",
+        {},
+        {"XVERIF_MCP_ENABLE_SVA": "maybe"},
+    )
+    payload = json.loads(content[0].text)
+    assert "xverif_sva_explain_property" in {tool["name"] for tool in payload["tools"]}
+    assert payload["policy"]["warnings"]
+    assert "XVERIF_MCP_ENABLE_SVA" in payload["policy"]["warnings"][0]
+
+
+def test_tool_help_disabled_tool_is_hidden(monkeypatch: pytest.MonkeyPatch):
+    content, _ = _call_tool(
+        monkeypatch,
+        "xverif_tool_help",
+        {"name": "xverif_sva_explain_property"},
+        {"XVERIF_MCP_ENABLE_SVA": "0"},
+    )
+    payload = json.loads(content[0].text)
+    assert payload["ok"] is False
+    assert payload["error"]["code"] == "TOOL_NOT_ENABLED"
