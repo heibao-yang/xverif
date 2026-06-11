@@ -215,9 +215,19 @@ xeda-runner run --action sim --target compile --option TEST=smoke_test
 
 所有工具入口统一放在 `tools/` 目录下。
 
+## 环境要求
+
+| 组件 | 要求 |
+|---|---|
+| GCC | **5.0+** |
+| Python | 3.11+（xberif / xverif-mcp）；xbit/xentry/xloc 支持 3.6+ |
+| Verdi | 当前基于 **V-2023.12-SP2** 开发与测试，NPI API 随版本不同可能存在参数差异 |
+
+> 如果使用其他 Verdi 版本遇到编译或运行时 NPI 兼容性问题，可让 AI agent 根据编译错误和 NPI 头文件进行兼容性修复。
+
 ## 构建与测试
 
-`xdebug` 需要可用的 Verdi/NPI 环境；`xbit` 只依赖 Python 标准库，优先使用已配置的 Miniconda Python，失败时回退到 `python3`。`xberif` 要求 Python 3.11+，依赖 Python CLI/schema 相关包，真实 `init` 还需要可用的 agent 命令和显式 `--model` 参数。
+`xdebug` 需要可用的 Verdi/NPI 环境；`xbit` 只依赖 Python 标准库；`xberif` 要求 Python 3.11+，真实 `init` 还需要可用的 agent 命令和显式 `--model` 参数。
 
 ```bash
 make -C xdebug

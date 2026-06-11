@@ -36,6 +36,8 @@ xdebug/examples/responses/<action>.basic.json
 
 推荐通过仓库根目录的 wrapper 调用，它会设置 Verdi/NPI 运行所需环境：
 
+> **环境要求**：GCC 5.0+。当前基于 Verdi **V-2023.12-SP2** 开发与测试。NPI API 随 Verdi 版本不同可能存在参数差异——如果使用其他版本遇到编译或运行时 NPI 兼容性问题，可让 AI agent 根据编译错误和 NPI 头文件（`$VERDI_HOME/share/NPI/inc`）进行兼容性修复。
+
 ```bash
 tools/xdebug -
 ```

@@ -7,6 +7,17 @@
 
 xdebug direct 和 LSF 共用 `XdebugLoopSession`，只在 `Launcher` 层分离。每 session 独立进程，同 session 串行（request_lock），多 session 可并行。
 
+## 环境要求
+
+| 组件 | 要求 |
+|---|---|
+| GCC | **5.0+** |
+| Python | **3.11+**（`pip install "mcp[cli]"`） |
+| Verdi | 当前基于 **V-2023.12-SP2** 开发与测试 |
+| NPI | 随 Verdi 版本不同可能存在 API 参数差异 |
+
+> 如果使用其他 Verdi 版本遇到编译或运行时 NPI 兼容性问题，可让 AI agent 根据编译错误和 NPI 头文件（`$VERDI_HOME/share/NPI/inc`）进行兼容性修复。
+
 ## 入口
 
 ```bash
