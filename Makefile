@@ -1,8 +1,8 @@
-.PHONY: all xdebug xbit xentry xloc xberif test full-test clean
+.PHONY: all xdebug xbit xentry xloc xberif xcov test full-test clean xcov-test
 
 PYTHON ?= python3
 
-all: xdebug xbit xentry xloc xberif
+all: xdebug xbit xentry xloc xberif xcov
 
 xdebug:
 	$(MAKE) -C xdebug
@@ -19,7 +19,13 @@ xloc:
 xberif:
 	$(MAKE) -C xberif
 
-test: xdebug xbit xentry xloc xberif
+xcov:
+	@true
+
+xcov-test:
+	$(MAKE) -C xcov PYTHON=$(PYTHON) test
+
+test: xdebug xbit xentry xloc xberif xcov
 	$(MAKE) -C xdebug PYTHON=$(PYTHON) schema-test
 	$(MAKE) -C xdebug PYTHON=$(PYTHON) contract-test
 	$(MAKE) -C xdebug unit-test
@@ -28,6 +34,7 @@ test: xdebug xbit xentry xloc xberif
 	$(MAKE) -C xentry PYTHON=$(PYTHON) test
 	$(MAKE) -C xloc test
 	$(MAKE) -C xberif PYTHON=$(PYTHON) test
+	$(MAKE) -C xcov PYTHON=$(PYTHON) test
 	$(MAKE) -C xdebug/testdata/combined/active_driver fixture
 	regression/run_xdebug_regression.sh
 

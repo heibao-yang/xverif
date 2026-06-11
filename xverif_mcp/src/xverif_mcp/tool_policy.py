@@ -12,6 +12,7 @@ FALSE_VALUES = {"0", "false", "no", "off"}
 GROUP_ENV = {
     "common": ("XVERIF_MCP_ENABLE_COMMON", True),
     "debug": ("XVERIF_MCP_ENABLE_DEBUG", True),
+    "cov": ("XVERIF_MCP_ENABLE_COV", True),
     "bit": ("XVERIF_MCP_ENABLE_BIT", True),
     "entry": ("XVERIF_MCP_ENABLE_ENTRY", True),
     "loc": ("XVERIF_MCP_ENABLE_LOC", True),

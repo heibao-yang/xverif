@@ -14,6 +14,10 @@ def default_xdebug_bin() -> str:
     return os.path.join(repo_root(), "tools", "xdebug")
 
 
+def default_xcov_bin() -> str:
+    return os.environ.get("XVERIF_XCOV_BIN") or os.path.join(repo_root(), "tools", "xcov")
+
+
 def default_tool_path(tool: str) -> str:
     return os.path.join(repo_root(), "tools", tool)
 

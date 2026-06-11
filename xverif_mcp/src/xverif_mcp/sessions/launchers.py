@@ -1,4 +1,4 @@
-"""Launchers for xdebug --stdio-loop processes (direct and LSF)."""
+"""Launchers for --stdio-loop backend processes (direct and LSF)."""
 from __future__ import annotations
 
 import os
@@ -10,13 +10,14 @@ from typing import Optional
 from xverif_mcp.lsf.bsub import BsubOptions, BsubRunner
 from xverif_mcp.lsf.protocol import JsonlProcess
 
-from xverif_mcp.config import repo_root, default_xdebug_bin, bkill_timeout
+from xverif_mcp.config import bkill_timeout
 
 
 @dataclass
 class LaunchConfig:
     alias: str
     xdebug_bin: str
+    tool_bin: Optional[str] = None
     queue: Optional[str] = None
     resource: Optional[str] = None
     job_name: Optional[str] = None
@@ -46,7 +47,7 @@ class DirectLauncher(Launcher):
     mode = "direct"
 
     def start(self, cfg: LaunchConfig) -> JsonlProcess:
-        cmd = [cfg.xdebug_bin, "--stdio-loop"]
+        cmd = [cfg.tool_bin or cfg.xdebug_bin, "--stdio-loop"]
         proc = JsonlProcess.start(cmd)
         proc.job_name = None
         proc.job_id = None
@@ -63,7 +64,7 @@ class LsfLauncher(Launcher):
         self.bsub = bsub or BsubRunner(bsub_cmd)
 
     def start(self, cfg: LaunchConfig) -> JsonlProcess:
-        cmd = [cfg.xdebug_bin, "--stdio-loop"]
+        cmd = [cfg.tool_bin or cfg.xdebug_bin, "--stdio-loop"]
         proc = self.bsub.start(
             cmd,
             BsubOptions(

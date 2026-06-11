@@ -1,6 +1,6 @@
 # xverif
 
-`xverif` 是面向芯片验证 debug agent 的本地工具仓库，当前包含六个核心工具、一个统一 MCP 入口和一个 EDA 命令执行器：
+`xverif` 是面向芯片验证 debug agent 的本地工具仓库，当前包含七个核心工具、一个统一 MCP 入口和一个 EDA 命令执行器：
 
 - [`xdebug`](xdebug/README.md)：查询设计数据库和波形数据库里的事实。
 - [`xbit`](xbit/README.md)：确定性计算 bit、literal、slice、表达式和 expected value。
@@ -8,10 +8,11 @@
 - [`xloc`](xloc/README.md)：UVM 日志位置压缩与恢复，降低 LLM token 噪声。
 - [`xberif`](xberif/README.md)：生成和查询项目 summary cards/detail context，给 agent 提供可控上下文。
 - [`xsva`](xsva/README.md)：把 SystemVerilog Assertion 编译为结构化 IR，并生成确定性解释和可视化。
-- [`xverif-mcp`](xverif_mcp/README.md)：统一 MCP server，xdebug 作为唯一 stateful backend，其他工具以 stateless CLI adapter 接入。
+- [`xcov`](xcov/README.md)：查询 VCS/Verdi coverage database，输出 compact coverage evidence。
+- [`xverif-mcp`](xverif_mcp/README.md)：统一 MCP server，xdebug/xcov 作为 stateful backend，其他工具以 stateless CLI adapter 接入。
 - [`xeda-runner`](xeda_runner/README.md)：带环境快照缓存的阻塞式 EDA 命令执行器（非 MCP，独立 CLI）。
 
-简单说：`xdebug` 负责“事实从哪里来、某时刻发生了什么”，`xbit` 负责“这些值按 SystemVerilog 规则算出来到底是多少”，`xentry` 负责“这个 entry 的 bit 域段按配置切出来是什么”，`xloc` 负责“这条 log 在哪个文件的哪一行，但只在需要时才查”，`xberif` 负责”项目知识先用短卡片喂给 agent，细节按 topic 再展开”，`xsva` 负责”assertion 的 temporal 语义先降成 IR，再解释给人和 agent”，`xverif-mcp` 负责”把这六个工具统一暴露给 AI agent 的 MCP 协议入口”，`xeda-runner` 负责”在预配置的安全白名单内执行 EDA 命令，先 init 缓存环境再 run 阻塞执行”。
+简单说：`xdebug` 负责“事实从哪里来、某时刻发生了什么”，`xbit` 负责“这些值按 SystemVerilog 规则算出来到底是多少”，`xentry` 负责“这个 entry 的 bit 域段按配置切出来是什么”，`xloc` 负责“这条 log 在哪个文件的哪一行，但只在需要时才查”，`xberif` 负责”项目知识先用短卡片喂给 agent，细节按 topic 再展开”，`xsva` 负责”assertion 的 temporal 语义先降成 IR，再解释给人和 agent”，`xcov` 负责“coverage database 里哪些 scope/object/bin 已覆盖或未覆盖，并给出源码 evidence”，`xverif-mcp` 负责”把这些工具统一暴露给 AI agent 的 MCP 协议入口”，`xeda-runner` 负责”在预配置的安全白名单内执行 EDA 命令，先 init 缓存环境再 run 阻塞执行”。
 
 ## 工具概览
 
@@ -45,7 +46,7 @@ printf '%s\n' '{"api_version":"xdebug.v1","action":"actions"}' | tools/xdebug --
 tools/xverif-mcp
 ```
 
-`tools/xverif-mcp` 是统一 stdio MCP server（`python -m xverif_mcp.server`），xdebug 作为唯一 stateful backend 提供设计/波形查询能力，xbit/xentry/xloc/xberif/xsva 以 stateless CLI adapter 接入。
+`tools/xverif-mcp` 是统一 stdio MCP server（`python -m xverif_mcp.server`），xdebug 作为设计/波形 stateful backend，xcov 作为 coverage stateful backend，xbit/xentry/xloc/xberif/xsva 以 stateless CLI adapter 接入。
 如果 AI 客户端在登录机、NPI/FSDB 查询需要跑到 LSF 计算节点，可以设置 `XVERIF_MCP_BACKEND=lsf`，让 MCP wrapper 通过 `bsub -I` 启动集群内 per-session stdio-loop 进程。不同 session 并行，同一 session 串行。
 可用 `XVERIF_MCP_ENABLE_DEBUG/BIT/ENTRY/LOC/CONTEXT/SVA` 等环境变量按工具组关闭 MCP 暴露面。
 如果不走 MCP 且本机无法直连计算节点 TCP 端口，xdebug 原生支持 `transport:"file"`，通过共享文件系统在 session 目录下交换 request/response。
@@ -158,6 +159,30 @@ tools/xsva render --file xsva/tests/golden_ir/path_expand/input.sva --property p
 
 完整说明见 [`xsva/README.md`](xsva/README.md)，设计规范见 [`xsva/xsva_design_spec.md`](xsva/xsva_design_spec.md)。
 
+### xcov
+
+`xcov` 是面向 AI/MCP 的 VCS/Verdi coverage database 查询引擎。它用 `xcov.v1` JSON request 查询 `simv.vdb` / `merged.vdb`，默认输出 `xout`，支持 code coverage、functional coverage、scope summary、coverage holes、source file/line 映射和大结果导出。
+
+适合的问题：
+
+- 打开大型 coverage database，并通过 session 复用打开成本。
+- 查询 line/toggle/branch/condition/fsm/assert/functional coverage。
+- 按 hierarchy scope 查看 summary、children 排名和 scope search。
+- 查 coverage holes，并保留 `file/line` evidence。
+- 根据源码 `file/line/window` 反查 coverage item。
+- 导出 summary/holes/scope_tree/functional 为 `json/ndjson/csv/md`。
+
+入口示例：
+
+```bash
+printf '%s\n' '{"api_version":"xcov.v1","action":"session.open","target":{"vdb":"fake"},"args":{"name":"cov0","fake":true}}' | tools/xcov --json -
+tools/xcov --stdio-loop
+```
+
+MCP 工具入口使用 `xverif_cov_session_open`、`xverif_cov_query`、`xverif_cov_session_close`。真实 NPI coverage 查询需要可访问 Synopsys license server；当前用 `/home/yian/miniconda3/envs/xdebug-mcp/bin/python` 的 Python 3.11 环境验证通过。
+
+完整说明见 [`xcov/README.md`](xcov/README.md)，skill 见 [`xcov/skill/SKILL.md`](xcov/skill/SKILL.md)。
+
 ### xeda-runner
 
 `xeda-runner` 是带环境快照缓存的阻塞式 allowlist EDA 命令执行器。它先通过 `init` 缓存 `tcsh/module/setup` 环境为 env0 快照，`run` 时读取快照并按配置白名单构造 argv、校验 target/option、阻塞执行并透传 exit code。纯 Python 标准库，零 pip 依赖，支持 bash/zsh/tcsh。
@@ -210,6 +235,7 @@ xentry '{"api_version":"xentry.v1","action":"explain","config_path":"xentry/exam
 xloc resolve L_00000001 --map out/sim.log.xloc.jsonl
 xberif config init --kind bt
 xsva list --file xsva/tests/golden_ir/simple_impl/input.sva
+xcov --stdio-loop
 xeda-runner init
 xeda-runner run --action sim --target compile --option TEST=smoke_test
 ```
@@ -242,6 +268,7 @@ make -C xentry test
 make -C xloc test
 make -C xberif test
 make -C xsva test
+make -C xcov test
 
 # xverif_mcp 单元测试（无需 Verdi）
 PYTHONPATH=xverif_mcp/src:. python -m pytest xverif_mcp/tests/ -q
@@ -270,6 +297,8 @@ make full-test
 - xsva 用户文档：[`xsva/README.md`](xsva/README.md)
 - xsva agent skill：[`xsva/skill/SKILL.md`](xsva/skill/SKILL.md)
 - xsva 设计规范：[`xsva/xsva_design_spec.md`](xsva/xsva_design_spec.md)
+- xcov 用户文档：[`xcov/README.md`](xcov/README.md)
+- xcov agent skill：[`xcov/skill/SKILL.md`](xcov/skill/SKILL.md)
 - xverif-mcp 用户文档：[`xverif_mcp/README.md`](xverif_mcp/README.md)
 - xeda-runner 用户文档：[`xeda_runner/README.md`](xeda_runner/README.md)
 - xeda-runner agent skill：[`xeda_runner/skill/SKILL.md`](xeda_runner/skill/SKILL.md)

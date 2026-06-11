@@ -2,10 +2,11 @@
 
 `xverif_mcp` 是 `tools/xverif-mcp` 的 Python 实现，基于 FastMCP SDK。它是 xverif 工具体系统一 MCP 入口：
 
-- **xdebug**：唯一 stateful backend，通过 `tools/xdebug --stdio-loop` 提供设计/波形查询能力，支持 direct/LSF 模式。
+- **xdebug**：stateful backend，通过 `tools/xdebug --stdio-loop` 提供设计/波形查询能力，支持 direct/LSF 模式。
+- **xcov**：stateful backend，通过 `tools/xcov --stdio-loop` 提供 VCS/Verdi coverage database 查询能力，支持 direct/LSF 模式。
 - **xbit / xentry / xloc / xberif / xsva**：stateless CLI adapter，每次调用短生命周期 subprocess。
 
-xdebug direct 和 LSF 共用 `XdebugLoopSession`，只在 `Launcher` 层分离。每 session 独立进程，同 session 串行（request_lock），多 session 可并行。
+xdebug/xcov direct 和 LSF 共用 stdio-loop session manager，只在 `Launcher` 层分离。每 session 独立进程，同 session 串行（request_lock），多 session 可并行。
 
 ## 环境要求
 
@@ -94,8 +95,8 @@ tools/xverif-lsf-doctor
 - `<lsf-install>`：LSF 安装根目录
 
 `XVERIF_MCP_BACKEND` 可选值：
-- `direct`：本机启动 `tools/xdebug --stdio-loop`
-- `lsf`：通过 `bsub -I tools/xdebug --stdio-loop` 提交到 LSF
+- `direct`：本机启动 `tools/xdebug --stdio-loop` 或 `tools/xcov --stdio-loop`
+- `lsf`：通过 `bsub -I tools/<backend> --stdio-loop` 提交到 LSF
 
 ### 通用 MCP client
 
@@ -125,6 +126,10 @@ AI MCP client
        -> McpSessionManager
        -> DirectLauncher:  tools/xdebug --stdio-loop  (direct)
        -> LsfLauncher:     bsub -I tools/xdebug --stdio-loop  (LSF)
+  -> XverifCoverageAdapter (xcov)
+       -> McpSessionManager
+       -> DirectLauncher:  tools/xcov --stdio-loop  (direct)
+       -> LsfLauncher:     bsub -I tools/xcov --stdio-loop  (LSF)
   -> StatelessCliRunner (xbit/xentry/xloc/xberif/xsva)
        -> tools/<tool> --json ...
 ```
@@ -143,6 +148,7 @@ AI MCP client
 | `XVERIF_MCP_ENABLE_WRITE=1` | 启用 xberif 写入操作 |
 | `XVERIF_MCP_ENABLE_COMMON` | 暴露 common 工具，默认 `1` |
 | `XVERIF_MCP_ENABLE_DEBUG` | 暴露 xdebug/session 工具，默认 `1` |
+| `XVERIF_MCP_ENABLE_COV` | 暴露 xcov coverage 工具，默认 `1` |
 | `XVERIF_MCP_ENABLE_BIT` | 暴露 xbit 工具，默认 `1` |
 | `XVERIF_MCP_ENABLE_ENTRY` | 暴露 xentry 工具，默认 `1` |
 | `XVERIF_MCP_ENABLE_LOC` | 暴露 xloc 工具，默认 `1` |
@@ -152,9 +158,31 @@ AI MCP client
 | `XVERIF_LSF_BSUB` | 覆盖 `bsub` 命令（默认 `bsub`） |
 | `XVERIF_LSF_SESSION_QUEUE` | session job 的 LSF 队列（默认 `interactive`） |
 | `XVERIF_LSF_BKILL` | 覆盖 `bkill` 命令 |
+| `XVERIF_XCOV_BIN` | 覆盖 xcov 可执行文件路径，默认 `tools/xcov` |
+| `XVERIF_XCOV_PYTHON` | 覆盖 xcov 使用的 Python runtime |
+| `XVERIF_XCOV_VERDI_HOME` | 覆盖 xcov 使用的 Verdi 安装路径 |
 | `XVERIF_MCP_FAKE_LSF=1` | 本地测试用 fake LSF runner |
 | `VERDI_HOME` | Verdi 安装目录 |
 | `LD_LIBRARY_PATH` | 需包含 `<verdi-install>/share/NPI/lib/LINUX64` |
+
+xdebug session 工具使用明确前缀：
+
+```text
+xverif_debug_session_open
+xverif_debug_session_list
+xverif_debug_session_use
+xverif_debug_session_close
+```
+
+xcov session 工具使用 coverage 前缀：
+
+```text
+xverif_cov_session_open
+xverif_cov_session_list
+xverif_cov_session_use
+xverif_cov_session_close
+xverif_cov_query
+```
 
 ## 工具暴露开关
 

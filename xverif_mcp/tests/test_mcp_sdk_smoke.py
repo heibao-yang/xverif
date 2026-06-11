@@ -24,6 +24,7 @@ pytest.importorskip("mcp")
 POLICY_ENV = [
     "XVERIF_MCP_ENABLE_COMMON",
     "XVERIF_MCP_ENABLE_DEBUG",
+    "XVERIF_MCP_ENABLE_COV",
     "XVERIF_MCP_ENABLE_BIT",
     "XVERIF_MCP_ENABLE_ENTRY",
     "XVERIF_MCP_ENABLE_LOC",
@@ -77,12 +78,18 @@ def test_mcp_tools_list(monkeypatch: pytest.MonkeyPatch):
     names = _tool_names(monkeypatch)
     assert "xverif_ping" in names
     assert "xverif_debug_query" in names
-    assert "xverif_session_open" in names
+    assert "xverif_debug_session_open" in names
+    assert "xverif_cov_session_open" in names
+    assert "xverif_cov_query" in names
     assert "xverif_debug_list_actions" in names
     assert "xverif_debug_get_schema" in names
-    assert "xverif_session_list" in names
-    assert "xverif_session_use" in names
-    assert "xverif_session_close" in names
+    assert "xverif_debug_session_list" in names
+    assert "xverif_debug_session_use" in names
+    assert "xverif_debug_session_close" in names
+    assert "xverif_session_open" not in names
+    assert "xverif_session_list" not in names
+    assert "xverif_session_use" not in names
+    assert "xverif_session_close" not in names
     assert "xverif_debug_raw_request" in names
     assert "xverif_tools" in names
     assert "xverif_bit_eval" in names
@@ -115,9 +122,47 @@ def test_tool_group_disable_sva(monkeypatch: pytest.MonkeyPatch):
 def test_tool_group_disable_debug(monkeypatch: pytest.MonkeyPatch):
     names = _tool_names(monkeypatch, {"XVERIF_MCP_ENABLE_DEBUG": "0"})
     assert "xverif_debug_query" not in names
-    assert "xverif_session_open" not in names
+    assert "xverif_debug_session_open" not in names
     assert "xverif_wave_value_at" not in names
+    assert "xverif_cov_query" in names
     assert "xverif_bit_eval" in names
+
+
+def test_tool_group_disable_cov(monkeypatch: pytest.MonkeyPatch):
+    names = _tool_names(monkeypatch, {"XVERIF_MCP_ENABLE_COV": "0"})
+    assert "xverif_cov_query" not in names
+    assert "xverif_cov_session_open" not in names
+    assert "xverif_debug_query" in names
+
+
+def test_cov_session_fake_lifecycle(monkeypatch: pytest.MonkeyPatch):
+    overrides = {
+        "XVERIF_HOME": str(Path(__file__).resolve().parents[2]),
+        "XVERIF_MCP_BACKEND": "direct",
+    }
+    server = _server(monkeypatch, overrides)
+
+    async def _run():
+        opened = await server.mcp.call_tool(
+            "xverif_cov_session_open",
+            {"name": "cov_fake", "vdb": "fake"},
+        )
+        queried = await server.mcp.call_tool(
+            "xverif_cov_query",
+            {"session": "cov_fake", "action": "cov.holes",
+             "args": {"metrics": ["toggle"], "limits": {"max_items": 1}}},
+        )
+        closed = await server.mcp.call_tool(
+            "xverif_cov_session_close",
+            {"name": "cov_fake"},
+        )
+        return opened, queried, closed
+
+    opened, queried, _ = anyio.run(_run)
+    opened_payload = json.loads(opened[0].text)
+    assert opened_payload["ok"] is True
+    assert "XOUT_BEGIN" in queried[0].text
+    assert "npiCovToggleBin" in queried[0].text
 
 
 @pytest.mark.parametrize(

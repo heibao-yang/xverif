@@ -6,6 +6,7 @@ from typing import Any, Optional
 from mcp.server.fastmcp import FastMCP
 
 from xverif_mcp.adapters.xdebug import XverifDebugAdapter
+from xverif_mcp.adapters.xcov import XverifCoverageAdapter
 from xverif_mcp.adapters.xbit import bit_conv, bit_eval, bit_slice, bit_check
 from xverif_mcp.adapters.xentry import entry_decode, entry_explain, entry_validate
 from xverif_mcp.adapters.xloc import loc_resolve, loc_context, loc_stats, loc_annotate
@@ -29,8 +30,9 @@ Other tools (xbit, xentry, xloc, xberif, xsva) are stateless CLI adapters.
 
 Typical workflow:
 1. Call xverif_tools to discover available tools.
-2. For debug queries: xverif_session_open → xverif_debug_query.
-3. For stateless queries: call the tool directly (e.g., xverif_bit_eval).
+2. For debug queries: xverif_debug_session_open → xverif_debug_query.
+3. For coverage queries: xverif_cov_session_open → xverif_cov_query.
+4. For stateless queries: call the tool directly (e.g., xverif_bit_eval).
 
 If xverif_debug_query returns error.code=SESSION_LOST:
   - check error.terminal_source: "transport" means subprocess/LSF crash or timeout
@@ -38,7 +40,7 @@ If xverif_debug_query returns error.code=SESSION_LOST:
     and let user decide — narrow query scope or increase timeout env vars
   - the MCP server has already cleaned up the subprocess/LSF job
   - the session mapping has been evicted
-  - the agent must explicitly call xverif_session_open before retrying
+  - the agent must explicitly call xverif_debug_session_open before retrying
 No automatic retry or reopen is performed by the server.
 
 Output format: all tools default to output_format="xout" (compact AI-readable
@@ -52,6 +54,7 @@ mcp = FastMCP(
 )
 
 debug = XverifDebugAdapter()
+cov = XverifCoverageAdapter()
 
 
 def _tool_error(code: str, message: str) -> dict:
@@ -79,7 +82,7 @@ def xverif_ping() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Debug tools (xdebug — the only stateful backend)
+# Debug tools (xdebug)
 # ---------------------------------------------------------------------------
 
 
@@ -123,7 +126,7 @@ def xverif_debug_raw_request(request: dict, output_format: str = "xout") -> dict
 
 
 @xverif_tool("debug")
-def xverif_session_open(
+def xverif_debug_session_open(
     name: str,
     daidir: Optional[str] = None,
     fsdb: Optional[str] = None,
@@ -133,21 +136,7 @@ def xverif_session_open(
     reopen: bool = False,
     make_default: bool = True,
 ) -> dict:
-    """Open a loop-backed xdebug session (eager open).
-
-    In direct mode, starts a local tools/xdebug --stdio-loop process.
-    In LSF mode, starts a bsub -I tools/xdebug --stdio-loop job.
-
-    Args:
-        name: Unique session alias (e.g. "wave_a").
-        daidir: Path to daidir (design database directory).
-        fsdb: Path to FSDB waveform file.
-        queue: LSF queue name (LSF backend only).
-        resource: LSF resource string (LSF backend only).
-        reuse: If True, reuse an existing session with the same name.
-        reopen: If True, force reopen even if a session exists.
-        make_default: If True, set this session as the default.
-    """
+    """Open a loop-backed xdebug session."""
     return debug.session_open(
         name=name, daidir=daidir, fsdb=fsdb, queue=queue,
         resource=resource, reuse=reuse, reopen=reopen,
@@ -156,26 +145,17 @@ def xverif_session_open(
 
 
 @xverif_tool("debug")
-def xverif_session_list(include_native: bool = False) -> dict:
-    """List xdebug sessions managed by this MCP server.
-
-    Args:
-        include_native: If True, also include native xdebug sessions.
-    """
+def xverif_debug_session_list(include_native: bool = False) -> dict:
+    """List xdebug sessions managed by this server."""
     return debug.session_list(include_native=include_native)
 
 
 @xverif_tool("debug")
-def xverif_session_use(
+def xverif_debug_session_use(
     name: Optional[str] = None,
     session_id: Optional[str] = None,
 ) -> dict:
-    """Set the default xdebug session used by xverif_debug_query.
-
-    Args:
-        name: Session alias previously opened with xverif_session_open.
-        session_id: Raw session ID string.
-    """
+    """Set the default xdebug session."""
     key = session_id or name
     if not key:
         return _tool_error("INVALID_ARGUMENT", "provide name or session_id")
@@ -183,19 +163,11 @@ def xverif_session_use(
 
 
 @xverif_tool("debug")
-def xverif_session_close(
+def xverif_debug_session_close(
     name: Optional[str] = None,
     session_id: Optional[str] = None,
 ) -> dict:
-    """Close and cleanup an xdebug session.
-
-    Sends stdio.quit, terminates the loop process, and evicts the session
-    from the manager. In LSF mode also bkill's the job as fallback.
-
-    Args:
-        name: Session alias to close.
-        session_id: Raw session ID to close.
-    """
+    """Close and cleanup an xdebug session."""
     key = session_id or name
     if not key:
         return _tool_error("INVALID_ARGUMENT", "provide name or session_id")
@@ -217,7 +189,7 @@ def xverif_debug_query(
     Recommended workflow:
     1. Call xverif_debug_list_actions if you don't know available actions.
     2. Call xverif_debug_get_schema(action) if you need the exact request shape.
-    3. Call xverif_session_open first for FSDB/daidir queries.
+    3. Call xverif_debug_session_open first for FSDB/daidir queries.
     4. Call xverif_debug_query with action + args.
 
     Args:
@@ -236,6 +208,108 @@ def xverif_debug_query(
         return _tool_error("INVALID_ARGUMENT",
                            "output_format must be 'xout', 'json', or 'envelope'")
     return debug.query(
+        action=action,
+        args=args or {},
+        target=target,
+        session=session,
+        limits=limits,
+        output=output,
+        output_format=output_format,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Coverage tools (xcov — stateful backend)
+# ---------------------------------------------------------------------------
+
+
+@xverif_tool("cov")
+def xverif_cov_list_actions() -> dict:
+    """Return the xcov action catalog."""
+    return cov.actions()
+
+
+@xverif_tool("cov")
+def xverif_cov_get_schema(action: str, kind: str = "request") -> dict:
+    """Return an xcov action schema."""
+    if kind not in ("request", "response"):
+        return _tool_error("INVALID_ARGUMENT", "kind must be 'request' or 'response'")
+    return cov.schema(action, kind)
+
+
+@xverif_tool("cov")
+def xverif_cov_raw_request(request: dict, output_format: str = "xout") -> Any:
+    """Run a complete xcov JSON request one-shot."""
+    if not isinstance(request, dict):
+        return _tool_error("INVALID_ARGUMENT", "request must be a JSON object")
+    if output_format not in ("xout", "json", "envelope"):
+        return _tool_error("INVALID_ARGUMENT",
+                           "output_format must be 'xout', 'json', or 'envelope'")
+    return cov.request(request, output_format)
+
+
+@xverif_tool("cov")
+def xverif_cov_session_open(
+    name: str,
+    vdb: str,
+    queue: Optional[str] = None,
+    resource: Optional[str] = None,
+    reuse: bool = True,
+    reopen: bool = False,
+    make_default: bool = True,
+) -> dict:
+    """Open a loop-backed xcov coverage database session."""
+    return cov.session_open(
+        name=name, vdb=vdb, queue=queue, resource=resource,
+        reuse=reuse, reopen=reopen, make_default=make_default,
+    )
+
+
+@xverif_tool("cov")
+def xverif_cov_session_list() -> dict:
+    """List xcov sessions managed by this server."""
+    return cov.session_list()
+
+
+@xverif_tool("cov")
+def xverif_cov_session_use(
+    name: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> dict:
+    """Set the default xcov session."""
+    key = session_id or name
+    if not key:
+        return _tool_error("INVALID_ARGUMENT", "provide name or session_id")
+    return cov.session_use(key)
+
+
+@xverif_tool("cov")
+def xverif_cov_session_close(
+    name: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> dict:
+    """Close and cleanup an xcov session."""
+    key = session_id or name
+    if not key:
+        return _tool_error("INVALID_ARGUMENT", "provide name or session_id")
+    return cov.session_close(key)
+
+
+@xverif_tool("cov")
+def xverif_cov_query(
+    action: str,
+    args: Optional[dict] = None,
+    target: Optional[dict] = None,
+    session: Optional[str] = None,
+    limits: Optional[dict] = None,
+    output: Optional[dict] = None,
+    output_format: str = "xout",
+) -> Any:
+    """Run an xcov action through a coverage session."""
+    if output_format not in ("xout", "json", "envelope"):
+        return _tool_error("INVALID_ARGUMENT",
+                           "output_format must be 'xout', 'json', or 'envelope'")
+    return cov.query(
         action=action,
         args=args or {},
         target=target,
@@ -626,21 +700,46 @@ TOOL_CATALOG = [
     {"name": "xverif_debug_raw_request", "category": "debug", "backend": "xdebug",
      "stateful": False, "requires_session": False,
      "description": "Run a complete xdebug JSON request (one-shot, no session)."},
-    {"name": "xverif_session_open", "category": "debug", "backend": "xdebug",
+    {"name": "xverif_debug_session_open", "category": "debug", "backend": "xdebug",
      "stateful": True, "requires_session": True,
      "description": "Open a loop-backed xdebug session (direct or LSF)."},
-    {"name": "xverif_session_list", "category": "debug", "backend": "xdebug",
+    {"name": "xverif_debug_session_list", "category": "debug", "backend": "xdebug",
      "stateful": True, "requires_session": False,
      "description": "List xdebug sessions managed by this server."},
-    {"name": "xverif_session_use", "category": "debug", "backend": "xdebug",
+    {"name": "xverif_debug_session_use", "category": "debug", "backend": "xdebug",
      "stateful": True, "requires_session": False,
      "description": "Set the default xdebug session."},
-    {"name": "xverif_session_close", "category": "debug", "backend": "xdebug",
+    {"name": "xverif_debug_session_close", "category": "debug", "backend": "xdebug",
      "stateful": True, "requires_session": True,
      "description": "Close and cleanup an xdebug session."},
     {"name": "xverif_debug_query", "category": "debug", "backend": "xdebug",
      "stateful": True, "requires_session": True,
      "description": "Run an xdebug action through a loop session."},
+    # coverage
+    {"name": "xverif_cov_list_actions", "category": "cov", "backend": "xcov",
+     "stateful": False, "requires_session": False,
+     "description": "Return the xcov action catalog."},
+    {"name": "xverif_cov_get_schema", "category": "cov", "backend": "xcov",
+     "stateful": False, "requires_session": False,
+     "description": "Return an xcov action schema."},
+    {"name": "xverif_cov_raw_request", "category": "cov", "backend": "xcov",
+     "stateful": False, "requires_session": False,
+     "description": "Run a complete xcov JSON request one-shot."},
+    {"name": "xverif_cov_session_open", "category": "cov", "backend": "xcov",
+     "stateful": True, "requires_session": True,
+     "description": "Open a loop-backed xcov coverage database session."},
+    {"name": "xverif_cov_session_list", "category": "cov", "backend": "xcov",
+     "stateful": True, "requires_session": False,
+     "description": "List xcov sessions managed by this server."},
+    {"name": "xverif_cov_session_use", "category": "cov", "backend": "xcov",
+     "stateful": True, "requires_session": False,
+     "description": "Set the default xcov session."},
+    {"name": "xverif_cov_session_close", "category": "cov", "backend": "xcov",
+     "stateful": True, "requires_session": True,
+     "description": "Close and cleanup an xcov session."},
+    {"name": "xverif_cov_query", "category": "cov", "backend": "xcov",
+     "stateful": True, "requires_session": True,
+     "description": "Run an xcov action through a coverage session."},
     # wave aliases
     {"name": "xverif_wave_value_at", "category": "debug", "backend": "xdebug",
      "stateful": True, "requires_session": True,

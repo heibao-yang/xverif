@@ -72,13 +72,13 @@ JSON
 
 如果当前 shell 未安装 `xdebug`，且当前目录是仓库根目录，可以临时使用 `tools/xdebug`。
 
-MCP 场景使用 `tools/xverif-mcp`（统一入口 `python -m xverif_mcp.server`）。xdebug 是唯一 stateful backend，其他 xverif 工具以 stateless CLI adapter 方式接入。MCP tool 选择：
+MCP 场景使用 `tools/xverif-mcp`（统一入口 `python -m xverif_mcp.server`）。xdebug 是设计/波形 stateful backend；coverage 数据库查询使用 xcov stateful backend；其他 xverif 工具以 stateless CLI adapter 方式接入。MCP tool 选择：
 
 - `xverif_debug_session_open`：打开/复用 `daidir`、`fsdb` 或 combined session。
 - `xverif_debug_session_use`：切换默认 session。
 - `xverif_debug_query`：用默认 session 调 action。
-- `xverif_debug_request`：需要完整 envelope 控制时直接传 xdebug JSON request。
-- `xverif_debug_actions` / `xverif_debug_schema`：查询机器契约。
+- `xverif_debug_raw_request`：需要完整 envelope 控制时直接传 xdebug JSON request。
+- `xverif_debug_list_actions` / `xverif_debug_get_schema`：查询机器契约。
 - `xverif_wave_value_at`、`xverif_design_trace_driver` 等高频别名。
 
 如果用户或 MCP 配置通过 `XVERIF_MCP_ENABLE_*` 关闭了部分工具组，先调用 `xverif_tools` 查看当前可见工具集；不要假设所有 xverif 工具都已暴露。
@@ -103,7 +103,7 @@ MCP 场景使用 `tools/xverif-mcp`（统一入口 `python -m xverif_mcp.server`
   - 文件太大 / 查询范围过宽 / trace 深度过高 → 建议缩小 `time_range` 或 `limits`
   - LSF 队列紧张导致 job 启动延迟 → 关注队列状态
 - 如果用户确认需要加长超时：`XVERIF_MCP_STARTUP_TIMEOUT_SEC`（open，默认 180s）或 `XVERIF_MCP_REQUEST_TIMEOUT_SEC`（query，默认 360s）
-- session 已被清理，需要显式 `xverif_session_open` 重建后重试
+- session 已被清理，需要显式 `xverif_debug_session_open` 重建后重试
 
 ## 资源 target 决策
 

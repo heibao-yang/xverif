@@ -1,4 +1,4 @@
-"""McpSessionManager — multi-session lifecycle for xdebug loop sessions."""
+"""McpSessionManager — multi-session lifecycle for stdio-loop backends."""
 
 from __future__ import annotations
 
@@ -29,13 +29,22 @@ def _error(code: str, message: str) -> Json:
 class McpSessionManager:
     def __init__(self, mode: Optional[str] = None, xdebug_bin: Optional[str] = None,
                  startup_timeout_sec: Optional[float] = None,
-                 request_timeout_sec: Optional[float] = None) -> None:
+                 request_timeout_sec: Optional[float] = None,
+                 backend: str = "xdebug", api_version: str = "xdebug.v1",
+                 ready_protocol: str = "xdebug-stdio-loop",
+                 target_key: str = "fsdb",
+                 recovery_tool: str = "xverif_debug_session_open") -> None:
         if startup_timeout_sec is None:
             startup_timeout_sec = startup_timeout()
         if request_timeout_sec is None:
             request_timeout_sec = request_timeout()
         self.mode = mode or os.environ.get("XVERIF_MCP_BACKEND", "direct")
         self.xdebug_bin = xdebug_bin or default_xdebug_bin()
+        self.backend = backend
+        self.api_version = api_version
+        self.ready_protocol = ready_protocol
+        self.target_key = target_key
+        self.recovery_tool = recovery_tool
         self.startup_timeout_sec = startup_timeout_sec
         self.request_timeout_sec = request_timeout_sec
         self._session_queue = os.environ.get("XVERIF_LSF_SESSION_QUEUE", "interactive")
@@ -73,13 +82,16 @@ class McpSessionManager:
         actual_queue = queue or (self._session_queue if self.mode == "lsf" else None)
         actual_resource = resource or (self._session_resource if self.mode == "lsf" else None)
         if self.mode == "lsf":
-            job_name = f"{self._job_prefix}_sess_{_safe_name(name)}"
+            job_name = f"{self._job_prefix}_{_safe_name(self.backend)}_{_safe_name(name)}"
         session = XdebugLoopSession(
             alias=name, fsdb=fsdb, daidir=daidir, launcher=self.launcher,
             xdebug_bin=self.xdebug_bin, queue=actual_queue,
             resource=actual_resource, job_name=job_name, reuse=reuse,
             reopen=reopen, startup_timeout_sec=self.startup_timeout_sec,
-            request_timeout_sec=self.request_timeout_sec)
+            request_timeout_sec=self.request_timeout_sec,
+            backend=self.backend, api_version=self.api_version,
+            ready_protocol=self.ready_protocol, target_key=self.target_key,
+            recovery_tool=self.recovery_tool)
         result = session.open()
         if not result.get("ok"):
             return result
@@ -97,7 +109,7 @@ class McpSessionManager:
         key = session or self.default_session
         if not key:
             return _error("SESSION_REQUIRED",
-                          "provide session or call xverif_debug_session_open first")
+                          f"provide session or call {self.recovery_tool} first")
         s = self.sessions.get(key)
         if not s:
             return _error("SESSION_NOT_FOUND", f"session not found: {key}")

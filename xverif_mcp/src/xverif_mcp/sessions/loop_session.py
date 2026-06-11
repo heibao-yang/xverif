@@ -1,4 +1,4 @@
-"""XdebugLoopSession — single --stdio-loop process backed session."""
+"""LoopSession — single --stdio-loop process backed session."""
 
 from __future__ import annotations
 
@@ -44,6 +44,11 @@ class XdebugLoopSession:
     daidir: Optional[str]
     launcher: Launcher
     xdebug_bin: str = field(default_factory=default_xdebug_bin)
+    backend: str = "xdebug"
+    api_version: str = "xdebug.v1"
+    ready_protocol: str = "xdebug-stdio-loop"
+    target_key: str = "fsdb"
+    recovery_tool: str = "xverif_debug_session_open"
     queue: Optional[str] = None
     resource: Optional[str] = None
     job_name: Optional[str] = None
@@ -110,7 +115,7 @@ class XdebugLoopSession:
                        terminal_source=source, backend_response=backend_response,
                        cleanup=cleanup or self.last_cleanup,
                        recovery_hint={
-                           "action": "xverif_session_open",
+                           "action": self.recovery_tool,
                            "reason": reason,
                            "env_vars": {
                                "XVERIF_MCP_STARTUP_TIMEOUT_SEC":
@@ -124,21 +129,24 @@ class XdebugLoopSession:
         if self.state not in ("new", "closed", "dead"):
             return _error("SESSION_EXISTS", f"session already opened: {self.alias}")
         cfg = LaunchConfig(alias=self.alias, xdebug_bin=self.xdebug_bin,
+                           tool_bin=self.xdebug_bin,
                            queue=self.queue, resource=self.resource,
                            job_name=self.job_name,
                            startup_timeout_sec=self.startup_timeout_sec)
         self.handle = self.launcher.start(cfg)
         try:
-            ready = self.handle.wait_ready("xdebug-stdio-loop", self.startup_timeout_sec)
+            ready = self.handle.wait_ready(self.ready_protocol, self.startup_timeout_sec)
             self.pid = int(ready.get("pid") or 0)
             open_req: Json = {
                 "request_id": f"open-{_safe_name(self.alias)}",
-                "api_version": "xdebug.v1", "action": "session.open",
-                "target": {"fsdb": self.fsdb},
-                "args": {"name": self.alias, "transport": "uds",
-                         "reuse": self.reuse, "reopen": self.reopen},
+                "api_version": self.api_version, "action": "session.open",
+                "target": {self.target_key: self.fsdb},
+                "args": {"name": self.alias, "reuse": self.reuse,
+                         "reopen": self.reopen},
                 "output": {"format": "json"},
             }
+            if self.backend == "xdebug":
+                open_req["args"]["transport"] = "uds"
             if self.daidir:
                 open_req["target"]["daidir"] = self.daidir
             rsp = self._call_raw(open_req, timeout=self.startup_timeout_sec)
@@ -159,7 +167,7 @@ class XdebugLoopSession:
             try:
                 self._call_raw({
                     "request_id": f"close-{_safe_name(self.alias)}",
-                    "api_version": "xdebug.v1", "action": "session.close",
+                    "api_version": self.api_version, "action": "session.close",
                     "target": {"session_id": self.session_id},
                     "output": {"format": "json"},
                 }, timeout=close_timeout())
@@ -188,7 +196,7 @@ class XdebugLoopSession:
         self._seq += 1
         req: Json = {
             "request_id": f"{_safe_name(self.alias)}-{self._seq}",
-            "api_version": "xdebug.v1", "action": action,
+            "api_version": self.api_version, "action": action,
         }
         if args:
             req["args"] = args
@@ -206,24 +214,24 @@ class XdebugLoopSession:
         except ProtocolError as exc:
             cleanup = self.abort(str(exc), source="transport")
             return self._session_lost_error(
-                f"xdebug stdio-loop transport lost: {exc}",
+                f"{self.backend} stdio-loop transport lost: {exc}",
                 source="transport", cleanup=cleanup)
         except OSError as exc:
             cleanup = self.abort(str(exc), source="io")
             return self._session_lost_error(
-                f"xdebug stdio-loop io error: {exc}",
+                f"{self.backend} stdio-loop io error: {exc}",
                 source="io", cleanup=cleanup)
         except Exception as exc:
             cleanup = self.abort(str(exc), source="unexpected")
             return self._session_lost_error(
-                f"xdebug stdio-loop unexpected failure: {exc}",
+                f"{self.backend} stdio-loop unexpected failure: {exc}",
                 source="unexpected", cleanup=cleanup)
         if response_says_session_terminal(rsp):
             cleanup = self.abort(
                 f"backend reported terminal session after action {action}",
                 source="backend_response")
             return self._session_lost_error(
-                f"xdebug backend reported terminal session after action {action}",
+                f"{self.backend} backend reported terminal session after action {action}",
                 source="backend_response", backend_response=rsp, cleanup=cleanup)
         if not rsp.get("ok"):
             return rsp
@@ -244,8 +252,9 @@ class XdebugLoopSession:
     def public_json(self) -> Json:
         h = self.handle
         out: Json = {"alias": self.alias, "session_id": self.session_id,
-                      "fsdb": self.fsdb, "daidir": self.daidir,
-                      "state": self.state, "mode": self.launcher.mode}
+                      self.target_key: self.fsdb, "daidir": self.daidir,
+                      "state": self.state, "mode": self.launcher.mode,
+                      "backend": self.backend}
         if self.queue: out["queue"] = self.queue
         if self.resource: out["resource"] = self.resource
         if self.job_name: out["job_name"] = self.job_name

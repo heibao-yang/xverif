@@ -27,6 +27,8 @@ regression/*
 !xentry/tests/**
 !xberif/tests/
 !xberif/tests/**
+!xcov/tests/
+!xcov/tests/**
 !xverif_mcp/tests/
 !xverif_mcp/tests/**
 !xeda_runner/tests/
@@ -56,6 +58,7 @@ CLAUDE.md
 *.a
 __pycache__/
 *.py[cod]
+.pytest_cache/
 
 xdebug/build/
 xdebug/xdebug
@@ -63,6 +66,7 @@ xdebug/libexec/
 xdebug/signal.rc
 *_probeLog/
 *-engineLog/
+npiLog/
 experiments/
 no_push_skill.md
 not_push_skill.md
