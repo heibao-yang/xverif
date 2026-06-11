@@ -1,4 +1,4 @@
-"""Stateful xdebug adapter — the only session-based backend in xverif-mcp."""
+"""Stateful xdebug adapter for design/wave sessions."""
 from __future__ import annotations
 
 import json

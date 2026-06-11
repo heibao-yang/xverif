@@ -25,7 +25,7 @@ INSTRUCTIONS = """
 xverif-mcp — https://github.com/BLANK2077/xverif
 
 Exposes deterministic local tools for chip verification debug agents.
-The xdebug backend is stateful and may run locally or through LSF.
+The xdebug and xcov backends are stateful and may run locally or through LSF.
 Other tools (xbit, xentry, xloc, xberif, xsva) are stateless CLI adapters.
 
 Typical workflow:

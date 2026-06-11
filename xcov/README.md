@@ -3,6 +3,12 @@
 `xcov` is an AI/MCP-oriented query engine for VCS/Verdi coverage databases.
 It accepts `xcov.v1` JSON requests and returns compact `xout` by default.
 
+xcov follows the same stateful split as xdebug: `tools/xcov --stdio-loop`
+hosts the real coverage database session and owns VDB handles, cached summary,
+scope traversal, and query execution. `xverif_mcp` only starts/stops the loop
+process, keeps alias/default mappings, forwards JSON requests, and handles
+direct/LSF launcher cleanup.
+
 ## Quick Start
 
 One-shot:
@@ -40,10 +46,13 @@ Verified database:
 Observed smoke results:
 
 ```text
-session.open: ok, test_count=1, top_scope_count=2
+session.open: ok, test_count=1, top_scope_count=null (lazy; scope actions scan hierarchy)
 tests.list: ok, matched_count=1
 metrics.list: ok, matched_count=4
-cov.holes: ok, matched_count=871 with max_items=5
+scope.summary: ok, matched_count=1 for uart_tb
+scope.children: ok, direct children returned with limits
+export.scope_tree: ok, writes .xverif/xcov_exports/<name>
+cov.holes: ok with metric/limit filtering
 ```
 
 Real NPI commands need access to the local Synopsys license server. In sandboxed
@@ -66,3 +75,36 @@ xverif_cov_get_schema
 
 Use `XVERIF_MCP_ENABLE_COV=0` to hide coverage tools. `XVERIF_XCOV_BIN` and
 `XVERIF_XCOV_PYTHON` override the xcov executable and Python runtime.
+
+MCP `xverif_cov_query` accepts `limits` and `output` as top-level tool
+arguments. xcov merges those into action args unless `args.limits` or
+`args.output` is already set; action-local args win.
+
+## Scope Semantics
+
+- `scope.summary(scope="top.u_dut")` returns one aggregate row for that scope.
+- `scope.summary` without `scope` returns aggregate rows for top scopes.
+- `scope.children(scope="top.u_dut")` returns direct children only.
+- `scope.children(..., recursive=true)` returns descendants.
+- `scope.search` only searches scope names/paths and does not attach coverage
+  aggregation fields.
+- `export.scope_tree` exports scope rows enriched with coverage totals and
+  per-metric summaries.
+
+Session open/status/close are lightweight: they do not recursively scan the
+whole VDB. Recursive scope/item traversal is triggered by coverage actions such
+as `scope.children`, `scope.summary`, `export.scope_tree`, and `cov.holes`.
+
+## Export Safety
+
+For MCP safety, relative `output.path` values are written under
+`.xverif/xcov_exports/`. Paths containing `..` are rejected. Absolute paths are
+rejected unless `output.allow_absolute_path=true` is set explicitly.
+
+## Current Limits
+
+- `test="each"` is not implemented; use `test="merged"` or a concrete test name.
+- `cov.object.get` is an exact lookup with optional `include_children` and
+  `max_children`; it is not a general object index yet.
+- `functional.summary` and `functional.holes` support
+  `levels=["covergroup","coverpoint","cross","bin"]`.

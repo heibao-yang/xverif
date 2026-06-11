@@ -150,7 +150,9 @@ def test_cov_session_fake_lifecycle(monkeypatch: pytest.MonkeyPatch):
         queried = await server.mcp.call_tool(
             "xverif_cov_query",
             {"session": "cov_fake", "action": "cov.holes",
-             "args": {"metrics": ["toggle"], "limits": {"max_items": 1}}},
+             "args": {"metrics": ["toggle", "branch"]},
+             "limits": {"max_items": 1},
+             "output_format": "json"},
         )
         closed = await server.mcp.call_tool(
             "xverif_cov_session_close",
@@ -160,9 +162,10 @@ def test_cov_session_fake_lifecycle(monkeypatch: pytest.MonkeyPatch):
 
     opened, queried, _ = anyio.run(_run)
     opened_payload = json.loads(opened[0].text)
+    queried_payload = json.loads(queried[0].text)
     assert opened_payload["ok"] is True
-    assert "XOUT_BEGIN" in queried[0].text
-    assert "npiCovToggleBin" in queried[0].text
+    assert queried_payload["summary"]["matched_count"] == 2
+    assert queried_payload["summary"]["returned"] == 1
 
 
 @pytest.mark.parametrize(

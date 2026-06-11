@@ -45,6 +45,14 @@ description: >
 - `xverif_cov_list_actions` / `xverif_cov_get_schema`：查机器契约。
 - `xverif_cov_raw_request`：one-shot 调试完整 request。
 
+和 xdebug 对齐的边界：
+
+- xcov 自己管理 coverage database session、VDB/NPI handle、scope traversal 和
+  query execution。
+- MCP 只管理 `tools/xcov --stdio-loop` 进程、direct/LSF launcher、alias/default
+  session 映射和 request 转发。
+- 不要假设 MCP 保存 coverage index；重查询语义以 xcov backend 返回为准。
+
 命令行入口：
 
 ```bash
@@ -95,6 +103,15 @@ Scope ranking:
 }
 ```
 
+Scope 语义：
+
+- `scope.summary(scope=...)` 只返回该 scope 的一条聚合结果。
+- `scope.summary` 不带 scope 时返回 top scopes。
+- `scope.children(scope=...)` 默认只返回直接 child。
+- `scope.children(..., recursive=true)` 才返回 descendants。
+- `scope.search` 只做 scope 搜索，不带 coverage 聚合字段。
+- `export.scope_tree` 导出带 coverage totals/per-metric summaries 的 tree。
+
 Source map:
 
 ```json
@@ -114,6 +131,14 @@ Source map:
 - include 先匹配，exclude 后过滤，exclude 优先。
 - 所有列表型 action 必须带 limit；大结果优先 `overflow:"to_file"` 和
   `output.mode:"both"`。
+- MCP `xverif_cov_query(limits=..., output=...)` 会透传到 xcov；如果
+  `args.limits/output` 已存在，以 action args 为准。
+- `test:"each"` 当前明确不支持；不要依赖 merged fallback。
+- functional coverage 可用 `levels` 过滤：`covergroup/coverpoint/cross/bin`。
+- `cov.object.get` 当前是 exact lookup，可加 `include_children/max_children`，
+  不要把它当完整 object subtree index。
+- export 默认只允许相对 `output.path`，写到 `.xverif/xcov_exports/`；
+  绝对路径必须显式设置 `output.allow_absolute_path:true`。
 
 ## 输出读取规则
 

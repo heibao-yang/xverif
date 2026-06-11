@@ -23,14 +23,13 @@ class XcovSession:
         self.state = "closed"
 
     def public_json(self) -> Json:
-        tests = self.backend.tests()
-        scopes = self.backend.scopes()
+        summary = self.backend.summary()
         return {
             "session_id": self.session_id,
             "state": self.state,
             "vdb": self.vdb,
-            "test_count": len(tests),
-            "top_scope_count": len([s for s in scopes if "." not in str(s.get("full_name", ""))]) or len(scopes),
+            "test_count": summary.get("test_count", 0),
+            "top_scope_count": summary.get("top_scope_count", 0),
             "worker": self.worker,
         }
 

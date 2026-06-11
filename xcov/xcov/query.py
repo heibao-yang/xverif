@@ -4,6 +4,7 @@ import csv
 import fnmatch
 import json
 import os
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
 
 from .errors import XcovError
@@ -133,6 +134,7 @@ def output_args(args: Json, default_mode: str = "inline") -> Json:
     output.setdefault("mode", default_mode)
     output.setdefault("artifact_format", "json")
     output.setdefault("path", None)
+    output.setdefault("allow_absolute_path", False)
     if output["mode"] not in ("inline", "file", "both", "summary_only"):
         raise XcovError("SCHEMA_INVALID", "unsupported output.mode", mode=output["mode"])
     if output["artifact_format"] not in ("json", "ndjson", "csv", "md"):
@@ -141,22 +143,38 @@ def output_args(args: Json, default_mode: str = "inline") -> Json:
     return output
 
 
-def write_artifact(path: str, fmt: str, items: List[Json]) -> None:
-    parent = os.path.dirname(path)
+def resolve_artifact_path(path: str, allow_absolute_path: bool = False) -> str:
+    raw = Path(path)
+    if raw.is_absolute():
+        if not allow_absolute_path:
+            raise XcovError("OUTPUT_PATH_UNSAFE",
+                            "absolute output.path requires output.allow_absolute_path=true",
+                            path=path)
+        return str(raw)
+    if any(part == ".." for part in raw.parts):
+        raise XcovError("OUTPUT_PATH_UNSAFE", "output.path must not contain '..'",
+                        path=path)
+    return str(Path(".xverif") / "xcov_exports" / raw)
+
+
+def write_artifact(path: str, fmt: str, items: List[Json],
+                   allow_absolute_path: bool = False) -> str:
+    resolved = resolve_artifact_path(path, allow_absolute_path=allow_absolute_path)
+    parent = os.path.dirname(resolved)
     if parent:
         os.makedirs(parent, exist_ok=True)
     try:
         if fmt == "json":
-            with open(path, "w", encoding="utf-8") as fh:
+            with open(resolved, "w", encoding="utf-8") as fh:
                 json.dump(items, fh, ensure_ascii=False, indent=2, sort_keys=True)
         elif fmt == "ndjson":
-            with open(path, "w", encoding="utf-8") as fh:
+            with open(resolved, "w", encoding="utf-8") as fh:
                 for item in items:
                     fh.write(json.dumps(item, ensure_ascii=False, sort_keys=True) + "\n")
         elif fmt == "csv":
             keys = sorted({k for item in items for k in item if k != "evidence"})
             keys += ["file", "line"]
-            with open(path, "w", encoding="utf-8", newline="") as fh:
+            with open(resolved, "w", encoding="utf-8", newline="") as fh:
                 writer = csv.DictWriter(fh, fieldnames=keys)
                 writer.writeheader()
                 for item in items:
@@ -166,7 +184,7 @@ def write_artifact(path: str, fmt: str, items: List[Json]) -> None:
                     row["line"] = evidence.get("line")
                     writer.writerow(row)
         elif fmt == "md":
-            with open(path, "w", encoding="utf-8") as fh:
+            with open(resolved, "w", encoding="utf-8") as fh:
                 fh.write("| metric | type | full_name | covered | coverable | file | line |\n")
                 fh.write("|---|---|---|---:|---:|---|---:|\n")
                 for item in items:
@@ -178,7 +196,8 @@ def write_artifact(path: str, fmt: str, items: List[Json]) -> None:
                         f"{evidence.get('line','')} |\n"
                     )
     except OSError as exc:
-        raise XcovError("OUTPUT_WRITE_FAILED", str(exc), path=path) from exc
+        raise XcovError("OUTPUT_WRITE_FAILED", str(exc), path=resolved) from exc
+    return resolved
 
 
 def apply_output(action: str, args: Json, items: List[Json],
@@ -199,7 +218,8 @@ def apply_output(action: str, args: Json, items: List[Json],
     if should_write:
         if not output_path:
             raise XcovError("OUTPUT_PATH_REQUIRED", "output.path is required")
-        write_artifact(str(output_path), str(output["artifact_format"]), items)
+        output_path = write_artifact(str(output_path), str(output["artifact_format"]), items,
+                                     allow_absolute_path=bool(output.get("allow_absolute_path")))
         warnings.append(f"full result written to {output_path}")
     if mode in ("file", "summary_only") or overflow == "summary_only":
         inline: List[Json] = []

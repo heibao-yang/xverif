@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List, Optional
 
 from .backend import METRICS
 from .errors import XcovError, error_response
 from .protocol import ok_response
-from .query import (apply_output, filter_items, filters_summary, query_args,
-                    sort_items, coverage_pct)
+from .query import (apply_output, coverage_pct, filter_items, filters_summary,
+                    query_args, sort_items)
 from .session import SessionManager
 
 Json = Dict[str, Any]
@@ -80,7 +80,7 @@ class Dispatcher:
                            {"items": rows})
 
     def _schema(self, req: Json) -> Json:
-        action = req.get("args", {}).get("action")
+        action = merged_action_args(req).get("action")
         if action not in P0_ACTIONS and action not in ("actions", "schema"):
             raise XcovError("ACTION_NOT_FOUND", "schema action not found", action=action)
         schema = {
@@ -91,6 +91,8 @@ class Dispatcher:
                 "action": {"const": action},
                 "target": {"type": "object"},
                 "args": {"type": "object"},
+                "limits": {"type": "object"},
+                "output": {"type": "object"},
             },
         }
         return ok_response(req, {"matched_count": 1, "returned": 1,
@@ -99,7 +101,7 @@ class Dispatcher:
 
     def _session_open(self, req: Json) -> Json:
         target = req.get("target", {})
-        args = req.get("args", {})
+        args = merged_action_args(req)
         vdb = target.get("vdb")
         if not vdb:
             raise XcovError("VDB_OPEN_FAILED", "target.vdb is required")
@@ -127,7 +129,7 @@ class Dispatcher:
         return ok_response(req, summary, {"session": sess.public_json()})
 
     def _tests_list(self, req: Json, sess) -> Json:
-        args = req.get("args", {})
+        args = merged_action_args(req)
         query = query_args(args)
         rows = filter_items(sess.backend.tests(), query)
         summary, inline, warnings = apply_output("tests.list", args, rows)
@@ -135,7 +137,7 @@ class Dispatcher:
         return ok_response(req, summary, {"filters": filters_summary(query), "items": inline}, warnings)
 
     def _metrics_list(self, req: Json, sess) -> Json:
-        args = req.get("args", {})
+        args = merged_action_args(req)
         rows = sess.backend.metrics_for_scope(args.get("scope"), str(args.get("test", "merged")))
         summary, inline, warnings = apply_output("metrics.list", args, rows)
         summary.update({"session_id": sess.session_id, "scope": args.get("scope"),
@@ -144,28 +146,21 @@ class Dispatcher:
 
     def _scope(self, req: Json, sess) -> Json:
         action = req["action"]
-        args = req.get("args", {})
+        args = merged_action_args(req)
         query = query_args(args)
-        scopes = sess.backend.scopes()
-        if args.get("scope"):
-            scope = str(args["scope"])
-            scopes = [s for s in scopes if str(s.get("full_name", "")).startswith(scope)]
-        rows = filter_items(scopes, query)
-        if action in ("scope.summary", "scope.children"):
+        scopes = _indexed_scopes(sess.backend.scopes())
+        if action == "scope.search":
+            rows = _scope_search_rows(scopes, args)
+        else:
             metrics = args.get("metrics") or METRICS
-            enriched = []
-            for row in rows:
-                full = row.get("full_name")
-                mrows = sess.backend.metrics_for_scope(full, str(args.get("test", "merged")))
-                sums = _summary_from_items([m for m in mrows if m.get("metric") in metrics], "metric")
-                total_coverable = sum(int(m.get("coverable") or 0) for m in mrows)
-                total_covered = sum(int(m.get("covered") or 0) for m in mrows)
-                enriched.append({**row, "covered": total_covered,
-                                 "coverable": total_coverable,
-                                 "missing": total_coverable - total_covered,
-                                 "coverage_pct": coverage_pct(total_covered, total_coverable),
-                                 "metrics": sums})
-            rows = enriched
+            items = sess.backend.items(metrics=metrics, scope=args.get("scope"),
+                                      test=str(args.get("test", "merged")))
+            coverage = _scope_coverage(items, metrics)
+            if action == "scope.summary":
+                rows = _scope_summary_rows(scopes, coverage, args)
+            else:
+                rows = _scope_children_rows(scopes, coverage, args)
+        rows = filter_items(rows, query)
         rows = sort_items(rows, args.get("sort"))
         summary, inline, warnings = apply_output(action, args, rows)
         summary.update({"session_id": sess.session_id, "scope": args.get("scope"),
@@ -174,16 +169,11 @@ class Dispatcher:
 
     def _cov(self, req: Json, sess) -> Json:
         action = req["action"]
-        args = req.get("args", {})
+        args = merged_action_args(req)
         query = query_args(args)
         metrics = args.get("metrics")
         if action == "cov.object.get":
-            name = args.get("name")
-            rows = [r for r in sess.backend.items(scope=args.get("scope"),
-                                                  test=str(args.get("test", "merged")))
-                    if r.get("full_name") == name or r.get("name") == name]
-            if not rows:
-                raise XcovError("OBJECT_NOT_FOUND", "coverage object not found", name=name)
+            rows = _object_get_rows(sess, args, metrics)
         else:
             rows = sess.backend.items(metrics=metrics, scope=args.get("scope"),
                                       test=str(args.get("test", "merged")))
@@ -200,11 +190,12 @@ class Dispatcher:
 
     def _functional(self, req: Json, sess) -> Json:
         action = req["action"]
-        args = req.get("args", {})
+        args = merged_action_args(req)
         query = query_args(args)
         rows = sess.backend.items(metrics=["functional"], scope=args.get("scope"),
                                   test=str(args.get("test", "merged")),
                                   functional_only=True)
+        rows = _filter_functional_levels(rows, args.get("levels"))
         if action == "functional.holes":
             rows = [r for r in rows if int(r.get("missing") or 0) > 0]
         else:
@@ -216,7 +207,7 @@ class Dispatcher:
         return ok_response(req, summary, {"filters": filters_summary(query), "items": inline}, warnings)
 
     def _source_map(self, req: Json, sess) -> Json:
-        args = req.get("args", {})
+        args = merged_action_args(req)
         query = query_args(args)
         file_name = args.get("file")
         line = args.get("line")
@@ -242,7 +233,7 @@ class Dispatcher:
 
     def _export(self, req: Json, sess) -> Json:
         action = req["action"]
-        args = dict(req.get("args", {}))
+        args = merged_action_args(req)
         output = dict(args.get("output") or {})
         output.setdefault("mode", "file")
         args["output"] = output
@@ -257,11 +248,17 @@ class Dispatcher:
                                                   test=str(args.get("test", "merged")))
                     if int(r.get("missing") or 0) > 0]
         elif action == "export.scope_tree":
-            rows = sess.backend.scopes()
+            metrics = args.get("metrics") or METRICS
+            scopes = _indexed_scopes(sess.backend.scopes())
+            items = sess.backend.items(metrics=metrics, scope=args.get("scope"),
+                                      test=str(args.get("test", "merged")))
+            coverage = _scope_coverage(items, metrics)
+            rows = _scope_tree_rows(scopes, coverage, args)
         elif action == "export.functional":
             rows = sess.backend.items(metrics=["functional"], scope=args.get("scope"),
                                       test=str(args.get("test", "merged")),
                                       functional_only=True)
+            rows = _filter_functional_levels(rows, args.get("levels"))
             if args.get("mode") == "holes":
                 rows = [r for r in rows if int(r.get("missing") or 0) > 0]
         else:
@@ -272,6 +269,155 @@ class Dispatcher:
         summary, inline, warnings = apply_output(action, args, rows, default_mode="file")
         summary["session_id"] = sess.session_id
         return ok_response(req, summary, {"filters": filters_summary(query), "items": inline}, warnings)
+
+
+def merged_action_args(req: Json) -> Json:
+    args = dict(req.get("args") or {})
+    if "limits" in req and "limits" not in args:
+        args["limits"] = req["limits"]
+    if "output" in req and "output" not in args:
+        args["output"] = req["output"]
+    return args
+
+
+def _scope_name(full_name: str) -> str:
+    return full_name.rsplit(".", 1)[-1]
+
+
+def _scope_parent(full_name: str) -> Optional[str]:
+    if "." not in full_name:
+        return None
+    return full_name.rsplit(".", 1)[0]
+
+
+def _scope_depth(full_name: str) -> int:
+    return full_name.count(".")
+
+
+def _scope_row(full_name: str, base: Optional[Json] = None) -> Json:
+    row = dict(base or {})
+    row.setdefault("full_name", full_name)
+    row.setdefault("name", _scope_name(full_name))
+    row.setdefault("parent", _scope_parent(full_name))
+    row.setdefault("depth", _scope_depth(full_name))
+    row.setdefault("type", "npiCovInstance")
+    return row
+
+
+def _scope_ancestors(scope: str) -> Iterable[str]:
+    parts = str(scope).split(".")
+    for idx in range(1, len(parts) + 1):
+        yield ".".join(parts[:idx])
+
+
+def _indexed_scopes(scopes: List[Json]) -> Dict[str, Json]:
+    by_name: Dict[str, Json] = {}
+    for row in scopes:
+        full = str(row.get("full_name") or row.get("name") or "")
+        if not full:
+            continue
+        by_name[full] = _scope_row(full, row)
+        for ancestor in _scope_ancestors(full):
+            by_name.setdefault(ancestor, _scope_row(ancestor))
+    return dict(sorted(by_name.items(), key=lambda kv: (int(kv[1].get("depth") or 0), kv[0])))
+
+
+def _is_descendant(scope: str, root: str) -> bool:
+    return scope == root or scope.startswith(root + ".")
+
+
+def _is_direct_child(scope: str, parent: Optional[str]) -> bool:
+    return _scope_parent(scope) == parent
+
+
+def _scope_search_rows(scopes: Dict[str, Json], args: Json) -> List[Json]:
+    root = args.get("scope")
+    rows = list(scopes.values())
+    if root:
+        rows = [r for r in rows if _is_descendant(str(r.get("full_name", "")), str(root))]
+    return rows
+
+
+def _scope_summary_rows(scopes: Dict[str, Json], coverage: Dict[str, Json], args: Json) -> List[Json]:
+    root = args.get("scope")
+    if root:
+        full = str(root)
+        base = scopes.get(full, _scope_row(full))
+        return [_merge_scope_coverage(base, coverage.get(full))]
+    top_names = [name for name, row in scopes.items() if int(row.get("depth") or 0) == 0]
+    return [_merge_scope_coverage(scopes[name], coverage.get(name)) for name in top_names]
+
+
+def _scope_children_rows(scopes: Dict[str, Json], coverage: Dict[str, Json], args: Json) -> List[Json]:
+    root = args.get("scope")
+    parent = str(root) if root else None
+    recursive = bool(args.get("recursive", False))
+    out = []
+    for full, row in scopes.items():
+        if root:
+            selected = _is_descendant(full, parent) and full != parent if recursive else _is_direct_child(full, parent)
+        else:
+            selected = int(row.get("depth") or 0) == 0
+        if selected:
+            out.append(_merge_scope_coverage(row, coverage.get(full)))
+    return out
+
+
+def _scope_tree_rows(scopes: Dict[str, Json], coverage: Dict[str, Json], args: Json) -> List[Json]:
+    root = args.get("scope")
+    recursive = bool(args.get("recursive", True))
+    out = []
+    for full, row in scopes.items():
+        if root:
+            if recursive:
+                selected = _is_descendant(full, str(root))
+            else:
+                selected = full == str(root) or _is_direct_child(full, str(root))
+        else:
+            selected = True
+        if selected:
+            out.append(_merge_scope_coverage(row, coverage.get(full)))
+    return out
+
+
+def _scope_coverage(items: List[Json], metrics: List[str]) -> Dict[str, Json]:
+    grouped: Dict[str, Dict[str, List[Json]]] = defaultdict(lambda: defaultdict(list))
+    for item in items:
+        scope = str(item.get("scope") or "")
+        if not scope:
+            continue
+        metric = str(item.get("metric") or "unknown")
+        for ancestor in _scope_ancestors(scope):
+            grouped[ancestor][metric].append(item)
+    out: Dict[str, Json] = {}
+    for scope, by_metric in grouped.items():
+        metric_rows = []
+        total_covered = 0
+        total_coverable = 0
+        for metric in metrics:
+            subset = by_metric.get(metric, [])
+            if not subset:
+                continue
+            coverable = sum(int(i.get("coverable") or 0) for i in subset)
+            covered = sum(int(i.get("covered") or 0) for i in subset)
+            total_covered += covered
+            total_coverable += coverable
+            metric_rows.append({"metric": metric, "covered": covered, "coverable": coverable,
+                                "missing": coverable - covered,
+                                "coverage_pct": coverage_pct(covered, coverable)})
+        out[scope] = {"covered": total_covered, "coverable": total_coverable,
+                      "missing": total_coverable - total_covered,
+                      "coverage_pct": coverage_pct(total_covered, total_coverable),
+                      "metrics": metric_rows}
+    return out
+
+
+def _merge_scope_coverage(scope: Json, cov: Optional[Json]) -> Json:
+    out = dict(scope)
+    cov = cov or {"covered": 0, "coverable": 0, "missing": 0,
+                  "coverage_pct": None, "metrics": []}
+    out.update(cov)
+    return out
 
 
 def _summary_from_items(items: List[Json], group_by: str) -> List[Json]:
@@ -293,3 +439,50 @@ def _summary_from_items(items: List[Json], group_by: str) -> List[Json]:
                      "metric": key if group_by == "metric" else "summary",
                      "name": key, "full_name": key})
     return rows
+
+
+def _object_get_rows(sess: Any, args: Json, metrics: Any) -> List[Json]:
+    name = args.get("name")
+    include_children = bool(args.get("include_children", False))
+    max_children = int(args.get("max_children", 50))
+    candidates = sess.backend.items(metrics=metrics, scope=args.get("scope"),
+                                    test=str(args.get("test", "merged")))
+    rows = []
+    for row in candidates:
+        full = str(row.get("full_name", ""))
+        short = str(row.get("name", ""))
+        if full == name or short == name:
+            rows.append(row)
+        elif include_children and name and full.startswith(str(name) + "."):
+            rows.append(row)
+    if include_children and max_children >= 0:
+        rows = rows[:max_children]
+    if not rows:
+        raise XcovError("OBJECT_NOT_FOUND", "coverage object not found", name=name)
+    return rows
+
+
+def _functional_level(row: Json) -> str:
+    typ = str(row.get("type") or "")
+    type_to_level = {
+        "npiCovCovergroup": "covergroup",
+        "npiCovCoverpoint": "coverpoint",
+        "npiCovCross": "cross",
+        "npiCovCoverBin": "bin",
+    }
+    if typ in type_to_level:
+        return type_to_level[typ]
+    if row.get("bin") is not None:
+        return "bin"
+    if row.get("cross") is not None:
+        return "cross"
+    if row.get("coverpoint") is not None:
+        return "coverpoint"
+    return "covergroup"
+
+
+def _filter_functional_levels(rows: List[Json], levels: Any) -> List[Json]:
+    if not levels:
+        return rows
+    wanted = {str(level) for level in levels}
+    return [row for row in rows if _functional_level(row) in wanted]

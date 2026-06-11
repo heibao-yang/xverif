@@ -38,6 +38,15 @@ class CoverageBackend:
     def tests(self) -> List[Json]:
         raise NotImplementedError
 
+    def summary(self) -> Json:
+        tests = self.tests()
+        top_scopes = self.top_scopes()
+        return {"test_count": len(tests), "top_scope_count": len(top_scopes)}
+
+    def top_scopes(self) -> List[Json]:
+        scopes = self.scopes()
+        return [s for s in scopes if "." not in str(s.get("full_name", ""))] or scopes
+
     def scopes(self) -> List[Json]:
         raise NotImplementedError
 
@@ -80,11 +89,19 @@ class FakeCoverageBackend(CoverageBackend):
     def tests(self) -> List[Json]:
         return [{"name": f"{self.vdb}/test"}]
 
+    def summary(self) -> Json:
+        return {"test_count": 1, "top_scope_count": len(self.top_scopes())}
+
+    def top_scopes(self) -> List[Json]:
+        top_names = sorted({str(i["scope"]).split(".")[0] for i in self._items})
+        return [_scope_row(n) for n in top_names]
+
     def scopes(self) -> List[Json]:
-        names = sorted({i["scope"] for i in self._items})
-        return [{"name": n.split(".")[-1], "full_name": n, "type": "npiCovInstance"} for n in names]
+        names = sorted(_scope_closure(i["scope"] for i in self._items))
+        return [_scope_row(n) for n in names]
 
     def metrics_for_scope(self, scope: Optional[str], test: str) -> List[Json]:
+        self._check_test(test)
         rows = self.items(scope=scope, test=test)
         out = []
         for metric in sorted({r["metric"] for r in rows}):
@@ -99,6 +116,7 @@ class FakeCoverageBackend(CoverageBackend):
     def items(self, metrics: Optional[List[str]] = None,
               scope: Optional[str] = None, test: str = "merged",
               functional_only: bool = False) -> List[Json]:
+        self._check_test(test)
         rows = list(self._items)
         if metrics:
             rows = [r for r in rows if r.get("metric") in metrics]
@@ -107,6 +125,11 @@ class FakeCoverageBackend(CoverageBackend):
         if functional_only:
             rows = [r for r in rows if r.get("metric") == "functional"]
         return [dict(r) for r in rows]
+
+    def _check_test(self, test: str) -> None:
+        if test == "each":
+            raise XcovError("TEST_MODE_NOT_SUPPORTED",
+                            'test="each" is not implemented yet; use test="merged" or a concrete test name')
 
 
 @dataclass
@@ -162,10 +185,20 @@ class NpiCoverageBackend(CoverageBackend):
         if test in ("merged", "", None):
             return self.merged_test
         if test == "each":
-            return self.merged_test
+            raise XcovError("TEST_MODE_NOT_SUPPORTED",
+                            'test="each" is not implemented yet; use test="merged" or a concrete test name')
         if test in self.test_map:
             return self.test_map[test]
         raise XcovError("TEST_NOT_FOUND", "test not found", test=test)
+
+    def summary(self) -> Json:
+        return {"test_count": len(self.test_map), "top_scope_count": None}
+
+    def top_scopes(self) -> List[Json]:
+        rows: List[Json] = []
+        for inst in self.db.instance_handles():
+            rows.append(self._scope_row_from_inst(inst))
+        return rows
 
     def scopes(self) -> List[Json]:
         rows: List[Json] = []
@@ -174,14 +207,20 @@ class NpiCoverageBackend(CoverageBackend):
             self.cov.release_handle(inst)
         return rows
 
-    def _walk_scopes(self, inst: Any, rows: List[Json]) -> None:
-        rows.append({
+    def _scope_row_from_inst(self, inst: Any) -> Json:
+        full_name = _safe_call(inst, "full_name") or _safe_call(inst, "name")
+        return {
             "name": _safe_call(inst, "name"),
-            "full_name": _safe_call(inst, "full_name") or _safe_call(inst, "name"),
+            "full_name": full_name,
+            "parent": _scope_parent(str(full_name or "")),
+            "depth": _scope_depth(str(full_name or "")),
             "type": _safe_call(inst, "type"),
             "def_name": _safe_call(inst, "def_name"),
             "evidence": {"file": _safe_call(inst, "file_name"), "line": _safe_call(inst, "line_no")},
-        })
+        }
+
+    def _walk_scopes(self, inst: Any, rows: List[Json]) -> None:
+        rows.append(self._scope_row_from_inst(inst))
         for child in _safe_list(inst, "instance_handles"):
             self._walk_scopes(child, rows)
             self.cov.release_handle(child)
@@ -223,10 +262,20 @@ class NpiCoverageBackend(CoverageBackend):
                     continue
                 metric_hdl = _safe_call(inst, method)
                 if metric_hdl:
-                    self._walk_metric(metric_hdl, metric, inst_full, test_hdl, rows)
+                    try:
+                        self._walk_metric(metric_hdl, metric, inst_full, test_hdl, rows)
+                    finally:
+                        self.release_if_handle(metric_hdl)
         for child in _safe_list(inst, "instance_handles"):
             self._walk_items(child, test_hdl, wanted, scope, rows)
             self.cov.release_handle(child)
+
+    def release_if_handle(self, hdl: Any) -> None:
+        if hdl:
+            try:
+                self.cov.release_handle(hdl)
+            except Exception:
+                pass
 
     def _walk_metric(self, hdl: Any, metric: str, scope: str, test_hdl: Any,
                      rows: List[Json]) -> None:
@@ -292,6 +341,35 @@ def _safe_call(obj: Any, name: str, *args: Any) -> Any:
 def _safe_list(obj: Any, name: str) -> List[Any]:
     value = _safe_call(obj, name)
     return list(value or [])
+
+
+def _scope_parent(full_name: str) -> str | None:
+    if "." not in full_name:
+        return None
+    return full_name.rsplit(".", 1)[0]
+
+
+def _scope_depth(full_name: str) -> int:
+    return full_name.count(".")
+
+
+def _scope_row(full_name: str) -> Json:
+    return {
+        "name": full_name.rsplit(".", 1)[-1],
+        "full_name": full_name,
+        "parent": _scope_parent(full_name),
+        "depth": _scope_depth(full_name),
+        "type": "npiCovInstance",
+    }
+
+
+def _scope_closure(scopes: Iterable[str]) -> List[str]:
+    names = set()
+    for scope in scopes:
+        parts = str(scope).split(".")
+        for idx in range(1, len(parts) + 1):
+            names.add(".".join(parts[:idx]))
+    return sorted(names)
 
 
 def _status_flags(hdl: Any, test_hdl: Any, covered: Any, coverable: Any) -> List[str]:

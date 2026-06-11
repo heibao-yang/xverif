@@ -8,6 +8,11 @@
 
 xdebug/xcov direct 和 LSF 共用 stdio-loop session manager，只在 `Launcher` 层分离。每 session 独立进程，同 session 串行（request_lock），多 session 可并行。
 
+MCP 层保持轻量：它只负责启动/终止 `tools/xdebug --stdio-loop` 或
+`tools/xcov --stdio-loop` 进程、维护 alias/default 映射、转发 JSON request、
+处理 direct/LSF transport cleanup。设计/波形 session 状态由 xdebug 管理；
+coverage database session、VDB/NPI handle、scope/cache/query 状态由 xcov 管理。
+
 ## 环境要求
 
 | 组件 | 要求 |
