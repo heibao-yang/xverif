@@ -21,7 +21,9 @@ from xverif_mcp.tool_policy import filtered_catalog, policy_summary, tool_enable
 # ---------------------------------------------------------------------------
 
 INSTRUCTIONS = """
-xverif-mcp exposes deterministic local tools for chip verification debug agents.
+xverif-mcp — https://github.com/BLANK2077/xverif
+
+Exposes deterministic local tools for chip verification debug agents.
 The xdebug backend is stateful and may run locally or through LSF.
 Other tools (xbit, xentry, xloc, xberif, xsva) are stateless CLI adapters.
 
@@ -38,6 +40,10 @@ If xverif_debug_query returns error.code=SESSION_LOST:
   - the session mapping has been evicted
   - the agent must explicitly call xverif_session_open before retrying
 No automatic retry or reopen is performed by the server.
+
+Output format: all tools default to output_format="xout" (compact AI-readable
+structured text, saves tokens vs JSON). Use output_format="json" only when you
+need structured data for programmatic analysis.
 """
 
 mcp = FastMCP(
@@ -101,7 +107,7 @@ def xverif_debug_get_schema(action: str, kind: str = "request") -> dict:
 
 
 @xverif_tool("debug")
-def xverif_debug_raw_request(request: dict, output_format: str = "json") -> dict:
+def xverif_debug_raw_request(request: dict, output_format: str = "xout") -> dict:
     """Run a complete xdebug JSON request (one-shot, no session).
 
     This tool does NOT use sessions. For session-based queries, use
@@ -248,7 +254,7 @@ def xverif_debug_query(
 @xverif_tool("bit")
 def xverif_bit_convert(value: str, width: int = 0, signed: bool = False,
                      unsigned: bool = False, state: str = "2",
-                     output_format: str = "json") -> Any:
+                     output_format: str = "xout") -> Any:
     """Convert a value between radices and SV literal formats.
 
     Args:
@@ -266,7 +272,7 @@ def xverif_bit_convert(value: str, width: int = 0, signed: bool = False,
 @xverif_tool("bit")
 def xverif_bit_eval(expr: str, vars: Optional[dict] = None, width: int = 0,
                      signed: bool = False, unsigned: bool = False,
-                     state: str = "2", output_format: str = "json") -> Any:
+                     state: str = "2", output_format: str = "xout") -> Any:
     """Evaluate a deterministic bit/expression calculation.
 
     Args:
@@ -284,7 +290,7 @@ def xverif_bit_eval(expr: str, vars: Optional[dict] = None, width: int = 0,
 
 @xverif_tool("bit")
 def xverif_bit_slice(value: str, msb: int, lsb: int, state: str = "2",
-                      output_format: str = "json") -> Any:
+                      output_format: str = "xout") -> Any:
     """Extract a bit slice from a value.
 
     Args:
@@ -300,7 +306,7 @@ def xverif_bit_slice(value: str, msb: int, lsb: int, state: str = "2",
 @xverif_tool("bit")
 def xverif_bit_check(expr: str, vars: Optional[dict] = None,
                       values: Optional[str] = None, state: str = "2",
-                      output_format: str = "json") -> Any:
+                      output_format: str = "xout") -> Any:
     """Check a bit expression against expected values.
 
     Args:
@@ -324,7 +330,7 @@ def xverif_entry_decode(config_path: Optional[str] = None,
                          input_path: Optional[str] = None,
                          config: Optional[dict] = None,
                          fragments: Optional[list] = None,
-                         output_format: str = "json") -> Any:
+                         output_format: str = "xout") -> Any:
     """Decode multi-beat byte fragments into raw field slices per config.
 
     Provide either (config_path + input_path) or (config + fragments).
@@ -346,7 +352,7 @@ def xverif_entry_decode(config_path: Optional[str] = None,
 
 
 @xverif_tool("entry")
-def xverif_entry_explain(config_path: str, output_format: str = "json") -> Any:
+def xverif_entry_explain(config_path: str, output_format: str = "xout") -> Any:
     """Explain the field layout defined by an entry config.
 
     Args:
@@ -361,7 +367,7 @@ def xverif_entry_validate(config_path: Optional[str] = None,
                            input_path: Optional[str] = None,
                            config: Optional[dict] = None,
                            fragments: Optional[list] = None,
-                           output_format: str = "json") -> Any:
+                           output_format: str = "xout") -> Any:
     """Validate an entry config (and optionally an input) without decoding.
 
     Provide either (config_path + input_path) or (config + fragments).
@@ -389,7 +395,7 @@ def xverif_entry_validate(config_path: Optional[str] = None,
 
 @xverif_tool("loc")
 def xverif_loc_resolve(loc_id: str, map_path: str,
-                        output_format: str = "json") -> Any:
+                        output_format: str = "xout") -> Any:
     """Resolve a compressed loc_id (L_XXXXXXXX) to source file:line.
 
     Args:
@@ -418,7 +424,7 @@ def xverif_loc_context(loc_id: str, map_path: str, before: int = 20,
 
 @xverif_tool("loc")
 def xverif_loc_stats(log_path: str, map_path: Optional[str] = None,
-                      top: int = 20, output_format: str = "json") -> Any:
+                      top: int = 20, output_format: str = "xout") -> Any:
     """Count loc_id frequency in a simulation log (hotspot analysis).
 
     Args:
@@ -452,14 +458,14 @@ def xverif_loc_annotate(log_path: str, map_path: Optional[str] = None,
 
 @xverif_tool("context")
 def xverif_context_status(project_root: Optional[str] = None,
-                           output_format: str = "json") -> Any:
+                           output_format: str = "xout") -> Any:
     """Check xberif project status (which kinds, cards, details exist)."""
     return context_status(project_root=project_root, output_format=output_format)
 
 
 @xverif_tool("context")
 def xverif_context_topics(project_root: Optional[str] = None,
-                                output_format: str = "json") -> Any:
+                                output_format: str = "xout") -> Any:
     """List all known context topics."""
     return context_list_topics(project_root=project_root, output_format=output_format)
 
@@ -507,7 +513,7 @@ def xverif_context_topic_detail(topic: str, project_root: Optional[str] = None,
 
 @xverif_tool("context")
 def xverif_context_validate(project_root: Optional[str] = None,
-                             output_format: str = "json") -> Any:
+                             output_format: str = "xout") -> Any:
     """Validate project cards and detail files for consistency."""
     return context_validate(project_root=project_root, output_format=output_format)
 
@@ -536,7 +542,7 @@ def xverif_context_repair_index(project_root: Optional[str] = None) -> Any:
 
 
 @xverif_tool("sva")
-def xverif_sva_list_properties(file: str, output_format: str = "json") -> Any:
+def xverif_sva_list_properties(file: str, output_format: str = "xout") -> Any:
     """List all property/assertion names in a SVA source file.
 
     Args:
@@ -546,7 +552,7 @@ def xverif_sva_list_properties(file: str, output_format: str = "json") -> Any:
 
 
 @xverif_tool("sva")
-def xverif_sva_scan_constructs(file: str, output_format: str = "json") -> Any:
+def xverif_sva_scan_constructs(file: str, output_format: str = "xout") -> Any:
     """Scan syntax constructs used in a SVA source file.
 
     Args:
@@ -557,7 +563,7 @@ def xverif_sva_scan_constructs(file: str, output_format: str = "json") -> Any:
 
 @xverif_tool("sva")
 def xverif_sva_parse_property(file: str, property: str, emit: str = "timeline-ir",
-                      output_format: str = "json") -> Any:
+                      output_format: str = "xout") -> Any:
     """Parse a SVA property into IR.
 
     Args:
@@ -820,7 +826,7 @@ def xverif_wave_changes(signal: str, begin: str = "0ns",
 @xverif_tool("debug")
 def xverif_wave_generate_rc(config_path: str, rc_path: str,
                               session: Optional[str] = None,
-                              output_format: str = "json") -> Any:
+                              output_format: str = "xout") -> Any:
     """Generate recovery context from config (alias for rc.generate).
 
     Args:

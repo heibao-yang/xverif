@@ -89,7 +89,7 @@ MCP 场景使用 `tools/xverif-mcp`（统一入口 `python -m xverif_mcp.server`
 
 通过 `xverif_debug_query` MCP tool 调用时，所有 action 和参数与 CLI JSON 请求一致。额外注意：
 
-- 默认 `output_format` 是 `xout`。需要程序解析时传 `output_format:"json"`，调试 MCP/LSF wrapper 时传 `output_format:"envelope"`。
+- **所有工具默认 `output_format="xout"`**，可显著减少 token 消耗。仅在需要程序解析或结构化处理时传 `output_format="json"`，调试 MCP/LSF wrapper 时传 `output_format:"envelope"`。
 - `xverif_debug_query` 的 `limits`、`output`、`output_format` 参数与 CLI 的 `limits`/`output` envelope 完全对应。
 - `truncated: true` 时，先用 `output.verbosity:"full"` 或增大对应 `limits.max_items/max_depth` 重试；仍截断则缩小 `time_range` 或 `path` 分批查询。不要假设 `truncated: false` 的结果是全量；`scope.list` 在大 scope 下必然截断。
 - 不要直接调用 `xverif_debug_request`（它只走 one-shot direct backend，不会用 MCP session）；始终用 `xverif_debug_query`。
