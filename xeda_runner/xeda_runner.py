@@ -371,7 +371,8 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     # dry-run: no snapshot needed
     if args.dry_run:
-        print(f"[xeda-runner] DRY-RUN pid={os.getpid()} pgid={os.getpgid(0)}",
+        print(f"[xeda-runner] DRY-RUN runner_pid={os.getpid()} "
+              f"runner_pgid={os.getpgid(0)}",
               file=sys.stderr)
         print(f"[xeda-runner] DRY-RUN command: {' '.join(argv)}",
               file=sys.stderr)
@@ -390,8 +391,15 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     env = load_env0(str(snapshot))
 
+    # Use Popen to capture the child's pid before blocking
+    proc = subprocess.Popen(argv, cwd=workdir, env=env)
+
     if not args.quiet:
-        print(f"[xeda-runner] pid={os.getpid()} pgid={os.getpgid(0)}",
+        print(f"[xeda-runner] runner_pid={os.getpid()} "
+              f"runner_pgid={os.getpgid(0)}",
+              file=sys.stderr)
+        print(f"[xeda-runner] child_pid={proc.pid} "
+              f"child_pgid={os.getpgid(proc.pid)}",
               file=sys.stderr)
         print(f"[xeda-runner] action={args.action} "
               f"target={args.target or ''}",
@@ -399,8 +407,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         print(f"[xeda-runner] command: {' '.join(argv)}", file=sys.stderr)
         print(f"[xeda-runner] cwd={workdir}", file=sys.stderr)
 
-    result = subprocess.run(argv, cwd=workdir, env=env)
-    return result.returncode
+    proc.wait()
+    return proc.returncode
 
 
 # ---------------------------------------------------------------------------
