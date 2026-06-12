@@ -125,6 +125,15 @@ class FailureConditionIR:
     condition: str = ""
 
 
+@dataclass(frozen=True)
+class SemanticNoteIR:
+    """面向用户的高级语法语义摘要。"""
+
+    kind: str = ""
+    expr: str = ""
+    text: str = ""
+
+
 @dataclass
 class TimelineIR:
     """Obligation Timeline IR — 最终输出 IR。对齐 spec 11.1。"""
@@ -148,6 +157,9 @@ class TimelineIR:
 
     # failure
     failure_conditions: list[FailureConditionIR] = field(default_factory=list)
+
+    # 高级 sequence / sampled function 的用户语义摘要
+    semantic_notes: list[SemanticNoteIR] = field(default_factory=list)
 
     # vacuity
     vacuity_checks: list[str] = field(default_factory=list)

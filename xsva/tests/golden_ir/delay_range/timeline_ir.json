@@ -32,7 +32,6 @@
     {
       "id": "path_0",
       "description": "Path 0: ack must become true at least once between cycle +",
-      "is_partial": false,
       "obligations": [
         "eventually"
       ]
@@ -41,6 +40,6 @@
   "failure_conditions": [
     "ack is never true from cycle +1 to +4"
   ],
-  "lowering_status": "exact",
+  "semantic_notes": [],
   "diagnostics": []
 }

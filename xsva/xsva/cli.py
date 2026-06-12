@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from xsva.ir.diagnostics import DiagnosticBag
+from xsva.ir.surface import SurfaceIR
 from xsva.ir.timeline import TimelineIR
 from xsva.parser.property_parser import PropertyParser
 from xsva.parser.scanner import Scanner
@@ -164,8 +165,8 @@ def cmd_explain(args: argparse.Namespace) -> None:
         sys.exit(EXIT_PARSE_ERROR)
 
     if args.strict and timeline.lowering_status.value != "exact":
-        print(f"xsva error: unsupported construct in strict mode: "
-              f"lowering_status={timeline.lowering_status.value}", file=sys.stderr)
+        print("xsva error: strict mode cannot produce a fully precise explanation "
+              "for this advanced sequence", file=sys.stderr)
         for d in diag.diagnostics:
             print(f"  [{d.severity}] {d.code}: {d.message}", file=sys.stderr)
         sys.exit(EXIT_UNSUPPORTED_STRICT)
@@ -188,7 +189,7 @@ def cmd_parse(args: argparse.Namespace) -> None:
         sys.exit(EXIT_PARSE_ERROR)
 
     if args.emit == "surface-ir":
-        output = asdict(surface)
+        output = _serialize_surface_ir(surface)
     elif args.emit == "sequence-ir":
         seq_ir = lower_surface_to_sequence(surface)
         output = _serialize_sequence_ir(seq_ir)
@@ -256,14 +257,23 @@ def _serialize_timeline_ir(timeline: TimelineIR) -> dict[str, Any]:
             for ob in timeline.obligations
         ],
         "match_paths": [
-            {"id": p.id, "description": p.description, "is_partial": p.is_partial,
+            {"id": p.id, "description": p.description,
              "obligations": [ob.kind.value for ob in p.obligations]}
             for p in timeline.match_paths
         ],
         "failure_conditions": [fc.condition for fc in timeline.failure_conditions],
-        "lowering_status": timeline.lowering_status.value,
+        "semantic_notes": [
+            {"kind": n.kind, "expr": n.expr, "text": n.text}
+            for n in timeline.semantic_notes
+        ],
         "diagnostics": [asdict(d) for d in timeline.diagnostics],
     }
+
+
+def _serialize_surface_ir(surface: SurfaceIR) -> dict[str, Any]:
+    output = asdict(surface)
+    output.pop("lowering_status", None)
+    return output
 
 
 def _serialize_sequence_ir(seq_ir) -> dict[str, Any]:
@@ -276,7 +286,6 @@ def _serialize_sequence_ir(seq_ir) -> dict[str, Any]:
              "children_count": len(n.children)}
             for n in seq_ir.nodes
         ],
-        "lowering_status": seq_ir.lowering_status,
     }
 
 

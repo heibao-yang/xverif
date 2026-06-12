@@ -22,6 +22,10 @@ def render_timeline_mermaid(timeline: TimelineIR) -> str:
         _render_single_path(lines, timeline)
     elif len(timeline.match_paths) > 1:
         _render_multi_path(lines, timeline)
+    elif timeline.semantic_notes:
+        for i, note in enumerate(timeline.semantic_notes):
+            prev = "T" if i == 0 else f"N{i - 1}"
+            lines.append(f'  {prev} --> N{i}["{_escape(note.text)}"]')
     else:
         lines.append(f'  T --> N["(no obligations)"]')
 
@@ -56,9 +60,6 @@ def _render_multi_path(lines: list[str], timeline: TimelineIR) -> None:
                 label += f" (+{ob.window.start}..+{ob.window.end})"
             lines.append(f'  {prev} --> {node_id}["{_escape(label)}"]')
             prev = node_id
-
-        if path.is_partial:
-            lines.append(f'  {prev} -.-> P{pi}NOTE["partial"]')
 
     # 汇总 PASS 节点
     last_nodes = [f"P{p}O{len(path.obligations) - 1}" for p, path in enumerate(timeline.match_paths) if path.obligations]

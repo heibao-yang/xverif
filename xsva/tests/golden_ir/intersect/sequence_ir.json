@@ -2,43 +2,10 @@
   "name": "p_intersect",
   "nodes": [
     {
-      "kind": "expr",
-      "expr": "a",
-      "delay": null,
-      "children_count": 0
-    },
-    {
-      "kind": "delay",
+      "kind": "intersect",
       "expr": null,
-      "delay": {
-        "min": 1,
-        "max": 3,
-        "unbounded": false
-      },
-      "children_count": 0
-    },
-    {
-      "kind": "expr",
-      "expr": "b intersect c",
       "delay": null,
-      "children_count": 0
-    },
-    {
-      "kind": "delay",
-      "expr": null,
-      "delay": {
-        "min": 2,
-        "max": 2,
-        "unbounded": false
-      },
-      "children_count": 0
-    },
-    {
-      "kind": "expr",
-      "expr": "d",
-      "delay": null,
-      "children_count": 0
+      "children_count": 2
     }
-  ],
-  "lowering_status": "exact"
+  ]
 }

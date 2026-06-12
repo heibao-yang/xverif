@@ -1,0 +1,3 @@
+property p_within;
+  req |-> (a ##1 b) within (c ##[1:3] d);
+endproperty

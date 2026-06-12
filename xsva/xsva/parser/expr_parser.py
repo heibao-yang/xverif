@@ -223,6 +223,8 @@ class ExprParser:
             TokenKind.KW_SEQUENCE, TokenKind.KW_ENDSEQUENCE,
             TokenKind.KW_DISABLE,
             TokenKind.HASH_HASH,  # ## starts a new delay
+            TokenKind.KW_THROUGHOUT, TokenKind.KW_INTERSECT, TokenKind.KW_WITHIN,
+            TokenKind.REPEAT_CONSEC, TokenKind.REPEAT_NONCONSEC, TokenKind.REPEAT_GOTO,
             TokenKind.IMPL_OVERLAPPED, TokenKind.IMPL_NONOVERLAPPED,
         }
 

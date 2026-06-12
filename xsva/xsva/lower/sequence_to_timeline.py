@@ -8,32 +8,24 @@
 
 from __future__ import annotations
 
-import copy
+import re
 
-from xsva.ir.common import LoweringStatus, Severity, DiagnosticIR, SourceSpan
+from xsva.ir.common import LoweringStatus
 from xsva.ir.diagnostics import DiagnosticBag
 from xsva.ir.expr import ExprIR, SignalRef
-from xsva.ir.sequence import SeqNode, SeqNodeKind, SequenceIR, CaptureIR as SeqCaptureIR
+from xsva.ir.sequence import SeqNode, SeqNodeKind
 from xsva.ir.timeline import (
     CaptureIR,
     FailureConditionIR,
     MatchPathIR,
     ObligationIR,
     ObligationKind,
+    SemanticNoteIR,
     TimelineIR,
     TriggerIR,
     WindowIR,
 )
 from xsva.ir.surface import ClockIR
-
-
-# ── helpers ──
-
-def _impl_offset(implication: str) -> int:
-    """|-> = 0, |=> = 1."""
-    if implication == "|=>":
-        return 1
-    return 0
 
 
 def _worst_status(a: str, b: str) -> str:
@@ -80,10 +72,13 @@ def lower_sequence_to_timeline(
         obligation_nodes = []
         offset = 0
 
-    # 3. 路径展开
+    # 3. 高级语法摘要 + 路径展开
+    semantic_notes = _collect_semantic_notes(nodes)
+    has_first_match_summary = any(n.kind == "first_match" for n in semantic_notes)
+
     from .path_expand import expand_paths, expand_first_match
     paths = expand_paths(obligation_nodes, max_paths=max_paths)
-    paths = expand_first_match(paths)
+    paths = [[]] if has_first_match_summary else expand_first_match(paths)
 
     # 4. 提取 trigger
     trigger_expr = ""
@@ -128,7 +123,7 @@ def lower_sequence_to_timeline(
                          SeqNodeKind.THROUGHOUT, SeqNodeKind.WITHIN):
             overall_status = _worst_status(overall_status, "partial")
             diag.warning("XSVA-W006",
-                         f"{node.kind.value} lowering is conservative — marking as partial")
+                         f"{node.kind.value} uses advanced sequence semantics; see semantic notes")
 
     # 6. 构建 obligations + paths
     all_obligations: list[ObligationIR] = []
@@ -185,6 +180,12 @@ def lower_sequence_to_timeline(
 
             # Expression match
             if node.kind in (SeqNodeKind.EXPR, SeqNodeKind.EXPR_MATCH) and node.expr:
+                note = _semantic_note_from_raw(node.expr.raw)
+                if note:
+                    _append_unique_note(semantic_notes, note)
+                    overall_status = _worst_status(overall_status, "partial")
+                    i += 1
+                    continue
                 obl = _expr_to_obligation(node, cycle, pi, i, path_captures)
                 if obl:
                     path_obligations.append(obl)
@@ -221,29 +222,18 @@ def lower_sequence_to_timeline(
 
             # Intersect — mark partial
             if node.kind in (SeqNodeKind.INTERSECT,):
-                diag.warning("XSVA-W006", "intersect lowering is conservative — marking as partial")
-                path_obligations.append(ObligationIR(
-                    id=f"ob_{pi}_{i}", kind=ObligationKind.SEQUENCE_PATH,
-                    description=f"intersect sequence (partial lowering)", has_cycle=False,
-                ))
                 overall_status = _worst_status(overall_status, "partial")
                 i += 1
                 continue
 
             # First_match — mark and skip (handled by path_expand)
             if node.kind in (SeqNodeKind.FIRST_MATCH,):
-                path_obligations.append(ObligationIR(
-                    id=f"ob_{pi}_{i}", kind=ObligationKind.SEQUENCE_PATH,
-                    description="first_match (earliest satisfaction; conservative lowering)", has_cycle=False,
-                ))
                 overall_status = _worst_status(overall_status, "partial")
                 i += 1
                 continue
 
             # Throughout / Within — mark partial
             if node.kind in (SeqNodeKind.THROUGHOUT, SeqNodeKind.WITHIN):
-                diag.warning("XSVA-W006",
-                             f"{node.kind.value} lowering is conservative — marking as partial")
                 overall_status = _worst_status(overall_status, "partial")
                 i += 1
                 continue
@@ -283,23 +273,14 @@ def lower_sequence_to_timeline(
         clock = surface_ir.clock or clock
         disable_expr = surface_ir.disable_expr
 
-    # 9. Disable obligation
-    disable_obl = None
-    if disable_expr:
-        disable_obl = ObligationIR(
-            id="disable", kind=ObligationKind.POINT,
-            description=f"disable iff ({disable_expr}): if true, the current attempt is immediately terminated",
-            failure_condition=f"{disable_expr} becomes true during the attempt",
-        )
-
-    # 10. Vacuity checks
+    # 9. Vacuity checks
     vacuity: list[str] = []
     if not disable_expr:
         vacuity.append("XSVA-W001: missing disable iff")
     if trigger_expr in ("0", "1'b0"):
         vacuity.append("XSVA-W002: antecedent is constant false")
 
-    return TimelineIR(
+    timeline = TimelineIR(
         schema_version="xsva.timeline_ir.v1",
         property_name=seq_ir.name if hasattr(seq_ir, 'name') else "",
         kind=surface_ir.kind if surface_ir else "assert",
@@ -309,11 +290,18 @@ def lower_sequence_to_timeline(
         obligations=all_obligations,
         match_paths=match_paths,
         failure_conditions=failure_conditions,
+        semantic_notes=semantic_notes,
         vacuity_checks=vacuity,
         lowering_status=LoweringStatus(overall_status),
         diagnostics=list(diag.diagnostics) if diag else [],
     )
-    timeline._disable_obl = disable_obl
+    if disable_expr:
+        timeline.add_disable_obligation(ObligationIR(
+            id="disable", kind=ObligationKind.POINT,
+            description=f"disable iff ({disable_expr}): if true, the current attempt is immediately terminated",
+            failure_condition=f"{disable_expr} becomes true during the attempt",
+        ))
+    return timeline
 
 
 def _expr_to_obligation(
@@ -328,10 +316,11 @@ def _expr_to_obligation(
     if expr.sampled_funcs:
         func = expr.sampled_funcs[0]
         if func == "$past":
+            depth = expr.sample_dependencies[0].depth or 1
             return ObligationIR(
                 id=f"ob_{pi}_{i}", kind=ObligationKind.COMPARE_PAST,
                 expr=expr.raw, expr_ir=expr, has_cycle=True, cycle=cycle,
-                description=f"{expr.raw} (compare with value {expr.sample_dependencies[0].depth or 1} cycles earlier)",
+                description=f"{expr.raw} compares with the value sampled {depth} clk earlier",
                 depends_on_captures=_find_capture_deps(expr, captures),
                 signals_to_query=_signal_refs(expr),
             )
@@ -339,21 +328,21 @@ def _expr_to_obligation(
             return ObligationIR(
                 id=f"ob_{pi}_{i}", kind=ObligationKind.ROSE,
                 expr=expr.raw, expr_ir=expr, has_cycle=True, cycle=cycle,
-                description=f"{expr.raw} (rise edge at cycle +{cycle})",
+                description=f"{expr.raw} detects a rising edge at cycle +{cycle}",
                 signals_to_query=_signal_refs(expr),
             )
         elif func == "$fell":
             return ObligationIR(
                 id=f"ob_{pi}_{i}", kind=ObligationKind.FELL,
                 expr=expr.raw, expr_ir=expr, has_cycle=True, cycle=cycle,
-                description=f"{expr.raw} (fall edge at cycle +{cycle})",
+                description=f"{expr.raw} detects a falling edge at cycle +{cycle}",
                 signals_to_query=_signal_refs(expr),
             )
         elif func == "$stable":
             return ObligationIR(
                 id=f"ob_{pi}_{i}", kind=ObligationKind.STABLE,
                 expr=expr.raw, expr_ir=expr, has_cycle=True, cycle=cycle,
-                description=f"{expr.raw} (value equals previous sample)",
+                description=f"{expr.raw} stays the same as the previous clk sample",
                 depends_on_captures=_find_capture_deps(expr, captures),
                 signals_to_query=_signal_refs(expr),
             )
@@ -361,7 +350,35 @@ def _expr_to_obligation(
             return ObligationIR(
                 id=f"ob_{pi}_{i}", kind=ObligationKind.POINT,
                 expr=expr.raw, expr_ir=expr, has_cycle=True, cycle=cycle,
-                description=f"{expr.raw} (changed from previous sample)",
+                description=f"{expr.raw} changes from the previous clk sample",
+                signals_to_query=_signal_refs(expr),
+            )
+        elif func == "$isunknown":
+            return ObligationIR(
+                id=f"ob_{pi}_{i}", kind=ObligationKind.POINT,
+                expr=expr.raw, expr_ir=expr, has_cycle=True, cycle=cycle,
+                description=f"{expr.raw} checks whether the expression contains X/Z unknown bits",
+                signals_to_query=_signal_refs(expr),
+            )
+        elif func == "$onehot":
+            return ObligationIR(
+                id=f"ob_{pi}_{i}", kind=ObligationKind.POINT,
+                expr=expr.raw, expr_ir=expr, has_cycle=True, cycle=cycle,
+                description=f"{expr.raw} checks that exactly one bit is set",
+                signals_to_query=_signal_refs(expr),
+            )
+        elif func == "$onehot0":
+            return ObligationIR(
+                id=f"ob_{pi}_{i}", kind=ObligationKind.POINT,
+                expr=expr.raw, expr_ir=expr, has_cycle=True, cycle=cycle,
+                description=f"{expr.raw} checks that zero or one bit is set",
+                signals_to_query=_signal_refs(expr),
+            )
+        elif func == "$countones":
+            return ObligationIR(
+                id=f"ob_{pi}_{i}", kind=ObligationKind.POINT,
+                expr=expr.raw, expr_ir=expr, has_cycle=True, cycle=cycle,
+                description=f"{expr.raw} counts the number of set bits",
                 signals_to_query=_signal_refs(expr),
             )
 
@@ -378,6 +395,180 @@ def _expr_to_obligation(
         depends_on_captures=deps,
         signals_to_query=_signal_refs(expr),
     )
+
+
+def _collect_semantic_notes(nodes: list[SeqNode]) -> list[SemanticNoteIR]:
+    notes: list[SemanticNoteIR] = []
+    for idx, node in enumerate(nodes):
+        if node.kind == SeqNodeKind.FIRST_MATCH:
+            suffix_delay = _fixed_delay_at(nodes, idx + 1)
+            _append_unique_note(notes, SemanticNoteIR(
+                kind="first_match", expr=_node_raw(node), text=_first_match_text(node, suffix_delay)))
+        elif node.kind == SeqNodeKind.INTERSECT:
+            raw = _node_raw(node)
+            _append_unique_note(notes, SemanticNoteIR(kind="intersect", expr=raw, text=_intersect_text(raw)))
+        elif node.kind == SeqNodeKind.THROUGHOUT:
+            raw = _node_raw(node)
+            text = (f"{node.expr.raw} must hold for the entire matched interval of the sequence on the right."
+                    if node.expr else _throughout_text(raw))
+            _append_unique_note(notes, SemanticNoteIR(kind="throughout", expr=raw, text=text))
+        elif node.kind == SeqNodeKind.WITHIN:
+            raw = _node_raw(node)
+            _append_unique_note(notes, SemanticNoteIR(kind="within", expr=raw, text=_within_text(raw)))
+        elif node.kind == SeqNodeKind.REPEAT:
+            _append_unique_note(notes, SemanticNoteIR(
+                kind=f"repeat_{node.repeat_kind}", expr=_node_raw(node),
+                text=_repeat_text(_node_raw(node.children[0]) if node.children else node.raw,
+                                  node.repeat_kind, node.repeat_min, node.repeat_max)))
+        elif node.kind in (SeqNodeKind.EXPR, SeqNodeKind.EXPR_MATCH) and node.expr:
+            note = _semantic_note_from_raw(node.expr.raw)
+            if note:
+                _append_unique_note(notes, note)
+        for child in node.children:
+            for note in _collect_semantic_notes([child]):
+                _append_unique_note(notes, note)
+    return notes
+
+
+def _append_unique_note(notes: list[SemanticNoteIR], note: SemanticNoteIR) -> None:
+    if not any(n.kind == note.kind and n.expr == note.expr and n.text == note.text for n in notes):
+        notes.append(note)
+
+
+def _semantic_note_from_raw(raw: str) -> SemanticNoteIR | None:
+    norm = _clean_raw(raw)
+    repeat = _repeat_note_from_raw(norm)
+    if repeat:
+        return repeat
+    if " throughout " in f" {norm} ":
+        return SemanticNoteIR(kind="throughout", expr=norm, text=_throughout_text(norm))
+    if " intersect " in f" {norm} ":
+        return SemanticNoteIR(kind="intersect", expr=norm, text=_intersect_text(norm))
+    if " within " in f" {norm} ":
+        return SemanticNoteIR(kind="within", expr=norm, text=_within_text(norm))
+    return None
+
+
+def _repeat_note_from_raw(raw: str) -> SemanticNoteIR | None:
+    match = re.search(r"(.+?)\s*\[\s*(\*|->|=)\s*(\d+)(?:\s*:\s*(\d+|\$))?\s*\]\s*$", raw)
+    if not match:
+        return None
+    expr = match.group(1).strip()
+    op = match.group(2)
+    min_c = int(match.group(3))
+    max_s = match.group(4)
+    max_c = 0 if max_s is None or max_s == "$" else int(max_s)
+    repeat_kind = {"*": "consecutive", "->": "goto", "=": "nonconsecutive"}[op]
+    return SemanticNoteIR(kind=f"repeat_{repeat_kind}", expr=raw,
+                          text=_repeat_text(expr, repeat_kind, min_c, max_c))
+
+
+def _repeat_text(expr: str, repeat_kind: str, min_c: int, max_c: int = 0) -> str:
+    clean_expr = _clean_raw(expr)
+    if repeat_kind == "consecutive":
+        if max_c and max_c != min_c:
+            return f"{clean_expr} needs to hold continuously for {min_c} to {max_c} clk cycles."
+        return f"{clean_expr} needs to hold continuously for {min_c} clk cycles."
+    if repeat_kind == "goto":
+        return f"Wait for the {_ordinal(min_c)} occurrence of {clean_expr}; the match ends on that clk."
+    if repeat_kind == "nonconsecutive":
+        return f"{clean_expr} needs to match {min_c} times in total, with non-matching clk cycles allowed in between."
+    return f"{clean_expr} uses {repeat_kind} repetition."
+
+
+def _first_match_text(node: SeqNode, suffix_delay: int | None = None) -> str:
+    raw = _node_raw(node)
+    window = _first_delay_window(node)
+    first_expr = _first_expr_after_delay(node)
+    suffix_delay = suffix_delay if suffix_delay is not None else _suffix_delay_after_first_match(raw)
+    if window and first_expr and suffix_delay is not None:
+        return (f"{first_expr} must be the first match within {window[0]} to {window[1]} clk cycles; "
+                f"the following sequence is checked {suffix_delay} clk after that first match.")
+    if window and first_expr:
+        return f"{first_expr} must be the first match within {window[0]} to {window[1]} clk cycles."
+    return "The first_match sequence selects the earliest matching path, and later checks are relative to that first match."
+
+
+def _first_delay_window(node: SeqNode) -> tuple[int, int] | None:
+    for child in _walk_nodes(node):
+        if child.kind == SeqNodeKind.DELAY and child.delay and child.delay.max_cycles is not None:
+            if child.delay.min_cycles != child.delay.max_cycles:
+                return (child.delay.min_cycles, child.delay.max_cycles)
+    return None
+
+
+def _first_expr_after_delay(node: SeqNode) -> str:
+    seen_delay = False
+    for child in _walk_nodes(node):
+        if child.kind == SeqNodeKind.DELAY:
+            seen_delay = True
+            continue
+        if seen_delay and child.expr:
+            return child.expr.raw
+    return ""
+
+
+def _suffix_delay_after_first_match(raw: str) -> int | None:
+    match = re.search(r"\)\s*##\s*(\d+)", raw)
+    return int(match.group(1)) if match else None
+
+
+def _fixed_delay_at(nodes: list[SeqNode], idx: int) -> int | None:
+    if idx >= len(nodes):
+        return None
+    node = nodes[idx]
+    if node.kind == SeqNodeKind.DELAY and node.delay:
+        if node.delay.max_cycles is None or node.delay.min_cycles == node.delay.max_cycles:
+            return node.delay.min_cycles
+    return None
+
+
+def _intersect_text(raw: str) -> str:
+    return "The left and right sequences must start on the same clk and finish on the same clk."
+
+
+def _throughout_text(raw: str) -> str:
+    left = raw.split(" throughout ", 1)[0].strip() if " throughout " in raw else "The left expression"
+    return f"{left} must hold for the entire matched interval of the sequence on the right."
+
+
+def _within_text(raw: str) -> str:
+    return "The left sequence must match entirely within the matched interval of the sequence on the right."
+
+
+def _node_raw(node: SeqNode) -> str:
+    if node.raw:
+        return _clean_raw(node.raw)
+    if node.expr:
+        return _clean_raw(node.expr.raw)
+    if node.kind == SeqNodeKind.DELAY and node.delay:
+        if node.delay.max_cycles is None or node.delay.min_cycles == node.delay.max_cycles:
+            return f"##{node.delay.min_cycles}"
+        end = "$" if node.delay.is_infinite else str(node.delay.max_cycles)
+        return f"##[{node.delay.min_cycles}:{end}]"
+    if node.kind == SeqNodeKind.FIRST_MATCH and node.children:
+        return f"first_match({_node_raw(node.children[0])})"
+    if node.children:
+        return " ".join(_node_raw(c) for c in node.children if _node_raw(c))
+    return node.kind.value
+
+
+def _walk_nodes(node: SeqNode):
+    yield node
+    for child in node.children:
+        yield from _walk_nodes(child)
+
+
+def _clean_raw(raw: str) -> str:
+    return " ".join(raw.split())
+
+
+def _ordinal(value: int) -> str:
+    if 10 <= value % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
+    return f"{value}{suffix}"
 
 
 def _flatten_concat(nodes: list[SeqNode]) -> list[SeqNode]:

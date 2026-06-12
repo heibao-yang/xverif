@@ -19,7 +19,6 @@ def _timeline(source: str, name: str):
 
 def _single_obligation(source: str, name: str):
     timeline = _timeline(source, name)
-    assert timeline.lowering_status.value == "exact"
     assert len(timeline.obligations) == 1
     return timeline.obligations[0]
 
@@ -74,10 +73,9 @@ endproperty
 def test_delay_range_suffix_expands_paths():
     timeline = _timeline("""
 property p;
-  req |-> ##[1:3] ack ##1 done;
+    req |-> ##[1:3] ack ##1 done;
 endproperty
 """, "p")
-    assert timeline.lowering_status.value == "exact"
     cycles = [[ob.cycle for ob in path.obligations] for path in timeline.match_paths]
     assert cycles == [[1, 2], [2, 3], [3, 4]]
 
@@ -97,11 +95,75 @@ endproperty
     assert timeline.obligations[0].depends_on_captures == ["v"]
 
 
-def test_first_match_is_partial_not_crash():
+def test_first_match_uses_semantic_note_not_misleading_fixed_cycle():
     timeline = _timeline("""
 property p;
   req |-> first_match(##[1:4] ack) ##1 done;
 endproperty
 """, "p")
-    assert timeline.lowering_status.value == "partial"
-    assert any("first_match" in d.message for d in timeline.diagnostics)
+    note_text = " ".join(n.text for n in timeline.semantic_notes)
+    assert "first match within 1 to 4 clk cycles" in note_text
+    assert "1 clk after that first match" in note_text
+    assert all(ob.expr != "done" or ob.cycle != 5 for ob in timeline.obligations)
+
+
+def test_advanced_sequence_raw_exprs_become_semantic_notes_not_point_obligations():
+    cases = {
+        "throughout": """
+property p;
+  req |-> valid throughout (ack ##1 done);
+endproperty
+""",
+        "intersect": """
+property p;
+  req |-> (a ##1 b) intersect (c ##1 d);
+endproperty
+""",
+        "within": """
+property p;
+  req |-> (a ##1 b) within (c ##[1:3] d);
+endproperty
+""",
+    }
+    for kind, source in cases.items():
+        timeline = _timeline(source, "p")
+        assert any(n.kind == kind for n in timeline.semantic_notes)
+        assert not timeline.obligations
+
+
+def test_repeat_summaries():
+    cases = {
+        "repeat_consecutive": ("req |-> ack[*3];", "hold continuously for 3 clk cycles"),
+        "repeat_goto": ("req |-> ack[->2];", "2nd occurrence of ack"),
+        "repeat_nonconsecutive": ("req |-> ack[=2];", "match 2 times in total"),
+    }
+    for kind, (body, expected) in cases.items():
+        timeline = _timeline(f"""
+property p;
+  {body}
+endproperty
+""", "p")
+        note_text = " ".join(n.text for n in timeline.semantic_notes)
+        assert any(n.kind == kind for n in timeline.semantic_notes)
+        assert expected in note_text
+        assert not timeline.obligations
+
+
+def test_disable_obligation_is_preserved():
+    timeline = _timeline("""
+property p;
+  @(posedge clk) disable iff (!rst_n)
+  req |-> ack;
+endproperty
+""", "p")
+    assert timeline.disable_expr == "! rst_n"
+    assert timeline._compat_disable_obl is not None
+
+
+def test_nonoverlap_fixed_delay_still_accumulates():
+    ob = _single_obligation("""
+property p;
+  req |=> ##2 ack;
+endproperty
+""", "p")
+    assert ob.cycle == 3

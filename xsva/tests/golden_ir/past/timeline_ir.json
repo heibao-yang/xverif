@@ -27,14 +27,13 @@
   "match_paths": [
     {
       "id": "path_0",
-      "description": "Path 0: rsp == $past ( data , 2 ) (compare with value 2 cy",
-      "is_partial": false,
+      "description": "Path 0: rsp == $past ( data , 2 ) compares with the value ",
       "obligations": [
         "compare_past"
       ]
     }
   ],
   "failure_conditions": [],
-  "lowering_status": "exact",
+  "semantic_notes": [],
   "diagnostics": []
 }

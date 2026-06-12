@@ -29,11 +29,6 @@ def render_timeline_markdown(timeline: TimelineIR) -> str:
         lines.append(f"**Disable:** `disable iff ({timeline.disable_expr})`")
         lines.append("")
 
-    # Lowering status
-    if timeline.lowering_status.value != "exact":
-        lines.append(f"**Lowering:** `{timeline.lowering_status.value}`")
-        lines.append("")
-
     # Trigger
     if timeline.trigger:
         lines.append("## Trigger")
@@ -42,6 +37,12 @@ def render_timeline_markdown(timeline: TimelineIR) -> str:
             lines.append("")
             for c in timeline.trigger.captures:
                 lines.append(f"- `{c.var} = {c.value_expr}` (cycle {c.relative_cycle})")
+        lines.append("")
+
+    if timeline.semantic_notes:
+        lines.append("## Semantic Notes")
+        for note in timeline.semantic_notes:
+            lines.append(f"- {note.text}")
         lines.append("")
 
     # Obligations
@@ -59,8 +60,6 @@ def render_timeline_markdown(timeline: TimelineIR) -> str:
         lines.append("")
         for path in timeline.match_paths:
             lines.append(f"### {path.description}")
-            if path.is_partial:
-                lines.append("*[partial lowering]*")
             for ob in path.obligations:
                 lines.append(f"- [{ob.kind.value}] {ob.description}")
             lines.append("")

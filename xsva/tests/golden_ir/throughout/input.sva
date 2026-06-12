@@ -1,0 +1,3 @@
+property p_throughout;
+  req |-> valid throughout (ack ##1 done);
+endproperty

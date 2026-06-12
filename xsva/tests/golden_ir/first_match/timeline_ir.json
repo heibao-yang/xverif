@@ -12,53 +12,27 @@
     "expr": "req",
     "captures": []
   },
-  "obligations": [
-    {
-      "id": "ob_0_0",
-      "kind": "eventually",
-      "expr": "ack",
-      "has_window": true,
-      "window": {
-        "start": 1,
-        "end": 4,
-        "unbounded": false
-      },
-      "depends_on_captures": [],
-      "requirement": "",
-      "failure_condition": "ack is never true from cycle +1 to +4"
-    },
-    {
-      "id": "ob_0_3",
-      "kind": "point",
-      "expr": "done",
-      "has_window": false,
-      "window": null,
-      "depends_on_captures": [],
-      "requirement": "",
-      "failure_condition": "done is false at cycle +5"
-    }
-  ],
+  "obligations": [],
   "match_paths": [
     {
       "id": "path_0",
-      "description": "Path 0: ack must become true at least once between cycle + → done must be true at cycle +5",
-      "is_partial": true,
-      "obligations": [
-        "eventually",
-        "point"
-      ]
+      "description": "Path 0: (empty)",
+      "obligations": []
     }
   ],
-  "failure_conditions": [
-    "ack is never true from cycle +1 to +4",
-    "done is false at cycle +5"
+  "failure_conditions": [],
+  "semantic_notes": [
+    {
+      "kind": "first_match",
+      "expr": "first_match(##[1:4] ack)",
+      "text": "ack must be the first match within 1 to 4 clk cycles; the following sequence is checked 1 clk after that first match."
+    }
   ],
-  "lowering_status": "partial",
   "diagnostics": [
     {
       "code": "XSVA-W006",
       "severity": "warning",
-      "message": "first_match lowering is conservative — marking as partial",
+      "message": "first_match uses advanced sequence semantics; see semantic notes",
       "span": {
         "file": "",
         "begin_line": 0,

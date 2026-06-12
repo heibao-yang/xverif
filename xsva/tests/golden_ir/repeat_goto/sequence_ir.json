@@ -1,0 +1,23 @@
+{
+  "name": "p_repeat_goto",
+  "nodes": [
+    {
+      "kind": "expr",
+      "expr": "req",
+      "delay": null,
+      "children_count": 0
+    },
+    {
+      "kind": "implication",
+      "expr": null,
+      "delay": null,
+      "children_count": 0
+    },
+    {
+      "kind": "repeat",
+      "expr": null,
+      "delay": null,
+      "children_count": 1
+    }
+  ]
+}

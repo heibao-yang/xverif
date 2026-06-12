@@ -4,8 +4,8 @@ description: >
   当 AI agent 需要把 SystemVerilog Assertion (SVA) property/assert/assume/cover
   解析成 xsva 的 Surface IR、Sequence IR、Timeline IR，生成确定性解释、Markdown、
   Mermaid/SVG 可视化，或维护 xsva golden/语义/CLI 回归时使用。适用于 SVA temporal
-  semantic review、range delay/path expansion、local variable capture、first_match
-  保守 lowering、unsupported/partial 边界验证；不要让 LLM 直接自由解释 SVA 原文。
+  semantic review、range delay/path expansion、local variable capture、高级 sequence
+  的 semantic_notes 摘要验证；不要让 LLM 直接自由解释 SVA 原文。
 ---
 
 # xsva
@@ -47,11 +47,11 @@ xsva render  --file input.sva --property p_name --format svg
 
 1. 先运行 `xsva list --file <file>`，确认 property/assertion 名称。
 2. 对目标 property 先取 `timeline-ir` JSON，再解释语义。
-3. 如果 timeline `lowering_status` 不是 `exact`，报告 partial/opaque/unsupported 边界，不要补完工具没有证明的语义。
+3. 如果 timeline 有 `semantic_notes`，优先用这些摘要解释高级 sequence，不要向用户报告内部 lowering/partial 状态。
 4. 对 `##[m:n]` 后接 suffix sequence，检查 `match_paths` 是否展开到候选路径。
 5. 对 local variable，检查 `trigger.captures`、path-specific captures 和 `depends_on_captures`。
-6. 对 `first_match`、`throughout`、`intersect`、`within` 等高级 sequence，接受 conservative lowering；重点确认“不崩溃、不标 exact、不错误解释”。
-7. 输出解释时引用 Timeline IR 字段：`trigger`、`obligations`、`window`、`match_paths`、`failure_conditions`、`diagnostics`。
+6. 对 `first_match`、`throughout`、`intersect`、`within`、`[*]`、`[->]`、`[=]` 等高级 sequence，确认解释来自 `semantic_notes`，不能把它们误说成固定 cycle 的普通 point obligation。
+7. 输出解释时引用 Timeline IR 字段：`trigger`、`obligations`、`window`、`match_paths`、`semantic_notes`、`failure_conditions`、`diagnostics`。
 
 ## 语义检查速查
 
@@ -64,7 +64,11 @@ xsva render  --file input.sva --property p_name --format svg
 - `req |-> ##[1:4] ack`：单个 `eventually` obligation，window `[1,4]`。
 - `req |-> ##[1:3] ack ##1 done`：三条路径，`ack/done` 分别在 `+1/+2`、`+2/+3`、`+3/+4`。
 - `(req, v = data) |-> ##[1:4] ack && rsp == v`：`v=data` 是 per-attempt capture，后续 obligation 依赖 `v`。
-- `first_match(##[1:4] ack)`：必须保留 earliest-match 风险；未完整 lowering 时标 `partial`。
+- `first_match(##[1:4] ack) ##1 done`：`semantic_notes` 应说明 `ack` 在 1 到 4 个 clk 内第一次匹配到，后续检查相对这个第一次匹配点计算。
+- `valid throughout (req ##1 ack)`：`semantic_notes` 应说明 `valid` 在右侧 sequence 的整个匹配区间保持成立。
+- `(a ##1 b) intersect (c ##1 d)`：`semantic_notes` 应说明左右 sequence 同时开始并同时结束。
+- `(a ##1 b) within (c ##[1:3] d)`：`semantic_notes` 应说明左侧匹配区间落在右侧匹配区间内部。
+- `ack[*3]` / `ack[->2]` / `ack[=2]`：`semantic_notes` 应分别说明连续重复、第 N 次出现、累计匹配 N 次。
 
 ## 回归和维护
 
@@ -80,7 +84,7 @@ make test
 - direct semantics tests：检查 cycle/window/path/capture/status 字段
 - CLI smoke tests：覆盖 `list/scan/parse/explain/render`
 
-更新 xsva parser/lowering 时，先加能失败的语义测试，再修实现，最后更新 golden JSON。不要只比较 name/status/count；golden 必须做完整 JSON 对比。
+更新 xsva parser/lowering 时，先加能失败的语义测试，再修实现，最后更新 golden JSON。不要只比较 name/count；golden 必须做完整 JSON 对比，并确认对外 JSON 不包含内部 lowering 状态字段。
 
 ## 边界
 

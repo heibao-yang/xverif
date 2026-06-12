@@ -14,11 +14,10 @@
       "children_count": 0
     },
     {
-      "kind": "expr",
-      "expr": "ack [* 3 ]",
+      "kind": "repeat",
+      "expr": null,
       "delay": null,
-      "children_count": 0
+      "children_count": 1
     }
-  ],
-  "lowering_status": "exact"
+  ]
 }

@@ -84,7 +84,6 @@
     {
       "id": "path_0",
       "description": "Path 0: ack must be true at cycle +1 → done_id == v must be true at cycle +2",
-      "is_partial": false,
       "obligations": [
         "point",
         "point"
@@ -93,7 +92,6 @@
     {
       "id": "path_1",
       "description": "Path 1: ack must be true at cycle +2 → done_id == v must be true at cycle +3",
-      "is_partial": false,
       "obligations": [
         "point",
         "point"
@@ -102,7 +100,6 @@
     {
       "id": "path_2",
       "description": "Path 2: ack must be true at cycle +3 → done_id == v must be true at cycle +4",
-      "is_partial": false,
       "obligations": [
         "point",
         "point"
@@ -117,6 +114,6 @@
     "ack is false at cycle +3",
     "done_id == v is false at cycle +4"
   ],
-  "lowering_status": "exact",
+  "semantic_notes": [],
   "diagnostics": []
 }

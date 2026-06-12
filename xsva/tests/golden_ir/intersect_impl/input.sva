@@ -1,0 +1,3 @@
+property p_intersect_impl;
+  req |-> (a ##1 b) intersect (c ##1 d);
+endproperty

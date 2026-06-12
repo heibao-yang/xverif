@@ -22,16 +22,18 @@ def render_timeline_text(timeline: TimelineIR) -> str:
     if timeline.disable_expr:
         lines.append(f"Disable: disable iff ({timeline.disable_expr})")
 
-    # Lowering status
-    if timeline.lowering_status.value != "exact":
-        lines.append(f"Lowering: {timeline.lowering_status.value}")
-
     lines.append("")
 
     # Trigger
     if timeline.trigger:
         lines.append(f"Trigger:")
         lines.append(f"  cycle 0: {_describe_trigger(timeline)}")
+        lines.append("")
+
+    if timeline.semantic_notes:
+        lines.append("Semantic notes:")
+        for note in timeline.semantic_notes:
+            lines.append(f"  - {note.text}")
         lines.append("")
 
     # Obligations / Paths
@@ -55,8 +57,6 @@ def render_timeline_text(timeline: TimelineIR) -> str:
         lines.append(f"Obligations ({len(timeline.paths)} paths):")
         for path in timeline.paths:
             lines.append(f"  {path.description}:")
-            if path.is_partial:
-                lines.append(f"    [partial lowering]")
             for ob in path.obligations:
                 lines.append(f"    [{ob.kind.value}] {ob.description}")
 

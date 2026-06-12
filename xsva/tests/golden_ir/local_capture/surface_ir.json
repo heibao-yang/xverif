@@ -37,6 +37,5 @@
     "end_line": 0,
     "end_col": 0
   },
-  "diagnostics": [],
-  "lowering_status": "exact"
+  "diagnostics": []
 }

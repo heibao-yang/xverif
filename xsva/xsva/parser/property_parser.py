@@ -11,13 +11,10 @@
 
 from __future__ import annotations
 
-from xsva.ir.common import LoweringStatus, SourceSpan
 from xsva.ir.diagnostics import DiagnosticBag
-from xsva.ir.expr import ExprKind, ExprIR, SignalRef
 from xsva.ir.surface import AssertionKind, ClockIR, LocalVarIR, SurfaceIR
 
 from .scanner import Scanner, TokenKind
-from .expr_parser import ExprParser
 
 
 class PropertyParser:

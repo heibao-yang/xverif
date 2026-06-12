@@ -28,7 +28,6 @@
     {
       "id": "path_0",
       "description": "Path 0: ack must be true at cycle +1",
-      "is_partial": false,
       "obligations": [
         "point"
       ]
@@ -37,6 +36,6 @@
   "failure_conditions": [
     "ack is false at cycle +1"
   ],
-  "lowering_status": "exact",
+  "semantic_notes": [],
   "diagnostics": []
 }

@@ -27,14 +27,13 @@
   "match_paths": [
     {
       "id": "path_0",
-      "description": "Path 0: valid & & $stable ( data ) (value equals previous ",
-      "is_partial": false,
+      "description": "Path 0: valid & & $stable ( data ) stays the same as the p",
       "obligations": [
         "stable"
       ]
     }
   ],
   "failure_conditions": [],
-  "lowering_status": "exact",
+  "semantic_notes": [],
   "diagnostics": []
 }

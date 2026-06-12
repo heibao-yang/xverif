@@ -1,0 +1,3 @@
+property p_repeat_goto;
+  req |-> ack[->2];
+endproperty

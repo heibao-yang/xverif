@@ -29,6 +29,8 @@ regression/*
 !xberif/tests/**
 !xcov/tests/
 !xcov/tests/**
+!xsva/tests/
+!xsva/tests/**
 !xverif_mcp/tests/
 !xverif_mcp/tests/**
 !xeda_runner/tests/

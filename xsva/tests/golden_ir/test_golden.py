@@ -2,8 +2,8 @@
 
 对每个 golden_ir/<case>/input.sva：
 1. 解析 → SurfaceIR
-2. Lowering → SequenceIR
-3. Lowering → TimelineIR
+2. 编译 → SequenceIR
+3. 编译 → TimelineIR
 4. 与 golden *.json diff 比较
 """
 
@@ -15,8 +15,7 @@ from xsva.ir.diagnostics import DiagnosticBag
 from xsva.parser.property_parser import PropertyParser
 from xsva.lower.surface_to_sequence import lower_surface_to_sequence
 from xsva.lower.sequence_to_timeline import lower_sequence_to_timeline
-from xsva.cli import _serialize_timeline_ir, _serialize_sequence_ir
-from dataclasses import asdict
+from xsva.cli import _serialize_timeline_ir, _serialize_sequence_ir, _serialize_surface_ir
 
 
 def _load_json(path: Path) -> dict:
@@ -28,7 +27,7 @@ def test_golden_surface_ir(run_golden_case):
     surface, seq_ir, timeline, diag, case_dir = run_golden_case
     golden = _load_json(case_dir / "surface_ir.json")
 
-    actual = json.loads(json.dumps(asdict(surface), ensure_ascii=False, default=str))
+    actual = json.loads(json.dumps(_serialize_surface_ir(surface), ensure_ascii=False, default=str))
     assert actual == golden
 
 

@@ -40,7 +40,6 @@
     {
       "id": "path_0",
       "description": "Path 0: ack & & rsp == v must become true at least once be",
-      "is_partial": false,
       "obligations": [
         "eventually"
       ]
@@ -49,6 +48,6 @@
   "failure_conditions": [
     "ack & & rsp == v is never true from cycle +1 to +4"
   ],
-  "lowering_status": "exact",
+  "semantic_notes": [],
   "diagnostics": []
 }

@@ -61,15 +61,22 @@ class SequenceParser:
                     nodes.append(fm_node)
                 continue
 
-            # throughout expr throughout seq
-            # Note: "throughout" checks happen during parsing of expr nodes
+            # expr throughout seq
+            if tk.kind == TokenKind.KW_THROUGHOUT:
+                self._scanner.advance()
+                right_nodes = self.parse_sequence()
+                if nodes and right_nodes:
+                    left = nodes.pop()
+                    left_expr = left.expr or ExprParser(Scanner(left.raw or _node_raw(left))).parse_expr()
+                    right = SeqNode.sequence(right_nodes) if len(right_nodes) > 1 else right_nodes[0]
+                    nodes.append(SeqNode.throughout(left_expr, right))
+                continue
 
             # intersect
             if tk.kind == TokenKind.KW_INTERSECT:
                 # This appears between two sub-sequences; handle in lowering
                 self._diag.warning("XSVA-W006",
-                                   "intersect found — marking as partial, "
-                                   "intersect lowering is conservative")
+                                   "intersect uses same-start and same-end sequence semantics")
                 self._scanner.advance()
                 # Consume the right-hand sequence as raw
                 right_nodes = self.parse_sequence()
@@ -79,6 +86,23 @@ class SequenceParser:
                     nodes = [SeqNode.intersect(left, right)]
                     nodes[-1].lowering_status = "partial"
                 continue
+
+            # seq within seq
+            if tk.kind == TokenKind.KW_WITHIN:
+                self._scanner.advance()
+                right_nodes = self.parse_sequence()
+                if nodes and right_nodes:
+                    left = SeqNode.sequence(nodes) if len(nodes) > 1 else nodes[0]
+                    right = SeqNode.sequence(right_nodes) if len(right_nodes) > 1 else right_nodes[0]
+                    nodes = [SeqNode.within(left, right)]
+                    nodes[-1].lowering_status = "partial"
+                continue
+
+            if tk.kind in (TokenKind.REPEAT_CONSEC, TokenKind.REPEAT_NONCONSEC, TokenKind.REPEAT_GOTO):
+                if nodes:
+                    child = nodes.pop()
+                    nodes.append(self._parse_repeat(child))
+                    continue
 
             # (v = expr) local variable capture
             if tk.kind == TokenKind.LPAREN:
@@ -250,6 +274,38 @@ class SequenceParser:
             return SeqNode.first_match(inner)
         return None
 
+    def _parse_repeat(self, child: SeqNode) -> SeqNode:
+        """解析跟在表达式后的 [*N] / [*m:n] / [->N] / [=N]。"""
+        op_tk = self._scanner.advance()
+        repeat_kind = {
+            TokenKind.REPEAT_CONSEC: "consecutive",
+            TokenKind.REPEAT_GOTO: "goto",
+            TokenKind.REPEAT_NONCONSEC: "nonconsecutive",
+        }[op_tk.kind]
+
+        min_c = 0
+        max_c = 0
+        unbounded = False
+        num_tk = self._scanner.peek()
+        if num_tk.kind == TokenKind.NUMBER:
+            self._scanner.advance()
+            min_c = int(num_tk.text)
+            max_c = min_c
+
+        if self._scanner.peek().kind == TokenKind.COLON:
+            self._scanner.advance()
+            max_tk = self._scanner.peek()
+            if max_tk.kind == TokenKind.NUMBER:
+                self._scanner.advance()
+                max_c = int(max_tk.text)
+            elif max_tk.kind == TokenKind.DOLLAR or max_tk.text == "$":
+                self._scanner.advance()
+                unbounded = True
+
+        self._scanner.expect(TokenKind.RBRACKET)
+        raw = f"{_node_raw(child)}{op_tk.text}{min_c}{':' + ('$' if unbounded else str(max_c)) if max_c != min_c or unbounded else ''}]"
+        return SeqNode.repeat(child, repeat_kind, min_c, max_c, unbounded, raw=raw)
+
     def _parse_expr_node(self) -> SeqNode | None:
         """解析一个表达式节点。"""
         expr_parser = ExprParser(self._scanner)
@@ -265,3 +321,13 @@ class SequenceParser:
 
     def _reconstruct_raw(self, tokens) -> str:
         return " ".join(t.text for t in tokens)
+
+
+def _node_raw(node: SeqNode) -> str:
+    if node.raw:
+        return node.raw
+    if node.expr:
+        return node.expr.raw
+    if node.children:
+        return " ".join(_node_raw(c) for c in node.children)
+    return node.kind.value

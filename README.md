@@ -159,7 +159,7 @@ tools/xsva explain --file xsva/tests/golden_ir/path_expand/input.sva --property 
 tools/xsva render --file xsva/tests/golden_ir/path_expand/input.sva --property p_path --format mermaid
 ```
 
-完整说明见 [`xsva/README.md`](xsva/README.md)，设计规范见 [`xsva/xsva_design_spec.md`](xsva/xsva_design_spec.md)。
+完整说明见 [`xsva/README.md`](xsva/README.md)。
 
 ### xcov
 
@@ -298,7 +298,6 @@ make full-test
 - xberif 用户文档：[`xberif/README.md`](xberif/README.md)
 - xsva 用户文档：[`xsva/README.md`](xsva/README.md)
 - xsva agent skill：[`xsva/skill/SKILL.md`](xsva/skill/SKILL.md)
-- xsva 设计规范：[`xsva/xsva_design_spec.md`](xsva/xsva_design_spec.md)
 - xcov 用户文档：[`xcov/README.md`](xcov/README.md)
 - xcov agent skill：[`xcov/skill/SKILL.md`](xcov/skill/SKILL.md)
 - xverif-mcp 用户文档：[`xverif_mcp/README.md`](xverif_mcp/README.md)

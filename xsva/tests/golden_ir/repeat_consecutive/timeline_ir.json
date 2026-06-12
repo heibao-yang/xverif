@@ -12,31 +12,21 @@
     "expr": "req",
     "captures": []
   },
-  "obligations": [
-    {
-      "id": "ob_0_0",
-      "kind": "point",
-      "expr": "ack [* 3 ]",
-      "has_window": false,
-      "window": null,
-      "depends_on_captures": [],
-      "requirement": "",
-      "failure_condition": "ack [* 3 ] is false at cycle +0"
-    }
-  ],
+  "obligations": [],
   "match_paths": [
     {
       "id": "path_0",
-      "description": "Path 0: ack [* 3 ] must be true at cycle +0",
-      "is_partial": false,
-      "obligations": [
-        "point"
-      ]
+      "description": "Path 0: (empty)",
+      "obligations": []
     }
   ],
-  "failure_conditions": [
-    "ack [* 3 ] is false at cycle +0"
+  "failure_conditions": [],
+  "semantic_notes": [
+    {
+      "kind": "repeat_consecutive",
+      "expr": "ack[*3]",
+      "text": "ack needs to hold continuously for 3 clk cycles."
+    }
   ],
-  "lowering_status": "exact",
   "diagnostics": []
 }

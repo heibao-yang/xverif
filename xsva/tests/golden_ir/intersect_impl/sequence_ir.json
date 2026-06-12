@@ -1,0 +1,23 @@
+{
+  "name": "p_intersect_impl",
+  "nodes": [
+    {
+      "kind": "expr",
+      "expr": "req",
+      "delay": null,
+      "children_count": 0
+    },
+    {
+      "kind": "implication",
+      "expr": null,
+      "delay": null,
+      "children_count": 0
+    },
+    {
+      "kind": "intersect",
+      "expr": null,
+      "delay": null,
+      "children_count": 2
+    }
+  ]
+}

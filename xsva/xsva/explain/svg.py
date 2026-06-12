@@ -22,7 +22,7 @@ def render_timeline_svg(timeline: TimelineIR) -> str:
     # 计算尺寸
     max_cycle = _max_cycle(timeline)
     num_cycles = max_cycle + 2  # +1 for trigger, +1 for padding
-    num_rows = 2 + len(timeline.match_paths)  # trigger + failure + path rows
+    num_rows = 2 + len(timeline.match_paths) + len(timeline.semantic_notes)
 
     width = LEFT_MARGIN + num_cycles * CYCLE_WIDTH + 20
     height = TOP_MARGIN + num_rows * ROW_HEIGHT + 40
@@ -61,6 +61,11 @@ def render_timeline_svg(timeline: TimelineIR) -> str:
                  "#0066cc", "trigger")
 
     row_y += ROW_HEIGHT
+
+    for note in timeline.semantic_notes:
+        parts.append(f'<text x="{LEFT_MARGIN + 10}" y="{row_y + 20}" class="obligation" font-size="10">'
+                     f'Note: {_esc(note.text[:100])}</text>')
+        row_y += ROW_HEIGHT
 
     # Obligation rows (one per path)
     for pi, path in enumerate(timeline.match_paths):
