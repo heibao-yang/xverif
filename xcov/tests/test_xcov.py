@@ -277,7 +277,7 @@ def test_scope_summary_returns_one_requested_scope():
     assert rsp["summary"]["matched_count"] == 1
     item = rsp["data"]["items"][0]
     assert item["full_name"] == "top.u_dut"
-    assert item["coverable"] == 4
+    assert item["coverable"] == 5
 
 
 def test_scope_children_direct_vs_recursive():
@@ -325,7 +325,7 @@ def test_export_scope_tree_contains_coverage_tree(tmp_path, monkeypatch):
     assert rsp["ok"] is True
     assert rsp["summary"]["output_path"] == ".xverif/xcov_exports/tree.json"
     item = next(i for i in rsp["data"]["items"] if i["full_name"] == "top.u_dut")
-    assert item["coverable"] == 4
+    assert item["coverable"] == 5
     assert item["metrics"]
     assert (tmp_path / ".xverif/xcov_exports/tree.json").exists()
 
@@ -375,6 +375,30 @@ def test_functional_bin_evidence_is_inherited_from_parent():
     assert item["evidence_source"]["type"] == "npiCovCoverpoint"
 
 
+def test_code_coverage_holes_include_detail_fields():
+    dispatcher = _dispatch_opened()
+    rsp = dispatcher.dispatch({
+        "api_version": "xcov.v1", "request_id": "code-details",
+        "action": "cov.holes", "target": {"session_id": "cov0"},
+        "args": {"metrics": ["toggle", "branch", "condition"]},
+        "output": {"format": "json"},
+    })
+    assert rsp["ok"] is True
+    rows = rsp["data"]["items"]
+    toggle = next(row for row in rows if row["metric"] == "toggle")
+    branch = next(row for row in rows if row["metric"] == "branch")
+    condition = next(row for row in rows if row["metric"] == "condition")
+    assert toggle["toggle_signal"] == "top.u_dut.u_fifo.credit"
+    assert toggle["toggle_bit"] == "top.u_dut.u_fifo.credit[0]"
+    assert toggle["toggle_transition"] == "0 -> 1"
+    assert branch["branch"] == "if (enable)"
+    assert branch["branch_bin"] == "else"
+    assert condition["condition"] == "(enable && ready)"
+    assert condition["condition_bin"] == "10"
+    assert condition["condition_terms"] == "enable;ready"
+    assert condition["evidence_source"]["type"] == "npiCovCondition"
+
+
 def test_xout_flattens_evidence_source():
     dispatcher = _dispatch_opened()
     rsp = dispatcher.dispatch({
@@ -386,6 +410,20 @@ def test_xout_flattens_evidence_source():
     assert "evidence_source={" not in xout
     assert "evidence_source.inherited=true" in xout
     assert "evidence_source.type=npiCovCoverpoint" in xout
+
+
+def test_xout_contains_code_coverage_detail_fields():
+    dispatcher = _dispatch_opened()
+    rsp = dispatcher.dispatch({
+        "api_version": "xcov.v1", "request_id": "code-detail-xout",
+        "action": "cov.holes", "target": {"session_id": "cov0"},
+        "args": {"metrics": ["condition"], "limits": {"max_items": 1}},
+    })
+    xout = render_xout(rsp)
+    assert "condition=(enable && ready)" in xout
+    assert "condition_bin=10" in xout
+    assert "condition_terms=enable;ready" in xout
+    assert "evidence_source.type=npiCovCondition" in xout
 
 
 def test_test_each_is_explicitly_unsupported():

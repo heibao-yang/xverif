@@ -116,6 +116,28 @@ Session open/status/close are lightweight: they do not recursively scan the
 whole VDB. Recursive scope/item traversal is triggered by coverage actions such
 as `scope.children`, `scope.summary`, `export.scope_tree`, and `cov.holes`.
 
+## Coverage Evidence Fields
+
+Coverage item rows always keep the common fields
+`metric/type/name/full_name/covered/coverable/missing/count/status/evidence`.
+For code coverage bins that do not carry their own source location, xcov
+inherits `evidence.file/line` from the nearest parent coverage object and adds
+`evidence_source.*` fields to show where that location came from.
+
+Additional code coverage detail fields:
+
+- Toggle holes use `toggle_signal`, `toggle_bit`, and `toggle_transition` to
+  identify the uncovered signal, bit, and transition direction.
+- Condition holes use `condition`, `condition_bin`, and, when NPI exposes it,
+  `condition_terms` to identify the expression, uncovered truth-value
+  combination, and term order.
+- Branch holes use `branch`, `branch_bin`, and, when NPI exposes it,
+  `branch_terms` to identify the branch object/expression and uncovered arm.
+
+Functional bin rows use `covergroup`, `coverpoint` or `cross`, and `bin`.
+For cross bins, a value like `bin=[write|err]` means one uncovered cross
+combination, not two independent bins.
+
 ## Export Safety
 
 For MCP safety, relative `output.path` values are written under

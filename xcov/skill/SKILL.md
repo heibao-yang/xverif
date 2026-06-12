@@ -192,11 +192,24 @@ functional 名字解释：
 源码定位：
 
 - code coverage item 通常直接有 `file/line`。
+- xcov 会为缺少源码位置的 code coverage bin 自动继承最近父
+  condition/branch/signal 节点的 `file/line`；AI 直接读取 item 的
+  `evidence.file/line` 即可。
+- 如果 `evidence_source.inherited=true`，说明该 code 或 functional bin 的
+  `file/line` 来自父 coverage object；`evidence_source.type/name/full_name`
+  指明继承来源。
+- Toggle hole 优先读 `toggle_signal`、`toggle_bit`、`toggle_transition`：
+  它们分别表示哪个信号、哪个 bit、哪种翻转方向未覆盖。若某个字段缺失，
+  再回退到 `full_name/name/file/line`。
+- Condition hole 优先读 `condition`、`condition_bin`、`condition_terms`：
+  `condition` 是条件表达式，`condition_bin` 是未覆盖的真值组合，
+  `condition_terms` 给出组合 bit 对应的 term 顺序。
+- Branch hole 优先读 `branch`、`branch_bin`、`branch_terms`：
+  `branch` 是分支表达式或分支 coverage object，`branch_bin` 指具体未覆盖
+  的分支臂（例如 then/else/default/case item 或 NPI 返回的 bin 值）。
 - functional 的 covergroup、coverpoint、cross 通常有 `file/line`。
 - xcov 会为缺少源码位置的 functional bin 自动继承最近父 coverpoint/cross
   的 `file/line`，所以 AI 直接读取 item 的 `evidence.file/line` 即可。
-- 如果 `evidence_source.inherited=true`，说明该 `file/line` 来自父
-  coverpoint/cross；`evidence_source.type/name/full_name` 指明继承来源。
 - 对 cross bin 解释时，使用 item 自带的 `cross`、`bin` 和继承后的
   `evidence.file/line` 判断组合维度，不要再额外发起父节点查询。
 

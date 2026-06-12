@@ -71,14 +71,30 @@ class FakeCoverageBackend(CoverageBackend):
              "evidence": {"file": "rtl/ctrl.sv", "line": 12}},
             {"metric": "toggle", "type": "npiCovToggleBin", "scope": "top.u_dut.u_fifo",
              "name": "0 -> 1", "full_name": "top.u_dut.u_fifo.credit[0].0 -> 1",
+             "toggle_signal": "top.u_dut.u_fifo.credit",
+             "toggle_bit": "top.u_dut.u_fifo.credit[0]",
+             "toggle_transition": "0 -> 1",
              "covered": 0, "coverable": 1, "missing": 1, "count": 0,
              "coverage_pct": 0.0, "status": ["not_covered"],
              "evidence": {"file": "rtl/fifo.sv", "line": 44}},
             {"metric": "branch", "type": "npiCovBranchBin", "scope": "top.u_dut.u_ctrl",
              "name": "else", "full_name": "top.u_dut.u_ctrl.branch_8.else",
+             "branch": "if (enable)",
+             "branch_bin": "else",
              "covered": 0, "coverable": 1, "missing": 1, "count": 0,
              "coverage_pct": 0.0, "status": ["not_covered"],
              "evidence": {"file": "rtl/ctrl.sv", "line": 88}},
+            {"metric": "condition", "type": "npiCovConditionBin", "scope": "top.u_dut.u_ctrl",
+             "name": "10", "full_name": "top.u_dut.u_ctrl.cond_9.10",
+             "condition": "(enable && ready)",
+             "condition_bin": "10",
+             "condition_terms": "enable;ready",
+             "covered": 0, "coverable": 1, "missing": 1, "count": 0,
+             "coverage_pct": 0.0, "status": ["not_covered"],
+             "evidence": {"file": "rtl/ctrl.sv", "line": 91},
+             "evidence_source": {"inherited": True, "type": "npiCovCondition",
+                                 "name": "(enable && ready)",
+                                 "full_name": "top.u_dut.u_ctrl.cond_9"}},
             {"metric": "functional", "type": "npiCovCovergroup", "scope": "top.u_dut",
              "name": "cg_credit", "full_name": "top.u_dut.cg_credit",
              "covergroup": "cg_credit", "covered": 0, "coverable": 1, "missing": 1,
@@ -314,7 +330,7 @@ class NpiCoverageBackend(CoverageBackend):
     def _walk_metric(self, hdl: Any, metric: str, scope: str, test_hdl: Any,
                      rows: List[Json]) -> None:
         for child in _safe_list(hdl, "child_handles"):
-            self._walk_leaf(child, metric, scope, test_hdl, rows, {})
+            self._walk_leaf(child, metric, scope, test_hdl, rows, {}, None)
             self.cov.release_handle(child)
 
     def _walk_functional_items(self, test_hdl: Any, scope: Optional[str],
@@ -384,11 +400,13 @@ class NpiCoverageBackend(CoverageBackend):
             self.cov.release_handle(child)
 
     def _walk_leaf(self, hdl: Any, metric: str, scope: str, test_hdl: Any,
-                   rows: List[Json], functional_path: Json) -> None:
+                   rows: List[Json], coverage_path: Json,
+                   parent_source: Optional[Json]) -> None:
         typ = _safe_call(hdl, "type")
         name = _safe_call(hdl, "name")
         full_name = _safe_call(hdl, "full_name") or name
-        path = dict(functional_path)
+        path = _code_coverage_path(metric, typ, hdl, test_hdl, name, full_name,
+                                   coverage_path, self.release_if_handle)
         if metric == "functional":
             if typ == "npiCovCovergroup":
                 path["covergroup"] = name
@@ -401,9 +419,14 @@ class NpiCoverageBackend(CoverageBackend):
         covered = _safe_call(hdl, "covered", test_hdl)
         coverable = _safe_call(hdl, "coverable", test_hdl)
         count = _safe_call(hdl, "count", test_hdl)
+        raw_evidence = {"file": _safe_call(hdl, "file_name"),
+                        "line": _safe_call(hdl, "line_no", test_hdl)}
+        own_source = _coverage_source(typ, name, full_name, raw_evidence)
+        row_source = own_source or parent_source
+        evidence = dict(row_source["evidence"]) if row_source else raw_evidence
         if coverable is not None:
             status = _status_flags(hdl, test_hdl, covered, coverable)
-            rows.append({
+            row = {
                 "metric": metric,
                 "type": typ,
                 "scope": scope,
@@ -415,13 +438,117 @@ class NpiCoverageBackend(CoverageBackend):
                 "count": count,
                 "coverage_pct": coverage_pct(covered, coverable),
                 "status": status,
-                "evidence": {"file": _safe_call(hdl, "file_name"),
-                             "line": _safe_call(hdl, "line_no", test_hdl)},
+                "evidence": evidence,
                 **path,
-            })
+            }
+            value = _coverage_value(hdl, test_hdl)
+            if value is not None:
+                row["value"] = value
+            if metric == "toggle":
+                transition = _toggle_transition(hdl, test_hdl, name)
+                if transition is not None:
+                    row["toggle_transition"] = transition
+            if row_source and row_source is not own_source:
+                row["evidence_source"] = {
+                    "inherited": True,
+                    "type": row_source.get("type"),
+                    "name": row_source.get("name"),
+                    "full_name": row_source.get("full_name"),
+                }
+            rows.append(row)
         for child in _safe_list(hdl, "child_handles"):
-            self._walk_leaf(child, metric, scope, test_hdl, rows, path)
+            self._walk_leaf(child, metric, scope, test_hdl, rows, path,
+                            own_source or parent_source)
             self.cov.release_handle(child)
+
+
+def _code_coverage_path(metric: str, typ: Any, hdl: Any, test_hdl: Any,
+                        name: Any, full_name: Any, coverage_path: Json,
+                        release_handle: Any) -> Json:
+    path = dict(coverage_path)
+    label = str(full_name or name or "")
+    short = str(name or full_name or "")
+    if metric == "toggle":
+        if typ == "npiCovSignal":
+            path["toggle_signal"] = label
+        elif typ == "npiCovSignalBit":
+            path["toggle_bit"] = label
+            path.setdefault("toggle_signal", _parent_from_bit(label))
+        elif typ == "npiCovToggleBin":
+            path.setdefault("toggle_transition", _toggle_transition(hdl, test_hdl, short))
+    elif metric == "condition":
+        if typ == "npiCovCondition":
+            path["condition"] = label or short
+            terms = _term_summary(hdl, "condition_term_handles", test_hdl, release_handle)
+            if terms:
+                path["condition_terms"] = terms
+        elif typ == "npiCovConditionBin":
+            path["condition_bin"] = _coverage_value(hdl, test_hdl) or short
+    elif metric == "branch":
+        if typ == "npiCovBranch":
+            path["branch"] = label or short
+            terms = _term_summary(hdl, "branch_term_handles", test_hdl, release_handle)
+            if terms:
+                path["branch_terms"] = terms
+        elif typ == "npiCovBranchBin":
+            path["branch_bin"] = _coverage_value(hdl, test_hdl) or short
+    return {k: v for k, v in path.items() if v not in (None, "")}
+
+
+def _parent_from_bit(label: str) -> str | None:
+    if "[" in label and label.endswith("]"):
+        return label.rsplit("[", 1)[0]
+    if "." in label:
+        return label.rsplit(".", 1)[0]
+    return None
+
+
+def _coverage_value(hdl: Any, test_hdl: Any) -> Any:
+    value = _safe_call(hdl, "value", test_hdl)
+    if value is None:
+        value = _safe_call(hdl, "value")
+    if value in (None, ""):
+        return None
+    if value == -1 or value == "-1":
+        return None
+    return value
+
+
+def _toggle_transition(hdl: Any, test_hdl: Any, fallback: Any) -> str | None:
+    value = _safe_call(hdl, "toggle_type", test_hdl)
+    if value is None:
+        value = _safe_call(hdl, "toggle_type")
+    if value in (None, "", -1, "-1"):
+        value = fallback
+    return str(value) if value not in (None, "") else None
+
+
+def _term_summary(hdl: Any, method: str, test_hdl: Any, release_handle: Any) -> str | None:
+    parts: List[str] = []
+    for term in _safe_list(hdl, method):
+        try:
+            label = _safe_call(term, "name") or _safe_call(term, "full_name")
+            value = _coverage_value(term, test_hdl)
+            if label and value is not None and str(value) != str(label):
+                parts.append(f"{label}:{value}")
+            elif label:
+                parts.append(str(label))
+            elif value is not None:
+                parts.append(str(value))
+        finally:
+            release_handle(term)
+    return ";".join(parts) if parts else None
+
+
+def _coverage_source(typ: Any, name: Any, full_name: Any, evidence: Json) -> Json | None:
+    if not _valid_evidence(evidence):
+        return None
+    return {
+        "type": typ,
+        "name": name,
+        "full_name": full_name,
+        "evidence": dict(evidence),
+    }
 
 
 def _safe_call(obj: Any, name: str, *args: Any) -> Any:
