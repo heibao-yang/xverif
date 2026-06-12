@@ -10,6 +10,8 @@ description: >
 
 # xsva
 
+> **优先通过 MCP 访问**：调用 xsva 时，优先使用 MCP 工具（如 `xverif_sva_*`），而非直接执行命令行。MCP 工具已封装参数序列化、输出解析和错误处理。
+
 `xsva` 是 SVA 语义编译和解释工具。它的事实源是 IR，而不是自然语言猜测：
 
 ```text

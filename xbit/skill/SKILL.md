@@ -5,6 +5,8 @@ description: 当 AI agent 需要确定性计算 bit、SV literal、signed/unsign
 
 # xbit Skill
 
+> **优先通过 MCP 访问**：调用 xbit 时，优先使用 MCP 工具（如 `xverif_bit_*`），而非直接执行命令行。MCP 工具已封装参数序列化、输出解析和错误处理。
+
 `xbit` 是 verification debug agent 的确定性 bit/value/expression calculator。它和 `xdebug` 同层：`xdebug` 查询设计/波形事实，`xbit` 计算这些事实里的 bit/value/expression 结果。
 
 ## 何时必须使用

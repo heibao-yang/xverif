@@ -10,6 +10,8 @@ description: >
 
 # xcov Coverage Query Skill
 
+> **优先通过 MCP 访问**：调用 xcov 时，优先使用 MCP 工具（如 `xverif_cov_*`），而非直接执行命令行。MCP 工具已封装参数序列化、输出解析和错误处理。
+
 `xcov` 是面向 AI/MCP 的 VCS/Verdi coverage database 查询引擎。输入是
 `xcov.v1` JSON request，默认输出 `xout`，机器解析时显式请求 JSON。
 

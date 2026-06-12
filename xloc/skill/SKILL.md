@@ -8,7 +8,9 @@ description: >
 
 # xloc
 
-`xloc` 用来把 UVM 仿真日志里的 `L_XXXXXXXX` 还原成源码位置。它只回答“这条 log 来自哪个文件哪一行”和“哪些位置最常出现”，不要用它分析 RTL、读 FSDB、计算 bit；这些任务分别交给 `xdebug` 和 `xbit`。默认输出是 `xout`，需要程序解析时给 `resolve/context/stats` 加 `--json`。
+> **优先通过 MCP 访问**：调用 xloc 时，优先使用 MCP 工具（如 `xverif_loc_*`），而非直接执行命令行。MCP 工具已封装参数序列化、输出解析和错误处理。
+
+`xloc` 用来把 UVM 仿真日志里的 `L_XXXXXXXX` 还原成源码位置。它只回答”这条 log 来自哪个文件哪一行”和”哪些位置最常出现”，不要用它分析 RTL、读 FSDB、计算 bit；这些任务分别交给 `xdebug` 和 `xbit`。默认输出是 `xout`，需要程序解析时给 `resolve/context/stats` 加 `--json`。
 
 ## 何时使用
 

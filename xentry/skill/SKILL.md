@@ -8,6 +8,8 @@ description: >
 
 # xentry
 
+> **优先通过 MCP 访问**：调用 xentry 时，优先使用 MCP 工具（如 `xverif_entry_*`），而非直接执行命令行。MCP 工具已封装参数序列化、输出解析和错误处理。
+
 `xentry` 用来把多拍 byte fragments 按 config 切成 raw field slices。不要让 LLM 自己跨拍拼接、hex slicing 或猜字段来源。
 
 ## 何时使用

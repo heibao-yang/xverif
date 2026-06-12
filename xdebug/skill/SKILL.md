@@ -10,6 +10,8 @@ description: >
 
 # xdebug JSON Request / XOUT 调试接口
 
+> **优先通过 MCP 访问**：调用 xdebug 时，优先使用 MCP 工具（如 `xverif_debug_*`），而非直接执行命令行。MCP 工具已封装参数序列化、输出解析和错误处理。
+
 xdebug 是原 xtrace 与 xwave 的统一事实查询入口。设计事实来自 `daidir`，波形事实来自 `fsdb`，两者同时存在时可以做 combined/debug join。公开调用用 JSON request 描述动作；默认输出是 `xout` 结构化文本，机器解析必须加 `--json`。
 
 主 skill 只规定 agent 行为。详细 API、字段和工作流放在 references：

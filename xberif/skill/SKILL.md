@@ -8,6 +8,8 @@ description: >
 
 # xberif
 
+> **优先通过 MCP 访问**：调用 xberif 时，优先使用 MCP 工具（如 `xverif_context_*`），而非直接执行命令行。MCP 工具已封装参数序列化、输出解析和错误处理。
+
 `xberif` 是 xverif 的项目级 agent context 工具。它把验证项目知识按 topic 保存成短 summary card 和可展开 detail markdown，让 agent 先读紧凑 brief，必要时再按 topic 拉取细节。
 
 ## 何时使用
