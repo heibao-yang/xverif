@@ -41,7 +41,7 @@ def _query() -> Json:
         "properties": {
             "include_patterns": _string_array(),
             "exclude_patterns": _string_array(),
-            "match_fields": _string_array(),
+            "match_field": _string(),
             "pattern_mode": {"const": "glob"},
             "case_sensitive": _bool(),
         },

@@ -33,7 +33,7 @@ def query_args(args: Json) -> Json:
     query = dict(args.get("query") or {})
     query.setdefault("include_patterns", [])
     query.setdefault("exclude_patterns", [])
-    query.setdefault("match_fields", ["full_name", "name", "file"])
+    query.setdefault("match_field", "full_name")
     query.setdefault("pattern_mode", "glob")
     query.setdefault("case_sensitive", True)
     if query.get("pattern_mode") != "glob":
@@ -43,6 +43,11 @@ def query_args(args: Json) -> Json:
         if any(ch in str(pat) for ch in REGEX_HINT_CHARS):
             raise XcovError("REGEX_NOT_SUPPORTED", "only glob wildcard patterns are supported",
                             pattern=pat, supported="*,?")
+    mf = query.get("match_field")
+    if not isinstance(mf, str) or not mf:
+        raise XcovError("INVALID_QUERY_FIELD",
+                        "match_field must be a single non-empty string, e.g. 'full_name' or 'name'",
+                        match_field=mf)
     return query
 
 
@@ -50,48 +55,45 @@ def filters_summary(query: Json) -> Json:
     return {
         "include": query.get("include_patterns") or [],
         "exclude": query.get("exclude_patterns") or [],
-        "match_fields": query.get("match_fields") or [],
+        "match_field": query.get("match_field") or "full_name",
     }
 
 
-def _field_values(item: Json, fields: Iterable[str]) -> List[str]:
-    values: List[str] = []
+def _field_value(item: Json, field: str) -> str | None:
     evidence = item.get("evidence") if isinstance(item.get("evidence"), dict) else {}
-    for field in fields:
-        if field == "file":
-            value = evidence.get("file") or item.get("file")
-        else:
-            value = item.get(field)
-        if value is not None:
-            values.append(str(value))
-    return values
+    if field == "file":
+        value = evidence.get("file") or item.get("file")
+    else:
+        value = item.get(field)
+    return str(value) if value is not None else None
 
 
 def filter_items(items: Iterable[Json], query: Json) -> List[Json]:
     include = [str(p) for p in (query.get("include_patterns") or [])]
     exclude = [str(p) for p in (query.get("exclude_patterns") or [])]
-    fields = [str(f) for f in (query.get("match_fields") or [])]
+    field = str(query.get("match_field") or "full_name")
     case_sensitive = bool(query.get("case_sensitive", True))
 
     def norm(s: str) -> str:
         return s if case_sensitive else s.lower()
 
-    def match_any(patterns: List[str], values: List[str]) -> bool:
+    def match_any(patterns: List[str], value: str) -> bool:
         if not patterns:
             return False
+        nval = norm(value) if value else ""
         for pat in patterns:
-            npat = norm(pat)
-            for value in values:
-                if fnmatch.fnmatchcase(norm(value), npat):
-                    return True
+            if fnmatch.fnmatchcase(nval, norm(pat)):
+                return True
         return False
 
     rows: List[Json] = []
     for item in items:
-        values = _field_values(item, fields)
-        if include and not match_any(include, values):
+        value = _field_value(item, field)
+        if value is None:
             continue
-        if exclude and match_any(exclude, values):
+        if include and not match_any(include, value):
+            continue
+        if exclude and match_any(exclude, value):
             continue
         rows.append(item)
     return rows

@@ -142,7 +142,7 @@ def test_stdio_loop_fake_holes():
     assert out[2]["id"] == "holes"
     assert out[2]["ok"] is True
     assert "@xcov.v1 ok action=cov.holes" in out[2]["xout"]
-    assert out[2]["json"]["summary"]["matched_count"] == 2
+    assert out[2]["json"]["summary"]["matched_count"] == 3
 
 
 def test_logging_writes_action_manifest_lifecycle_and_transport(tmp_path):
@@ -248,7 +248,7 @@ def test_top_level_limits_output_are_merged_for_mcp_queries():
         "output": {"format": "json"},
     })
     assert rsp["ok"] is True
-    assert rsp["summary"]["matched_count"] == 2
+    assert rsp["summary"]["matched_count"] == 3
     assert rsp["summary"]["returned"] == 1
 
 
@@ -277,7 +277,7 @@ def test_scope_summary_returns_one_requested_scope():
     assert rsp["summary"]["matched_count"] == 1
     item = rsp["data"]["items"][0]
     assert item["full_name"] == "top.u_dut"
-    assert item["coverable"] == 5
+    assert item["coverable"] == 6
 
 
 def test_scope_children_direct_vs_recursive():
@@ -305,7 +305,7 @@ def test_scope_search_does_not_enrich_coverage():
     rsp = dispatcher.dispatch({
         "api_version": "xcov.v1", "request_id": "search",
         "action": "scope.search", "target": {"session_id": "cov0"},
-        "args": {"query": {"include_patterns": ["*u_fifo"], "match_fields": ["full_name"]}},
+        "args": {"query": {"include_patterns": ["*u_fifo"], "match_field": "full_name"}},
         "output": {"format": "json"},
     })
     assert rsp["ok"] is True
@@ -325,7 +325,7 @@ def test_export_scope_tree_contains_coverage_tree(tmp_path, monkeypatch):
     assert rsp["ok"] is True
     assert rsp["summary"]["output_path"] == ".xverif/xcov_exports/tree.json"
     item = next(i for i in rsp["data"]["items"] if i["full_name"] == "top.u_dut")
-    assert item["coverable"] == 5
+    assert item["coverable"] == 6
     assert item["metrics"]
     assert (tmp_path / ".xverif/xcov_exports/tree.json").exists()
 
@@ -424,6 +424,78 @@ def test_xout_contains_code_coverage_detail_fields():
     assert "condition_bin=10" in xout
     assert "condition_terms=enable;ready" in xout
     assert "evidence_source.type=npiCovCondition" in xout
+
+
+def test_branch_mask_hint_decoding():
+    from xcov.backend import _branch_mask_hint
+    # one_hot: single '1' bit, no '-'
+    assert _branch_mask_hint("000000100") == {"encoding": "one_hot",
+                                               "branch_arm_index": 2}
+    assert _branch_mask_hint("1") == {"encoding": "one_hot",
+                                       "branch_arm_index": 0}
+    assert _branch_mask_hint("1000000") == {"encoding": "one_hot",
+                                             "branch_arm_index": 6}
+    # multi_bit: multiple '1's or all zeros
+    assert _branch_mask_hint("001001000") == {"encoding": "multi_bit",
+                                               "one_positions": [3, 6]}
+    assert _branch_mask_hint("000000000") == {"encoding": "multi_bit",
+                                               "one_positions": []}
+    # path: contains '-'
+    result = _branch_mask_hint("---001-1--")
+    assert result["encoding"] == "path"
+    assert result["dontcare_bits"] > 0
+    assert result["active_bits"] > 0
+    # invalid
+    assert _branch_mask_hint("") is None
+    assert _branch_mask_hint("else") is None
+    assert _branch_mask_hint("0b1010") is None
+
+
+def test_branch_mask_hint_enabled(monkeypatch):
+    from xcov.backend import _branch_mask_hint_enabled
+    monkeypatch.delenv("XVERIF_XCOV_BRANCH_MASK_HINT", raising=False)
+    assert _branch_mask_hint_enabled() is True
+    for v in ("1", "true", "yes", "on"):
+        monkeypatch.setenv("XVERIF_XCOV_BRANCH_MASK_HINT", v)
+        assert _branch_mask_hint_enabled() is True
+    for v in ("0", "false", "no", "off"):
+        monkeypatch.setenv("XVERIF_XCOV_BRANCH_MASK_HINT", v)
+        assert _branch_mask_hint_enabled() is False
+
+
+def test_branch_mask_in_response():
+    dispatcher = _dispatch_opened()
+    rsp = dispatcher.dispatch({
+        "api_version": "xcov.v1", "request_id": "branch-mask",
+        "action": "cov.holes", "target": {"session_id": "cov0"},
+        "args": {"metrics": ["branch"]},
+        "output": {"format": "json"},
+    })
+    assert rsp["ok"] is True
+    rows = rsp["data"]["items"]
+    # one-hot item: "000000100" -> branch_mask
+    bin_item = next(row for row in rows
+                    if row.get("branch_bin") == "000000100")
+    assert "branch_mask" in bin_item
+    assert bin_item["branch_mask"]["encoding"] == "one_hot"
+    assert bin_item["branch_mask"]["branch_arm_index"] == 2
+    # non-bitmask item: "else" -> no branch_mask
+    else_item = next(row for row in rows
+                     if row.get("branch_bin") == "else")
+    assert "branch_mask" not in else_item
+
+
+def test_branch_mask_in_xout():
+    dispatcher = _dispatch_opened()
+    rsp = dispatcher.dispatch({
+        "api_version": "xcov.v1", "request_id": "branch-mask-xout",
+        "action": "cov.holes", "target": {"session_id": "cov0"},
+        "args": {"metrics": ["branch"]},
+    })
+    xout = render_xout(rsp)
+    assert "branch_mask={" not in xout
+    assert "branch_mask.encoding=one_hot" in xout
+    assert "branch_mask.branch_arm_index=2" in xout
 
 
 def test_test_each_is_explicitly_unsupported():

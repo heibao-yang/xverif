@@ -84,6 +84,14 @@ class FakeCoverageBackend(CoverageBackend):
              "covered": 0, "coverable": 1, "missing": 1, "count": 0,
              "coverage_pct": 0.0, "status": ["not_covered"],
              "evidence": {"file": "rtl/ctrl.sv", "line": 88}},
+            {"metric": "branch", "type": "npiCovBranchBin", "scope": "top.u_dut.u_ctrl",
+             "name": "000000100", "full_name": "top.u_dut.u_ctrl.branch_9.000000100",
+             "branch": "case (filter)",
+             "branch_bin": "000000100",
+             "branch_mask": {"encoding": "one_hot", "branch_arm_index": 2},
+             "covered": 0, "coverable": 1, "missing": 1, "count": 0,
+             "coverage_pct": 0.0, "status": ["not_covered"],
+             "evidence": {"file": "rtl/ctrl.sv", "line": 95}},
             {"metric": "condition", "type": "npiCovConditionBin", "scope": "top.u_dut.u_ctrl",
              "name": "10", "full_name": "top.u_dut.u_ctrl.cond_9.10",
              "condition": "(enable && ready)",
@@ -455,6 +463,14 @@ class NpiCoverageBackend(CoverageBackend):
                     "name": row_source.get("name"),
                     "full_name": row_source.get("full_name"),
                 }
+            if (metric == "branch" and typ == "npiCovBranchBin"
+                    and _branch_mask_hint_enabled()
+                    and "branch_bin" in row):
+                bv = row["branch_bin"]
+                if isinstance(bv, str):
+                    hint = _branch_mask_hint(bv)
+                    if hint is not None:
+                        row["branch_mask"] = hint
             rows.append(row)
         for child in _safe_list(hdl, "child_handles"):
             self._walk_leaf(child, metric, scope, test_hdl, rows, path,
@@ -667,6 +683,46 @@ def _status_flags(hdl: Any, test_hdl: Any, covered: Any, coverable: Any) -> List
     except Exception:
         flags.insert(0, "not_covered")
     return flags
+
+
+def _branch_mask_hint_enabled() -> bool:
+    return str(os.environ.get("XVERIF_XCOV_BRANCH_MASK_HINT", "1")).lower() not in {
+        "0", "false", "no", "off",
+    }
+
+
+def _branch_mask_hint(mask: str) -> dict | None:
+    """Decode branch bin bitmask into human-readable hints.
+
+    Returns None when *mask* is empty or contains characters other than
+    ``0``, ``1``, or ``-``.
+
+    Encoding classifications:
+
+    * ``path``      — mask contains ``-`` (don't-care) positions; used for
+                      FSM always-block branches.
+    * ``one_hot``   — exactly one ``1``, no ``-``; bit position (LSB=0)
+                      indexes the case item or branch arm.
+    * ``multi_bit`` — multiple ``1`` positions, no ``-``; encodes a path
+                      through nested if-else chains.
+    """
+    if not mask or not all(c in "01-" for c in mask):
+        return None
+    ones = [i for i, ch in enumerate(reversed(mask)) if ch == "1"]
+    zeros = [i for i, ch in enumerate(reversed(mask)) if ch == "0"]
+    dontcares = sum(1 for ch in mask if ch == "-")
+    hint: dict = {}
+    if dontcares > 0:
+        hint["encoding"] = "path"
+        hint["active_bits"] = len(ones) + len(zeros)
+        hint["dontcare_bits"] = dontcares
+    elif len(ones) == 1:
+        hint["encoding"] = "one_hot"
+        hint["branch_arm_index"] = ones[0]
+    else:
+        hint["encoding"] = "multi_bit"
+        hint["one_positions"] = ones
+    return hint
 
 
 @contextmanager

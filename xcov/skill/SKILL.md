@@ -129,6 +129,8 @@ Source map:
 - 不支持 regex、`[]`、`{}`、negative glob、lookaround；传入时应返回
   `REGEX_NOT_SUPPORTED` 或 `INVALID_PATTERN`。
 - include 先匹配，exclude 后过滤，exclude 优先。
+- 通配只在一个字段上匹配，默认 `match_field:"full_name"`；可指定为任意 item
+  字段名，例如 `"name"`、`"file"`、`"branch"` 等。
 - 所有列表型 action 必须带 limit；大结果优先 `overflow:"to_file"` 和
   `output.mode:"both"`。
 - MCP `xverif_cov_query(limits=..., output=...)` 会透传到 xcov；如果

@@ -88,6 +88,10 @@ def _keyvals(item: Json) -> str:
             for src_key, src_value in value.items():
                 flat.append(f"evidence_source.{src_key}={_scalar(src_value)}")
             continue
+        if key == "branch_mask" and isinstance(value, dict):
+            for mk, mv in value.items():
+                flat.append(f"branch_mask.{mk}={_scalar(mv)}")
+            continue
         flat.append(f"{key}={_scalar(value)}")
     return " ".join(flat)
 
