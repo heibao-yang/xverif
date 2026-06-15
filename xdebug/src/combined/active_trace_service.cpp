@@ -7,6 +7,7 @@
 #include "npi_hdl.h"
 #include "npi_L1.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -43,6 +44,65 @@ public:
 private:
     int saved_;
     int sink_;
+};
+
+class NpiSessionGuard {
+public:
+    NpiSessionGuard() = default;
+    NpiSessionGuard(const NpiSessionGuard&) = delete;
+    NpiSessionGuard& operator=(const NpiSessionGuard&) = delete;
+
+    ~NpiSessionGuard() {
+        if (loaded_) npi_end();
+    }
+
+    bool init(int argc, char** argv) {
+        if (!npi_init(argc, argv)) return false;
+        loaded_ = true;
+        return true;
+    }
+
+    bool load_design(int argc, char** argv) {
+        return loaded_ && npi_load_design(argc, argv) != 0;
+    }
+
+private:
+    bool loaded_ = false;
+};
+
+class FsdbFileGuard {
+public:
+    explicit FsdbFileGuard(const std::string& path)
+        : handle_(npi_fsdb_open(path.c_str())) {}
+    FsdbFileGuard(const FsdbFileGuard&) = delete;
+    FsdbFileGuard& operator=(const FsdbFileGuard&) = delete;
+
+    ~FsdbFileGuard() {
+        if (handle_) npi_fsdb_close(handle_);
+    }
+
+    npiFsdbFileHandle get() const { return handle_; }
+    explicit operator bool() const { return handle_ != nullptr; }
+
+private:
+    npiFsdbFileHandle handle_ = nullptr;
+};
+
+class NpiHandleGuard {
+public:
+    explicit NpiHandleGuard(npiHandle handle = nullptr) : handle_(handle) {}
+    NpiHandleGuard(const NpiHandleGuard&) = delete;
+    NpiHandleGuard& operator=(const NpiHandleGuard&) = delete;
+
+    ~NpiHandleGuard() {
+        if (handle_) npi_release_handle(handle_);
+    }
+
+    npiHandle get() const { return handle_; }
+    explicit operator bool() const { return handle_ != nullptr; }
+
+private:
+    npiHandle handle_ = nullptr;
 };
 
 // ─── NPI helpers ────────────────────────────────────────────────────────────
@@ -105,6 +165,79 @@ bool is_primary_input(npiHandle signal_hdl) {
     return dir == npiInput || dir == npiInout;
 }
 
+bool is_ref_obj_type(int type) {
+#ifdef npiRefObj
+    if (type == npiRefObj) return true;
+#endif
+    return type == 608;
+}
+
+bool is_modport_port_type(int type) {
+#ifdef npiMpPort
+    if (type == npiMpPort) return true;
+#endif
+    return type == 697;
+}
+
+bool is_signal_like_type(int type) {
+    return type == npiNet || type == npiNetBit ||
+           type == npiReg || type == npiRegBit ||
+           type == npiBitVar ||
+           type == npiPartSelect || type == npiBitSelect ||
+           type == npiVarSelect || type == npiNetSelect ||
+           is_ref_obj_type(type) || is_modport_port_type(type);
+}
+
+std::string normalized_signal_name(npiHandle handle) {
+    if (!handle) return "";
+    int type = npi_get(npiType, handle);
+    if (type == npiPartSelect || type == npiBitSelect ||
+        type == npiVarSelect || type == npiNetSelect ||
+        type == npiNetBit || type == npiRegBit) {
+        NpiHandleGuard parent(npi_handle(npiParent, handle));
+        std::string parent_name = npi_string(npiFullName, parent.get());
+        if (!parent_name.empty()) return parent_name;
+    }
+    std::string name = npi_string(npiFullName, handle);
+    if (name.empty()) name = npi_string(npiName, handle);
+    return name;
+}
+
+std::string direct_rhs_signal_name(const drvLoadStmt_s& statement) {
+    if (!statement.useHdl) return "";
+
+    NpiHandleGuard rhs(npi_handle(npiRhs, statement.useHdl));
+    if (rhs) {
+        int rhs_type = npi_get(npiType, rhs.get());
+        if (rhs_type == npiOperation ||
+            rhs_type == npiFunction ||
+            rhs_type == npiSysFuncCall ||
+            rhs_type == npiSysTaskCall ||
+            rhs_type == npiConstant) {
+            return "";
+        }
+        if (is_signal_like_type(rhs_type)) {
+            return normalized_signal_name(rhs.get());
+        }
+    }
+    return "";
+}
+
+std::string passthrough_sigvec_candidate(const drvLoadStmt_s& statement,
+                                         const std::string& current_signal) {
+    if (!statement.isPassThrough) return "";
+    std::vector<std::string> candidates;
+    for (const auto& handle : statement.sigHdlVec) {
+        std::string name = normalized_signal_name(handle);
+        if (name.empty()) continue;
+        if (name == current_signal) continue;
+        if (std::find(candidates.begin(), candidates.end(), name) == candidates.end()) {
+            candidates.push_back(name);
+        }
+    }
+    return candidates.size() == 1 ? candidates.front() : "";
+}
+
 bool parse_time(const std::string& text, double& value, std::string& unit) {
     char* end = nullptr;
     value = std::strtod(text.c_str(), &end);
@@ -122,7 +255,7 @@ bool parse_time(const std::string& text, double& value, std::string& unit) {
 Json value_map(npiFsdbFileHandle fsdb,
                const std::vector<std::string>& signals,
                const std::string& time_text,
-               Json& limitations) {
+               std::vector<std::string>& limitations) {
     Json values = Json::object();
     double numeric_time = 0.0;
     std::string unit;
@@ -202,14 +335,53 @@ struct ActiveTraceLimits {
     int max_trace_signals = 64;
 };
 
+struct ActiveTraceOptions {
+    ActiveTraceLimits limits;
+    bool include_control = true;
+    bool include_parity = false;
+    bool include_trace = false;
+    bool include_alias_candidates = false;
+    bool include_compat_fields = false;
+};
+
+struct AliasCandidate {
+    std::string from;
+    std::string to;
+    std::string alias_kind;
+    std::string confidence;
+    std::string reason;
+};
+
+struct TraceEdge {
+    std::string from;
+    std::string to;
+    std::string relation;
+    std::string confidence;
+};
+
+struct TraceNode {
+    std::string id;
+    std::string role;
+    std::string kind;
+    std::string signal;
+    std::vector<std::string> signals;
+    std::string file;
+    int line = 0;
+    std::string text;
+    std::string active_time;
+    Json value = nullptr;
+    std::string next_signal;
+    std::string alias_kind;
+};
+
 struct TraceBuildResult {
-    Json nodes = Json::array();
-    Json edges = Json::array();
-    Json selected_path = Json::array();
-    Json controls = Json::array();
-    Json events = Json::array();
-    Json limitations = Json::array();
-    Json alias_candidates = Json::array();
+    std::vector<TraceNode> nodes;
+    std::vector<TraceEdge> edges;
+    std::vector<std::string> selected_path;
+    std::vector<TraceNode> controls;
+    std::vector<TraceNode> events;
+    std::vector<std::string> limitations;
+    std::vector<AliasCandidate> alias_candidates;
     Json root_driver = nullptr;
     Json current_driver = nullptr;
     bool truncated = false;
@@ -217,86 +389,160 @@ struct TraceBuildResult {
     int node_count = 0;
 };
 
+Json to_json(const AliasCandidate& candidate) {
+    return {
+        {"from", candidate.from},
+        {"to", candidate.to},
+        {"alias_kind", candidate.alias_kind},
+        {"confidence", candidate.confidence},
+        {"reason", candidate.reason}
+    };
+}
+
+Json to_json(const TraceEdge& edge) {
+    return {
+        {"from", edge.from},
+        {"to", edge.to},
+        {"relation", edge.relation},
+        {"confidence", edge.confidence}
+    };
+}
+
+Json to_json(const TraceNode& node) {
+    Json signals = Json::array();
+    for (const auto& signal : node.signals) signals.push_back(signal);
+    return {
+        {"id", node.id},
+        {"role", node.role},
+        {"kind", node.kind},
+        {"signal", node.signal},
+        {"signals", signals},
+        {"file", node.file},
+        {"line", node.line},
+        {"text", node.text},
+        {"active_time", node.active_time},
+        {"value", node.value},
+        {"next_signal", node.next_signal},
+        {"alias_kind", node.alias_kind}
+    };
+}
+
+Json nodes_to_json(const std::vector<TraceNode>& nodes) {
+    Json out = Json::array();
+    for (const auto& node : nodes) out.push_back(to_json(node));
+    return out;
+}
+
+Json edges_to_json(const std::vector<TraceEdge>& edges) {
+    Json out = Json::array();
+    for (const auto& edge : edges) out.push_back(to_json(edge));
+    return out;
+}
+
+Json strings_to_json(const std::vector<std::string>& values) {
+    Json out = Json::array();
+    for (const auto& value : values) out.push_back(value);
+    return out;
+}
+
+Json alias_candidates_to_json(const std::vector<AliasCandidate>& candidates) {
+    Json out = Json::array();
+    for (const auto& candidate : candidates) out.push_back(to_json(candidate));
+    return out;
+}
+
+ActiveTraceLimits parse_limits(const Json& request, const Json& args) {
+    ActiveTraceLimits limits;
+    Json limits_json = args.value("limits", Json::object());
+    if (limits_json.empty()) {
+        limits_json = request.value("limits", Json::object());
+    }
+    if (limits_json.contains("max_depth") && limits_json["max_depth"].is_number()) {
+        limits.max_depth = std::max(1, limits_json["max_depth"].get<int>());
+    }
+    if (limits_json.contains("max_nodes") && limits_json["max_nodes"].is_number()) {
+        limits.max_nodes = std::max(1, limits_json["max_nodes"].get<int>());
+    }
+    if (limits_json.contains("max_alias_candidates") && limits_json["max_alias_candidates"].is_number()) {
+        limits.max_alias_candidates = std::max(0, limits_json["max_alias_candidates"].get<int>());
+    }
+    if (limits_json.contains("max_trace_signals") && limits_json["max_trace_signals"].is_number()) {
+        limits.max_trace_signals = std::max(1, limits_json["max_trace_signals"].get<int>());
+    }
+    return limits;
+}
+
+ActiveTraceOptions parse_options(const Json& request, const Json& args) {
+    ActiveTraceOptions options;
+    options.limits = parse_limits(request, args);
+    options.include_control = args.value("include_control", true);
+    options.include_parity = args.value("include_parity", false);
+    options.include_trace = args.value("include_trace", false);
+    options.include_alias_candidates = args.value("include_alias_candidates", false);
+    options.include_compat_fields = args.value("include_compat_fields", false);
+
+    std::string verbosity = request.value("output", Json::object()).value("verbosity", "compact");
+    if (verbosity == "full" || verbosity == "debug") {
+        options.include_trace = true;
+        options.include_compat_fields = true;
+    }
+    return options;
+}
+
 // ─── trace node builder ─────────────────────────────────────────────────────
 
-Json trace_node_from_statement(const drvLoadStmt_s& statement,
-                                const std::string& node_id,
-                                const std::string& role,
-                                const std::string& active_time,
-                                const std::string& current_signal,
-                                const Json& value) {
+TraceNode trace_node_from_statement(const drvLoadStmt_s& statement,
+                                    const std::string& node_id,
+                                    const std::string& role,
+                                    const std::string& active_time,
+                                    const std::string& current_signal,
+                                    const Json& value) {
     int type = statement.useHdl ? npi_get(npiType, statement.useHdl) : 0;
     std::string kind = statement_kind(type);
     std::string file = npi_string(npiFile, statement.useHdl);
     int line = statement.useHdl ? npi_get(npiLineNo, statement.useHdl) : 0;
     std::string text = handle_info(statement.useHdl);
 
-    Json signals_arr = Json::array();
+    std::vector<std::string> signals;
     std::string next_signal;
-    // Also capture the first RHS handle for full-name resolution in pass-through
-    npiHandle first_rhs_handle = nullptr;
     for (const auto& handle : statement.sigHdlVec) {
-        std::string name = npi_string(npiFullName, handle);
-        if (name.empty()) name = npi_string(npiName, handle);
+        std::string name = normalized_signal_name(handle);
         if (name.empty()) continue;
-        signals_arr.push_back(name);
-        if (!first_rhs_handle) first_rhs_handle = handle;
+        signals.push_back(name);
     }
 
-    // Determine next_signal for pass-through: the assignment's RHS has
-    // one primary data signal (excluding the LHS and any control/sensitivity signals).
+    // Determine next_signal for pass-through using NPI's classification plus
+    // the RHS AST, not statement text heuristics.
     if (kind == "assignment") {
-        // Collect candidate signals that differ from current_signal
-        // NPI may include clk/rst_n from sensitivity lists in sigHdlVec
-        std::vector<std::string> rhs_candidates;
-        for (const auto& name : signals_arr) {
-            std::string s = name.get<std::string>();
-            if (s != current_signal) rhs_candidates.push_back(s);
+        std::string candidate = direct_rhs_signal_name(statement);
+        if (!candidate.empty() && candidate != current_signal) {
+            NpiHandleGuard verify(npi_handle_by_name(candidate.c_str(), nullptr));
+            if (verify) next_signal = candidate;
         }
-        // Use the first RHS candidate if the statement text has no
-        // arithmetic/logic operators.  Strip the file-location suffix
-        // (e.g. ", {/path/file.sv : 25}") to avoid false positives from '/'.
-        std::string stmt_text = text;
-        size_t brace = stmt_text.rfind(" {");
-        if (brace != std::string::npos) stmt_text = stmt_text.substr(0, brace);
-        if (!rhs_candidates.empty()) {
-            bool has_operator = false;
-            for (char c : { '+', '-', '*', '/', '&', '|', '^', '?', ':' }) {
-                if (stmt_text.find(c) != std::string::npos) { has_operator = true; break; }
-            }
-            if (!has_operator) {
-                std::string candidate = rhs_candidates[0];
-                // Verify the candidate resolves via npi_handle_by_name
-                npiHandle verify = npi_handle_by_name(candidate.c_str(), nullptr);
-                if (!verify && first_rhs_handle) {
-                    std::string full = npi_string(npiFullName, first_rhs_handle);
-                    if (!full.empty() && full != candidate) {
-                        npiHandle verify2 = npi_handle_by_name(full.c_str(), nullptr);
-                        if (verify2) { candidate = full; npi_release_handle(verify2); }
-                    }
-                }
-                if (verify) npi_release_handle(verify);
-                next_signal = candidate;
+        if (next_signal.empty()) {
+            std::string fallback = passthrough_sigvec_candidate(statement, current_signal);
+            if (!fallback.empty()) {
+                NpiHandleGuard verify(npi_handle_by_name(fallback.c_str(), nullptr));
+                if (verify) next_signal = fallback;
             }
         }
     }
 
-    Json node = {
-        {"id", node_id},
-        {"role", role},
-        {"kind", kind},
-        {"signal", current_signal},
-        {"signals", signals_arr},
-        {"file", file},
-        {"line", line},
-        {"text", text},
-        {"active_time", active_time},
-        {"value", value},
-        {"next_signal", next_signal},
-        {"alias_kind", kind == "modport_port" ? "interface_modport" :
-                       kind == "port_boundary" ? "module_port" :
-                       kind == "ref_obj" ? "direct_ref" : "none"}
-    };
+    TraceNode node;
+    node.id = node_id;
+    node.role = role;
+    node.kind = kind;
+    node.signal = current_signal;
+    node.signals = signals;
+    node.file = file;
+    node.line = line;
+    node.text = text;
+    node.active_time = active_time;
+    node.value = value;
+    node.next_signal = next_signal;
+    node.alias_kind = kind == "modport_port" ? "interface_modport" :
+                      kind == "port_boundary" ? "module_port" :
+                      kind == "ref_obj" ? "direct_ref" : "none";
     return node;
 }
 
@@ -333,12 +579,26 @@ static std::string join_hier(const std::vector<std::string>& parts,
     return out;
 }
 
+AliasCandidate make_alias_candidate(const std::string& from,
+                                    const std::string& to,
+                                    const std::string& alias_kind,
+                                    const std::string& confidence,
+                                    const std::string& reason) {
+    AliasCandidate candidate;
+    candidate.from = from;
+    candidate.to = to;
+    candidate.alias_kind = alias_kind;
+    candidate.confidence = confidence;
+    candidate.reason = reason;
+    return candidate;
+}
+
 // Try to resolve a signal through interface/modport aliases.
 // Returns array of candidate objects.
-Json resolve_alias_candidates(npiHandle signal_handle,
-                               const std::string& signal_name,
-                               const ActiveTraceLimits& limits) {
-    Json candidates = Json::array();
+std::vector<AliasCandidate> resolve_alias_candidates(npiHandle signal_handle,
+                                                     const std::string& signal_name,
+                                                     const ActiveTraceLimits& limits) {
+    std::vector<AliasCandidate> candidates;
     if (!signal_handle) return candidates;
 
     int hdl_type = npi_get(npiType, signal_handle);
@@ -391,13 +651,12 @@ Json resolve_alias_candidates(npiHandle signal_handle,
                             resolved += "." + parts[i];
                         }
 
-                        Json candidate;
-                        candidate["from"] = signal_name;
-                        candidate["to"] = resolved;
-                        candidate["alias_kind"] = "module_port";
-                        candidate["confidence"] = "high";
-                        candidate["reason"] = "traced through instance port " + inst_path + "." + port_name + " → " + high_name;
-                        candidates.push_back(candidate);
+                        candidates.push_back(make_alias_candidate(
+                            signal_name,
+                            resolved,
+                            "module_port",
+                            "high",
+                            "traced through instance port " + inst_path + "." + port_name + " → " + high_name));
 
                         npi_release_handle(high);
                         found = true;
@@ -427,13 +686,12 @@ Json resolve_alias_candidates(npiHandle signal_handle,
         if (actual) {
             std::string actual_name = npi_string(npiFullName, actual);
             if (!actual_name.empty() && actual_name != full_name) {
-                Json candidate;
-                candidate["from"] = signal_name;
-                candidate["to"] = actual_name;
-                candidate["alias_kind"] = is_mp_port ? "interface_modport" : "direct_ref";
-                candidate["confidence"] = "high";
-                candidate["reason"] = "resolved via npiActual to " + actual_name;
-                candidates.push_back(candidate);
+                candidates.push_back(make_alias_candidate(
+                    signal_name,
+                    actual_name,
+                    is_mp_port ? "interface_modport" : "direct_ref",
+                    "high",
+                    "resolved via npiActual to " + actual_name));
             }
             npi_release_handle(actual);
         }
@@ -443,13 +701,12 @@ Json resolve_alias_candidates(npiHandle signal_handle,
             if (low) {
                 std::string low_name = npi_string(npiFullName, low);
                 if (!low_name.empty() && low_name != full_name) {
-                    Json candidate;
-                    candidate["from"] = signal_name;
-                    candidate["to"] = low_name;
-                    candidate["alias_kind"] = "interface_modport";
-                    candidate["confidence"] = "high";
-                    candidate["reason"] = "resolved via npiLowConn to " + low_name;
-                    candidates.push_back(candidate);
+                    candidates.push_back(make_alias_candidate(
+                        signal_name,
+                        low_name,
+                        "interface_modport",
+                        "high",
+                        "resolved via npiLowConn to " + low_name));
                 }
                 npi_release_handle(low);
             }
@@ -471,14 +728,13 @@ Json resolve_alias_candidates(npiHandle signal_handle,
                     if (probe == signal_name) continue;
                     npiHandle probe_hdl = npi_handle_by_name(probe.c_str(), nullptr);
                     if (probe_hdl) {
-                        Json c;
-                        c["from"] = signal_name;
-                        c["to"] = probe;
-                        c["alias_kind"] = "interface_modport";
-                        c["confidence"] = "high";
-                        c["reason"] = std::string("mapped interface member through source modport '") +
-                            kCommonSourceModports[mi] + "'";
-                        candidates.push_back(c);
+                        candidates.push_back(make_alias_candidate(
+                            signal_name,
+                            probe,
+                            "interface_modport",
+                            "high",
+                            std::string("mapped interface member through source modport '") +
+                                kCommonSourceModports[mi] + "'"));
                         npi_release_handle(probe_hdl);
                         break;
                     }
@@ -517,13 +773,12 @@ Json resolve_alias_candidates(npiHandle signal_handle,
                                 kInstNames[ii] + "." + kPortNames[pi] + "." + member;
                             npiHandle probe_hdl = npi_handle_by_name(probe.c_str(), nullptr);
                             if (probe_hdl) {
-                                Json c;
-                                c["from"] = signal_name;
-                                c["to"] = probe;
-                                c["alias_kind"] = "interface_modport";
-                                c["confidence"] = "medium";
-                                c["reason"] = std::string("probe: ") + probe;
-                                candidates.push_back(c);
+                                candidates.push_back(make_alias_candidate(
+                                    signal_name,
+                                    probe,
+                                    "interface_modport",
+                                    "medium",
+                                    std::string("probe: ") + probe));
                                 npi_release_handle(probe_hdl);
                             }
                         }
@@ -577,15 +832,14 @@ Json resolve_alias_candidates(npiHandle signal_handle,
 
                     npiHandle cand = npi_handle_by_name(candidate_path.c_str(), nullptr);
                     if (cand) {
-                        Json candidate;
-                        candidate["from"] = signal_name;
-                        candidate["to"] = candidate_path;
-                        candidate["alias_kind"] = "interface_modport";
-                        candidate["confidence"] = "medium";
-                        candidate["reason"] = std::string("matched modport '") +
-                                              kCommonSourceModports[mi] +
-                                              "' on interface " + iface_path;
-                        candidates.push_back(candidate);
+                        candidates.push_back(make_alias_candidate(
+                            signal_name,
+                            candidate_path,
+                            "interface_modport",
+                            "medium",
+                            std::string("matched modport '") +
+                                kCommonSourceModports[mi] +
+                                "' on interface " + iface_path));
                         npi_release_handle(cand);
                     }
                 }
@@ -614,13 +868,12 @@ Json resolve_alias_candidates(npiHandle signal_handle,
             if (ref) {
                 std::string ref_name = npi_string(npiFullName, ref);
                 if (!ref_name.empty() && ref_name != full_name) {
-                    Json candidate;
-                    candidate["from"] = signal_name;
-                    candidate["to"] = ref_name;
-                    candidate["alias_kind"] = "direct_ref";
-                    candidate["confidence"] = "high";
-                    candidate["reason"] = "resolved ref_obj to actual target";
-                    candidates.push_back(candidate);
+                    candidates.push_back(make_alias_candidate(
+                        signal_name,
+                        ref_name,
+                        "direct_ref",
+                        "high",
+                        "resolved ref_obj to actual target"));
                 }
                 npi_release_handle(ref);
             }
@@ -629,7 +882,7 @@ Json resolve_alias_candidates(npiHandle signal_handle,
 
     // Truncate to limits
     if (static_cast<int>(candidates.size()) > limits.max_alias_candidates) {
-        Json truncated = Json::array();
+        std::vector<AliasCandidate> truncated;
         for (int i = 0; i < limits.max_alias_candidates; ++i) {
             truncated.push_back(candidates[i]);
         }
@@ -650,16 +903,18 @@ TraceBuildResult build_active_trace(
 
     TraceBuildResult result;
 
-    // BFS/DFS queue: (signal, time, depth, parent_node_id)
+    // BFS/DFS queue: (signal, time, depth, parent edge metadata)
     struct QueueItem {
         std::string signal;
         std::string time;
         int depth;
         std::string parent_id;
+        std::string parent_relation;
+        std::string parent_confidence;
     };
 
     std::vector<QueueItem> queue;
-    queue.push_back({root_signal, requested_time, 0, ""});
+    queue.push_back({root_signal, requested_time, 0, "", "", ""});
 
     // Visited set to prevent loops: (signal, time_approx)
     std::set<std::string> visited;
@@ -708,39 +963,35 @@ TraceBuildResult build_active_trace(
             // that can be resolved through the design hierarchy.
             std::string alias_kind_str = statement_kind(signal_type);
             if (is_alias_kind(alias_kind_str)) {
-                Json candidates = resolve_alias_candidates(signal_hdl, current.signal, limits);
+                std::vector<AliasCandidate> candidates =
+                    resolve_alias_candidates(signal_hdl, current.signal, limits);
                 if (candidates.size() == 1) {
-                    std::string target = candidates[0].value("to", "");
+                    std::string target = candidates[0].to;
                     if (!target.empty() && visited.find(target) == visited.end() &&
                         current.depth < limits.max_depth) {
                         visited.insert(target);
                         // Create an alias node
                         std::string nid = "n" + std::to_string(result.node_count);
-                        Json alias_node = {
-                            {"id", nid},
-                            {"role", "alias"},
-                            {"kind", alias_kind_str},
-                            {"signal", current.signal},
-                            {"signals", Json::array()},
-                            {"file", ""},
-                            {"line", 0},
-                            {"text", ""},
-                            {"active_time", current.time},
-                            {"value", nullptr},
-                            {"next_signal", target},
-                            {"alias_kind", candidates[0].value("alias_kind", "none")}
-                        };
+                        TraceNode alias_node;
+                        alias_node.id = nid;
+                        alias_node.role = "alias";
+                        alias_node.kind = alias_kind_str;
+                        alias_node.signal = current.signal;
+                        alias_node.active_time = current.time;
+                        alias_node.next_signal = target;
+                        alias_node.alias_kind = candidates[0].alias_kind.empty() ?
+                            "none" : candidates[0].alias_kind;
                         result.nodes.push_back(alias_node);
                         result.selected_path.push_back(nid);
                         result.node_count++;
-                        Json alias_edge = {
-                            {"from", nid},
-                            {"to", "pending"},
-                            {"relation", "alias"},
-                            {"confidence", candidates[0].value("confidence", "medium")}
-                        };
-                        result.edges.push_back(alias_edge);
-                        queue.push_back({target, current.time, current.depth + 1, nid});
+                        queue.push_back({
+                            target,
+                            current.time,
+                            current.depth + 1,
+                            nid,
+                            "alias",
+                            candidates[0].confidence.empty() ? "medium" : candidates[0].confidence
+                        });
                         npi_release_handle(signal_hdl);
                         continue;
                     }
@@ -761,23 +1012,24 @@ TraceBuildResult build_active_trace(
                 result.limitations.push_back("active trace returned no driver evidence for " + current.signal);
             }
             std::string nid = "n" + std::to_string(result.node_count);
-            Json terminal_node = {
-                {"id", nid},
-                {"role", "root"},
-                {"kind", "primary_input"},
-                {"signal", current.signal},
-                {"signals", Json::array()},
-                {"file", ""},
-                {"line", 0},
-                {"text", ""},
-                {"active_time", current.time},
-                {"value", nullptr},
-                {"next_signal", ""},
-                {"alias_kind", "none"}
-            };
+            TraceNode terminal_node;
+            terminal_node.id = nid;
+            terminal_node.role = "root";
+            terminal_node.kind = "primary_input";
+            terminal_node.signal = current.signal;
+            terminal_node.active_time = current.time;
+            terminal_node.alias_kind = "none";
             result.nodes.push_back(terminal_node);
             result.selected_path.push_back(nid);
             result.node_count++;
+            if (!current.parent_id.empty()) {
+                result.edges.push_back({
+                    current.parent_id,
+                    nid,
+                    current.parent_relation.empty() ? "rhs_dependency" : current.parent_relation,
+                    current.parent_confidence.empty() ? "high" : current.parent_confidence
+                });
+            }
             if (result.root_driver.is_null()) {
                 result.root_driver = {{"kind", "primary_input"}, {"file", ""}, {"line", 0}};
             }
@@ -791,9 +1043,6 @@ TraceBuildResult build_active_trace(
 
         // Process statements from active trace
         Json driver_item = nullptr;
-        Json alias_items = Json::array();
-        std::vector<std::string> signals_in_scope;
-        signals_in_scope.push_back(current.signal);
 
         for (const auto& stmt : active.drvLoadStmtVec) {
             int type = stmt.useHdl ? npi_get(npiType, stmt.useHdl) : 0;
@@ -829,7 +1078,7 @@ TraceBuildResult build_active_trace(
                 role = "other";
             }
 
-            Json node = trace_node_from_statement(
+            TraceNode node = trace_node_from_statement(
                 stmt, node_id, role, active.activeTime, current.signal, node_value);
             result.nodes.push_back(node);
             result.selected_path.push_back(node_id);
@@ -837,29 +1086,28 @@ TraceBuildResult build_active_trace(
 
             // Add edge from parent if exists
             if (!current.parent_id.empty()) {
-                Json edge = {
-                    {"from", current.parent_id},
-                    {"to", node_id},
-                    {"relation", "rhs_dependency"},
-                    {"confidence", "high"}
-                };
-                result.edges.push_back(edge);
+                result.edges.push_back({
+                    current.parent_id,
+                    node_id,
+                    current.parent_relation.empty() ? "rhs_dependency" : current.parent_relation,
+                    current.parent_confidence.empty() ? "high" : current.parent_confidence
+                });
             }
 
             // Classify and decide next steps
             if (kind == "force") {
                 // Force is always a terminal
-                driver_item = node;
+                driver_item = to_json(node);
                 result.termination = "force";
                 result.root_driver = {
                     {"kind", "force"},
-                    {"file", node.value("file", "")},
-                    {"line", node.value("line", 0)}
+                    {"file", node.file},
+                    {"line", node.line}
                 };
             } else if (kind == "assignment") {
-                if (driver_item.is_null()) driver_item = node;
+                if (driver_item.is_null()) driver_item = to_json(node);
 
-                std::string next = node.value("next_signal", "");
+                std::string next = node.next_signal;
                 if (!next.empty()) {
                     // Pass-through: check if we should recurse.
                     // Stop at primary inputs (module boundary).
@@ -874,8 +1122,8 @@ TraceBuildResult build_active_trace(
                         result.termination = "assignment";
                         result.root_driver = {
                             {"kind", "assignment"},
-                            {"file", node.value("file", "")},
-                            {"line", node.value("line", 0)}
+                            {"file", node.file},
+                            {"line", node.line}
                         };
                     } else if (visited.find(next) == visited.end() && current.depth < limits.max_depth) {
                         // Pass-through: update root_driver to this assignment.
@@ -884,28 +1132,25 @@ TraceBuildResult build_active_trace(
                         // it will be overwritten by the next pass-through hop.
                         result.root_driver = {
                             {"kind", "assignment"},
-                            {"file", node.value("file", "")},
-                            {"line", node.value("line", 0)}
+                            {"file", node.file},
+                            {"line", node.line}
                         };
                         visited.insert(next);
-                        queue.push_back({next, active.activeTime, current.depth + 1, node_id});
-
-                        // Add edge for the next hop
-                        Json edge = {
-                            {"from", node_id},
-                            {"to", "n" + std::to_string(result.node_count)},  // will be next node
-                            {"relation", "rhs_dependency"},
-                            {"confidence", "high"}
-                        };
-                        // Don't add edge yet since next node ID isn't fixed
-                        // Edges will be added when processing the next node
+                        queue.push_back({
+                            next,
+                            active.activeTime,
+                            current.depth + 1,
+                            node_id,
+                            "rhs_dependency",
+                            "high"
+                        });
                     } else if (visited.find(next) != visited.end()) {
                         result.limitations.push_back("cycle detected: " + current.signal + " → " + next);
                         result.termination = result.termination == "unresolved" ? "assignment" : result.termination;
                         result.root_driver = {
                             {"kind", "assignment"},
-                            {"file", node.value("file", "")},
-                            {"line", node.value("line", 0)}
+                            {"file", node.file},
+                            {"line", node.line}
                         };
                     } else {
                         // Depth limited
@@ -913,8 +1158,8 @@ TraceBuildResult build_active_trace(
                         result.termination = "limit";
                         result.root_driver = {
                             {"kind", "assignment"},
-                            {"file", node.value("file", "")},
-                            {"line", node.value("line", 0)}
+                            {"file", node.file},
+                            {"line", node.line}
                         };
                     }
                 } else {
@@ -922,13 +1167,11 @@ TraceBuildResult build_active_trace(
                     result.termination = "assignment";
                     result.root_driver = {
                         {"kind", "assignment"},
-                        {"file", node.value("file", "")},
-                        {"line", node.value("line", 0)}
+                        {"file", node.file},
+                        {"line", node.line}
                     };
                 }
             } else if (is_alias_kind(kind)) {
-                alias_items.push_back(node);
-
                 // For port_boundary: if the port is an input, stop here.
                 // This is a module primary input; the root cause is the
                 // assignment that led us here, not the port itself.
@@ -947,23 +1190,21 @@ TraceBuildResult build_active_trace(
                 // Try to resolve alias
                 npiHandle stmt_hdl = stmt.useHdl;
                 if (stmt_hdl) {
-                    Json candidates = resolve_alias_candidates(stmt_hdl, current.signal, limits);
+                    std::vector<AliasCandidate> candidates =
+                        resolve_alias_candidates(stmt_hdl, current.signal, limits);
                     if (candidates.size() == 1) {
-                        std::string target = candidates[0].value("to", "");
-                        std::string alias_kind = candidates[0].value("alias_kind", "");
-
-                        // Add alias edge
-                        Json alias_edge = {
-                            {"from", node_id},
-                            {"to", "n" + std::to_string(result.node_count)},  // approximate
-                            {"relation", "alias"},
-                            {"confidence", candidates[0].value("confidence", "medium")}
-                        };
-                        result.edges.push_back(alias_edge);
+                        std::string target = candidates[0].to;
 
                         if (visited.find(target) == visited.end() && current.depth < limits.max_depth) {
                             visited.insert(target);
-                            queue.push_back({target, active.activeTime, current.depth + 1, node_id});
+                            queue.push_back({
+                                target,
+                                active.activeTime,
+                                current.depth + 1,
+                                node_id,
+                                "alias",
+                                candidates[0].confidence.empty() ? "medium" : candidates[0].confidence
+                            });
                         }
                     } else if (candidates.size() > 1) {
                         result.termination = "ambiguous";
@@ -1002,17 +1243,14 @@ TraceBuildResult build_active_trace(
         }
     }
 
-    // Post-process: fix up edges that reference approximate node IDs
-    // (The "to" field on last edges may be wrong; clean them up)
-    Json clean_edges = Json::array();
+    // Post-process: keep only complete edges between materialized nodes.
+    std::vector<TraceEdge> clean_edges;
     std::set<std::string> node_ids;
     for (const auto& n : result.nodes) {
-        if (n.contains("id")) node_ids.insert(n["id"].get<std::string>());
+        if (!n.id.empty()) node_ids.insert(n.id);
     }
     for (const auto& e : result.edges) {
-        std::string to = e.value("to", "");
-        // Only keep edges where both ends exist
-        if (node_ids.count(e.value("from", "")) > 0) {
+        if (node_ids.count(e.from) > 0 && node_ids.count(e.to) > 0) {
             clean_edges.push_back(e);
         }
     }
@@ -1048,38 +1286,7 @@ Json ActiveTraceService::run(const Json& request, const Json& target) const {
                           "failed to enter runtime working directory: " + workdir.path());
     }
 
-    // ── Parse limits ──
-    ActiveTraceLimits limits;
-    Json limits_json = args.value("limits", Json::object());
-    if (limits_json.empty()) {
-        limits_json = request.value("limits", Json::object());
-    }
-    if (limits_json.contains("max_depth") && limits_json["max_depth"].is_number()) {
-        limits.max_depth = std::max(1, limits_json["max_depth"].get<int>());
-    }
-    if (limits_json.contains("max_nodes") && limits_json["max_nodes"].is_number()) {
-        limits.max_nodes = std::max(1, limits_json["max_nodes"].get<int>());
-    }
-    if (limits_json.contains("max_alias_candidates") && limits_json["max_alias_candidates"].is_number()) {
-        limits.max_alias_candidates = std::max(0, limits_json["max_alias_candidates"].get<int>());
-    }
-    if (limits_json.contains("max_trace_signals") && limits_json["max_trace_signals"].is_number()) {
-        limits.max_trace_signals = std::max(1, limits_json["max_trace_signals"].get<int>());
-    }
-
-    // ── Parse include flags ──
-    bool include_control = args.value("include_control", true);
-    bool include_parity = args.value("include_parity", false);
-    bool include_trace = args.value("include_trace", false);
-    bool include_alias_candidates = args.value("include_alias_candidates", false);
-    bool include_compat_fields = args.value("include_compat_fields", false);
-
-    // output.verbosity can upgrade include_trace
-    std::string verbosity = request.value("output", Json::object()).value("verbosity", "compact");
-    if (verbosity == "full" || verbosity == "debug") {
-        include_trace = true;
-        include_compat_fields = true;
-    }
+    ActiveTraceOptions request_options = parse_options(request, args);
 
     // ── Init NPI ──
     std::vector<std::string> npi_arg_strings = {
@@ -1090,52 +1297,48 @@ Json ActiveTraceService::run(const Json& request, const Json& target) const {
     int npi_argc = static_cast<int>(npi_argv.size());
     char** npi_argp = npi_argv.data();
     ScopedStdoutSilence silence;
-    if (!npi_init(npi_argc, npi_argp)) {
+    NpiSessionGuard npi_session;
+    if (!npi_session.init(npi_argc, npi_argp)) {
         return make_error(request, action, "NPI_INIT_FAILED", "npi_init failed for combined session");
     }
-    if (!npi_load_design(npi_argc, npi_argp)) {
-        npi_end();
+    if (!npi_session.load_design(npi_argc, npi_argp)) {
         return make_error(request, action, "DESIGN_LOAD_FAILED", "failed to load daidir with waveform binding");
     }
-    npiFsdbFileHandle fsdb = npi_fsdb_open(fsdb_path.c_str());
+    FsdbFileGuard fsdb(fsdb_path);
     if (!fsdb) {
-        npi_end();
         return make_error(request, action, "FSDB_OPEN_FAILED", "failed to open fsdb for value queries");
     }
-    npiHandle signal = npi_handle_by_name(signal_name.c_str(), nullptr);
+    NpiHandleGuard signal(npi_handle_by_name(signal_name.c_str(), nullptr));
     if (!signal) {
-        npi_fsdb_close(fsdb);
-        npi_end();
         return make_error(request, action, "SIGNAL_NOT_FOUND", "exact design signal was not found: " + signal_name);
     }
-    npi_release_handle(signal);
 
     // ── Build trace ──
     trcOption_t options = trcOptionDefault;
-    options.reportControl = include_control;
+    options.reportControl = request_options.include_control;
 
     TraceBuildResult trace_result = build_active_trace(
-        fsdb, signal_name, requested_time, options, limits, include_control);
+        fsdb.get(), signal_name, requested_time, options,
+        request_options.limits, request_options.include_control);
 
     // ── Collect values ──
-    Json limitations = trace_result.limitations;
+    std::vector<std::string> limitations = trace_result.limitations;
     std::vector<std::string> value_signals;
     value_signals.push_back(signal_name);
     for (const auto& node : trace_result.nodes) {
-        if (node.contains("next_signal") && !node["next_signal"].get<std::string>().empty()) {
-            std::string ns = node["next_signal"].get<std::string>();
-            if (std::find(value_signals.begin(), value_signals.end(), ns) == value_signals.end()) {
-                value_signals.push_back(ns);
+        if (!node.next_signal.empty()) {
+            if (std::find(value_signals.begin(), value_signals.end(), node.next_signal) == value_signals.end()) {
+                value_signals.push_back(node.next_signal);
             }
         }
     }
 
-    Json active_values = value_map(fsdb, value_signals,
-        trace_result.nodes.empty() ? requested_time :
-            (trace_result.nodes[0].contains("active_time") ?
-             trace_result.nodes[0]["active_time"].get<std::string>() : requested_time),
+    const std::string first_active_time = trace_result.nodes.empty() ? "" :
+        trace_result.nodes.front().active_time;
+    Json active_values = value_map(fsdb.get(), value_signals,
+        first_active_time.empty() ? requested_time : first_active_time,
         limitations);
-    Json requested_values = value_map(fsdb, value_signals, requested_time, limitations);
+    Json requested_values = value_map(fsdb.get(), value_signals, requested_time, limitations);
 
     // ── Build response ──
     Json response = make_response(request, action);
@@ -1153,8 +1356,7 @@ Json ActiveTraceService::run(const Json& request, const Json& target) const {
     response["summary"] = {
         {"signal", signal_name},
         {"requested_time", requested_time},
-        {"active_time", trace_result.nodes.empty() ? "" :
-            trace_result.nodes[0].value("active_time", "")},
+        {"active_time", first_active_time},
         {"driver_status", driver_status},
         {"statement_count", trace_result.node_count},
         {"trace_node_count", trace_result.node_count},
@@ -1166,49 +1368,49 @@ Json ActiveTraceService::run(const Json& request, const Json& target) const {
     Json data;
     data["signal"] = signal_name;
     data["requested_time"] = requested_time;
-    data["active_time"] = trace_result.nodes.empty() ? "" :
-        trace_result.nodes[0].value("active_time", "");
+    data["active_time"] = first_active_time;
     data["driver_status"] = driver_status;
     data["driver"] = trace_result.current_driver.is_null() ?
         Json(nullptr) : trace_result.current_driver;
     data["root_driver"] = trace_result.root_driver.is_null() ?
         Json(nullptr) : trace_result.root_driver;
-    data["controls"] = trace_result.controls;
-    data["events"] = trace_result.events;
+    data["controls"] = nodes_to_json(trace_result.controls);
+    data["events"] = nodes_to_json(trace_result.events);
     data["values"] = {
         {"requested", requested_values},
         {"active", active_values}
     };
-    data["limitations"] = limitations;
+    data["limitations"] = strings_to_json(limitations);
 
-    if (include_alias_candidates || !trace_result.alias_candidates.empty()) {
-        data["alias_candidates"] = trace_result.alias_candidates;
+    if (request_options.include_alias_candidates || !trace_result.alias_candidates.empty()) {
+        data["alias_candidates"] = alias_candidates_to_json(trace_result.alias_candidates);
     } else {
         data["alias_candidates"] = Json::array();
     }
 
-    if (include_trace) {
+    if (request_options.include_trace) {
         data["trace"] = {
-            {"nodes", trace_result.nodes},
-            {"edges", trace_result.edges},
-            {"selected_path", trace_result.selected_path},
+            {"nodes", nodes_to_json(trace_result.nodes)},
+            {"edges", edges_to_json(trace_result.edges)},
+            {"selected_path", strings_to_json(trace_result.selected_path)},
             {"termination", trace_result.termination}
         };
     }
 
     // Compat fields (for transition period)
-    if (include_compat_fields) {
+    if (request_options.include_compat_fields) {
         // Build backward-compatible statements/path from trace nodes
         Json compat_statements = Json::array();
         Json compat_path = Json::array();
         for (const auto& node : trace_result.nodes) {
-            std::string role = node.value("role", "");
+            Json node_json = to_json(node);
+            std::string role = node.role;
             if (role == "assignment" || role == "force") {
-                compat_statements.push_back(node);
+                compat_statements.push_back(node_json);
             } else if (role == "alias") {
-                compat_path.push_back(node);
+                compat_path.push_back(node_json);
             } else {
-                compat_statements.push_back(node);
+                compat_statements.push_back(node_json);
             }
         }
         data["statements"] = compat_statements;
@@ -1222,21 +1424,19 @@ Json ActiveTraceService::run(const Json& request, const Json& target) const {
     response["meta"]["truncated"] = trace_result.truncated;
 
     // parity (unchanged behavior)
-    if (include_parity && !trace_result.nodes.empty()) {
+    if (request_options.include_parity && !trace_result.nodes.empty()) {
         // Re-run the original single-level active trace for parity comparison
         npiHandle sig_hdl = npi_handle_by_name(signal_name.c_str(), nullptr);
         if (sig_hdl) {
             Json baseline_statements = Json::array();
             for (const auto& node : trace_result.nodes) {
-                baseline_statements.push_back(node);
+                baseline_statements.push_back(to_json(node));
             }
             response["data"]["parity"] = parity_json(sig_hdl, requested_time, options, baseline_statements);
             npi_release_handle(sig_hdl);
         }
     }
 
-    npi_fsdb_close(fsdb);
-    npi_end();
     return response;
 }
 

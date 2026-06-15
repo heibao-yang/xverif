@@ -1,18 +1,52 @@
-import sys
+import os
+import shutil
+import subprocess
 from collections import Counter
-from typing import Dict
+from typing import Dict, List, Tuple
 
-from .mapfile import iter_loc_ids, load_map, find_map_file
+from .mapfile import load_map, find_map_file
 from .xout import TextResponseBuilder
+
+LOC_ID_PATTERN = r'L_[0-9A-F]{8}'
+
+
+def _find_searcher() -> str:
+    """Return 'rg', 'grep', or None depending on what is available."""
+    if shutil.which('rg'):
+        return 'rg'
+    if shutil.which('grep'):
+        return 'grep'
+    return None
+
+
+def _extract_loc_ids(log_path: str) -> List[str]:
+    """Extract loc_ids from log_path using rg/grep (streaming, mem-efficient).
+
+    Returns lines of raw matches; caller should count/parse.
+    """
+    searcher = _find_searcher()
+    if not searcher:
+        raise RuntimeError('Neither rg nor grep found in PATH')
+
+    if searcher == 'rg':
+        cmd = ['rg', '--no-filename', '--no-line-number', '-o', LOC_ID_PATTERN, log_path]
+    else:  # grep
+        cmd = ['grep', '-oP', LOC_ID_PATTERN, log_path]
+
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    if proc.returncode not in (0, 1):  # 1 = no matches (ok), others = error
+        raise RuntimeError(f'{searcher} failed: {proc.stderr.strip()}')
+    return [line for line in proc.stdout.splitlines() if line.strip()]
 
 
 def stats_payload(log_path: str, map_path=None, top: int = 20) -> dict:
     if map_path is None:
         map_path = find_map_file(log_path)
     entries = load_map(map_path) if map_path else {}
-    with open(log_path, 'r') as f:
-        text = f.read()
-    counts = Counter(iter_loc_ids(text))
+
+    loc_ids = _extract_loc_ids(log_path)
+    counts = Counter(loc_ids)
+
     rows = []
     for loc_id, count in counts.most_common(top):
         entry = entries.get(loc_id, {})
