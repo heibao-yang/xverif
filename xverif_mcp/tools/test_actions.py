@@ -66,6 +66,7 @@ ALL_ACTIONS = [
     "axi.latency_outlier", "axi.outstanding_timeline",
     "axi.query", "axi.request_response_pair",
     "trace.active_driver",
+    "trace.active_driver_chain",
     "expr.eval_at",
     "verify.conditions", "rc.generate",
     "sampled_pulse.inspect",
