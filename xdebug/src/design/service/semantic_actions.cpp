@@ -1,92 +1,18 @@
 #include "action_support.h"
+#include "../engine/service/design_postprocess.h"
 
 #include <algorithm>
 #include <fstream>
 
 namespace xdebug_design {
 
+// Functions formerly here now live in engine/service/design_postprocess.cpp
+// (xdebug_design::detail namespace).  Re-exported via using for source compat.
 namespace {
-
-json condition_from_control_dep(const json& dep) {
-    std::string source = dep.value("source", "");
-    std::string cond = dep.value("condition_text", "");
-    if (cond.empty()) {
-        cond = source;
-        size_t lparen = cond.find('(');
-        size_t rparen = cond.rfind(')');
-        if (lparen != std::string::npos && rparen != std::string::npos && rparen > lparen) {
-            cond = cond.substr(lparen + 1, rparen - lparen - 1);
-        }
-    }
-    return {{"text", trim(cond)}, {"ast", dep.value("condition", parse_expr_ast(cond))},
-            {"signals", dep.value("condition_signals", json::array())},
-            {"file", dep.value("file", "")}, {"line", dep.value("line", 0)},
-            {"source", source}, {"confidence", dep.value("confidence", "medium")}};
-}
-
-json infer_clock_reset_from_assignment(const json& assignment, const json& control_deps) {
-    json out = {{"clock", nullptr}, {"reset", nullptr}, {"event_controls", json::array()}};
-    std::string file = assignment.value("location", json::object()).value("file", "");
-    int line = assignment.value("location", json::object()).value("line", 0);
-    if (!file.empty() && line > 0) {
-        std::ifstream in(file.c_str());
-        std::vector<std::string> lines;
-        std::string s;
-        while (std::getline(in, s)) lines.push_back(s);
-        int begin = std::max(1, line - 40);
-        for (int i = line; i >= begin; --i) {
-            std::string text = lines[i - 1];
-            std::string low = lower_copy(text);
-            if (low.find("@") == std::string::npos &&
-                low.find("always_ff") == std::string::npos &&
-                low.find("always ") == std::string::npos) continue;
-            std::string pos = next_token_after(text, "posedge");
-            std::string neg = next_token_after(text, "negedge");
-            if (!pos.empty()) {
-                out["clock"] = pos;
-                out["event_controls"].push_back({{"edge", "posedge"}, {"signal", pos}, {"line", i}, {"source", trim(text)}});
-            }
-            if (!neg.empty()) {
-                out["reset"] = neg;
-                out["event_controls"].push_back({{"edge", "negedge"}, {"signal", neg}, {"line", i}, {"source", trim(text)}});
-            }
-            if (!pos.empty() || !neg.empty()) break;
-        }
-    }
-    for (const auto& dep : control_deps) {
-        std::string sig = dep.value("signal", "");
-        if (out["reset"].is_null() && (contains_word_like(sig, "rst") || contains_word_like(sig, "reset"))) out["reset"] = sig;
-    }
-    return out;
-}
-
-std::string classify_update_rule(const json& assignment, const json& condition, const std::string& target) {
-    std::string cond_text = lower_copy(condition.value("text", ""));
-    std::string source = lower_copy(assignment.value("source", ""));
-    json rhs = assignment.value("rhs", json::object());
-    std::string op = expr_op(rhs);
-    if (cond_text.find("rst") != std::string::npos || cond_text.find("reset") != std::string::npos ||
-        source.find("rst") != std::string::npos || source.find("reset") != std::string::npos) return "reset";
-    if ((op == "add" || source.find("+") != std::string::npos) && expr_mentions_signal(rhs, target)) return "increment";
-    if ((op == "sub" || source.find("-") != std::string::npos) && expr_mentions_signal(rhs, target)) return "decrement";
-    if (expr_mentions_signal(rhs, target) && signal_array_from_ast(rhs).size() == 1) return "hold";
-    return "update";
-}
-
-json normalize_assignments_with_conditions(const json& trace_data) {
-    json out = json::array();
-    json controls = trace_data.value("control_dependencies", json::array());
-    for (auto assignment : trace_data.value("assignments", json::array())) {
-        json conditions = json::array();
-        for (const auto& dep : controls) conditions.push_back(condition_from_control_dep(dep));
-        assignment["active_conditions"] = conditions;
-        assignment["rhs_signals"] = assignment.value("rhs_signals", signal_array_from_ast(assignment.value("rhs", json::object())));
-        assignment["assignment_role"] = conditions.empty() ? "default_or_unconditional" : "branch_assignment";
-        out.push_back(assignment);
-    }
-    return out;
-}
-
+using detail::condition_from_control_dep;
+using detail::infer_clock_reset_from_assignment;
+using detail::classify_update_rule;
+using detail::normalize_assignments_with_conditions;
 } // namespace
 
 json run_procedural_assignment_action(const json& request) {

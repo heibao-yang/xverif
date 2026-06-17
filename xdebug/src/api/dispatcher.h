@@ -23,6 +23,7 @@ private:
     Json resource_error(const Json& request, const ActionSpec& spec, const Json& target) const;
     Json resolve_target(const Json& request) const;
     std::string mode_for_target(const Json& target) const;
+    Json send_to_socket(const std::string& socket_path, const Json& request) const;
 
     EngineAdapter adapter_;
     SessionStore sessions_;

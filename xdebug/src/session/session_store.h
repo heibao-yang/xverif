@@ -12,6 +12,7 @@ struct SessionRecord {
     std::string mode;
     std::string daidir;
     std::string fsdb;
+    std::string socket_path;
 };
 
 class SessionStore {

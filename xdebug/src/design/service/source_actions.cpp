@@ -1,50 +1,15 @@
 #include "action_support.h"
+#include "../engine/service/design_postprocess.h"
 
 #include <algorithm>
 #include <fstream>
 
 namespace xdebug_design {
 
+// infer_enclosing_block formerly here now lives in engine/service/design_postprocess.cpp
+// (xdebug_design::detail namespace).  Re-exported via using for source compat.
 namespace {
-
-json infer_enclosing_block(const std::vector<std::string>& lines, int line) {
-    json enclosing = {{"type", "unknown"}, {"name", ""}, {"begin_line", 1}, {"end_line", (int)lines.size()}};
-    int best_line = 0;
-    for (int i = std::min(line, (int)lines.size()); i >= 1; --i) {
-        std::string text = trim(lines[i - 1]);
-        std::string low = lower_copy(text);
-        std::string type;
-        std::string name;
-        if (starts_with(low, "module ") || low.find(" module ") != std::string::npos) {
-            type = "module";
-            name = next_token_after(text, "module");
-        } else if (low.find("always_ff") != std::string::npos) type = "always_ff";
-        else if (low.find("always_comb") != std::string::npos) type = "always_comb";
-        else if (low.find("always") != std::string::npos) type = "always";
-        else if (low.find("case") != std::string::npos) type = "case";
-        else if (low.find("if") != std::string::npos && low.find("(") != std::string::npos) type = "if";
-        else if (low.find("begin") != std::string::npos) type = "begin";
-        if (!type.empty()) {
-            enclosing["type"] = type;
-            enclosing["name"] = name;
-            enclosing["begin_line"] = i;
-            best_line = i;
-            break;
-        }
-    }
-    if (best_line > 0) {
-        std::string end_token = enclosing["type"] == "module" ? "endmodule" :
-                                enclosing["type"] == "case" ? "endcase" : "end";
-        for (int i = line; i <= (int)lines.size(); ++i) {
-            if (lower_copy(lines[i - 1]).find(end_token) != std::string::npos) {
-                enclosing["end_line"] = i;
-                break;
-            }
-        }
-    }
-    return enclosing;
-}
-
+using detail::infer_enclosing_block;
 } // namespace
 
 json source_context(const json& request) {

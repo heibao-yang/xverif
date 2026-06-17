@@ -1,4 +1,5 @@
 #include "action_support.h"
+#include "../engine/service/design_postprocess.h"
 
 #include <algorithm>
 #include <map>
@@ -8,163 +9,18 @@
 
 namespace xdebug_design {
 
+// Functions formerly here now live in engine/service/design_postprocess.cpp
+// (xdebug_design::detail namespace).  Re-exported via using for source compat.
 namespace {
-
-json graph_from_trace(const json& trace, const std::string& root) {
-    json nodes = json::array();
-    json edges = trace.value("dependency_edges", json::array());
-    std::map<std::string, std::string> ids;
-    auto add_node = [&](const std::string& signal, const std::string& role) {
-        if (signal.empty() || ids.count(signal)) return;
-        std::string id = "n" + std::to_string(ids.size());
-        ids[signal] = id;
-        nodes.push_back({{"id", id}, {"signal", signal}, {"kind", "signal"}, {"role", role}});
-    };
-    add_node(root, "root");
-    for (const auto& e : edges) {
-        add_node(e.value("from", ""), "dependency");
-        add_node(e.value("to", ""), "dependency");
-    }
-    json graph_edges = json::array();
-    for (auto e : edges) {
-        std::string from = e.value("from", "");
-        std::string to = e.value("to", "");
-        e["from"] = ids.count(from) ? ids[from] : from;
-        e["to"] = ids.count(to) ? ids[to] : to;
-        e["from_signal"] = from;
-        e["to_signal"] = to;
-        graph_edges.push_back(e);
-    }
-    return {{"nodes", nodes}, {"edges", graph_edges}};
-}
-
-std::string confidence_for_edge(const json& edge) {
-    std::string confidence = edge.value("confidence", "");
-    if (!confidence.empty()) return confidence;
-    std::string type = edge.value("type", "");
-    std::string resolution = edge.value("resolution", "");
-    if (type == "statement_only" || resolution == "statement_only") return "low";
-    if (type == "control_dependency") return "medium";
-    if (!edge.value("source", "").empty()) return "high";
-    return "medium";
-}
-
-json evidence_from_edge(const json& edge) {
-    return {
-        {"type", edge.value("type", "")}, {"file", edge.value("file", "")},
-        {"line", edge.value("line", 0)}, {"source", edge.value("source", "")},
-        {"role", edge.value("role", "")}, {"confidence", confidence_for_edge(edge)},
-        {"resolution", edge.value("resolution", "")}, {"relation", edge.value("relation", "")}
-    };
-}
-
-json explanation_from_edge(const json& edge,
-                           const std::string& root,
-                           const std::string& direction,
-                           int& skipped_empty_dependency_count) {
-    std::string from = edge.value("from", "");
-    std::string to = edge.value("to", "");
-    std::string type = edge.value("type", "dependency");
-    std::string related = direction == "load" ? to : from;
-    json related_signals = json::array();
-    if (!related.empty()) related_signals.push_back(related);
-    if (related.empty() && type != "statement_only") {
-        skipped_empty_dependency_count++;
-        return nullptr;
-    }
-    std::string claim;
-    if (type == "control_dependency") claim = root + " is controlled by " + related;
-    else if (type == "statement_only") claim = root + " has assignment evidence without resolved dependencies";
-    else if (direction == "load") claim = root + " can affect " + related;
-    else claim = root + " depends on " + related;
-    json evidence = json::array({evidence_from_edge(edge)});
-    for (const auto& item : edge.value("evidence", json::array())) evidence.push_back(item);
-    return {{"claim", claim}, {"evidence", evidence}, {"related_signals", related_signals},
-            {"confidence", confidence_for_edge(edge)}};
-}
-
-bool edge_type_allowed(const json& args, const json& edge) {
-    json types = args.value("dependency_types", json::array());
-    if (types.empty()) return true;
-    std::string edge_type = edge.value("type", "");
-    std::string assignment_type = edge.value("assignment_type", "");
-    for (const auto& t : types) {
-        if (!t.is_string()) continue;
-        std::string want = t.get<std::string>();
-        if (edge_type == want || assignment_type == want) return true;
-        if (want == "data" && (edge_type == "data_dependency" ||
-                               edge_type == "continuous_assignment" ||
-                               edge_type == "procedural_assignment")) return true;
-        if (want == "control" && edge_type == "control_dependency") return true;
-        if (want == "load" && edge_type == "load_dependency") return true;
-    }
-    return false;
-}
-
-std::string edge_dedupe_key(const json& edge) {
-    std::ostringstream key;
-    key << edge.value("from", "") << '\x1f' << edge.value("to", "") << '\x1f'
-        << edge.value("type", "") << '\x1f' << edge.value("assignment_type", "") << '\x1f'
-        << edge.value("role", "") << '\x1f' << edge.value("file", "") << '\x1f'
-        << edge.value("line", 0) << '\x1f' << edge.value("source", "");
-    return key.str();
-}
-
-std::string edge_relation_key(const json& edge) {
-    std::ostringstream key;
-    key << edge.value("from", "") << '\x1f' << edge.value("to", "") << '\x1f'
-        << edge.value("type", "") << '\x1f' << edge.value("assignment_type", "");
-    return key.str();
-}
-
-json aggregate_edges_by_relation(const json& edges, int max_evidence_per_edge, int& aggregated_edge_count) {
-    json grouped = json::array();
-    std::map<std::string, size_t> group_index;
-    std::map<std::string, int> group_counts;
-    for (const auto& edge : edges) {
-        std::string key = edge_relation_key(edge);
-        auto found = group_index.find(key);
-        if (found == group_index.end()) {
-            json grouped_edge = edge;
-            grouped_edge["evidence"] = json::array();
-            group_index[key] = grouped.size();
-            group_counts[key] = 1;
-            grouped.push_back(grouped_edge);
-            continue;
-        }
-        size_t idx = found->second;
-        group_counts[key]++;
-        grouped[idx]["evidence_count"] = group_counts[key];
-        if ((int)grouped[idx]["evidence"].size() < max_evidence_per_edge) {
-            grouped[idx]["evidence"].push_back(evidence_from_edge(edge));
-        } else {
-            grouped[idx]["evidence_truncated"] = true;
-            grouped[idx]["omitted_evidence_count"] =
-                (group_counts[key] - 1) - (int)grouped[idx]["evidence"].size();
-        }
-    }
-    for (auto& edge : grouped) {
-        if (edge.value("evidence_count", 1) <= 1) edge.erase("evidence");
-        else if (!edge.value("evidence_truncated", false)) {
-            edge.erase("evidence_truncated");
-            edge.erase("omitted_evidence_count");
-        }
-    }
-    aggregated_edge_count = (int)edges.size() - (int)grouped.size();
-    if (aggregated_edge_count < 0) aggregated_edge_count = 0;
-    return grouped;
-}
-
-json compact_trace_error_warning(const std::string& query, int depth, const json& trace_resp) {
-    json warning = {{"query", query}, {"depth", depth}, {"code", "TRACE_QUERY_FAILED"},
-                    {"message", "trace query failed during expansion"}};
-    if (trace_resp.contains("error") && trace_resp["error"].is_object()) {
-        warning["code"] = trace_resp["error"].value("code", "TRACE_QUERY_FAILED");
-        warning["message"] = trace_resp["error"].value("message", "trace query failed during expansion");
-    }
-    return warning;
-}
-
+using detail::graph_from_trace;
+using detail::confidence_for_edge;
+using detail::evidence_from_edge;
+using detail::explanation_from_edge;
+using detail::edge_type_allowed;
+using detail::edge_dedupe_key;
+using detail::edge_relation_key;
+using detail::aggregate_edges_by_relation;
+using detail::compact_trace_error_warning;
 } // namespace
 
 json trace_expand_like(const json& request, bool explain_only) {

@@ -58,6 +58,8 @@ APP_SRCS = src/main.cpp \
 ENGINE_SRCS = src/engine/main.cpp \
               src/engine/server.cpp \
               src/engine/service/engine_action_registry.cpp \
+              src/engine/service/design_postprocess.cpp \
+              src/engine/service/trace_bfs_engine.cpp \
               src/api/response.cpp \
               src/api/text_response_builder.cpp \
               src/api/xout_renderer.cpp \

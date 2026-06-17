@@ -55,6 +55,7 @@ bool SessionStore::get(const std::string& id, SessionRecord& record) const {
         record.mode = item.value("mode", std::string());
         record.daidir = item.value("daidir", std::string());
         record.fsdb = item.value("fsdb", std::string());
+        record.socket_path = item.value("socket_path", std::string());
         return true;
     }
     return false;
@@ -90,6 +91,7 @@ std::vector<SessionRecord> SessionStore::list() const {
         record.mode = item.value("mode", std::string());
         record.daidir = item.value("daidir", std::string());
         record.fsdb = item.value("fsdb", std::string());
+        record.socket_path = item.value("socket_path", std::string());
         if (!record.id.empty()) records.push_back(record);
     }
     return records;
@@ -103,6 +105,7 @@ Json session_record_json(const SessionRecord& record) {
     };
     if (!record.daidir.empty()) item["daidir"] = record.daidir;
     if (!record.fsdb.empty()) item["fsdb"] = record.fsdb;
+    if (!record.socket_path.empty()) item["socket_path"] = record.socket_path;
     return item;
 }
 

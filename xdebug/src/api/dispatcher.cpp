@@ -11,6 +11,8 @@
 #include <limits.h>
 #include <string>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 namespace xdebug {
 
@@ -146,6 +148,20 @@ Json Dispatcher::handle_engine_forward(const Json& request, const ActionSpec& sp
     if (!err_resp.is_null()) return err_resp;
     Json routed = request;
     routed["target"] = target;
+
+    // Direct socket path: if session has a known socket, talk to the
+    // engine server directly instead of spawning a per-request process.
+    std::string sid = target.value("session_id", "");
+    if (!sid.empty()) {
+        SessionRecord record;
+        if (sessions_.get(sid, record) && !record.socket_path.empty()) {
+            Json response = send_to_socket(record.socket_path, routed);
+            if (!response.contains("error") || response.value("ok", false)) {
+                return response;
+            }
+        }
+    }
+
     Json response = forward_action(routed);
     // Auto-register session for ad-hoc queries (no session_id).
     if (response.value("ok", false) && !has_string(target, "session_id") &&
@@ -291,6 +307,8 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
         record.mode = mode;
         record.daidir = target.value("daidir", std::string());
         record.fsdb = target.value("fsdb", std::string());
+        // Extract socket_path from engine response for direct socket communication
+        record.socket_path = result.value("session", Json::object()).value("socket_path", "");
         if (!sessions_.put(record)) {
             return make_error(request, action, "SESSION_STORE_FAILED", "failed to store xdebug session");
         }
@@ -405,6 +423,72 @@ Json Dispatcher::dispatch(const Json& request) {
         context["response_compact"] = xdebug_core::sanitize_for_log(response);
     }
     xdebug_core::log_action_event("public", "xdebug", session_id, action, "end", ok, elapsed_ms, context);
+    return response;
+}
+
+Json Dispatcher::send_to_socket(const std::string& socket_path, const Json& request) const {
+    const std::string action = request.value("action", std::string());
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) return engine_error(request, action, "socket create failed");
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, socket_path.c_str(), sizeof(addr.sun_path) - 1);
+
+    if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        close(fd);
+        return engine_error(request, action, "socket connect failed: " + socket_path);
+    }
+
+    // Build internal request for engine server
+    Json rpc = request;
+    rpc["api_version"] = "xdebug.internal.v1";
+    std::string wire = rpc.dump() + "\n";
+    if (write(fd, wire.c_str(), wire.size()) != static_cast<ssize_t>(wire.size())) {
+        close(fd);
+        return engine_error(request, action, "socket write failed");
+    }
+
+    // Read response — engine server closes fd after sending.
+    std::string line;
+    char buf[65536];
+    while (true) {
+        ssize_t n = read(fd, buf, sizeof(buf));
+        if (n <= 0) break;
+        line.append(buf, static_cast<size_t>(n));
+    }
+    close(fd);
+
+    Json engine_resp;
+    try {
+        engine_resp = Json::parse(line);
+    } catch (...) {
+        return engine_error(request, action, "invalid engine response");
+    }
+
+    if (!engine_resp.value("ok", false)) {
+        Json err = engine_resp.value("error", Json::object());
+        return make_error(request, action,
+            err.value("code", "INTERNAL_ENGINE_FAILED"),
+            err.value("message", "engine server error"), true);
+    }
+
+    // Wrap engine response into xdebug.v1 format
+    Json data_payload = engine_resp.value("data", Json::object());
+    Json response = make_response(request, action, true);
+    // Build summary from data's top-level scalar fields (same logic as router.cpp)
+    Json result_summary = data_payload.value("summary", Json::object());
+    if (result_summary.empty()) {
+        for (auto it = data_payload.begin(); it != data_payload.end(); ++it) {
+            if (it->is_string() || it->is_number() || it->is_boolean())
+                result_summary[it.key()] = it.value();
+        }
+    }
+    response["summary"] = result_summary;
+    response["data"] = data_payload;
+    if (data_payload.contains("truncated") && data_payload["truncated"].is_boolean())
+        response["meta"] = {{"truncated", data_payload["truncated"].get<bool>()}};
     return response;
 }
 

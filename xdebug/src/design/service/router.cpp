@@ -176,11 +176,24 @@ json handle_request_impl(const json& request) {
     // send_json_command already extracts the "data" field from the
     // server's ok_response envelope.  result IS the handler payload.
     response["ok"] = true;
-    response["summary"] = {
-        {"driver_status", result.value("driver_status", "")},
-        {"statement_count", result.value("statement_count", 0)},
-        {"root_driver", result.value("root_driver", json::object())}
-    };
+
+    // Build summary: prefer handler-provided summary, then auto-extract
+    // top-level scalar fields, then fall back to legacy trace.driver format.
+    json result_summary = result.value("summary", json::object());
+    if (result_summary.empty()) {
+        for (auto it = result.begin(); it != result.end(); ++it) {
+            if (it->is_string() || it->is_number() || it->is_boolean())
+                result_summary[it.key()] = it.value();
+        }
+    }
+    if (result_summary.empty()) {
+        result_summary = {
+            {"driver_status", result.value("driver_status", "")},
+            {"statement_count", result.value("statement_count", 0)},
+            {"root_driver", result.value("root_driver", json::object())}
+        };
+    }
+    response["summary"] = result_summary;
     response["data"] = result;
     if (result.contains("truncated") && result["truncated"].is_boolean())
         response["meta"] = {{"truncated", result["truncated"].get<bool>()}};
