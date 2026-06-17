@@ -576,7 +576,24 @@ public:
         }
         Json out;
         out["events"] = arr;
+        out["examples"] = arr;                           // backward compat
         out["count"] = static_cast<int>(arr.size());
+        out["event_count"] = out["count"];               // backward compat
+        if (!arr.empty()) {
+            out["first"] = arr[0]["time"];
+            out["last"] = arr[arr.size()-1]["time"];
+        }
+        out["begin"] = time_range.value("start", time_range.value("begin", ""));
+        out["end"] = time_range.value("end", "");
+        out["mode"] = args.value("mode", export_mode_ ? "export" : "first");
+        out["sampling_mode"] = "clock_edge";
+        out["inline"] = name.empty();
+        out["summary"] = {
+            {"event_count", out["event_count"]},
+            {"first", out.value("first", Json())},
+            {"last", out.value("last", Json())},
+            {"count", out["count"]}
+        };
         return out;
     }
 };
