@@ -164,19 +164,7 @@ Json Dispatcher::handle_engine_forward(const Json& request, const ActionSpec& sp
 
     Json response = forward_action(routed);
 
-    // Update socket_path if the response has a (possibly new) session socket.
-    if (response.value("ok", false) && !sid.empty()) {
-        std::string new_socket = response.value("session", Json::object()).value("socket_path", "");
-        if (!new_socket.empty()) {
-            SessionRecord rec;
-            if (sessions_.get(sid, rec)) {
-                rec.socket_path = new_socket;
-                sessions_.put(rec);
-            }
-        }
-    }
-
-    // Auto-register session for ad-hoc queries (no session_id).
+    // The engine owns canonical session registration for ad-hoc queries.
     if (response.value("ok", false) && !has_string(target, "session_id") &&
         !requested_name(request).empty()) {
         SessionRecord record;
@@ -185,7 +173,6 @@ Json Dispatcher::handle_engine_forward(const Json& request, const ActionSpec& sp
         record.daidir = target.value("daidir", std::string());
         record.fsdb = target.value("fsdb", std::string());
         record.socket_path = response.value("session", Json::object()).value("socket_path", "");
-        sessions_.put(record);
         xdebug_core::update_public_session_manifest(record.id, record.mode, record.daidir, record.fsdb);
     }
     return response;
@@ -323,9 +310,6 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
         record.fsdb = target.value("fsdb", std::string());
         // Extract socket_path from engine response for direct socket communication
         record.socket_path = result.value("session", Json::object()).value("socket_path", "");
-        if (!sessions_.put(record)) {
-            return make_error(request, action, "SESSION_STORE_FAILED", "failed to store xdebug session");
-        }
         xdebug_core::update_public_session_manifest(record.id, record.mode, record.daidir, record.fsdb);
         Json response = make_response(request, action);
         response["session"] = session_record_json(record);
@@ -366,8 +350,6 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
         inner["target"] = {{"session_id", id}};
         Json r = forward_action(inner);
         bool ok = backend_cleanup_ok(r);
-        bool store_removed = ok && sessions_.remove(id);
-        ok = ok && store_removed;
         Json response = make_response(request, action, ok);
         response["summary"] = {{"session_id", id}, {"mode", record.mode}, {"removed", ok}};
         response["data"] = {{"session", session_record_json(record)}, {"backends", r}};

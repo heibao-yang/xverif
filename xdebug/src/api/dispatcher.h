@@ -3,7 +3,7 @@
 #include "api/json_types.h"
 #include "api/action_spec.h"
 #include "backend/engine_adapter.h"
-#include "session/session_store.h"
+#include "session/session_catalog.h"
 
 #include <string>
 
@@ -26,7 +26,7 @@ private:
     bool send_to_socket(const std::string& socket_path, const Json& request, Json& response) const;
 
     EngineAdapter adapter_;
-    SessionStore sessions_;
+    SessionCatalog sessions_;
 };
 
 } // namespace xdebug

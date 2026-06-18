@@ -15,21 +15,19 @@ struct SessionRecord {
     std::string socket_path;
 };
 
-class SessionStore {
+// Read-only view of the canonical engine registry.
+// Session lifecycle mutations are owned by the engine SessionRegistry.
+class SessionCatalog {
 public:
-    SessionStore();
+    SessionCatalog();
 
     bool get(const std::string& id, SessionRecord& record) const;
-    bool put(const SessionRecord& record);
-    bool remove(const std::string& id);
     std::vector<SessionRecord> list() const;
 
 private:
-    std::string home_;
     std::string path_;
-    bool ensure_home() const;
     Json read_all() const;
-    bool write_all(const Json& sessions) const;
+    static bool parse_record(const Json& item, SessionRecord& record);
 };
 
 Json session_record_json(const SessionRecord& record);
