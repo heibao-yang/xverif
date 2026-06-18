@@ -45,13 +45,18 @@ static json session_to_json(const SessionInfo& session) {
         {"auth_token", session.auth_token},
         {"design_file", session.design_file},
         {"dbdir_path", session.dbdir_path},
+        {"fsdb_file", session.fsdb_file},
         {"server_pid", session.server_pid},
         {"created_at", static_cast<long long>(session.created_at)},
         {"last_active", static_cast<long long>(session.last_active)},
         {"dbdir_mtime", session.dbdir_mtime},
         {"dbdir_size", session.dbdir_size},
         {"dbdir_dev", session.dbdir_dev},
-        {"dbdir_inode", session.dbdir_inode}
+        {"dbdir_inode", session.dbdir_inode},
+        {"fsdb_mtime", session.fsdb_mtime},
+        {"fsdb_size", session.fsdb_size},
+        {"fsdb_dev", session.fsdb_dev},
+        {"fsdb_inode", session.fsdb_inode}
     };
 }
 
@@ -73,6 +78,7 @@ static bool json_to_session(const json& j, SessionInfo& session) {
     session.auth_token = j.value("auth_token", std::string());
     session.design_file = j.value("design_file", "");
     session.dbdir_path = j.value("dbdir_path", "");
+    session.fsdb_file = j.value("fsdb_file", "");
     session.server_pid = static_cast<pid_t>(j.value("server_pid", 0));
     session.created_at = static_cast<time_t>(j.value("created_at", 0LL));
     session.last_active = static_cast<time_t>(j.value("last_active", 0LL));
@@ -80,12 +86,17 @@ static bool json_to_session(const json& j, SessionInfo& session) {
     session.dbdir_size = j.value("dbdir_size", 0LL);
     session.dbdir_dev = j.value("dbdir_dev", 0ULL);
     session.dbdir_inode = j.value("dbdir_inode", 0ULL);
+    session.fsdb_mtime = j.value("fsdb_mtime", 0L);
+    session.fsdb_size = j.value("fsdb_size", 0LL);
+    session.fsdb_dev = j.value("fsdb_dev", 0ULL);
+    session.fsdb_inode = j.value("fsdb_inode", 0ULL);
     if (session.socket_path.empty() && !session.session_id.empty()) {
         session.socket_path = xdebug_design_socket_path(session.session_id);
     }
     if (session.dbdir_path.empty()) session.dbdir_path = session.design_file;
     if (session.design_file.empty()) session.design_file = session.dbdir_path;
-    return !session.session_id.empty() && !session.dbdir_path.empty();
+    return !session.session_id.empty() &&
+           (!session.dbdir_path.empty() || !session.fsdb_file.empty());
 }
 
 bool SessionRegistry::parse_legacy_line(const char* line, SessionInfo& session) {

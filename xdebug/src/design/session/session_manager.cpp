@@ -70,6 +70,10 @@ const char* session_health_status_name(SessionHealthStatus status) {
             return "dbdir_missing";
         case SessionHealthStatus::DbdirChanged:
             return "dbdir_changed";
+        case SessionHealthStatus::FsdbMissing:
+            return "fsdb_missing";
+        case SessionHealthStatus::FsdbChanged:
+            return "fsdb_changed";
     }
     return "unknown";
 }
@@ -149,6 +153,14 @@ std::string SessionManager::canonicalize_dbdir_path(const std::string& dbdir_pat
     return dbdir_path;
 }
 
+std::string SessionManager::canonicalize_fsdb_path(const std::string& fsdb_file) const {
+    char resolved[PATH_MAX];
+    if (realpath(fsdb_file.c_str(), resolved)) {
+        return std::string(resolved);
+    }
+    return fsdb_file;
+}
+
 bool SessionManager::populate_dbdir_metadata(const std::string& dbdir_path, SessionInfo& session) const {
     struct stat st;
     if (stat(dbdir_path.c_str(), &st) != 0) return false;
@@ -175,13 +187,39 @@ bool SessionManager::dbdir_metadata_matches(const SessionInfo& expected, const S
                                                  current.dbdir_size);
 }
 
+bool SessionManager::populate_fsdb_metadata(const std::string& fsdb_file, SessionInfo& session) const {
+    struct stat st;
+    if (stat(fsdb_file.c_str(), &st) != 0) return false;
+    if (!S_ISREG(st.st_mode)) return false;
+    session.fsdb_file = fsdb_file;
+    session.fsdb_mtime = static_cast<long>(st.st_mtime);
+    session.fsdb_size = static_cast<long long>(st.st_size);
+    session.fsdb_dev = static_cast<unsigned long long>(st.st_dev);
+    session.fsdb_inode = static_cast<unsigned long long>(st.st_ino);
+    return true;
+}
+
+bool SessionManager::current_fsdb_metadata(const SessionInfo& session, SessionInfo& current) const {
+    if (session.fsdb_file.empty()) return false;
+    current = session;
+    return populate_fsdb_metadata(session.fsdb_file, current);
+}
+
+bool SessionManager::fsdb_metadata_matches(const SessionInfo& expected, const SessionInfo& current) const {
+    return xdebug_core::resource_content_matches(expected.fsdb_mtime,
+                                                 expected.fsdb_size,
+                                                 current.fsdb_mtime,
+                                                 current.fsdb_size);
+}
+
 bool SessionManager::parse_open_args(const std::vector<std::string>& args,
                                      std::string& canonical_dbdir,
+                                     std::string& canonical_fsdb,
                                      std::vector<std::string>& canonical_args) const {
     // The unified engine accepts both -dbdir and/or -fsdb.
-    // Validate daidir if present; fsdb is validated by the engine at startup.
     canonical_args = args;
     bool has_daidir = false;
+    bool has_fsdb = false;
 
     for (size_t i = 0; i + 1 < args.size(); ++i) {
         if (args[i] == "-dbdir") {
@@ -197,11 +235,18 @@ bool SessionManager::parse_open_args(const std::vector<std::string>& args,
                 return false;
             canonical_args[i + 1] = canonical_dbdir;
             has_daidir = true;
+        } else if (args[i] == "-fsdb" || args[i] == "-ssf") {
+            canonical_fsdb = canonicalize_fsdb_path(args[i + 1]);
+            SessionInfo metadata;
+            if (!populate_fsdb_metadata(canonical_fsdb, metadata))
+                return false;
+            canonical_args[i + 1] = canonical_fsdb;
+            has_fsdb = true;
         }
     }
 
     // At least one resource is required.
-    if (!has_daidir && canonical_args.empty())
+    if (!has_daidir && !has_fsdb)
         return false;
     return true;
 }
@@ -313,17 +358,19 @@ SessionEnsureResult SessionManager::ensure_session(const std::vector<std::string
     SessionEnsureResult result;
 
     std::string canonical_dbdir;
+    std::string canonical_fsdb;
     std::vector<std::string> canonical_args;
-    if (!parse_open_args(design_args, canonical_dbdir, canonical_args)) {
+    if (!parse_open_args(design_args, canonical_dbdir, canonical_fsdb, canonical_args)) {
         debug_log("ensure_session: reason=invalid_args");
         xdebug_core::log_lifecycle_event("design", session_name, "ensure_session.invalid_args", false);
         result.status = "invalid_args";
         result.message = "Usage: open [-dbdir <simv.daidir>] [-fsdb <waves.fsdb>] ...";
         return result;
     }
-    debug_log("ensure_session: canonical_dbdir=%s", canonical_dbdir.c_str());
+    debug_log("ensure_session: canonical_dbdir=%s canonical_fsdb=%s",
+              canonical_dbdir.c_str(), canonical_fsdb.c_str());
     xdebug_core::log_lifecycle_event("design", session_name, "ensure_session.canonicalized", true,
-                                     {{"dbdir", canonical_dbdir}});
+                                     {{"dbdir", canonical_dbdir}, {"fsdb", canonical_fsdb}});
 
     if (!SessionRegistry::is_valid_session_name(session_name)) {
         result.status = "invalid_session_id";
@@ -440,7 +487,20 @@ SessionEnsureResult SessionManager::ensure_session(const std::vector<std::string
     session.server_pid = pid;
     session.created_at = time(nullptr);
     session.last_active = session.created_at;
-    populate_dbdir_metadata(canonical_dbdir, session);
+    if (!canonical_dbdir.empty() && !populate_dbdir_metadata(canonical_dbdir, session)) {
+        kill(pid, SIGTERM);
+        xdebug_design_remove_session_dir(session_id);
+        result.status = "resource_changed";
+        result.message = "Daidir became unavailable while opening the session";
+        return result;
+    }
+    if (!canonical_fsdb.empty() && !populate_fsdb_metadata(canonical_fsdb, session)) {
+        kill(pid, SIGTERM);
+        xdebug_design_remove_session_dir(session_id);
+        result.status = "resource_changed";
+        result.message = "FSDB became unavailable while opening the session";
+        return result;
+    }
 
     // Add to registry
     if (!registry_->add(session)) {
@@ -463,7 +523,7 @@ SessionEnsureResult SessionManager::ensure_session(const std::vector<std::string
     debug_log("ensure_session: success session=%s pid=%d socket=%s", session_id.c_str(), pid, sock_path);
     xdebug_core::log_lifecycle_event("design", session_id, "ensure_session.success", true,
                                      {{"pid", static_cast<int>(pid)}, {"socket_path", session.socket_path},
-                                      {"dbdir", session.dbdir_path}});
+                                      {"dbdir", session.dbdir_path}, {"fsdb", session.fsdb_file}});
     return result;
 }
 
@@ -560,43 +620,71 @@ SessionHealth SessionManager::diagnose_session(const std::string& session_id) {
     health.info = session;
 
     SessionInfo current;
-    if (!current_dbdir_metadata(session, current)) {
-        health.status = SessionHealthStatus::DbdirMissing;
-        health.message = "Daidir path is missing, is not a directory, or lacks metadata";
-        xdebug_core::log_lifecycle_event("design", session_id, "diagnose.dbdir_missing", false,
-                                         {{"dbdir", session.dbdir_path}});
-        return health;
+    if (!session.dbdir_path.empty()) {
+        if (!current_dbdir_metadata(session, current)) {
+            health.status = SessionHealthStatus::DbdirMissing;
+            health.message = "Daidir path is missing, is not a directory, or lacks metadata";
+            xdebug_core::log_lifecycle_event("design", session_id, "diagnose.dbdir_missing", false,
+                                             {{"dbdir", session.dbdir_path}});
+            return health;
+        }
+        if (!dbdir_metadata_matches(session, current)) {
+            bool identity_changed = xdebug_core::resource_identity_differs(session.dbdir_dev,
+                                                                           session.dbdir_inode,
+                                                                           current.dbdir_dev,
+                                                                           current.dbdir_inode);
+            health.status = SessionHealthStatus::DbdirChanged;
+            health.message = "Daidir metadata changed since session was opened";
+            xdebug_core::log_lifecycle_event("design", session_id, "diagnose.dbdir_changed", false,
+                                             {{"dbdir", session.dbdir_path},
+                                              {"old_mtime", session.dbdir_mtime}, {"new_mtime", current.dbdir_mtime},
+                                              {"old_size", session.dbdir_size}, {"new_size", current.dbdir_size},
+                                              {"old_dev", session.dbdir_dev}, {"new_dev", current.dbdir_dev},
+                                              {"old_inode", session.dbdir_inode}, {"new_inode", current.dbdir_inode},
+                                              {"identity_changed", identity_changed}});
+            return health;
+        }
+        if (xdebug_core::resource_identity_differs(session.dbdir_dev,
+                                                   session.dbdir_inode,
+                                                   current.dbdir_dev,
+                                                   current.dbdir_inode)) {
+            debug_log("diagnose_session: dbdir_identity_changed old_dev=%llu new_dev=%llu old_inode=%llu new_inode=%llu content_match=1",
+                      (unsigned long long)session.dbdir_dev,
+                      (unsigned long long)current.dbdir_dev,
+                      (unsigned long long)session.dbdir_inode,
+                      (unsigned long long)current.dbdir_inode);
+            xdebug_core::log_lifecycle_event("design", session_id, "diagnose.dbdir_identity_changed", true,
+                                             {{"dbdir", session.dbdir_path},
+                                              {"old_dev", session.dbdir_dev}, {"new_dev", current.dbdir_dev},
+                                              {"old_inode", session.dbdir_inode}, {"new_inode", current.dbdir_inode},
+                                              {"content_match", true}, {"identity_changed", true}});
+        }
     }
-    if (!dbdir_metadata_matches(session, current)) {
-        bool identity_changed = xdebug_core::resource_identity_differs(session.dbdir_dev,
-                                                                       session.dbdir_inode,
-                                                                       current.dbdir_dev,
-                                                                       current.dbdir_inode);
-        health.status = SessionHealthStatus::DbdirChanged;
-        health.message = "Daidir metadata changed since session was opened";
-        xdebug_core::log_lifecycle_event("design", session_id, "diagnose.dbdir_changed", false,
-                                         {{"dbdir", session.dbdir_path},
-                                          {"old_mtime", session.dbdir_mtime}, {"new_mtime", current.dbdir_mtime},
-                                          {"old_size", session.dbdir_size}, {"new_size", current.dbdir_size},
-                                          {"old_dev", session.dbdir_dev}, {"new_dev", current.dbdir_dev},
-                                          {"old_inode", session.dbdir_inode}, {"new_inode", current.dbdir_inode},
-                                          {"identity_changed", identity_changed}});
-        return health;
-    }
-    if (xdebug_core::resource_identity_differs(session.dbdir_dev,
-                                               session.dbdir_inode,
-                                               current.dbdir_dev,
-                                               current.dbdir_inode)) {
-        debug_log("diagnose_session: dbdir_identity_changed old_dev=%llu new_dev=%llu old_inode=%llu new_inode=%llu content_match=1",
-                  (unsigned long long)session.dbdir_dev,
-                  (unsigned long long)current.dbdir_dev,
-                  (unsigned long long)session.dbdir_inode,
-                  (unsigned long long)current.dbdir_inode);
-        xdebug_core::log_lifecycle_event("design", session_id, "diagnose.dbdir_identity_changed", true,
-                                         {{"dbdir", session.dbdir_path},
-                                          {"old_dev", session.dbdir_dev}, {"new_dev", current.dbdir_dev},
-                                          {"old_inode", session.dbdir_inode}, {"new_inode", current.dbdir_inode},
-                                          {"content_match", true}, {"identity_changed", true}});
+
+    if (!session.fsdb_file.empty()) {
+        if (!current_fsdb_metadata(session, current)) {
+            health.status = SessionHealthStatus::FsdbMissing;
+            health.message = "FSDB path is missing, is not a regular file, or lacks metadata";
+            xdebug_core::log_lifecycle_event("design", session_id, "diagnose.fsdb_missing", false,
+                                             {{"fsdb", session.fsdb_file}});
+            return health;
+        }
+        if (!fsdb_metadata_matches(session, current)) {
+            bool identity_changed = xdebug_core::resource_identity_differs(session.fsdb_dev,
+                                                                           session.fsdb_inode,
+                                                                           current.fsdb_dev,
+                                                                           current.fsdb_inode);
+            health.status = SessionHealthStatus::FsdbChanged;
+            health.message = "FSDB metadata changed since session was opened";
+            xdebug_core::log_lifecycle_event("design", session_id, "diagnose.fsdb_changed", false,
+                                             {{"fsdb", session.fsdb_file},
+                                              {"old_mtime", session.fsdb_mtime}, {"new_mtime", current.fsdb_mtime},
+                                              {"old_size", session.fsdb_size}, {"new_size", current.fsdb_size},
+                                              {"old_dev", session.fsdb_dev}, {"new_dev", current.fsdb_dev},
+                                              {"old_inode", session.fsdb_inode}, {"new_inode", current.fsdb_inode},
+                                              {"identity_changed", identity_changed}});
+            return health;
+        }
     }
 
     if (is_local_session_host(session) && kill(session.server_pid, 0) != 0) {

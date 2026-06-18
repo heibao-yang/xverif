@@ -14,7 +14,9 @@ enum class SessionHealthStatus {
     ConnectFailed,
     PingFailed,
     DbdirMissing,
-    DbdirChanged
+    DbdirChanged,
+    FsdbMissing,
+    FsdbChanged
 };
 
 struct SessionHealth {
@@ -117,11 +119,16 @@ private:
 
     bool parse_open_args(const std::vector<std::string>& design_args,
                          std::string& canonical_dbdir,
+                         std::string& canonical_fsdb,
                          std::vector<std::string>& canonical_args) const;
     bool populate_dbdir_metadata(const std::string& dbdir_path, SessionInfo& session) const;
     bool current_dbdir_metadata(const SessionInfo& session, SessionInfo& current) const;
     bool dbdir_metadata_matches(const SessionInfo& expected, const SessionInfo& current) const;
+    bool populate_fsdb_metadata(const std::string& fsdb_file, SessionInfo& session) const;
+    bool current_fsdb_metadata(const SessionInfo& session, SessionInfo& current) const;
+    bool fsdb_metadata_matches(const SessionInfo& expected, const SessionInfo& current) const;
     std::string canonicalize_dbdir_path(const std::string& dbdir_path) const;
+    std::string canonicalize_fsdb_path(const std::string& fsdb_file) const;
 };
 
 } // namespace xdebug_design

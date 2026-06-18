@@ -75,6 +75,8 @@ json session_to_json(const SessionInfo& s) {
         {"dbdir", s.dbdir_path},
         {"dbdir_path", s.dbdir_path},
         {"design_file", s.design_file},
+        {"fsdb", s.fsdb_file},
+        {"fsdb_file", s.fsdb_file},
         {"pid", s.server_pid},
         {"transport", s.transport},
         {"socket_path", s.socket_path},
@@ -88,7 +90,11 @@ json session_to_json(const SessionInfo& s) {
         {"dbdir_mtime", s.dbdir_mtime},
         {"dbdir_size", s.dbdir_size},
         {"dbdir_dev", s.dbdir_dev},
-        {"dbdir_inode", s.dbdir_inode}
+        {"dbdir_inode", s.dbdir_inode},
+        {"fsdb_mtime", s.fsdb_mtime},
+        {"fsdb_size", s.fsdb_size},
+        {"fsdb_dev", s.fsdb_dev},
+        {"fsdb_inode", s.fsdb_inode}
     };
 }
 
