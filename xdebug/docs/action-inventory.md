@@ -30,12 +30,13 @@ example 和 contract test 迁移使用。状态定义：
 | `batch` | builtin | stable | none | top-level dispatcher | partial |
 | `session.open` | session | stable | any | dispatcher + backend session managers | regression |
 | `session.ensure` | session | stable | any | dispatcher + backend session managers | partial |
-| `session.list` | session | stable | session | top-level session store | partial |
+| `session.list` | session | stable | session | unified engine session registry | partial |
 | `session.doctor` | session | stable | session | dispatcher + backend health | partial |
 | `session.kill` | session | stable | session | dispatcher + backend session managers | partial |
 | `session.close` | session | stable | session | alias-compatible close path | partial |
 | `session.gc` | session | stable | none | dispatcher + waveform gc | partial |
-| `trace.active_driver` | combined | stable | combined | `ActiveTraceService` | regression |
+| `trace.active_driver` | combined | stable | any | `ActiveTraceService` | regression |
+| `trace.active_driver_chain` | combined | stable | any | `ActiveTraceChainService` | partial |
 
 ## Design Actions
 
@@ -51,8 +52,8 @@ example 和 contract test 迁移使用。状态定义：
 | `trace.path` | design | stable | design | design engine forward | partial |
 | `trace.explain` | design | stable | design | design engine forward | partial |
 | `control.explain` | design | stable | design | design engine forward | partial |
-| `source.context` | design | stable | design | design engine forward | regression |
-| `expr.normalize` | design | stable | design | design engine forward | partial |
+| `source.context` | design | stable | none | design engine forward | regression |
+| `expr.normalize` | design | stable | none | design engine forward | partial |
 | `procedural.assignment` | design | stable | design | design engine forward | partial |
 | `sequential.update` | design | stable | design | design engine forward | partial |
 | `fsm.explain` | design | stable | design | design engine forward | partial |
@@ -71,6 +72,7 @@ example 和 contract test 迁移使用。状态定义：
 | `cursor.delete` | waveform | stable | waveform | waveform engine forward | partial |
 | `cursor.use` | waveform | stable | waveform | waveform engine forward | partial |
 | `scope.list` | waveform | stable | waveform | waveform engine forward | regression |
+| `rc.generate` | waveform | stable | waveform | waveform engine forward | partial |
 | `value.at` | waveform | stable | waveform | waveform engine forward | regression |
 | `value.batch_at` | waveform | stable | waveform | waveform engine forward | regression |
 | `list.create` | waveform | stable | waveform | waveform engine forward | partial |
@@ -115,4 +117,3 @@ example 和 contract test 迁移使用。状态定义：
 | action | category | status | resource | implementation | test |
 | --- | --- | --- | --- | --- | --- |
 | `signal.search` | design | removed | design | removed from public catalog | regression |
-

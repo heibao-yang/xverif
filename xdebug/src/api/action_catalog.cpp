@@ -127,12 +127,11 @@ Json catalog_actions_response(const Json& request) {
         {"actions", descriptors},
         {"removed", removed},
         {"modes", {
-            {"design", string_array(design_actions())},
-            {"waveform", string_array(waveform_actions())},
-            {"combined", Json::array({"trace.active_driver"})},
-            {"builtin", Json::array({"actions", "schema", "batch"})},
-            {"session", Json::array({"session.open", "session.ensure", "session.list", "session.doctor",
-                                      "session.kill", "session.close", "session.gc"})}
+            {"design", string_array(actions_for_category("design"))},
+            {"waveform", string_array(actions_for_category("waveform"))},
+            {"combined", string_array(actions_for_category("combined"))},
+            {"builtin", string_array(actions_for_category("builtin"))},
+            {"session", string_array(actions_for_category("session"))}
         }}
     };
     return response;

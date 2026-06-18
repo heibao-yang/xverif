@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from runner import CliRunner
+
 
 TESTS_ROOT = Path(__file__).resolve().parent
 XDEBUG_ROOT = TESTS_ROOT.parent
@@ -57,3 +59,16 @@ def isolated_home(tmp_path: Path) -> Path:
     home = tmp_path / "home"
     home.mkdir()
     return home
+
+
+@pytest.fixture
+def cli_runner(
+    xdebug_bin: Path,
+    repo_root: Path,
+    isolated_home: Path,
+) -> CliRunner:
+    return CliRunner(
+        xdebug_bin,
+        cwd=repo_root,
+        base_env={"HOME": str(isolated_home), "XVERIF_HOME": str(repo_root)},
+    )

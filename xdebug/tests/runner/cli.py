@@ -142,17 +142,24 @@ class CliRunner:
 
         elapsed_ms = int((time.monotonic() - start) * 1000)
         response: Any = None
-        if output_format == "json" and stdout.strip():
+        actual_output_format = output_format
+        if stdout.strip():
             try:
-                response = json.loads(stdout)
+                parsed = json.loads(stdout)
             except json.JSONDecodeError:
-                response = None
+                parsed = None
+            if isinstance(parsed, dict):
+                response = parsed
+                actual_output_format = "json"
+            elif output_format == "xout":
+                response = stdout
         elif output_format == "xout":
             response = stdout
 
         normalized = normalize_response(response, self.normalize_options)
         metadata: Json = {
             "output_format": output_format,
+            "actual_output_format": actual_output_format,
             "input_mode": input_mode,
             "timeout_sec": timeout_sec,
         }

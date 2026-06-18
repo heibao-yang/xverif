@@ -139,7 +139,7 @@ ENGINE_OBJS = $(ENGINE_SRCS:%.cpp=$(BUILD)/%.o)
 DESIGN_OBJS = $(DESIGN_SRCS:%.cpp=$(BUILD)/%.o)
 WAVEFORM_OBJS = $(WAVEFORM_SRCS:%.cpp=$(BUILD)/%.o)
 
-.PHONY: all internal-engines unit-test test-infra mcp-test schema-test contract-test combined-test clean
+.PHONY: all internal-engines unit-test test-infra pytest-contract test-fast mcp-test schema-test contract-test combined-test clean
 
 all: $(EXE) internal-engines
 
@@ -172,6 +172,8 @@ unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)
 	$(BUILD)/tests/test_session_catalog
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_action_registry tests/unit/test_action_registry.cpp $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o
 	$(BUILD)/tests/test_action_registry
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_request_contract tests/unit/test_request_contract.cpp $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o
+	$(BUILD)/tests/test_request_contract
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_text_response_builder tests/unit/test_text_response_builder.cpp $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o
 	$(BUILD)/tests/test_text_response_builder
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_rc_generator tests/unit/test_rc_generator.cpp $(BUILD)/src/waveform/service/rc_generator.o
@@ -179,6 +181,11 @@ unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)
 
 test-infra:
 	$(PYTHON) -m pytest -c tests/pytest.ini -q tests/unit/test_test_infra.py
+
+pytest-contract: $(EXE)
+	$(PYTHON) -m pytest -c tests/pytest.ini -q tests/contract
+
+test-fast: test-infra schema-test unit-test contract-test pytest-contract
 
 schema-test:
 	$(PYTHON) tools/validate_schema.py schemas/v1
