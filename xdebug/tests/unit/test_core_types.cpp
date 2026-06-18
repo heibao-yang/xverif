@@ -12,8 +12,18 @@ int main() {
     assert(config.home_dir_name == ".xdebug");
 
     xdebug_core::SessionInfo session;
-    session.database_kind = xdebug_core::DatabaseKind::Daidir;
-    assert(std::string(xdebug_core::database_kind_name(session.database_kind)) == "daidir");
+    session.dbdir_path = "/tmp/simv.daidir";
+    assert(session.database_kind() == xdebug_core::DatabaseKind::Daidir);
+    assert(std::string(xdebug_core::database_kind_name(session.database_kind())) == "daidir");
+
+    session.dbdir_path.clear();
+    session.fsdb_file = "/tmp/waves.fsdb";
+    assert(session.database_kind() == xdebug_core::DatabaseKind::Fsdb);
+    assert(std::string(xdebug_core::database_kind_name(session.database_kind())) == "fsdb");
+
+    session.dbdir_path = "/tmp/simv.daidir";
+    assert(session.database_kind() == xdebug_core::DatabaseKind::Combined);
+    assert(std::string(xdebug_core::database_kind_name(session.database_kind())) == "combined");
 
     xdebug_core::AiResponse error = xdebug_core::make_ai_error("trace.driver", "failed");
     assert(!error.ok);
