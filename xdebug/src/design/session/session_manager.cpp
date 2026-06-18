@@ -18,6 +18,8 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include <fcntl.h>
+#include <cerrno>
+#include <fstream>
 
 namespace xdebug_design {
 
@@ -210,6 +212,33 @@ bool SessionManager::fsdb_metadata_matches(const SessionInfo& expected, const Se
                                                  expected.fsdb_size,
                                                  current.fsdb_mtime,
                                                  current.fsdb_size);
+}
+
+bool SessionManager::local_process_alive(pid_t pid) const {
+    if (pid <= 0) return false;
+    if (kill(pid, 0) == 0) return true;
+    return errno == EPERM;
+}
+
+bool SessionManager::process_matches_session(const SessionInfo& session) const {
+    if (session.server_pid <= 0 || session.session_id.empty()) return false;
+    std::ifstream input(("/proc/" + std::to_string(session.server_pid) + "/cmdline").c_str(),
+                        std::ios::in | std::ios::binary);
+    if (!input) return false;
+    std::string cmdline((std::istreambuf_iterator<char>(input)),
+                        std::istreambuf_iterator<char>());
+    const std::string marker = std::string("--server") + '\0' + session.session_id + '\0';
+    return cmdline.find(marker) != std::string::npos;
+}
+
+bool SessionManager::wait_for_process_exit(pid_t pid, int timeout_ms) const {
+    const int sleep_us = 50000;
+    const int loops = timeout_ms > 0 ? (timeout_ms * 1000 + sleep_us - 1) / sleep_us : 1;
+    for (int i = 0; i < loops; ++i) {
+        if (!local_process_alive(pid)) return true;
+        usleep(sleep_us);
+    }
+    return !local_process_alive(pid);
 }
 
 bool SessionManager::parse_open_args(const std::vector<std::string>& args,
@@ -549,28 +578,61 @@ bool SessionManager::kill_session(const std::string& session_id) {
     xdebug_core::log_lifecycle_event("design", session_id, "kill_session.begin", true,
                                      {{"pid", session.server_pid}, {"socket_path", session.socket_path}});
 
-    if (!send_quit_to_endpoint(session)) {
-        if (is_local_session_host(session) && kill(session.server_pid, 0) == 0) {
-            kill(session.server_pid, SIGTERM);
+    const bool quit_sent = send_quit_to_endpoint(session);
+    bool stopped = false;
+
+    if (is_local_session_host(session)) {
+        stopped = wait_for_process_exit(session.server_pid, quit_sent ? 1500 : 100);
+        if (!stopped) {
+            if (!process_matches_session(session)) {
+                debug_log("kill_session: pid=%d no longer matches session=%s",
+                          session.server_pid, session.session_id.c_str());
+                xdebug_core::log_lifecycle_event("design", session_id,
+                                                 "kill_session.pid_mismatch", false,
+                                                 {{"pid", session.server_pid}});
+                return false;
+            }
+            if (kill(session.server_pid, SIGTERM) != 0 && errno != ESRCH) {
+                xdebug_core::log_lifecycle_event("design", session_id,
+                                                 "kill_session.sigterm_failed", false,
+                                                 {{"pid", session.server_pid}, {"errno", errno}});
+                return false;
+            }
+            stopped = wait_for_process_exit(session.server_pid, 1500);
         }
-        registry_->remove(session_id);
-        return true;
+        if (!stopped) {
+            if (kill(session.server_pid, SIGKILL) != 0 && errno != ESRCH) {
+                xdebug_core::log_lifecycle_event("design", session_id,
+                                                 "kill_session.sigkill_failed", false,
+                                                 {{"pid", session.server_pid}, {"errno", errno}});
+                return false;
+            }
+            stopped = wait_for_process_exit(session.server_pid, 1500);
+        }
+    } else if (quit_sent) {
+        for (int i = 0; i < 15; ++i) {
+            if (!ping_session_endpoint(session)) {
+                stopped = true;
+                break;
+            }
+            usleep(100000);
+        }
     }
 
-    // Give server a brief moment to exit gracefully
-    int status;
-    usleep(300000);  // 300ms
-    if (is_local_session_host(session)) waitpid(session.server_pid, &status, WNOHANG);
-
-    // Force kill if still alive
-    if (is_local_session_host(session) && kill(session.server_pid, 0) == 0) {
-        kill(session.server_pid, SIGTERM);
+    if (!stopped) {
+        xdebug_core::log_lifecycle_event("design", session_id,
+                                         "kill_session.process_still_alive", false,
+                                         {{"pid", session.server_pid}, {"quit_sent", quit_sent}});
+        return false;
     }
 
-    // Remove from registry
-    registry_->remove(session_id);
-    xdebug_core::log_lifecycle_event("design", session_id, "kill_session.end", true);
-
+    if (!registry_->remove(session_id)) {
+        xdebug_core::log_lifecycle_event("design", session_id,
+                                         "kill_session.registry_remove_failed", false);
+        return false;
+    }
+    xdebug_core::log_lifecycle_event("design", session_id, "kill_session.end", true,
+                                     {{"pid", session.server_pid}, {"quit_sent", quit_sent}});
     return true;
 }
 
@@ -578,12 +640,12 @@ bool SessionManager::kill_all_sessions() {
     std::vector<SessionInfo> sessions = list_sessions();
     xdebug_core::log_lifecycle_event("design", "adhoc", "kill_all.begin", true,
                                      {{"count", sessions.size()}});
+    bool all_ok = true;
     for (const auto& session : sessions) {
-        kill_session(session.session_id);
+        if (!kill_session(session.session_id)) all_ok = false;
     }
-    registry_->clear_all();
-    xdebug_core::log_lifecycle_event("design", "adhoc", "kill_all.end", true);
-    return true;
+    xdebug_core::log_lifecycle_event("design", "adhoc", "kill_all.end", all_ok);
+    return all_ok;
 }
 
 bool SessionManager::get_session(const std::string& session_id, SessionInfo& info) {

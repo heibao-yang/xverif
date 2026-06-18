@@ -39,7 +39,7 @@ bool backend_cleanup_ok(const Json& response) {
     if (response.value("ok", false)) return true;
     Json error = response.value("error", Json::object());
     std::string code = error.value("code", std::string());
-    return code == "SESSION_NOT_FOUND" || code == "SESSION_UNHEALTHY";
+    return code == "SESSION_NOT_FOUND";
 }
 
 std::string stable_resource_path(const std::string& path) {
@@ -346,9 +346,15 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
             results.push_back({{"session_id", record.id}, {"mode", record.mode}, {"result", result}});
         }
         Json response = make_response(request, action);
+        response["ok"] = removed_count == static_cast<int>(results.size());
         response["summary"] = {{"status", "removed"}, {"target", "all"},
                                {"requested_count", results.size()}, {"removed_count", removed_count}};
         response["data"] = {{"results", results}};
+        if (!response["ok"].get<bool>()) {
+            response["error"] = {{"code", "SESSION_CLEANUP_PARTIAL_FAILURE"},
+                                 {"message", "one or more session engines could not be stopped"},
+                                 {"recoverable", true}};
+        }
         return response;
     }
     if (id.empty()) return make_error(request, action, "MISSING_FIELD", "target.session_id is required");
@@ -360,11 +366,14 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
         inner["target"] = {{"session_id", id}};
         Json r = forward_action(inner);
         bool ok = backend_cleanup_ok(r);
-        sessions_.remove(id);
+        bool store_removed = ok && sessions_.remove(id);
+        ok = ok && store_removed;
         Json response = make_response(request, action, ok);
         response["summary"] = {{"session_id", id}, {"mode", record.mode}, {"removed", ok}};
         response["data"] = {{"session", session_record_json(record)}, {"backends", r}};
-        if (!ok) response["error"] = {{"code", "SESSION_STALE"}, {"message", "session was removed from xdebug registry but backend cleanup failed"}, {"recoverable", true}};
+        if (!ok) response["error"] = {{"code", "SESSION_CLEANUP_FAILED"},
+                                      {"message", "backend cleanup failed; the session record was preserved for retry and diagnosis"},
+                                      {"recoverable", true}};
         return response;
     }
     if (action == "session.doctor") {

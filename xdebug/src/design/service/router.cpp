@@ -84,7 +84,7 @@ json handle_session_action(const json& request, const std::string& action) {
         bool ok = manager.kill_session(sid);
         response["ok"] = ok;
         response["summary"] = {{"id", sid}, {"session_id", sid}, {"killed", ok}};
-        if (!ok) response["error"] = {{"code", "SESSION_NOT_FOUND"}, {"message", "failed to kill session"},
+        if (!ok) response["error"] = {{"code", "SESSION_CLEANUP_FAILED"}, {"message", "failed to stop session engine or update registry"},
             {"recoverable", true}, {"candidates", json::array()}, {"suggested_actions", json::array()}};
         return response;
     }

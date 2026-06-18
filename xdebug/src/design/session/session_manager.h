@@ -129,6 +129,9 @@ private:
     bool fsdb_metadata_matches(const SessionInfo& expected, const SessionInfo& current) const;
     std::string canonicalize_dbdir_path(const std::string& dbdir_path) const;
     std::string canonicalize_fsdb_path(const std::string& fsdb_file) const;
+    bool local_process_alive(pid_t pid) const;
+    bool process_matches_session(const SessionInfo& session) const;
+    bool wait_for_process_exit(pid_t pid, int timeout_ms) const;
 };
 
 } // namespace xdebug_design
