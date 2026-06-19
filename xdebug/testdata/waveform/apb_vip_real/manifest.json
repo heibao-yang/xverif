@@ -1,0 +1,25 @@
+{
+  "name": "apb_vip_real",
+  "kind": "synthetic-vip",
+  "environment_reference": "<xring-root>/dv",
+  "compile_reference": "<xring-root>/dv/cfg/Makefile",
+  "top": "apb_vip_fixture_top",
+  "interface": "apb_vip_fixture_top.apb_if",
+  "testcase": "apb_vip_test",
+  "seed": 11,
+  "resources": {
+    "fsdb": "out/regression/test/apb_vip_test/waves.fsdb",
+    "daidir": "out/regression/build/simv.daidir",
+    "simulation_log": "out/regression/test/apb_vip_test/sim.log"
+  },
+  "expected": {
+    "writes": 5,
+    "reads": 5,
+    "errors": 1,
+    "wait_cycles": [0, 1, 2, 3]
+  },
+  "required_env": [
+    "SVT_VIP_INCDIR",
+    "SVT_VIP_SRCDIR"
+  ]
+}

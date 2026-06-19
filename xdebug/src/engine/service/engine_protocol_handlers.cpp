@@ -82,6 +82,8 @@ public:
         cfg.pwrite = cfg_j["pwrite"].get<std::string>();
         cfg.pwdata = cfg_j["pwdata"].get<std::string>();
         cfg.prdata = cfg_j["prdata"].get<std::string>();
+        cfg.pready = cfg_j.value("pready", "");
+        cfg.pslverr = cfg_j.value("pslverr", "");
         if (cfg_j.contains("posedge")) cfg.posedge = cfg_j["posedge"].get<bool>();
 
         ApbManager am;
@@ -92,6 +94,8 @@ public:
         out["summary"] = {{"name", name}, {"status", "loaded"}};
         out["name"] = name; out["status"] = "loaded";
         Json cinfo; cinfo["name"] = name; cinfo["clk"] = cfg.clk; cinfo["rst_n"] = cfg.rst_n;
+        if (!cfg.pready.empty()) cinfo["pready"] = cfg.pready;
+        if (!cfg.pslverr.empty()) cinfo["pslverr"] = cfg.pslverr;
         out["config"] = cinfo;
         return out;
     }
@@ -111,6 +115,8 @@ public:
             return Json({{"error","CONFIG_NOT_FOUND"}});
         Json out; out["name"] = name;
         out["clk"] = cfg.clk; out["rst_n"] = cfg.rst_n;
+        if (!cfg.pready.empty()) out["pready"] = cfg.pready;
+        if (!cfg.pslverr.empty()) out["pslverr"] = cfg.pslverr;
         return out;
     }
 };
@@ -175,6 +181,7 @@ public:
             tj["addr"] = txn->addr;
             tj["data"] = txn->data;
             tj["is_write"] = txn->is_write;
+            tj["has_error"] = txn->has_error;
             out["transaction"] = tj;
             out["summary"]["addr"] = txn->addr;
         }
@@ -216,6 +223,7 @@ public:
             Json tj;
             tj["time"] = txn->time; tj["addr"] = txn->addr;
             tj["data"] = txn->data; tj["is_write"] = txn->is_write;
+            tj["has_error"] = txn->has_error;
             out["transaction"] = tj;
             if (txn->is_write) out["summary"]["addr"] = txn->addr;
         }

@@ -36,6 +36,8 @@ static Json apb_to_json(const ApbConfig& c) {
         {"pwrite", c.pwrite},
         {"penable", c.penable},
         {"psel", c.psel},
+        {"pready", c.pready},
+        {"pslverr", c.pslverr},
         {"clk", c.clk},
         {"rst_n", c.rst_n},
         {"edge", c.posedge ? "posedge" : "negedge"}
@@ -51,6 +53,8 @@ static bool json_to_apb(const Json& j, ApbConfig& c) {
     c.pwrite = j.value("pwrite", "");
     c.penable = j.value("penable", "");
     c.psel = j.value("psel", "");
+    c.pready = j.value("pready", "");
+    c.pslverr = j.value("pslverr", "");
     c.clk = j.value("clk", "");
     c.rst_n = j.value("rst_n", "");
     c.posedge = j.value("edge", "posedge") != "negedge";

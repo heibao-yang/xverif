@@ -17,6 +17,8 @@ bool parse_apb_config(const Json& j, ApbConfig& c, std::string& err) {
     c.pwrite = get("pwrite");
     c.penable = get("penable");
     c.psel = get("psel");
+    c.pready = get("pready");
+    c.pslverr = get("pslverr");
     c.clk = get("clk");
     c.rst_n = get("rst_n");
     std::string edge = get("edge");
@@ -32,11 +34,14 @@ bool parse_apb_config(const Json& j, ApbConfig& c, std::string& err) {
 }
 
 Json apb_config_json(const ApbConfig& c) {
-    return {
+    Json j = {
         {"name", c.name}, {"paddr", c.paddr}, {"pwdata", c.pwdata}, {"prdata", c.prdata},
         {"pwrite", c.pwrite}, {"penable", c.penable}, {"psel", c.psel},
         {"clk", c.clk}, {"rst_n", c.rst_n}, {"edge", c.posedge ? "posedge" : "negedge"}
     };
+    if (!c.pready.empty()) j["pready"] = c.pready;
+    if (!c.pslverr.empty()) j["pslverr"] = c.pslverr;
+    return j;
 }
 
 bool parse_axi_config(const Json& j, AxiConfig& c, std::string& err) {

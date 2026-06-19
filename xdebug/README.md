@@ -724,6 +724,15 @@ unpacked/聚合数组可显式请求结构化显示：
 
 APB/AXI 查询应先加载对应配置，再执行 `apb.query`、`axi.query` 或分析动作。compact 默认优先返回 error/slow/high-latency/outstanding finding，而不是所有正常 transaction/beat。
 
+APB 配置的基础字段为 `paddr/pwdata/prdata/pwrite/penable/psel/clk/rst_n`。
+真实 APB3/APB4 波形建议同时配置可选的 `pready` 和 `pslverr`：
+
+- 配置 `pready` 后，xdebug 只在 access phase 完成时记录一笔 transfer，
+  wait-state 周期不会被重复计数。
+- 配置 `pslverr` 后，transaction 输出包含 `has_error`。
+- 旧配置不带这两个字段仍可使用，但不能可靠区分 wait-state 或报告 slave
+  error response。
+
 ### 联合定位：trace.active_driver
 
 当同时有 `daidir` 和 `fsdb` 时，用 `trace.active_driver` 把“某时刻波形值”连接到“当前生效的设计驱动证据”：

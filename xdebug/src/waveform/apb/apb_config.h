@@ -12,6 +12,8 @@ struct ApbConfig {
     std::string pwrite;
     std::string penable;
     std::string psel;
+    std::string pready;
+    std::string pslverr;
     std::string clk;
     std::string rst_n;
     bool posedge = true;

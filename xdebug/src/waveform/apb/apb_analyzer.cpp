@@ -48,6 +48,14 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
         config.rst_n, config.psel, config.penable,
         config.pwrite, config.paddr, config.pwdata, config.prdata
     };
+    const int pready_index = config.pready.empty()
+        ? -1
+        : static_cast<int>(signals.size());
+    if (pready_index >= 0) signals.push_back(config.pready);
+    const int pslverr_index = config.pslverr.empty()
+        ? -1
+        : static_cast<int>(signals.size());
+    if (pslverr_index >= 0) signals.push_back(config.pslverr);
     std::vector<npiFsdbSigHandle> sig_handles;
     sig_handles.reserve(signals.size());
     for (const auto& signal : signals) {
@@ -57,6 +65,7 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
     }
 
     ApbResult result;
+    bool completion_seen = false;
 
     auto process_edge = [&](npiFsdbTime t, const std::vector<std::string>& values) {
         if (values.size() < 7) return;
@@ -71,15 +80,27 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
 
         // Check rst_n == 1
         if (rst_n_val.empty() || rst_n_val == "0" || rst_n_val == "X" || rst_n_val == "Z") {
+            completion_seen = false;
             return;
         }
         // Check psel == 1
         if (psel_val.empty() || psel_val == "0" || psel_val == "X" || psel_val == "Z") {
+            completion_seen = false;
             return;
         }
         // Check penable == 1
         if (penable_val.empty() || penable_val == "0" || penable_val == "X" || penable_val == "Z") {
+            completion_seen = false;
             return;
+        }
+        if (pready_index >= 0) {
+            const std::string& pready_val = values[static_cast<size_t>(pready_index)];
+            if (pready_val.empty() || pready_val == "0" ||
+                pready_val == "X" || pready_val == "Z") {
+                return;
+            }
+            if (completion_seen) return;
+            completion_seen = true;
         }
 
         bool is_write = !(pwrite_val.empty() || pwrite_val == "0" || pwrite_val == "X" || pwrite_val == "Z");
@@ -89,6 +110,12 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
         txn.addr = paddr_val;
         txn.data = is_write ? pwdata_val : prdata_val;
         txn.is_write = is_write;
+        if (pslverr_index >= 0) {
+            const std::string& pslverr_val =
+                values[static_cast<size_t>(pslverr_index)];
+            txn.has_error = !(pslverr_val.empty() || pslverr_val == "0" ||
+                              pslverr_val == "X" || pslverr_val == "Z");
+        }
 
         result.all.push_back(txn);
         if (is_write) {

@@ -204,6 +204,7 @@ Json apb_txn_to_json(const xdebug_waveform::ApbTransaction* txn, bool include_ty
     if (include_type) j["type"] = txn->is_write ? "WR" : "RD";
     j["addr"] = "'h" + txn->addr;
     j["data"] = "'h" + txn->data;
+    j["has_error"] = txn->has_error;
     return j;
 }
 

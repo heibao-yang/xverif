@@ -13,6 +13,7 @@ struct ApbTransaction {
     std::string addr;
     std::string data;
     bool is_write;
+    bool has_error = false;
 };
 
 struct ApbContextTransaction {

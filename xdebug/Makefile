@@ -139,7 +139,7 @@ ENGINE_OBJS = $(ENGINE_SRCS:%.cpp=$(BUILD)/%.o)
 DESIGN_OBJS = $(DESIGN_SRCS:%.cpp=$(BUILD)/%.o)
 WAVEFORM_OBJS = $(WAVEFORM_SRCS:%.cpp=$(BUILD)/%.o)
 
-.PHONY: all internal-engines unit-test test-infra pytest-contract pytest-synthetic-existing pytest-axi-vip pytest-session pytest-mcp test-fast mcp-test schema-test contract-test combined-test clean
+.PHONY: all internal-engines unit-test test-infra pytest-contract pytest-synthetic-existing pytest-axi-vip pytest-apb-vip pytest-session pytest-mcp test-fast mcp-test schema-test contract-test combined-test clean
 
 all: $(EXE) internal-engines
 
@@ -190,6 +190,9 @@ pytest-synthetic-existing: all
 
 pytest-axi-vip: all
 	$(PYTHON) -m pytest -c tests/pytest.ini -q tests/synthetic/test_axi_vip_real.py
+
+pytest-apb-vip: all
+	$(PYTHON) -m pytest -c tests/pytest.ini -q tests/synthetic/test_apb_vip_real.py
 
 pytest-session: all
 	$(PYTHON) -m pytest -c tests/pytest.ini -q tests/session
