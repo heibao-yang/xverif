@@ -63,5 +63,62 @@ int main() {
     assert(catalog.get("combined", record));
     assert(record.mode == "combined");
     assert(!catalog.get("stale", record));
+
+    // Corrupt registry content must behave like an empty registry rather than
+    // surfacing partial data or crashing target resolution.
+    std::ofstream corrupt((engine_home + "/registry.json").c_str());
+    corrupt << R"JSON({"sessions": [)JSON";
+    corrupt.close();
+    assert(catalog.list().empty());
+    assert(!catalog.get("wave", record));
+
+    // Invalid records are skipped individually. A valid record after malformed
+    // or incomplete entries must still be discoverable.
+    std::ofstream mixed((engine_home + "/registry.json").c_str());
+    mixed << R"JSON({
+  "sessions": [
+    "not-an-object",
+    {"session_id": "", "fsdb_file": "/tmp/missing-id.fsdb"},
+    {"session_id": "missing-resource"},
+    {"session_id": "legacy-design-file", "design_file": "/tmp/legacy.daidir"},
+    {
+      "session_id": "file-transport",
+      "fsdb_file": "/tmp/file.fsdb",
+      "transport": "file",
+      "file_dir": "/tmp/xdebug-file-transport"
+    },
+    {
+      "session_id": "tcp-transport",
+      "dbdir_path": "/tmp/tcp.daidir",
+      "transport": "tcp",
+      "host": "launcher",
+      "bind_host": "127.0.0.1",
+      "port": 43123,
+      "server_host": "worker"
+    }
+  ]
+})JSON";
+    mixed.close();
+    records = catalog.list();
+    assert(records.size() == 3);
+    assert(!catalog.get("missing-resource", record));
+
+    assert(catalog.get("legacy-design-file", record));
+    assert(record.mode == "design");
+    assert(record.daidir == "/tmp/legacy.daidir");
+    assert(record.transport == "uds");
+
+    assert(catalog.get("file-transport", record));
+    assert(record.mode == "waveform");
+    assert(record.transport == "file");
+    assert(record.file_dir == "/tmp/xdebug-file-transport");
+
+    assert(catalog.get("tcp-transport", record));
+    assert(record.mode == "design");
+    assert(record.transport == "tcp");
+    assert(record.host == "launcher");
+    assert(record.bind_host == "127.0.0.1");
+    assert(record.port == 43123);
+    assert(record.server_host == "worker");
     return 0;
 }
