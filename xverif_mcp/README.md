@@ -231,6 +231,7 @@ AI MCP client
 | `XVERIF_MCP_REQUEST_TIMEOUT_SEC` | query 请求超时（默认 360s） |
 | `XVERIF_MCP_CLOSE_TIMEOUT_SEC` | session close 超时（默认 30s） |
 | `XVERIF_MCP_BKILL_TIMEOUT_SEC` | bkill 超时（默认 30s） |
+| `XVERIF_MCP_LOG_DIR` | MCP structured log 根目录，默认 `~/.xverif/mcp` |
 | `XVERIF_MCP_ENABLE_WRITE=1` | 启用 xberif 写入操作 |
 | `XVERIF_MCP_ENABLE_COMMON` | 暴露 common 工具，默认 `1` |
 | `XVERIF_MCP_ENABLE_DEBUG` | 暴露 xdebug/session 工具，默认 `1` |
@@ -252,6 +253,17 @@ AI MCP client
 | `XVERIF_MCP_FAKE_LSF=1` | 本地测试用 fake LSF runner |
 | `VERDI_HOME` | Verdi 安装目录 |
 | `LD_LIBRARY_PATH` | 需包含 `<verdi-install>/share/NPI/lib/LINUX64` |
+
+xdebug/xcov stateful session 会写结构化 MCP 日志：
+
+- server：`~/.xverif/mcp/logs/server.ndjson`
+- session lifecycle：`~/.xverif/mcp/sessions/<alias>/session.ndjson`
+- stdio-loop protocol：`~/.xverif/mcp/sessions/<alias>/stdio.ndjson`
+- LSF launcher / job / cleanup：`~/.xverif/mcp/sessions/<alias>/lsf.ndjson`
+
+当 open/query 返回 `SESSION_LOST`、ready timeout、stdout pollution、fake/real LSF
+启动失败或 cleanup 失败时，优先读这些日志；事件会包含 alias、backend、launcher、
+pid、job_id/job_name、request_id、stderr_tail 和 cleanup 结果。
 
 xdebug session 工具使用明确前缀：
 

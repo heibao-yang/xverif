@@ -831,20 +831,44 @@ xdebug 默认静默记录结构化日志。日志只写文件，不打印到 std
 主要位置：
 
 - public action：`~/.xdebug/sessions/<session_id>/logs/actions.ndjson`
+- stdio-loop 协议：`~/.xdebug/sessions/<session_id>/logs/stdio.ndjson`
 - 无 session 或解析失败：`~/.xdebug/sessions/adhoc/logs/actions.ndjson`
-- 设计后端生命周期：`~/.xdebug/design/sessions/<hashed-session>/logs/lifecycle.ndjson`
-- 波形后端生命周期：`~/.xdebug/waveform/sessions/<hashed-session>/logs/lifecycle.ndjson`
-- 后端连接与请求：`~/.xdebug/{design,waveform}/sessions/<hashed-session>/logs/transport.ndjson`
-- 旧有 daemon debug 文本：`~/.xdebug/{design,waveform}/sessions/<hashed-session>/debug.log`
+- engine lifecycle：`~/.xdebug/engine/sessions/<hashed-session>/logs/lifecycle.ndjson`
+- engine transport：`~/.xdebug/engine/sessions/<hashed-session>/logs/transport.ndjson`
+- engine crash marker：`~/.xdebug/engine/sessions/<hashed-session>/logs/crash_marker.ndjson`
+- log health：各 `logs/` 目录下的 `log_health.ndjson`
+- MCP session：`~/.xverif/mcp/sessions/<alias>/session.ndjson`
+- MCP stdio：`~/.xverif/mcp/sessions/<alias>/stdio.ndjson`
+- MCP LSF：`~/.xverif/mcp/sessions/<alias>/lsf.ndjson`
 
-每行都是一个 JSON event，常见字段包括 `ts`、`event_id`、`layer`、`component`、`session_id`、`action`、`phase`、`elapsed_ms`、`ok`、`context`。成功 action 默认只记录摘要、路由、耗时和 `summary/meta`；失败 action 会额外记录裁剪后的 request/response。
+每行都是一个 JSON event，常见字段包括 `ts`、`event_id`、`trace_id`、`request_id`、`layer`、`component`、`session_id`、`action`、`phase`、`elapsed_ms`、`ok`、`context`。成功 action 默认只记录摘要、路由、耗时和 `summary/meta`；失败 action 会额外记录裁剪后的 request/response。超大 compact payload 会写入 `logs/*_payload/` sidecar，主日志保留路径和 hash。
+
+辅助命令：
+
+```bash
+xdebug log doctor --session <id> --json
+xdebug log tail --session <id> --lines 40
+xdebug log bundle --session <id> --out debug_bundle.tgz
+```
+
+可选环境变量：
+
+- `XDEBUG_LOG_MAX_BYTES` / `XDEBUG_LOG_MAX_FILES`：启用单文件大小滚动。
+- `XVERIF_MCP_LOG_DIR`：覆盖 MCP structured log 根目录，默认 `~/.xverif/mcp`。
 
 定位工具问题时推荐顺序：
 
 1. 先看 public `actions.ndjson`，确认 action、session、路由和最终 error。
-2. 如果是 `session.open`、`SESSION_UNHEALTHY` 或 `INTERNAL_ENGINE_FAILED`，再看后端 `lifecycle.ndjson`。
-3. 如果怀疑 socket/TCP/ping/daemon 连接问题，看 `transport.ndjson`。
-4. 如果卡在 Verdi/NPI 初始化或 daemon bind/listen，结合 `lifecycle.ndjson` 和 `debug.log`。
+2. 如果 stdout 协议、ready 前退出、invalid JSON 或 MCP envelope 异常，看 `stdio.ndjson`。
+3. 如果是 `session.open`、`SESSION_UNHEALTHY` 或 `INTERNAL_ENGINE_FAILED`，再看 engine `lifecycle.ndjson`。
+4. 如果怀疑 socket/TCP/ping/daemon 连接问题，看 `transport.ndjson`。
+5. 如果是 MCP/LSF 启动、ready timeout、stdout pollution 或 cleanup 问题，看 `~/.xverif/mcp/sessions/<alias>/*.ndjson`。
+
+日志相关快速回归入口：
+
+```bash
+make -C xdebug log-test
+```
 
 ## 参考文档
 

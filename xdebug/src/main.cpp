@@ -5,13 +5,17 @@
 #include "api/stdio_loop.h"
 #include "api/xout_renderer.h"
 #include "logging/action_log.h"
+#include "process/process_runner.h"
 
+#include <deque>
 #include <fstream>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
 #include <unistd.h>
+#include <vector>
 
 namespace {
 
@@ -56,6 +60,155 @@ std::string executable_dir() {
     return slash == std::string::npos ? "." : full.substr(0, slash);
 }
 
+std::string parent_dir(const std::string& path) {
+    size_t slash = path.rfind('/');
+    if (slash == std::string::npos) return ".";
+    if (slash == 0) return "/";
+    return path.substr(0, slash);
+}
+
+bool file_exists(const std::string& path) {
+    struct stat st;
+    return stat(path.c_str(), &st) == 0;
+}
+
+long long file_size(const std::string& path) {
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0) return -1;
+    return static_cast<long long>(st.st_size);
+}
+
+std::string xdebug_home_from_session(const std::string& session_id) {
+    std::string public_dir = xdebug_core::public_session_dir(session_id);
+    return parent_dir(parent_dir(public_dir));
+}
+
+std::string component_session_dir(const std::string& component, const std::string& session_id) {
+    return parent_dir(parent_dir(xdebug_core::component_log_path(component, session_id, "lifecycle")));
+}
+
+xdebug::Json log_paths_for_session(const std::string& session_id) {
+    xdebug::Json paths;
+    paths["public_session"] = xdebug_core::public_session_dir(session_id);
+    paths["public_actions"] = xdebug_core::public_action_log_path(session_id);
+    paths["public_stdio"] = xdebug_core::public_stdio_log_path(session_id);
+    paths["engine_session"] = component_session_dir("engine", session_id);
+    paths["engine_lifecycle"] = xdebug_core::component_log_path("engine", session_id, "lifecycle");
+    paths["engine_transport"] = xdebug_core::component_log_path("engine", session_id, "transport");
+    paths["engine_crash_marker"] = xdebug_core::component_log_path("engine", session_id, "crash_marker");
+    paths["engine_log_health"] = parent_dir(paths["engine_lifecycle"].get<std::string>()) + "/log_health.ndjson";
+    paths["public_log_health"] = parent_dir(paths["public_actions"].get<std::string>()) + "/log_health.ndjson";
+    return paths;
+}
+
+xdebug::Json log_doctor_response(const std::string& session_id) {
+    xdebug::Json response;
+    response["ok"] = true;
+    response["action"] = "log.doctor";
+    response["summary"] = {{"session_id", session_id}};
+    xdebug::Json paths = log_paths_for_session(session_id);
+    xdebug::Json rows = xdebug::Json::array();
+    for (auto it = paths.begin(); it != paths.end(); ++it) {
+        std::string path = it.value().get<std::string>();
+        rows.push_back({{"name", it.key()}, {"path", path}, {"exists", file_exists(path)}, {"bytes", file_size(path)}});
+    }
+    response["data"] = {{"logs", rows}};
+    return response;
+}
+
+void print_log_tail_file(const std::string& name, const std::string& path, int lines) {
+    std::ifstream in(path.c_str());
+    if (!in) return;
+    std::deque<std::string> tail;
+    std::string line;
+    while (std::getline(in, line)) {
+        tail.push_back(line);
+        while (static_cast<int>(tail.size()) > lines) tail.pop_front();
+    }
+    if (tail.empty()) return;
+    std::cout << "== " << name << " " << path << " ==\n";
+    for (const auto& item : tail) std::cout << item << "\n";
+}
+
+int run_log_tail(const std::string& session_id, int lines) {
+    xdebug::Json paths = log_paths_for_session(session_id);
+    for (const char* name : {"public_actions", "public_stdio", "engine_lifecycle", "engine_transport", "engine_crash_marker"}) {
+        print_log_tail_file(name, paths[name].get<std::string>(), lines);
+    }
+    return 0;
+}
+
+int run_log_bundle(const std::string& session_id, const std::string& out_path) {
+    std::string home = xdebug_home_from_session(session_id);
+    xdebug::Json paths = log_paths_for_session(session_id);
+    std::vector<std::string> rels;
+    for (const char* name : {"public_session", "engine_session"}) {
+        std::string path = paths[name].get<std::string>();
+        if (file_exists(path) && path.compare(0, home.size() + 1, home + "/") == 0) {
+            rels.push_back(path.substr(home.size() + 1));
+        }
+    }
+    if (rels.empty()) {
+        std::cerr << "no log directories found for session: " << session_id << "\n";
+        return 1;
+    }
+    xdebug::ProcessRequest req;
+    req.executable = "/bin/tar";
+    req.argv.push_back("-czf");
+    req.argv.push_back(out_path);
+    req.argv.push_back("-C");
+    req.argv.push_back(home);
+    for (const auto& rel : rels) req.argv.push_back(rel);
+    req.timeout_ms = 30000;
+    xdebug::ProcessResult result = xdebug::ProcessRunner().run(req);
+    if (result.exit_code != 0) {
+        std::cerr << result.stderr_text;
+        return result.exit_code == 0 ? 1 : result.exit_code;
+    }
+    std::cout << out_path << "\n";
+    return 0;
+}
+
+int run_log_command(int argc, char** argv, OutputFormat format) {
+    if (argc < 3) {
+        std::cerr << "usage: xdebug log tail|doctor|bundle --session <id> [--lines N] [--out file]\n";
+        return 1;
+    }
+    std::string sub(argv[2]);
+    std::string session_id;
+    std::string out_path;
+    int lines = 40;
+    for (int i = 3; i < argc; ++i) {
+        std::string arg(argv[i]);
+        if (arg == "--session" && i + 1 < argc) session_id = argv[++i];
+        else if (arg == "--out" && i + 1 < argc) out_path = argv[++i];
+        else if (arg == "--lines" && i + 1 < argc) lines = std::atoi(argv[++i]);
+        else if (arg == "--json") format = OutputFormat::Json;
+        else {
+            std::cerr << "unknown log argument: " << arg << "\n";
+            return 1;
+        }
+    }
+    if (session_id.empty()) {
+        std::cerr << "missing --session\n";
+        return 1;
+    }
+    if (sub == "doctor") {
+        print_response(log_doctor_response(session_id), format);
+        return 0;
+    }
+    if (sub == "tail") return run_log_tail(session_id, lines <= 0 ? 40 : lines);
+    if (sub == "bundle") {
+        if (out_path.empty()) {
+            std::cerr << "missing --out\n";
+            return 1;
+        }
+        return run_log_bundle(session_id, out_path);
+    }
+    std::cerr << "unknown log subcommand: " << sub << "\n";
+    return 1;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -69,6 +222,9 @@ int main(int argc, char** argv) {
 
     CliOptions options;
     options.format = env_wants_json() ? OutputFormat::Json : OutputFormat::Xout;
+    if (argc >= 2 && std::string(argv[1]) == "log") {
+        return run_log_command(argc, argv, options.format);
+    }
     bool stdio_loop = false;
     for (int i = 1; i < argc; ++i) {
         std::string arg(argv[i]);

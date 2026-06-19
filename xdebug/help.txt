@@ -268,19 +268,32 @@ Logs and troubleshooting
 
   Public action logs:
       ~/.xdebug/sessions/<session_prefix>_<hash>/logs/actions.ndjson
+      ~/.xdebug/sessions/<session_prefix>_<hash>/logs/stdio.ndjson
 
-  Backend logs:
-      ~/.xdebug/design/sessions/<hashed-session>/logs/lifecycle.ndjson
-      ~/.xdebug/waveform/sessions/<hashed-session>/logs/lifecycle.ndjson
-      ~/.xdebug/{design,waveform}/sessions/<hashed-session>/logs/transport.ndjson
-      debug.log in the backend session directory
+  Engine logs:
+      ~/.xdebug/engine/sessions/<hashed-session>/logs/lifecycle.ndjson
+      ~/.xdebug/engine/sessions/<hashed-session>/logs/transport.ndjson
+      ~/.xdebug/engine/sessions/<hashed-session>/logs/crash_marker.ndjson
+      log_health.ndjson in each logs/ directory
+
+  MCP direct/LSF logs:
+      ~/.xverif/mcp/sessions/<alias>/session.ndjson
+      ~/.xverif/mcp/sessions/<alias>/stdio.ndjson
+      ~/.xverif/mcp/sessions/<alias>/lsf.ndjson
+
+  Helpers:
+      xdebug log doctor --session <id> --json
+      xdebug log tail --session <id> --lines 40
+      xdebug log bundle --session <id> --out debug_bundle.tgz
 
   Troubleshooting order:
       1. Check public actions.ndjson for action, routing, elapsed_ms and error.
-      2. Check lifecycle.ndjson for startup, NPI init, design load, FSDB open,
+      2. Check stdio.ndjson for ready, invalid JSON, validate failure and EOF.
+      3. Check lifecycle.ndjson for startup, NPI init, design load, FSDB open,
          daemon ready, timeout, refresh and restart events.
-      3. Check transport.ndjson for connect, ping, write, read and timeout.
-      4. Check debug.log and Verdi/license environment for low-level failures.
+      4. Check transport.ndjson for connect, ping, write, read and timeout.
+      5. Check MCP session/stdio/lsf logs for ready timeout, stdout pollution,
+         job id, stderr_tail and cleanup.
 
 Docs
 ----

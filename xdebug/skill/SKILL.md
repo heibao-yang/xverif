@@ -340,9 +340,11 @@ config 对象需要哪些字段只能从实际代码中推测。APB: `pclk, pres
 - `SIGNAL_NOT_FOUND`：波形侧先 `scope.list`；设计侧先外部 `rg` 搜源码候选，再重试 exact path。
 - `TIME_SPEC_INVALID`：检查 `time`、`at`、`time_range`、cursor 名和 clock path；cycle offset 交给 xdebug 解析。
 - `SESSION_NOT_FOUND`：先 `session.list`，确认后用合法新 name `session.open`。
-- `SESSION_UNHEALTHY`：跑 `session.doctor`；看 lifecycle/transport logs。
+- `SESSION_UNHEALTHY`：跑 `session.doctor`；看 public actions、stdio、engine lifecycle/transport logs。
 - `UNKNOWN_ACTION`：查 `actions`；不要回退旧 CLI；combined 生效驱动是 `trace.active_driver`。
 - `INTERNAL_ENGINE_FAILED`：检查资源路径、权限、Verdi/NPI 环境、daemon 工作目录和日志。
+- MCP/LSF ready timeout、stdout pollution、job 启动或 cleanup 问题：看 `~/.xverif/mcp/sessions/<alias>/session.ndjson`、`stdio.ndjson`、`lsf.ndjson`。
+- 快速收集日志：`xdebug log doctor --session <id> --json`、`xdebug log tail --session <id>`、`xdebug log bundle --session <id> --out debug_bundle.tgz`。
 
 ## 最终回答证据链格式
 

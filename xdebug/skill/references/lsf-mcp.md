@@ -48,6 +48,7 @@ LSF 和 direct 共用 `XdebugLoopSession`，区别仅在于进程启动方式：
 | `XVERIF_LSF_BSUB` | bsub 命令 | `bsub` |
 | `XVERIF_LSF_SESSION_QUEUE` | session job 队列 | `interactive` |
 | `XVERIF_LSF_BKILL` | bkill 命令 | `bkill` |
+| `XVERIF_MCP_LOG_DIR` | MCP structured log 根目录 | `~/.xverif/mcp` |
 | `XVERIF_MCP_FAKE_LSF` | 设为 `1` 使用 fake bsub（本地测试） | — |
 
 ## 生命周期
@@ -78,3 +79,11 @@ PYTHONPATH=xverif_mcp/src python -m xverif_mcp.lsf.doctor
 PYTHONPATH=xverif_mcp/src XVERIF_MCP_BACKEND=lsf XVERIF_MCP_FAKE_LSF=1 \
   python xverif_mcp/tools/test_actions.py
 ```
+
+LSF/MCP structured logs：
+
+- `~/.xverif/mcp/sessions/<alias>/session.ndjson`：open/query/abort/close/evict。
+- `~/.xverif/mcp/sessions/<alias>/stdio.ndjson`：ready、request/response、stdout pollution、timeout、stderr_tail。
+- `~/.xverif/mcp/sessions/<alias>/lsf.ndjson`：bsub argv hash、queue/resource、job id、bkill cleanup。
+
+当 `SESSION_LOST`、ready timeout、stdout pollution 或 cleanup 失败时，优先读这些日志。
