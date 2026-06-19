@@ -5,7 +5,7 @@ import signal
 import subprocess
 import time
 from pathlib import Path
-from typing import Mapping, Optional, Sequence
+from typing import List, Mapping, Optional, Sequence
 
 from .cli import RunResult
 from .normalize import normalize_response
@@ -22,6 +22,7 @@ class CommandRunner:
     ) -> None:
         self.cwd = Path(cwd or Path.cwd())
         self.base_env = dict(base_env or {})
+        self.history: List[RunResult] = []
 
     def run(
         self,
@@ -76,7 +77,7 @@ class CommandRunner:
         details = dict(metadata or {})
         details["timeout_sec"] = timeout_sec
         details["mode"] = "command"
-        return RunResult(
+        result = RunResult(
             command=argv,
             cwd=run_cwd,
             env=run_env,
@@ -90,3 +91,5 @@ class CommandRunner:
             normalized_response=normalize_response(response),
             metadata=details,
         )
+        self.history.append(result)
+        return result

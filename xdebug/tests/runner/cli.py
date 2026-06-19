@@ -71,6 +71,7 @@ class CliRunner:
         self.cwd = Path(cwd or Path.cwd())
         self.base_env = dict(base_env or {})
         self.normalize_options = normalize_options or NormalizeOptions()
+        self.history: List[RunResult] = []
 
     def run(
         self,
@@ -166,7 +167,7 @@ class CliRunner:
         if request_file is not None:
             metadata["request_file_mode"] = True
 
-        return RunResult(
+        result = RunResult(
             command=command,
             cwd=run_cwd,
             env=run_env,
@@ -180,3 +181,5 @@ class CliRunner:
             normalized_response=normalized,
             metadata=metadata,
         )
+        self.history.append(result)
+        return result

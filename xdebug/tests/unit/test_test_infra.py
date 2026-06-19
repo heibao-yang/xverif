@@ -302,3 +302,25 @@ def test_command_runner_success_and_timeout(tmp_path: Path) -> None:
     )
     assert timeout.timed_out
     assert timeout.returncode == -1
+
+
+@pytest.mark.unit
+def test_runners_record_history_for_failure_artifacts(tmp_path: Path) -> None:
+    cli = CliRunner(_fake_xdebug(tmp_path), cwd=tmp_path)
+    cli_result = cli.run({"api_version": "xdebug.v1", "action": "actions"})
+    assert cli.history == [cli_result]
+
+    command = CommandRunner(cwd=tmp_path)
+    command_result = command.run(
+        [sys.executable, "-c", "print('history-ok')"],
+        timeout_sec=5,
+    )
+    assert command.history == [command_result]
+
+    loop = StdioLoopRunner(_fake_xdebug(tmp_path), cwd=tmp_path)
+    loop.start()
+    try:
+        loop_result = loop.request({"api_version": "xdebug.v1", "action": "actions"})
+        assert loop.history == [loop_result]
+    finally:
+        loop.terminate()

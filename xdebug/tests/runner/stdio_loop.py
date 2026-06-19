@@ -47,6 +47,7 @@ class StdioLoopRunner:
         self.stdout_queue: "queue.Queue[str]" = queue.Queue()
         self.stderr_tail: Deque[str] = deque(maxlen=4096)
         self.transcript: list[Json] = []
+        self.history: list[RunResult] = []
         self._stdout_thread: Optional[threading.Thread] = None
         self._stderr_thread: Optional[threading.Thread] = None
         self._seq = 0
@@ -158,7 +159,7 @@ class StdioLoopRunner:
                 # A timed-out JSONL stream is no longer safely correlated:
                 # the late response could be mistaken for the next request.
                 self.terminate()
-            return RunResult(
+            result = RunResult(
                 command=list(self.command),
                 cwd=self.cwd,
                 env=dict(self.env),
@@ -172,6 +173,8 @@ class StdioLoopRunner:
                 normalized_response=None,
                 metadata={"mode": "stdio-loop", "request_id": request_id},
             )
+            self.history.append(result)
+            return result
 
         elapsed_ms = int((time.monotonic() - start) * 1000)
         if envelope.get("id") != request_id:
@@ -189,7 +192,7 @@ class StdioLoopRunner:
         else:
             response = envelope
             stdout_raw = json.dumps(envelope, ensure_ascii=False)
-        return RunResult(
+        result = RunResult(
             command=list(self.command),
             cwd=self.cwd,
             env=dict(self.env),
@@ -209,6 +212,8 @@ class StdioLoopRunner:
                 "payload_format": payload_format,
             },
         )
+        self.history.append(result)
+        return result
 
     def send_raw(self, line: str, timeout_sec: float = 5.0) -> Json:
         """Send one protocol line verbatim for malformed/edge-case tests."""
