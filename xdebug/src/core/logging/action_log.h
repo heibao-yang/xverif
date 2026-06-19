@@ -10,6 +10,7 @@ using Json = nlohmann::json;
 
 std::string public_session_dir(const std::string& session_id);
 std::string public_action_log_path(const std::string& session_id);
+std::string public_stdio_log_path(const std::string& session_id);
 std::string component_log_path(const std::string& component,
                                const std::string& session_id,
                                const std::string& log_name);
@@ -43,5 +44,10 @@ void log_transport_event(const std::string& component,
                          const std::string& phase,
                          bool ok,
                          const Json& context = Json::object());
+
+void log_stdio_event(const std::string& session_id,
+                     const std::string& phase,
+                     bool ok,
+                     const Json& context = Json::object());
 
 } // namespace xdebug_core

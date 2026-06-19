@@ -42,6 +42,28 @@ def _write_registry_session(isolated_home: Path, record: dict) -> None:
     path.write_text(json.dumps({"sessions": [record]}, indent=2), encoding="utf-8")
 
 
+def _read_ndjson(path: Path) -> list[dict]:
+    assert path.exists(), path
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            rows.append(json.loads(line))
+    return rows
+
+
+def _engine_transport_events(isolated_home: Path, session_prefix: str) -> list[dict]:
+    matches = sorted(
+        (isolated_home / ".xdebug" / "engine" / "sessions").glob(
+            f"{session_prefix}_*/logs/transport.ndjson"
+        )
+    )
+    assert matches, f"missing engine transport log for {session_prefix}"
+    rows: list[dict] = []
+    for path in matches:
+        rows.extend(_read_ndjson(path))
+    return rows
+
+
 @pytest.fixture
 def resource_targets(xdebug_root: Path):
     return {
@@ -393,6 +415,17 @@ def test_session_uds_direct_query_times_out_without_spawn_fallback(
         assert result.response["summary"]["transport"] == "uds"
         assert result.response["summary"]["timeout_ms"] == 100
         assert elapsed < 2.0
+
+        events = _engine_transport_events(isolated_home, "hung_uds")
+        phases = [event["phase"] for event in events]
+        assert "socket.connect.begin" in phases
+        assert "socket.connect.ok" in phases
+        assert "socket.read.timeout" in phases
+        timeout_event = next(event for event in events if event["phase"] == "socket.read.timeout")
+        assert timeout_event["session_id"] == "hung_uds"
+        assert timeout_event["action"] == "value.at"
+        assert timeout_event["context"]["socket_path"] == str(socket_path)
+        assert timeout_event["context"]["timeout_ms"] == 100
     finally:
         stop.set()
         thread.join(timeout=2.0)

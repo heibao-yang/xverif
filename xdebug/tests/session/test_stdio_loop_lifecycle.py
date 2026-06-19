@@ -1,10 +1,29 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
 from runner import StdioLoopRunner
+
+
+def _read_ndjson(path: Path) -> list[dict]:
+    assert path.exists(), path
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            rows.append(json.loads(line))
+    return rows
+
+
+def _stdio_events(home: Path, session_prefix: str = "adhoc") -> list[dict]:
+    matches = sorted((home / ".xdebug" / "sessions").glob(f"{session_prefix}_*/logs/stdio.ndjson"))
+    assert matches, f"missing stdio.ndjson for {session_prefix}"
+    rows: list[dict] = []
+    for path in matches:
+        rows.extend(_read_ndjson(path))
+    return rows
 
 
 @pytest.fixture
@@ -25,6 +44,7 @@ def stdio_loop(xdebug_bin, repo_root, isolated_home):
 @pytest.mark.stdio_loop
 def test_stdio_loop_recovers_after_blank_malformed_and_invalid_request(
     stdio_loop: StdioLoopRunner,
+    isolated_home: Path,
 ) -> None:
     assert stdio_loop.proc is not None and stdio_loop.proc.stdin is not None
     stdio_loop.proc.stdin.write("\n")
@@ -56,6 +76,18 @@ def test_stdio_loop_recovers_after_blank_malformed_and_invalid_request(
     assert recovered.ok
     assert recovered.envelope["id"] == "after-errors"
     assert recovered.envelope["payload_format"] == "json"
+
+    events = _stdio_events(isolated_home)
+    phases = [event["phase"] for event in events]
+    assert "loop.ready" in phases
+    assert "loop.invalid_json" in phases
+    assert "loop.validate_failed" in phases
+    assert "request.begin" in phases
+    assert "request.end" in phases
+    invalid = next(event for event in events if event["phase"] == "loop.invalid_json")
+    assert invalid["request_id"].startswith("req-")
+    validate = next(event for event in events if event["phase"] == "loop.validate_failed")
+    assert validate["request_id"] == "bad-version"
 
 
 @pytest.mark.session
@@ -102,12 +134,15 @@ def test_stdio_loop_multiple_requests_keep_ids_and_output_modes(
 @pytest.mark.stdio_loop
 def test_stdio_loop_quit_closes_process_cleanly(
     stdio_loop: StdioLoopRunner,
+    isolated_home: Path,
 ) -> None:
     result = stdio_loop.quit()
     assert result is not None and result.ok
     assert result.envelope["json"]["action"] == "stdio.quit"
     assert stdio_loop.proc is not None
     assert stdio_loop.proc.poll() == 0
+    events = _stdio_events(isolated_home)
+    assert any(event["phase"] == "loop.quit" for event in events)
 
 
 @pytest.mark.session

@@ -54,6 +54,40 @@ bool is_socket_timeout_errno(int err) {
     return err == EAGAIN || err == EWOULDBLOCK || err == EINPROGRESS;
 }
 
+long long elapsed_ms_since(std::chrono::steady_clock::time_point begin) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - begin).count();
+}
+
+Json transport_context(const Json& request,
+                       const std::string& phase,
+                       const std::string& session_id,
+                       const std::string& socket_path,
+                       int timeout_ms) {
+    Json ctx = {
+        {"phase", phase},
+        {"session_id", session_id},
+        {"action", request.value("action", std::string())},
+        {"request", xdebug_core::request_summary_for_log(request)}
+    };
+    if (!socket_path.empty()) ctx["socket_path"] = socket_path;
+    if (timeout_ms >= 0) ctx["timeout_ms"] = timeout_ms;
+    Json summary = xdebug_core::request_summary_for_log(request);
+    if (summary.contains("trace_id")) ctx["trace_id"] = summary["trace_id"];
+    if (summary.contains("request_id")) ctx["request_id"] = summary["request_id"];
+    if (summary.contains("span_id")) ctx["span_id"] = summary["span_id"];
+    if (summary.contains("parent_span_id")) ctx["parent_span_id"] = summary["parent_span_id"];
+    return ctx;
+}
+
+void log_engine_transport(const std::string& session_id,
+                          const std::string& phase,
+                          bool ok,
+                          Json context) {
+    context["transport_phase"] = phase;
+    xdebug_core::log_transport_event("engine", session_id, phase, ok, context);
+}
+
 void set_socket_timeout(int fd, int timeout_ms) {
     if (timeout_ms <= 0) return;
     struct timeval tv;
@@ -256,15 +290,32 @@ Json Dispatcher::handle_engine_forward(const Json& request, const ActionSpec& sp
             return make_error(request, spec.name, "SESSION_NOT_FOUND", "session not found: " + sid);
         }
         if (!record.transport.empty() && record.transport != "uds") {
-            return forward_action(routed);
+            Json ctx = transport_context(routed, "fallback.invoke.begin", sid, "", request_timeout_ms(routed));
+            ctx["transport"] = record.transport;
+            log_engine_transport(sid, "fallback.invoke.begin", true, ctx);
+            auto begin = std::chrono::steady_clock::now();
+            Json response = forward_action(routed);
+            Json end_ctx = transport_context(routed, "fallback.invoke.end", sid, "", request_timeout_ms(routed));
+            end_ctx["transport"] = record.transport;
+            end_ctx["elapsed_ms"] = elapsed_ms_since(begin);
+            end_ctx["response"] = xdebug_core::response_summary_for_log(response);
+            log_engine_transport(sid, "fallback.invoke.end", response.value("ok", false), end_ctx);
+            return response;
         }
         if (record.socket_path.empty()) return direct_socket_failed_error(request, spec.name, record);
         Json response;
-        if (send_to_socket(record.socket_path, routed, response)) return response;
+        if (send_to_socket(sid, record.socket_path, routed, response)) return response;
         return direct_socket_failed_error(request, spec.name, record);
     }
 
+    Json ctx = transport_context(routed, "fallback.invoke.begin", request_log_session_id(routed), "", request_timeout_ms(routed));
+    log_engine_transport(request_log_session_id(routed), "fallback.invoke.begin", true, ctx);
+    auto begin = std::chrono::steady_clock::now();
     Json response = forward_action(routed);
+    Json end_ctx = transport_context(routed, "fallback.invoke.end", request_log_session_id(routed, response), "", request_timeout_ms(routed));
+    end_ctx["elapsed_ms"] = elapsed_ms_since(begin);
+    end_ctx["response"] = xdebug_core::response_summary_for_log(response);
+    log_engine_transport(request_log_session_id(routed, response), "fallback.invoke.end", response.value("ok", false), end_ctx);
     return response;
 }
 
@@ -513,13 +564,24 @@ Json Dispatcher::dispatch(const Json& request) {
     return response;
 }
 
-bool Dispatcher::send_to_socket(const std::string& socket_path,
+bool Dispatcher::send_to_socket(const std::string& session_id,
+                                const std::string& socket_path,
                                 const Json& request,
                                 Json& response) const {
     const std::string action = request.value("action", std::string());
     const int timeout_ms = request_timeout_ms(request);
+    auto begin = std::chrono::steady_clock::now();
+    log_engine_transport(session_id, "socket.connect.begin", true,
+                         transport_context(request, "socket.connect.begin", session_id, socket_path, timeout_ms));
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (fd < 0) return false;
+    if (fd < 0) {
+        Json ctx = transport_context(request, "socket.create.failed", session_id, socket_path, timeout_ms);
+        ctx["errno"] = errno;
+        ctx["message"] = strerror(errno);
+        ctx["elapsed_ms"] = elapsed_ms_since(begin);
+        log_engine_transport(session_id, "socket.create.failed", false, ctx);
+        return false;
+    }
     set_socket_timeout(fd, timeout_ms);
 
     struct sockaddr_un addr;
@@ -528,9 +590,18 @@ bool Dispatcher::send_to_socket(const std::string& socket_path,
     strncpy(addr.sun_path, socket_path.c_str(), sizeof(addr.sun_path) - 1);
 
     if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        int err = errno;
         close(fd);
+        Json ctx = transport_context(request, "socket.connect.failed", session_id, socket_path, timeout_ms);
+        ctx["errno"] = err;
+        ctx["message"] = strerror(err);
+        ctx["elapsed_ms"] = elapsed_ms_since(begin);
+        log_engine_transport(session_id, "socket.connect.failed", false, ctx);
         return false;
     }
+    Json connect_ctx = transport_context(request, "socket.connect.ok", session_id, socket_path, timeout_ms);
+    connect_ctx["elapsed_ms"] = elapsed_ms_since(begin);
+    log_engine_transport(session_id, "socket.connect.ok", true, connect_ctx);
 
     // Build internal request for engine server
     Json rpc = request;
@@ -540,10 +611,18 @@ bool Dispatcher::send_to_socket(const std::string& socket_path,
     if (written != static_cast<ssize_t>(wire.size())) {
         int err = errno;
         close(fd);
+        Json ctx = transport_context(request, "socket.write.failed", session_id, socket_path, timeout_ms);
+        ctx["errno"] = err;
+        ctx["message"] = strerror(err);
+        ctx["bytes_expected"] = wire.size();
+        ctx["bytes_written"] = written < 0 ? 0 : written;
+        ctx["elapsed_ms"] = elapsed_ms_since(begin);
         if (is_socket_timeout_errno(err)) {
             response = direct_socket_timeout_error(request, action, socket_path, timeout_ms);
+            log_engine_transport(session_id, "socket.write.timeout", false, ctx);
             return true;
         }
+        log_engine_transport(session_id, "socket.write.failed", false, ctx);
         return false;
     }
 
@@ -555,10 +634,16 @@ bool Dispatcher::send_to_socket(const std::string& socket_path,
         if (n < 0) {
             int err = errno;
             close(fd);
+            Json ctx = transport_context(request, "socket.read.failed", session_id, socket_path, timeout_ms);
+            ctx["errno"] = err;
+            ctx["message"] = strerror(err);
+            ctx["elapsed_ms"] = elapsed_ms_since(begin);
             if (is_socket_timeout_errno(err)) {
                 response = direct_socket_timeout_error(request, action, socket_path, timeout_ms);
+                log_engine_transport(session_id, "socket.read.timeout", false, ctx);
                 return true;
             }
+            log_engine_transport(session_id, "socket.read.failed", false, ctx);
             return false;
         }
         if (n <= 0) break;
@@ -570,6 +655,10 @@ bool Dispatcher::send_to_socket(const std::string& socket_path,
     try {
         engine_resp = Json::parse(line);
     } catch (...) {
+        Json ctx = transport_context(request, "socket.response_parse_failed", session_id, socket_path, timeout_ms);
+        ctx["response_bytes"] = line.size();
+        ctx["elapsed_ms"] = elapsed_ms_since(begin);
+        log_engine_transport(session_id, "socket.response_parse_failed", false, ctx);
         return false;
     }
 
@@ -606,6 +695,10 @@ bool Dispatcher::send_to_socket(const std::string& socket_path,
             if (details.contains("truncated") && details["truncated"].is_boolean())
                 response["meta"] = {{"truncated", details["truncated"].get<bool>()}};
         }
+        Json ctx = transport_context(request, "socket.request.end", session_id, socket_path, timeout_ms);
+        ctx["elapsed_ms"] = elapsed_ms_since(begin);
+        ctx["engine_response"] = xdebug_core::sanitize_for_log(engine_resp);
+        log_engine_transport(session_id, "socket.request.end", false, ctx);
         return true;
     }
 
@@ -624,6 +717,10 @@ bool Dispatcher::send_to_socket(const std::string& socket_path,
     response["data"] = data_payload;
     if (data_payload.contains("truncated") && data_payload["truncated"].is_boolean())
         response["meta"] = {{"truncated", data_payload["truncated"].get<bool>()}};
+    Json ctx = transport_context(request, "socket.request.end", session_id, socket_path, timeout_ms);
+    ctx["elapsed_ms"] = elapsed_ms_since(begin);
+    ctx["response"] = xdebug_core::response_summary_for_log(response);
+    log_engine_transport(session_id, "socket.request.end", true, ctx);
     return true;
 }
 

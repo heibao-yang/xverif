@@ -47,6 +47,8 @@ static std::string g_host;
 static int g_port = 0;
 static std::string g_auth_token;
 static FILE* g_debug_log = nullptr;
+static int g_crash_fd = -1;
+static char g_crash_prefix[512] = {};
 
 // Unified-engine resource state.
 bool g_has_design = false;
@@ -92,7 +94,49 @@ static void cleanup_and_exit(int sig) {
     if (strlen(g_sock_path) > 0) unlink(g_sock_path);
     if (g_fsdb_file) { npi_fsdb_close(g_fsdb_file); g_fsdb_file = nullptr; }
     if (g_debug_log) { fclose(g_debug_log); g_debug_log = nullptr; }
+    if (g_crash_fd >= 0) { close(g_crash_fd); g_crash_fd = -1; }
     exit(0);
+}
+
+static void write_const(int fd, const char* s) {
+    if (fd < 0 || !s) return;
+    size_t len = 0;
+    while (s[len] != '\0') len++;
+    while (len > 0) {
+        ssize_t n = write(fd, s, len);
+        if (n <= 0) return;
+        s += n;
+        len -= static_cast<size_t>(n);
+    }
+}
+
+static void write_int(int fd, int value) {
+    char buf[32];
+    size_t i = sizeof(buf);
+    bool neg = value < 0;
+    unsigned int v = neg ? static_cast<unsigned int>(-value) : static_cast<unsigned int>(value);
+    buf[--i] = '\0';
+    do {
+        buf[--i] = static_cast<char>('0' + (v % 10));
+        v /= 10;
+    } while (v > 0 && i > 0);
+    if (neg && i > 0) buf[--i] = '-';
+    write_const(fd, &buf[i]);
+}
+
+static void crash_signal_exit(int sig) {
+    write_const(g_crash_fd, g_crash_prefix);
+    write_const(g_crash_fd, " sig=");
+    write_int(g_crash_fd, sig);
+    write_const(g_crash_fd, "\n");
+    _exit(128 + sig);
+}
+
+static void open_crash_marker() {
+    std::string path = xdebug_core::component_log_path("engine", g_session_id, "crash_marker");
+    g_crash_fd = open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC, 0600);
+    snprintf(g_crash_prefix, sizeof(g_crash_prefix),
+             "signal_exit pid=%d session_id=%s", static_cast<int>(getpid()), g_session_id.c_str());
 }
 
 static void daemonize_io() {
@@ -349,6 +393,7 @@ int server_main(int argc, char** argv) {
     server_debug_log("server_main: parsed session_id=%s argc=%d", g_session_id.c_str(), argc);
     xdebug_core::log_lifecycle_event("engine", g_session_id, "server.start", true,
                                      {{"argc", argc}});
+    open_crash_marker();
 
     std::vector<std::string> design_args;
     std::string fsdb_arg;
@@ -463,8 +508,8 @@ int server_main(int argc, char** argv) {
     // Set up signal handlers
     signal(SIGTERM, cleanup_and_exit);
     signal(SIGINT, cleanup_and_exit);
-    signal(SIGSEGV, cleanup_and_exit);
-    signal(SIGABRT, cleanup_and_exit);
+    signal(SIGSEGV, crash_signal_exit);
+    signal(SIGABRT, crash_signal_exit);
 
     get_sock_path(g_sock_path, g_session_id);
     if (g_transport == "file") {
@@ -475,6 +520,10 @@ int server_main(int argc, char** argv) {
         if (g_debug_log) {
             fclose(g_debug_log);
             g_debug_log = nullptr;
+        }
+        if (g_crash_fd >= 0) {
+            close(g_crash_fd);
+            g_crash_fd = -1;
         }
         return rc;
     }
@@ -607,6 +656,10 @@ int server_main(int argc, char** argv) {
     if (g_debug_log) {
         fclose(g_debug_log);
         g_debug_log = nullptr;
+    }
+    if (g_crash_fd >= 0) {
+        close(g_crash_fd);
+        g_crash_fd = -1;
     }
 
     return 0;
