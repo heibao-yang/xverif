@@ -45,7 +45,7 @@ class StdioLoopRunner:
         self.normalize_options = normalize_options or NormalizeOptions()
         self.proc: Optional[subprocess.Popen[str]] = None
         self.stdout_queue: "queue.Queue[str]" = queue.Queue()
-        self.stderr_tail: Deque[str] = deque(maxlen=500)
+        self.stderr_tail: Deque[str] = deque(maxlen=4096)
         self.transcript: list[Json] = []
         self._stdout_thread: Optional[threading.Thread] = None
         self._stderr_thread: Optional[threading.Thread] = None
@@ -84,6 +84,25 @@ class StdioLoopRunner:
         assert self.proc is not None and self.proc.stderr is not None
         for line in self.proc.stderr:
             self.stderr_tail.append(line.rstrip("\n"))
+
+    def _wait_for_stderr_idle(
+        self,
+        *,
+        idle_sec: float = 0.05,
+        timeout_sec: float = 1.0,
+    ) -> None:
+        deadline = time.monotonic() + timeout_sec
+        stable_since = time.monotonic()
+        last_len = len(self.stderr_tail)
+        while time.monotonic() < deadline:
+            current_len = len(self.stderr_tail)
+            now = time.monotonic()
+            if current_len != last_len:
+                last_len = current_len
+                stable_since = now
+            elif now - stable_since >= idle_sec:
+                return
+            time.sleep(0.01)
 
     def _read_message(self, timeout_sec: float, *, allow_noise: bool = False) -> Json:
         assert self.proc is not None
@@ -129,8 +148,10 @@ class StdioLoopRunner:
             self.proc.stdin.write(encoded + "\n")
             self.proc.stdin.flush()
             envelope = self._read_message(timeout_sec)
+            self._wait_for_stderr_idle()
             timed_out = False
         except StdioLoopError as exc:
+            self._wait_for_stderr_idle()
             timed_out = "timeout" in str(exc).lower()
             elapsed_ms = int((time.monotonic() - start) * 1000)
             if timed_out:

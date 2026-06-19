@@ -208,3 +208,73 @@ def test_session_gc_removes_crashed_engine(
         assert not Path(native["socket_path"]).exists()
     finally:
         _kill_all(cli_runner)
+
+
+@pytest.mark.session
+@pytest.mark.waveform
+def test_session_file_transport_open_query_doctor_and_close(
+    resource_targets: dict,
+    cli_runner: CliRunner,
+    isolated_home: Path,
+) -> None:
+    name = "file_transport_wave"
+    try:
+        opened = cli_runner.run(
+            _request(
+                "session.open",
+                target=resource_targets["waveform"],
+                args={"name": name, "transport": "file"},
+            )
+        )
+        assert opened.ok
+        assert opened.response["session"]["transport"] == "file"
+        file_dir = Path(opened.response["session"]["file_dir"])
+        assert file_dir.is_dir()
+        assert {
+            "requests",
+            "claims",
+            "responses",
+            "done",
+            "failed",
+            "tmp",
+            "heartbeat",
+        } <= {child.name for child in file_dir.iterdir() if child.is_dir()}
+
+        native = _registry_session(isolated_home, name)
+        assert native["transport"] == "file"
+        assert Path(native["file_dir"]) == file_dir
+
+        queried = cli_runner.run(
+            _request(
+                "value.at",
+                target={"session_id": name},
+                args={
+                    "signal": "ai_complex_top.sig_a",
+                    "time": "75ns",
+                    "format": "hex",
+                },
+            )
+        )
+        assert queried.ok
+        assert queried.response["session"]["transport"] == "file"
+        assert queried.response["data"]["value"]["known"] is True
+
+        doctor = cli_runner.run(
+            _request("session.doctor", target={"session_id": name})
+        )
+        assert doctor.ok
+        assert doctor.response["session"]["transport"] == "file"
+        assert doctor.response["session"]["file_dir"] == str(file_dir)
+        assert doctor.response["summary"]["healthy"] is True
+
+        closed = cli_runner.run(
+            _request("session.close", target={"session_id": name})
+        )
+        assert closed.ok
+        assert closed.response["summary"]["removed"] is True
+        assert not any(
+            item["session_id"] == name
+            for item in _registry(isolated_home).get("sessions", [])
+        )
+    finally:
+        _kill_all(cli_runner)

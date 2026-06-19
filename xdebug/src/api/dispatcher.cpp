@@ -309,7 +309,14 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
         record.daidir = target.value("daidir", std::string());
         record.fsdb = target.value("fsdb", std::string());
         // Extract socket_path from engine response for direct socket communication
-        record.socket_path = result.value("session", Json::object()).value("socket_path", "");
+        Json backend_session = result.value("session", Json::object());
+        record.socket_path = backend_session.value("socket_path", "");
+        record.transport = backend_session.value("transport", std::string("uds"));
+        record.file_dir = backend_session.value("file_dir", std::string());
+        record.host = backend_session.value("host", std::string());
+        record.bind_host = backend_session.value("bind_host", std::string());
+        record.port = backend_session.value("port", 0);
+        record.server_host = backend_session.value("server_host", std::string());
         xdebug_core::update_public_session_manifest(record.id, record.mode, record.daidir, record.fsdb);
         Json response = make_response(request, action);
         response["session"] = session_record_json(record);

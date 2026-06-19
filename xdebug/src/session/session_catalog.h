@@ -13,6 +13,12 @@ struct SessionRecord {
     std::string daidir;
     std::string fsdb;
     std::string socket_path;
+    std::string transport;
+    std::string file_dir;
+    std::string host;
+    std::string bind_host;
+    int port = 0;
+    std::string server_host;
 };
 
 // Read-only view of the canonical engine registry.
