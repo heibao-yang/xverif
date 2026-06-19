@@ -66,10 +66,13 @@ class McpSessionManager:
         self.sessions: Dict[str, XdebugLoopSession] = {}
         self.default_session: Optional[str] = None
 
-    def open_session(self, name: str, fsdb: str, daidir: Optional[str] = None,
+    def open_session(self, name: str, fsdb: Optional[str] = None,
+                     daidir: Optional[str] = None,
                      queue: Optional[str] = None, resource: Optional[str] = None,
                      reuse: bool = True, reopen: bool = False,
                      make_default: bool = True, **kwargs: Any) -> Json:
+        if not fsdb and not daidir:
+            return _error("RESOURCE_REQUIRED", "provide fsdb or daidir")
         if name in self.sessions:
             existing = self.sessions[name]
             if existing.state == "alive":
@@ -164,7 +167,8 @@ class McpSessionManager:
         if self.default_session in (s.alias, s.session_id):
             self.default_session = None
 
-    def session_open(self, name: str, fsdb: str, **kwargs: Any) -> Json:
+    def session_open(self, name: str, fsdb: Optional[str] = None,
+                     **kwargs: Any) -> Json:
         return self.open_session(name=name, fsdb=fsdb, **kwargs)
 
     def session_list(self, **kwargs: Any) -> Json:
@@ -177,10 +181,24 @@ class McpSessionManager:
         return self.close_session(session)
 
     def close_all(self) -> None:
+        seen = set()
         for s in list(self.sessions.values()):
+            if id(s) in seen:
+                continue
+            seen.add(id(s))
             try:
-                s.close(force=True)
+                if s.state == "alive":
+                    s.close()
+                else:
+                    s.abort(
+                        f"manager shutdown for non-alive session: {s.state}",
+                        source="manager_close_all",
+                    )
             except Exception:
-                pass
+                try:
+                    s.abort("manager shutdown cleanup failed",
+                            source="manager_close_all")
+                except Exception:
+                    pass
         self.sessions.clear()
         self.default_session = None

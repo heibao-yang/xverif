@@ -40,7 +40,7 @@ def _extract_session_id(response: Json, fallback: str) -> str:
 @dataclass
 class XdebugLoopSession:
     alias: str
-    fsdb: str
+    fsdb: Optional[str]
     daidir: Optional[str]
     launcher: Launcher
     xdebug_bin: str = field(default_factory=default_xdebug_bin)
@@ -140,7 +140,7 @@ class XdebugLoopSession:
             open_req: Json = {
                 "request_id": f"open-{_safe_name(self.alias)}",
                 "api_version": self.api_version, "action": "session.open",
-                "target": {self.target_key: self.fsdb},
+                "target": {},
                 "args": {"name": self.alias, "reuse": self.reuse,
                          "reopen": self.reopen},
                 "output": {"response_format": "json"} if self.backend == "xcov"
@@ -148,6 +148,8 @@ class XdebugLoopSession:
             }
             if self.backend == "xdebug":
                 open_req["args"]["transport"] = "uds"
+            if self.fsdb:
+                open_req["target"][self.target_key] = self.fsdb
             if self.daidir:
                 open_req["target"]["daidir"] = self.daidir
             rsp = self._call_raw(open_req, timeout=self.startup_timeout_sec)
@@ -257,9 +259,11 @@ class XdebugLoopSession:
     def public_json(self) -> Json:
         h = self.handle
         out: Json = {"alias": self.alias, "session_id": self.session_id,
-                      self.target_key: self.fsdb, "daidir": self.daidir,
+                      "daidir": self.daidir,
                       "state": self.state, "mode": self.launcher.mode,
                       "backend": self.backend}
+        if self.fsdb:
+            out[self.target_key] = self.fsdb
         if self.queue: out["queue"] = self.queue
         if self.resource: out["resource"] = self.resource
         if self.job_name: out["job_name"] = self.job_name

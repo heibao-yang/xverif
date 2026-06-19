@@ -140,6 +140,13 @@ def _cleanup(s: XdebugLoopSession):
 
 
 class TestOpenFailure:
+    def test_missing_resource_is_rejected_before_launch(self):
+        mgr = McpSessionManager(mode="direct")
+        r = mgr.open_session("missing_resource")
+        assert not r.get("ok")
+        assert r["error"]["code"] == "RESOURCE_REQUIRED"
+        assert mgr.sessions == {}
+
     def test_exit_before_ready(self, tmp_path):
         fake = _fake_loop_script(tmp_path, fail_open=True)
         s = _new_session(fake)
@@ -257,6 +264,23 @@ class TestManagerEvict:
         assert r.get("ok"), r
         assert "close_me" not in mgr.sessions
         assert r.get("previous_state") == "dead"
+
+    def test_close_all_closes_each_live_session_normally(self, tmp_path):
+        fake = _fake_loop_script(tmp_path)
+        mgr = McpSessionManager(mode="direct")
+        mgr.xdebug_bin = fake
+        mgr.open_session("close_all_a", fsdb="a.fsdb")
+        mgr.open_session("close_all_b", fsdb="b.fsdb", make_default=False)
+        sessions = {
+            id(session): session for session in mgr.sessions.values()
+        }
+
+        mgr.close_all()
+
+        assert mgr.sessions == {}
+        assert mgr.default_session is None
+        assert all(session.state == "closed" for session in sessions.values())
+        assert all(not session.process_alive() for session in sessions.values())
 
 
 class TestReopenAfterLost:
