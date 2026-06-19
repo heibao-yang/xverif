@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import signal
+import socket
+import threading
 import time
 from pathlib import Path
 
@@ -32,6 +34,12 @@ def _registry_session(isolated_home: Path, session_id: str) -> dict:
 
 def _kill_all(cli_runner: CliRunner) -> None:
     cli_runner.run(_request("session.kill", args={"id": "all"}))
+
+
+def _write_registry_session(isolated_home: Path, record: dict) -> None:
+    path = isolated_home / ".xdebug" / "engine" / "registry.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"sessions": [record]}, indent=2), encoding="utf-8")
 
 
 @pytest.fixture
@@ -277,4 +285,89 @@ def test_session_file_transport_open_query_doctor_and_close(
             for item in _registry(isolated_home).get("sessions", [])
         )
     finally:
+        _kill_all(cli_runner)
+
+
+@pytest.mark.session
+@pytest.mark.waveform
+def test_session_uds_direct_query_times_out_without_spawn_fallback(
+    resource_targets: dict,
+    cli_runner: CliRunner,
+    isolated_home: Path,
+    tmp_path: Path,
+) -> None:
+    socket_path = tmp_path / "hung-engine.sock"
+    ready = threading.Event()
+    accepted = threading.Event()
+    stop = threading.Event()
+    server_error: list[BaseException] = []
+
+    def serve_hung_socket() -> None:
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
+                server.bind(str(socket_path))
+                server.listen(1)
+                server.settimeout(5.0)
+                ready.set()
+                conn, _ = server.accept()
+                with conn:
+                    accepted.set()
+                    conn.settimeout(1.0)
+                    try:
+                        conn.recv(65536)
+                    except socket.timeout:
+                        pass
+                    stop.wait(timeout=2.0)
+        except BaseException as exc:
+            server_error.append(exc)
+            ready.set()
+
+    thread = threading.Thread(target=serve_hung_socket, daemon=True)
+    thread.start()
+    assert ready.wait(timeout=2.0)
+    assert not server_error
+
+    _write_registry_session(
+        isolated_home,
+        {
+            "session_id": "hung_uds",
+            "transport": "uds",
+            "fsdb_file": resource_targets["waveform"]["fsdb"],
+            "socket_path": str(socket_path),
+            "server_pid": os.getpid(),
+        },
+    )
+
+    try:
+        started_at = time.monotonic()
+        result = cli_runner.run(
+            {
+                **_request(
+                    "value.at",
+                    target={"session_id": "hung_uds"},
+                    args={
+                        "signal": "ai_complex_top.sig_a",
+                        "time": "75ns",
+                        "format": "hex",
+                    },
+                ),
+                "limits": {"timeout_ms": 100},
+            },
+            timeout_sec=5.0,
+        )
+        elapsed = time.monotonic() - started_at
+
+        assert accepted.wait(timeout=1.0)
+        assert not result.timed_out
+        assert result.returncode != 0
+        assert isinstance(result.response, dict)
+        assert result.response["ok"] is False
+        assert result.response["error"]["code"] == "INTERNAL_ENGINE_FAILED"
+        assert "direct session socket timed out" in result.response["error"]["message"]
+        assert result.response["summary"]["transport"] == "uds"
+        assert result.response["summary"]["timeout_ms"] == 100
+        assert elapsed < 2.0
+    finally:
+        stop.set()
+        thread.join(timeout=2.0)
         _kill_all(cli_runner)

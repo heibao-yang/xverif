@@ -7,11 +7,14 @@
 #include "api/response.h"
 #include "logging/action_log.h"
 
+#include <cerrno>
 #include <chrono>
 #include <limits.h>
 #include <string>
+#include <cstring>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/un.h>
 
 namespace xdebug {
@@ -33,6 +36,49 @@ std::string requested_name(const Json& request) {
 
 Json engine_error(const Json& request, const std::string& action, const std::string& message) {
     return make_error(request, action, "INTERNAL_ENGINE_FAILED", message);
+}
+
+int request_timeout_ms(const Json& request) {
+    Json limits = request.value("limits", Json::object());
+    if (!limits.is_object() || !limits.contains("timeout_ms") ||
+        !limits["timeout_ms"].is_number_integer()) {
+        return 30000;
+    }
+    int timeout_ms = limits["timeout_ms"].get<int>();
+    if (timeout_ms < 0) return 0;
+    return timeout_ms;
+}
+
+bool is_socket_timeout_errno(int err) {
+    return err == EAGAIN || err == EWOULDBLOCK || err == EINPROGRESS;
+}
+
+void set_socket_timeout(int fd, int timeout_ms) {
+    if (timeout_ms <= 0) return;
+    struct timeval tv;
+    tv.tv_sec = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+}
+
+Json direct_socket_timeout_error(const Json& request,
+                                 const std::string& action,
+                                 const std::string& socket_path,
+                                 int timeout_ms) {
+    Json response = make_error(
+        request,
+        action,
+        "INTERNAL_ENGINE_FAILED",
+        "direct session socket timed out after " + std::to_string(timeout_ms) +
+            "ms: " + socket_path,
+        true);
+    response["summary"] = {
+        {"transport", "uds"},
+        {"socket_path", socket_path},
+        {"timeout_ms", timeout_ms}
+    };
+    return response;
 }
 
 bool backend_cleanup_ok(const Json& response) {
@@ -443,8 +489,10 @@ bool Dispatcher::send_to_socket(const std::string& socket_path,
                                 const Json& request,
                                 Json& response) const {
     const std::string action = request.value("action", std::string());
+    const int timeout_ms = request_timeout_ms(request);
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0) return false;
+    set_socket_timeout(fd, timeout_ms);
 
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
@@ -460,8 +508,14 @@ bool Dispatcher::send_to_socket(const std::string& socket_path,
     Json rpc = request;
     rpc["api_version"] = "xdebug.internal.v1";
     std::string wire = rpc.dump() + "\n";
-    if (write(fd, wire.c_str(), wire.size()) != static_cast<ssize_t>(wire.size())) {
+    ssize_t written = write(fd, wire.c_str(), wire.size());
+    if (written != static_cast<ssize_t>(wire.size())) {
+        int err = errno;
         close(fd);
+        if (is_socket_timeout_errno(err)) {
+            response = direct_socket_timeout_error(request, action, socket_path, timeout_ms);
+            return true;
+        }
         return false;
     }
 
@@ -470,6 +524,15 @@ bool Dispatcher::send_to_socket(const std::string& socket_path,
     char buf[65536];
     while (true) {
         ssize_t n = read(fd, buf, sizeof(buf));
+        if (n < 0) {
+            int err = errno;
+            close(fd);
+            if (is_socket_timeout_errno(err)) {
+                response = direct_socket_timeout_error(request, action, socket_path, timeout_ms);
+                return true;
+            }
+            return false;
+        }
         if (n <= 0) break;
         line.append(buf, static_cast<size_t>(n));
     }
