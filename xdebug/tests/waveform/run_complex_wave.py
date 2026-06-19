@@ -13,8 +13,18 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 REPO_ROOT = os.path.abspath(os.path.join(ROOT, ".."))
 NONAXI_DIR = os.path.join(ROOT, "testdata", "waveform", "ai_complex_wave")
 NONAXI_FSDB = os.path.join(NONAXI_DIR, "out", "waves.fsdb")
-AXI_DIR = "/home/yian/axi_test/test"
-AXI_FSDB = os.path.join(AXI_DIR, "sim_run", "tb.fsdb")
+AXI_DIR = os.environ.get(
+    "XDEBUG_AXI_FIXTURE_DIR",
+    os.path.join(ROOT, "testdata", "waveform", "axi_vip_real"),
+)
+AXI_FSDB = os.path.join(
+    AXI_DIR,
+    "out",
+    "regression",
+    "test",
+    "axi_multi_id_test",
+    "waves.fsdb",
+)
 
 
 def run_cmd(cmd, cwd=None, env=None, timeout=120, input_text=None):
@@ -38,7 +48,7 @@ def require(cond, msg):
         raise AssertionError(msg)
 
 
-def make_axi_config(prefix):
+def make_axi_config(prefix, top="axi_vip_fixture_top"):
     return {
         "awaddr": prefix + ".awaddr",
         "awid": prefix + ".awid",
@@ -69,8 +79,8 @@ def make_axi_config(prefix):
         "rlast": prefix + ".rlast",
         "rvalid": prefix + ".rvalid",
         "rready": prefix + ".rready",
-        "clk": "test_top.clk",
-        "rst_n": "test_top.rst_n",
+        "clk": top + ".clk",
+        "rst_n": top + ".rst_n",
         "edge": "posedge",
     }
 
@@ -147,15 +157,16 @@ def build_nonaxi():
 def build_axi():
     env = os.environ.copy()
     env["PWD"] = AXI_DIR
+    required = ["AXI_REFERENCE_ROOT", "SVT_VIP_INCDIR", "SVT_VIP_SRCDIR"]
+    missing = [name for name in required if not env.get(name)]
+    require(
+        not missing,
+        "AXI fixture requires environment variables: {}".format(", ".join(missing)),
+    )
     rc, out, err, _ = run_cmd(
         [
             "make", "run",
-            "NUM_IDS=4",
-            "TRANS_PER_ID=24",
-            "OUTSTANDING_DEPTH=8",
-            "MIN_DELAY=2",
-            "MAX_DELAY=20",
-            "EXTRA_ARGS=+ai_complex_delay_mode=1 +ntb_random_seed=7",
+            "SEED=7",
         ],
         cwd=AXI_DIR,
         env=env,
@@ -312,7 +323,7 @@ def run_axi(xdebug, fsdb):
     r = AiRunner(xdebug, fsdb, "axi")
     try:
         r.open()
-        prefix = "test_top.axi_vip_if.master_if[0]"
+        prefix = "axi_vip_fixture_top.axi_vip_if.master_if[0]"
         r.query("axi.config.load", args={"name": "axi0", "config": make_axi_config(prefix)})
         r.query("axi.config.list", args={"name": "axi0"})
         wr = r.query("axi.query", args={"name": "axi0", "direction": "wr"})
