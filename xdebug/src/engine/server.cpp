@@ -149,11 +149,32 @@ static void open_crash_marker() {
              "signal_exit pid=%d session_id=%s", static_cast<int>(getpid()), g_session_id.c_str());
 }
 
+static void install_crash_signal_handlers() {
+    signal(SIGSEGV, crash_signal_exit);
+    signal(SIGABRT, crash_signal_exit);
+}
+
 static void update_current_request_marker(const Json& request) {
     std::string action = request.value("action", std::string());
     std::string request_id = request.value("request_id", request.value("id", std::string()));
     snprintf(g_current_action, sizeof(g_current_action), "%s", action.c_str());
     snprintf(g_current_request_id, sizeof(g_current_request_id), "%s", request_id.c_str());
+}
+
+static void maybe_run_crash_marker_test_hook() {
+    const char* enabled = getenv("XDEBUG_ENGINE_TEST_CRASH_MARKER");
+    if (!enabled || enabled[0] == '\0' || strcmp(enabled, "0") == 0) return;
+
+    const char* action = getenv("XDEBUG_ENGINE_TEST_CRASH_ACTION");
+    const char* request_id = getenv("XDEBUG_ENGINE_TEST_CRASH_REQUEST_ID");
+    if (action && action[0] != '\0') {
+        snprintf(g_current_action, sizeof(g_current_action), "%s", action);
+    }
+    if (request_id && request_id[0] != '\0') {
+        snprintf(g_current_request_id, sizeof(g_current_request_id), "%s", request_id);
+    }
+    install_crash_signal_handlers();
+    raise(SIGABRT);
 }
 
 static void daemonize_io() {
@@ -412,6 +433,7 @@ int server_main(int argc, char** argv) {
     xdebug_core::log_lifecycle_event("engine", g_session_id, "server.start", true,
                                      {{"argc", argc}});
     open_crash_marker();
+    maybe_run_crash_marker_test_hook();
 
     std::vector<std::string> design_args;
     std::string fsdb_arg;
@@ -526,8 +548,7 @@ int server_main(int argc, char** argv) {
     // Set up signal handlers
     signal(SIGTERM, cleanup_and_exit);
     signal(SIGINT, cleanup_and_exit);
-    signal(SIGSEGV, crash_signal_exit);
-    signal(SIGABRT, crash_signal_exit);
+    install_crash_signal_handlers();
 
     get_sock_path(g_sock_path, g_session_id);
     if (g_transport == "file") {

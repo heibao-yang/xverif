@@ -4,6 +4,7 @@ import json
 import os
 import signal
 import socket
+import subprocess
 import threading
 import time
 from pathlib import Path
@@ -62,6 +63,16 @@ def _engine_transport_events(isolated_home: Path, session_prefix: str) -> list[d
     for path in matches:
         rows.extend(_read_ndjson(path))
     return rows
+
+
+def _single_engine_log(isolated_home: Path, session_prefix: str, log_name: str) -> Path:
+    matches = sorted(
+        (isolated_home / ".xdebug" / "engine" / "sessions").glob(
+            f"{session_prefix}_*/logs/{log_name}.ndjson"
+        )
+    )
+    assert len(matches) == 1, f"expected one {log_name}.ndjson for {session_prefix}, got {matches}"
+    return matches[0]
 
 
 @pytest.fixture
@@ -430,3 +441,40 @@ def test_session_uds_direct_query_times_out_without_spawn_fallback(
         stop.set()
         thread.join(timeout=2.0)
         _kill_all(cli_runner)
+
+
+def test_engine_crash_marker_is_written_by_signal_handler(
+    repo_root: Path,
+    xdebug_root: Path,
+    isolated_home: Path,
+) -> None:
+    engine = xdebug_root / "libexec" / "xdebug-engine"
+    env = os.environ.copy()
+    env.update(
+        {
+            "HOME": str(isolated_home),
+            "XVERIF_HOME": str(repo_root),
+            "XDEBUG_ENGINE_TEST_CRASH_MARKER": "1",
+            "XDEBUG_ENGINE_TEST_CRASH_ACTION": "value.at",
+            "XDEBUG_ENGINE_TEST_CRASH_REQUEST_ID": "crash-req-1",
+        }
+    )
+
+    proc = subprocess.run(
+        [str(engine), "--server", "crashmark"],
+        cwd=str(repo_root),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=5.0,
+    )
+
+    assert proc.returncode == 128 + signal.SIGABRT
+    marker = _single_engine_log(isolated_home, "crashmark", "crash_marker")
+    text = marker.read_text(encoding="utf-8")
+    assert "signal_exit" in text
+    assert "session_id=crashmark" in text
+    assert "current_action=value.at" in text
+    assert "request_id=crash-req-1" in text
+    assert f"sig={signal.SIGABRT}" in text
