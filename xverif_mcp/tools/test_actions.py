@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""逐个测试全部 75 个 xdebug action，通过 MCP client 调用 FastMCP server。
+"""逐个测试 xdebug action，通过 MCP client 调用 FastMCP server。
 
 用法:
     conda activate xverif-mcp
@@ -53,7 +53,7 @@ ALL_ACTIONS = [
     "procedural.assignment", "sequential.update",
     "value.at", "value.batch_at",
     "scope.list",
-    "signal.changes", "signal.stability", "signal.statistics", "signal.trend",
+    "signal.changes", "signal.stability", "signal.statistics", "counter.statistics", "signal.trend",
     "event.find", "event.export", "event.config.list", "event.config.load",
     "window.verify",
     "cursor.set", "cursor.get", "cursor.list", "cursor.delete", "cursor.use",
@@ -168,7 +168,7 @@ async def _close_session(session, cfg):
 
 
 async def test_all_schemas(session: ClientSession) -> tuple[int, int]:
-    """L1: 用 xdebug_schema tool 逐个验证全部 75 个 action 的 request/response schema。"""
+    """L1: 用 xdebug_schema tool 逐个验证全部 action 的 request/response schema。"""
     print(f"\n{Colors.BOLD}=== L1: Schema 验证 (150 tests) ==={Colors.RESET}")
     passed = 0
     failed = 0
@@ -233,6 +233,7 @@ async def test_with_signal(session: ClientSession, cfg: dict, signal: str) -> tu
         "value.at": {"signal": signal, "time": "1ns"},
         "value.batch_at": {"signals": [signal], "time": "1ns"},
         "signal.statistics": {"signal": signal},
+        "counter.statistics": {"clock": clk, "time_range": {"begin": "0ns", "end": "200ns"}, "vld": signal, "cnt": signal},
         "signal.changes": {"signal": signal, "time_range": {"start": "0ns", "end": "200ns"}, "aggregate_only": True},
         "signal.stability": {"signal": signal, "time_range": {"start": "0ns", "end": "200ns"}},
         "signal.trend": {"signal": signal, "clock": clk, "max_items": 20},

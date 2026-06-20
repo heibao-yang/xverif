@@ -138,6 +138,7 @@ file transport directory:
 | 意图 | 推荐 action |
 | --- | --- |
 | active/high cycles | `signal.statistics` |
+| counter min/max/average | `counter.statistics` |
 | 跳变时间线 | `signal.changes` |
 | 窗口保持 0/1 | `window.verify` 或 `signal.statistics` |
 | first/last occurrence | `event.find` 或 `signal.changes` 的 head/tail |

@@ -230,7 +230,9 @@ compact 默认返回 error/slow access findings。完整 access rows 需要 `inc
 
 `signal.changes` compact 默认返回 summary、row count、first/last/final value，不返回大量 `data.changes[]`；需要 rows 时显式传 `include_rows=true` 或 `include_all_changes=true`，并用 `mode:"head"|"tail"` 与 `limit` 控制方向和规模。只需要聚合信息时用 `aggregate_only=true`。
 
-`signal.statistics` 有 `clock` 时返回 clock-sampled high/low cycles 和 activity；无 `clock` 时返回 raw value-change 统计，并通过 `sampling_mode` 标清语义。完整 samples 需要 `include_samples=true`。
+`signal.statistics` 有 `clock` 时返回 clock-sampled high/low cycles 和 activity；无 `clock` 时返回 raw value-change 统计，并通过 `sampling_mode` 标清语义。clock 模式下多 bit `first`/`final`/`min`/`max` 是 bit-string value object。完整 samples 需要 `include_samples=true`。
+
+`counter.statistics` 按 clock edge 和 `vld` 条件统计最多 64 bit `cnt`，compact 默认返回 sample/valid 数、min/max/average、min/max 出现次数和首次时间。`cnt` 可以是单信号或 `{hi,lo}` 拼接。
 
 ### verify.conditions / expr.eval_at / window.verify
 

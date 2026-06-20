@@ -169,7 +169,7 @@ Common actions
   Waveform:
       scope.list, rc.generate, value.at, value.batch_at, list.value_at,
       event.find, event.export, verify.conditions, expr.eval_at,
-      window.verify, signal.changes, signal.statistics, signal.trend,
+      window.verify, signal.changes, signal.statistics, counter.statistics, signal.trend,
       signal.stability, handshake.inspect, detect_anomaly
 
   Protocol:
@@ -184,6 +184,10 @@ Action choice guidance
       Use signal.statistics. With args.clock it returns clock-sampled
       high_cycles/low_cycles/activity; without args.clock it returns raw
       value-change statistics and sampling_mode explains that behavior.
+
+  counter min/max/average:
+      Use counter.statistics with clock, time_range, vld and cnt. cnt may be a
+      single signal or a restricted {hi,lo} concat up to 64 bits.
 
   transition timeline:
       Use signal.changes. Compact output omits data.changes rows by default;

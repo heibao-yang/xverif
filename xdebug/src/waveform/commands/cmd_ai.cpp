@@ -20,7 +20,7 @@ void print_actions() {
         "axi.config.load", "axi.config.list", "axi.query", "axi.cursor", "axi.analysis",
         "event.config.load", "event.config.list", "event.find", "event.export",
         "verify.conditions", "expr.eval_at",
-        "window.verify", "signal.changes", "signal.stability", "signal.trend", "signal.statistics",
+        "window.verify", "signal.changes", "signal.stability", "signal.trend", "signal.statistics", "counter.statistics",
         "sampled_pulse.inspect", "inspect_signal", "detect_anomaly", "handshake.inspect",
         "axi.channel_stall", "axi.outstanding_timeline", "axi.request_response_pair",
         "axi.latency_outlier", "apb.transfer_window"
@@ -37,7 +37,7 @@ void print_actions() {
         "axi.config.load", "axi.config.list", "axi.query", "axi.cursor", "axi.analysis",
         "event.config.load", "event.config.list", "event.find", "event.export",
         "verify.conditions", "expr.eval_at",
-        "window.verify", "signal.changes", "signal.stability", "signal.trend", "signal.statistics",
+        "window.verify", "signal.changes", "signal.stability", "signal.trend", "signal.statistics", "counter.statistics",
         "sampled_pulse.inspect", "inspect_signal", "detect_anomaly", "handshake.inspect",
         "axi.channel_stall", "axi.outstanding_timeline", "axi.request_response_pair",
         "axi.latency_outlier", "apb.transfer_window"
@@ -124,7 +124,7 @@ bool action_known(const std::string& action) {
         "axi.config.load", "axi.config.list", "axi.query", "axi.cursor", "axi.analysis",
         "event.config.load", "event.config.list", "event.find", "event.export",
         "verify.conditions", "expr.eval_at",
-        "window.verify", "signal.changes", "signal.stability", "signal.trend", "signal.statistics",
+        "window.verify", "signal.changes", "signal.stability", "signal.trend", "signal.statistics", "counter.statistics",
         "sampled_pulse.inspect", "inspect_signal", "detect_anomaly", "handshake.inspect",
         "axi.channel_stall", "axi.outstanding_timeline", "axi.request_response_pair",
         "axi.latency_outlier", "apb.transfer_window"
@@ -135,7 +135,7 @@ bool action_known(const std::string& action) {
 bool server_ai_action(const std::string& action) {
     static const std::vector<std::string> server_actions = {
         "cursor.set", "cursor.get", "cursor.list", "cursor.delete", "cursor.use",
-        "expr.eval_at", "window.verify", "signal.changes", "signal.stability", "signal.trend", "signal.statistics",
+        "expr.eval_at", "window.verify", "signal.changes", "signal.stability", "signal.trend", "signal.statistics", "counter.statistics",
         "sampled_pulse.inspect", "inspect_signal", "detect_anomaly", "handshake.inspect",
         "axi.channel_stall", "axi.outstanding_timeline", "axi.request_response_pair",
         "axi.latency_outlier", "apb.transfer_window"

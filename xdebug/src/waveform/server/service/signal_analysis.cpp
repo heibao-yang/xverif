@@ -94,6 +94,202 @@ bool build_signal_alias_handles(const Json& signals,
     return true;
 }
 
+namespace {
+
+std::string trim_copy(const std::string& text) {
+    size_t begin = 0;
+    while (begin < text.size() && std::isspace(static_cast<unsigned char>(text[begin]))) ++begin;
+    size_t end = text.size();
+    while (end > begin && std::isspace(static_cast<unsigned char>(text[end - 1]))) --end;
+    return text.substr(begin, end - begin);
+}
+
+std::string bit_string_from_value(const std::string& value) {
+    std::string bits = xdebug_waveform::expr_bits_only(value);
+    for (char& c : bits) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return bits;
+}
+
+Json bit_value_json(const std::string& bits) {
+    Json value;
+    value["value"] = std::string("'b") + bits;
+    value["known"] = !bits.empty() && !xdebug_waveform::expr_value_has_unknown(bits);
+    value["width"] = bits.size();
+    return value;
+}
+
+std::string pad_bits_for_compare(const std::string& bits, size_t width) {
+    if (bits.size() >= width) return bits;
+    return std::string(width - bits.size(), '0') + bits;
+}
+
+int compare_bit_strings(const std::string& lhs, const std::string& rhs) {
+    size_t width = std::max(lhs.size(), rhs.size());
+    std::string a = pad_bits_for_compare(lhs, width);
+    std::string b = pad_bits_for_compare(rhs, width);
+    if (a == b) return 0;
+    return a < b ? -1 : 1;
+}
+
+bool bits_to_u64(const std::string& bits, uint64_t& out, std::string& error) {
+    if (bits.empty()) {
+        error = "INVALID_REQUEST: counter value is empty";
+        return false;
+    }
+    if (bits.size() > 64) {
+        error = "INVALID_REQUEST: counter width exceeds 64 bits";
+        return false;
+    }
+    if (xdebug_waveform::expr_value_has_unknown(bits)) {
+        return false;
+    }
+    uint64_t value = 0;
+    for (char c : bits) {
+        if (c != '0' && c != '1') {
+            error = "INVALID_REQUEST: counter value contains non-binary data";
+            return false;
+        }
+        value = (value << 1) | (c == '1' ? 1ULL : 0ULL);
+    }
+    out = value;
+    return true;
+}
+
+std::string u64_to_decimal(uint64_t value) {
+    std::ostringstream oss;
+    oss << value;
+    return oss.str();
+}
+
+std::string long_double_to_decimal(long double value) {
+    std::ostringstream oss;
+    oss.setf(std::ios::fixed);
+    oss.precision(6);
+    oss << static_cast<double>(value);
+    std::string text = oss.str();
+    while (text.size() > 1 && text.back() == '0') text.pop_back();
+    if (!text.empty() && text.back() == '.') text.pop_back();
+    return text;
+}
+
+bool add_signal_alias(Json& signals,
+                      const std::string& alias,
+                      const std::string& path,
+                      std::string& error) {
+    if (path.empty()) {
+        error = "INVALID_REQUEST: signal path must not be empty";
+        return false;
+    }
+    if (signals.contains(alias) && signals[alias].get<std::string>() != path) {
+        error = "INVALID_REQUEST: duplicate alias maps to different signals: " + alias;
+        return false;
+    }
+    signals[alias] = path;
+    return true;
+}
+
+struct CounterInput {
+    std::string expr;
+    std::vector<std::string> aliases;
+    std::vector<std::string> paths;
+};
+
+bool parse_counter_concat(const std::string& text,
+                          CounterInput& out,
+                          std::string& error) {
+    std::string trimmed = trim_copy(text);
+    if (trimmed.empty()) {
+        error = "INVALID_REQUEST: counter.statistics requires non-empty args.cnt";
+        return false;
+    }
+    if (trimmed.front() != '{') {
+        out.aliases.push_back("__cnt0");
+        out.paths.push_back(trimmed);
+        return true;
+    }
+    if (trimmed.size() < 3 || trimmed.back() != '}') {
+        error = "INVALID_REQUEST: counter concat must be {signal[,signal...]}";
+        return false;
+    }
+    std::string body = trimmed.substr(1, trimmed.size() - 2);
+    size_t start = 0;
+    int index = 0;
+    while (start <= body.size()) {
+        size_t comma = body.find(',', start);
+        std::string part = trim_copy(body.substr(start, comma == std::string::npos ? std::string::npos : comma - start));
+        if (part.empty() || part.find('{') != std::string::npos || part.find('}') != std::string::npos ||
+            part.find('\'') != std::string::npos) {
+            error = "INVALID_REQUEST: counter concat supports signal paths only";
+            return false;
+        }
+        out.aliases.push_back("__cnt" + std::to_string(index++));
+        out.paths.push_back(part);
+        if (comma == std::string::npos) break;
+        start = comma + 1;
+    }
+    return !out.paths.empty();
+}
+
+bool build_counter_inputs(const Json& args,
+                          Json& signal_union,
+                          std::string& valid_expr,
+                          CounterInput& counter,
+                          std::string& error) {
+    if (!args.contains("vld")) {
+        error = "MISSING_FIELD: counter.statistics requires args.vld";
+        return false;
+    }
+    if (!args.contains("cnt")) {
+        error = "MISSING_FIELD: counter.statistics requires args.cnt";
+        return false;
+    }
+
+    const Json& vld = args["vld"];
+    if (vld.is_string()) {
+        valid_expr = "__vld";
+        if (!add_signal_alias(signal_union, "__vld", vld.get<std::string>(), error)) return false;
+    } else if (vld.is_object()) {
+        valid_expr = server_compact_expr_ws(vld.value("expr", std::string()));
+        if (valid_expr.empty() || !vld.contains("signals") || !vld["signals"].is_object()) {
+            error = "INVALID_REQUEST: object args.vld requires expr and signals";
+            return false;
+        }
+        for (auto it = vld["signals"].begin(); it != vld["signals"].end(); ++it) {
+            if (!it.value().is_string()) {
+                error = "INVALID_REQUEST: args.vld.signals values must be string paths";
+                return false;
+            }
+            if (!add_signal_alias(signal_union, it.key(), it.value().get<std::string>(), error)) return false;
+        }
+    } else {
+        error = "INVALID_REQUEST: args.vld must be a signal path or expression object";
+        return false;
+    }
+
+    if (!args["cnt"].is_string()) {
+        error = "INVALID_REQUEST: counter.statistics args.cnt must be a signal path or concat string";
+        return false;
+    }
+    if (!parse_counter_concat(args["cnt"].get<std::string>(), counter, error)) return false;
+    for (size_t i = 0; i < counter.aliases.size(); ++i) {
+        if (!add_signal_alias(signal_union, counter.aliases[i], counter.paths[i], error)) return false;
+    }
+    return true;
+}
+
+std::string counter_bits_from_values(const CounterInput& counter,
+                                     const std::map<std::string, std::string>& values) {
+    std::string bits;
+    for (const auto& alias : counter.aliases) {
+        auto it = values.find(alias);
+        if (it == values.end()) return "";
+        bits += bit_string_from_value(it->second);
+    }
+    return bits;
+}
+
+} // namespace
+
 Json ai_signal_changes(const Json& args, std::string& error) {
     std::string signal = args.value("signal", std::string());
     if (signal.empty()) {
@@ -299,7 +495,6 @@ bool sample_on_clock(const std::string& clock_path,
             for (size_t i = 0; i < signal_handles.size(); ++i) {
                 if (signal_handles[i] == changed_sig) {
                     values[i] = v;
-                    break;
                 }
             }
         }
@@ -564,7 +759,7 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
     int transitions = 0;
     bool truncated = false;
     bool have_known = false;
-    unsigned long long first = 0, final = 0, minv = 0, maxv = 0, prev = 0;
+    std::string first_bits, final_bits, min_bits, max_bits, prev_bits;
     npiFsdbTime first_change_time = 0, last_change_time = 0;
     npiFsdbTime first_high_time = 0, last_high_time = 0, last_fall_time = 0;
     bool prev_high = false;
@@ -582,12 +777,15 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
                 }
                 return true;
             }
-            std::string bits = xdebug_waveform::expr_bits_only(it->second);
-            unsigned long long v = 0;
-            for (char c : bits) v = (v << 1) | (c == '1' ? 1ULL : 0ULL);
+            std::string bits = bit_string_from_value(it->second);
+            if (bits.empty()) {
+                unknown++;
+                return true;
+            }
             known++;
-            bool high = (v != 0 && bits.size() == 1);
-            if (v == 0) low_cycles++;
+            bool nonzero = bits.find('1') != std::string::npos;
+            bool high = (nonzero && bits.size() == 1);
+            if (!nonzero) low_cycles++;
             else if (high) high_cycles++;
             if (high) {
                 if (!prev_high) {
@@ -604,17 +802,17 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
             }
             prev_high = high;
             if (!have_known) {
-                first = final = minv = maxv = prev = v;
+                first_bits = final_bits = min_bits = max_bits = prev_bits = bits;
                 have_known = true;
             } else {
-                if (v != prev) {
+                if (compare_bit_strings(bits, prev_bits) != 0) {
                     transitions++;
                     if (first_change_time == 0) first_change_time = t;
                     last_change_time = t;
                 }
-                if (v < minv) minv = v;
-                if (v > maxv) maxv = v;
-                prev = final = v;
+                if (compare_bit_strings(bits, min_bits) < 0) min_bits = bits;
+                if (compare_bit_strings(bits, max_bits) > 0) max_bits = bits;
+                prev_bits = final_bits = bits;
             }
             return true;
         }, error, samples, truncated)) return Json();
@@ -633,10 +831,10 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
     data["transition_count"] = transitions;
     data["truncated"] = truncated;
     if (have_known) {
-        data["first"] = first;
-        data["final"] = final;
-        data["min"] = minv;
-        data["max"] = maxv;
+        data["first"] = bit_value_json(first_bits);
+        data["final"] = bit_value_json(final_bits);
+        data["min"] = bit_value_json(min_bits);
+        data["max"] = bit_value_json(max_bits);
         data["low_cycles"] = low_cycles;
         data["high_cycles"] = high_cycles;
         data["high_ratio"] = known > 0 ? static_cast<double>(high_cycles) / static_cast<double>(known) : 0.0;
@@ -649,6 +847,122 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
             {"last_fall_time", last_fall_time ? Json(format_time(last_fall_time)) : Json(nullptr)},
             {"max_high_cycles", max_high_cycles}
         };
+    }
+    return data;
+}
+
+Json ai_counter_statistics(const Json& args, std::string& error) {
+    std::string clock = args.value("clock", std::string());
+    if (clock.empty()) {
+        error = "MISSING_FIELD: counter.statistics requires args.clock";
+        return Json();
+    }
+    if (!args.contains("time_range") && !args.contains("begin") && !args.contains("end") &&
+        !args.contains("from") && !args.contains("to") && !args.contains("around")) {
+        error = "MISSING_FIELD: counter.statistics requires args.time_range";
+        return Json();
+    }
+
+    npiFsdbTime begin = 0, end = 0;
+    if (!json_time_range(args, begin, end, error)) return Json();
+
+    Json signal_union = Json::object();
+    std::string valid_expr;
+    CounterInput counter;
+    if (!build_counter_inputs(args, signal_union, valid_expr, counter, error)) return Json();
+
+    std::vector<std::string> aliases, paths;
+    fsdbSigVec_t handles;
+    if (!build_signal_alias_handles(signal_union, aliases, paths, handles, error)) return Json();
+
+    bool posedge = args.value("sampling", std::string("posedge")) != "negedge";
+    int max_samples = args.value("max_samples", 1000000);
+    int samples = 0;
+    bool truncated = false;
+    int valid_count = 0, valid_false_count = 0, unknown_count = 0;
+    bool have_value = false;
+    uint64_t min_value = 0, max_value = 0;
+    int min_count = 0, max_count = 0;
+    npiFsdbTime min_first_time = 0, max_first_time = 0;
+    long double sum = 0.0;
+
+    if (!sample_on_clock(clock, posedge, aliases, handles, begin, end, max_samples,
+        [&](npiFsdbTime t, const std::map<std::string, std::string>& values) -> bool {
+            ExprTri valid = ExprTri::Unknown;
+            std::string eval_error;
+            if (!xdebug_waveform::eval_event_expression(valid_expr, values, valid, eval_error)) {
+                error = eval_error;
+                return false;
+            }
+            if (valid == ExprTri::False) {
+                valid_false_count++;
+                return true;
+            }
+            if (valid == ExprTri::Unknown) {
+                unknown_count++;
+                return true;
+            }
+
+            std::string bits = counter_bits_from_values(counter, values);
+            uint64_t value = 0;
+            std::string parse_error;
+            if (!bits_to_u64(bits, value, parse_error)) {
+                if (!parse_error.empty()) {
+                    error = parse_error;
+                    return false;
+                }
+                unknown_count++;
+                return true;
+            }
+
+            valid_count++;
+            sum += static_cast<long double>(value);
+            if (!have_value) {
+                have_value = true;
+                min_value = max_value = value;
+                min_count = max_count = 1;
+                min_first_time = max_first_time = t;
+                return true;
+            }
+            if (value < min_value) {
+                min_value = value;
+                min_count = 1;
+                min_first_time = t;
+            } else if (value == min_value) {
+                min_count++;
+            }
+            if (value > max_value) {
+                max_value = value;
+                max_count = 1;
+                max_first_time = t;
+            } else if (value == max_value) {
+                max_count++;
+            }
+            return true;
+        }, error, samples, truncated)) return Json();
+
+    Json data;
+    data["clock"] = clock;
+    data["sampling"] = posedge ? "posedge" : "negedge";
+    data["begin"] = format_time(begin);
+    data["end"] = format_time(end);
+    data["sample_count"] = samples;
+    data["valid_count"] = valid_count;
+    data["valid_false_count"] = valid_false_count;
+    data["unknown_count"] = unknown_count;
+    data["truncated"] = truncated;
+    data["cnt"] = args["cnt"];
+    data["vld"] = args["vld"];
+    if (have_value) {
+        data["min_value"] = u64_to_decimal(min_value);
+        data["max_value"] = u64_to_decimal(max_value);
+        data["average_value"] = long_double_to_decimal(sum / static_cast<long double>(valid_count));
+        data["min_count"] = min_count;
+        data["max_count"] = max_count;
+        data["min_first_time"] = format_time(min_first_time);
+        data["max_first_time"] = format_time(max_first_time);
+        data["min_first_time_ps"] = min_first_time;
+        data["max_first_time_ps"] = max_first_time;
     }
     return data;
 }

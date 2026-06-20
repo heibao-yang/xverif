@@ -101,6 +101,7 @@ example 和 contract test 迁移使用。状态定义：
 | `signal.stability` | waveform | stable | waveform | waveform engine forward | partial |
 | `signal.trend` | waveform | stable | waveform | waveform engine forward | partial |
 | `signal.statistics` | waveform | stable | waveform | waveform engine forward | regression |
+| `counter.statistics` | waveform | stable | waveform | waveform engine forward | targeted |
 | `sampled_pulse.inspect` | waveform | experimental | waveform | waveform engine forward | partial |
 | `inspect_signal` | waveform | deprecated | waveform | waveform engine forward | partial |
 | `detect_anomaly` | waveform | stable | waveform | waveform engine forward | partial |

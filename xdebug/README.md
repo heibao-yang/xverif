@@ -410,11 +410,14 @@ compact 默认不返回大字段，例如 `expanded_queries`、`raw_edges`、`al
 | 意图 | 推荐 action | 说明 |
 | --- | --- | --- |
 | 统计 high/active cycles | `signal.statistics` | 有 `clock` 时做 clock-sampled 统计；无 `clock` 时做 raw value-change 统计，并返回 `sampling_mode`。 |
+| 统计 counter min/max/average | `counter.statistics` | 传 `clock`、`time_range`、`vld`、`cnt`，按周期采样最多 64 bit counter；`cnt` 可用 `{hi,lo}` 拼接。 |
 | 看跳变时间线 | `signal.changes` | compact 默认只返回 summary；需要行时设置 `include_rows:true`，用 `mode:"head"` 或 `"tail"` 控制方向。 |
 | 判断窗口内保持 0/1 | `window.verify` 或 `signal.statistics` | 不要用 `signal.changes` 的 row count 当周期数。 |
 | 找 first/last occurrence | `event.find`，或 `signal.changes` + `mode:"head"/"tail"` | `signal.changes aggregate_only:true` 适合先看首末值和跳变总数。 |
 
 `signal.changes.summary.transition_count` 为兼容保留；新代码同时返回 `returned_change_rows`、`includes_initial_value`、`actual_transition_count` 和 `semantic_note`，优先读这些字段判断语义。
+
+`signal.statistics` 的 clock 模式对多 bit 信号用 bit-string/value object 返回 `first`、`final`、`min`、`max`，避免宽信号被整数截断。
 
 ### include 开关与限制
 

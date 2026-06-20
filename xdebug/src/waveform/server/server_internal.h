@@ -135,6 +135,7 @@ Json ai_expr_eval_at(const Json& args, std::string& error);
 Json ai_window_verify(const Json& args, std::string& error);
 Json ai_signal_trend(const Json& args, std::string& error);
 Json ai_signal_statistics(const Json& args, std::string& error);
+Json ai_counter_statistics(const Json& args, std::string& error);
 Json ai_sampled_pulse_inspect(const Json& args, std::string& error);
 Json ai_handshake_inspect(const Json& args, std::string& error);
 Json ai_inspect_signal(const Json& args, std::string& error);

@@ -122,6 +122,7 @@ void register_waveform(ActionRegistry& r) {
         {"signal.stability", ActionStatus::Stable},
         {"signal.trend", ActionStatus::Stable},
         {"signal.statistics", ActionStatus::Stable},
+        {"counter.statistics", ActionStatus::Stable},
         {"sampled_pulse.inspect", ActionStatus::Experimental},
         {"inspect_signal", ActionStatus::Deprecated},
         {"detect_anomaly", ActionStatus::Stable},

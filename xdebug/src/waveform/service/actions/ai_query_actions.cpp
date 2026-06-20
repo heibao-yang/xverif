@@ -25,6 +25,8 @@ public:
                                err.find("TIME_OUT_OF_RANGE") != std::string::npos ? "TIME_OUT_OF_RANGE" :
                                err.find("CLOCK_OFFSET_UNSUPPORTED") != std::string::npos ? "CLOCK_OFFSET_UNSUPPORTED" :
                                err.find("TIME_SPEC_INVALID") != std::string::npos ? "TIME_SPEC_INVALID" :
+                               err.find("INVALID_REQUEST") != std::string::npos ? "INVALID_REQUEST" :
+                               err.find("MISSING_FIELD") != std::string::npos ? "MISSING_FIELD" :
                                err.find("Invalid time") != std::string::npos ? "TIME_SPEC_INVALID" :
                                err.find("Invalid TimeSpec") != std::string::npos ? "TIME_SPEC_INVALID" :
                                err.find("config not found") != std::string::npos ? "INVALID_REQUEST" :
@@ -103,6 +105,14 @@ private:
                 {"high_cycles", data.value("high_cycles", 0)},
                 {"low_cycles", data.value("low_cycles", 0)}
             };
+        } else if (action == "counter.statistics") {
+            out["summary"] = {
+                {"sample_count", data.value("sample_count", 0)},
+                {"valid_count", data.value("valid_count", 0)},
+                {"min_value", data.value("min_value", Json(nullptr))},
+                {"max_value", data.value("max_value", Json(nullptr))},
+                {"average_value", data.value("average_value", Json(nullptr))}
+            };
         } else if (data.contains("transaction_count")) {
             out["summary"] = {{"transaction_count", data["transaction_count"]}};
         } else if (data.contains("sample_count")) {
@@ -143,6 +153,8 @@ std::unique_ptr<WaveformActionHandler> make_signal_trend_action()
 { return std::unique_ptr<WaveformActionHandler>(new AiQueryAction("signal.trend")); }
 std::unique_ptr<WaveformActionHandler> make_signal_statistics_action()
 { return std::unique_ptr<WaveformActionHandler>(new AiQueryAction("signal.statistics")); }
+std::unique_ptr<WaveformActionHandler> make_counter_statistics_action()
+{ return std::unique_ptr<WaveformActionHandler>(new AiQueryAction("counter.statistics")); }
 std::unique_ptr<WaveformActionHandler> make_sampled_pulse_inspect_action()
 { return std::unique_ptr<WaveformActionHandler>(new AiQueryAction("sampled_pulse.inspect")); }
 std::unique_ptr<WaveformActionHandler> make_inspect_signal_action()

@@ -155,7 +155,7 @@ DEPS = $(sort $(CORE_OBJS:.o=.d) \
        $(DESIGN_OBJS:.o=.d) \
        $(WAVEFORM_OBJS:.o=.d))
 
-.PHONY: all internal-engines unit-test log-test test-infra pytest-contract pytest-synthetic-existing pytest-axi-vip pytest-apb-vip pytest-active-semantics pytest-realdata pytest-session pytest-mcp test-fast test-contract test-synthetic test-vip test-active-trace test-session test-mcp-direct test-mcp-fake-lsf test-realdata-smoke test-regression test-nightly test-mcp-real-lsf mcp-test schema-test contract-test combined-test clean
+.PHONY: all internal-engines unit-test log-test test-infra pytest-contract pytest-synthetic-existing pytest-counter-statistics pytest-axi-vip pytest-apb-vip pytest-active-semantics pytest-realdata pytest-session pytest-mcp test-fast test-contract test-synthetic test-vip test-active-trace test-session test-mcp-direct test-mcp-fake-lsf test-realdata-smoke test-regression test-nightly test-mcp-real-lsf mcp-test schema-test contract-test combined-test clean
 
 all: $(EXE) internal-engines
 
@@ -214,6 +214,9 @@ pytest-contract: $(EXE)
 pytest-synthetic-existing: all
 	$(PYTHON) -m pytest -c tests/pytest.ini -q tests/synthetic/test_existing_regressions.py
 
+pytest-counter-statistics: all
+	$(PYTHON) -m pytest -c tests/pytest.ini -q tests/synthetic/test_counter_statistics.py
+
 pytest-axi-vip: all
 	AXI_REFERENCE_ROOT=$(AXI_REFERENCE_ROOT) SVT_VIP_INCDIR=$(SVT_VIP_INCDIR) SVT_VIP_SRCDIR=$(SVT_VIP_SRCDIR) \
 		$(PYTHON) -m pytest -c tests/pytest.ini -q tests/synthetic/test_axi_vip_real.py
@@ -239,7 +242,7 @@ test-fast: test-infra schema-test unit-test contract-test pytest-contract
 
 test-contract: test-fast
 
-test-synthetic: pytest-synthetic-existing pytest-active-semantics
+test-synthetic: pytest-synthetic-existing pytest-counter-statistics pytest-active-semantics
 
 test-vip: pytest-axi-vip pytest-apb-vip
 

@@ -426,6 +426,7 @@ Json ai_dispatch_query(const Json& req, std::string& error) {
     if (action == "signal.stability") return ai_signal_stability(args, error);
     if (action == "signal.trend") return ai_signal_trend(args, error);
     if (action == "signal.statistics") return ai_signal_statistics(args, error);
+    if (action == "counter.statistics") return ai_counter_statistics(args, error);
     if (action == "sampled_pulse.inspect") return ai_sampled_pulse_inspect(args, error);
     if (action == "inspect_signal") return ai_inspect_signal(args, error);
     if (action == "detect_anomaly") return ai_detect_anomaly(args, error);

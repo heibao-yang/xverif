@@ -34,6 +34,7 @@ std::unique_ptr<WaveformActionHandler> make_signal_changes_action();
 std::unique_ptr<WaveformActionHandler> make_signal_stability_action();
 std::unique_ptr<WaveformActionHandler> make_signal_trend_action();
 std::unique_ptr<WaveformActionHandler> make_signal_statistics_action();
+std::unique_ptr<WaveformActionHandler> make_counter_statistics_action();
 std::unique_ptr<WaveformActionHandler> make_sampled_pulse_inspect_action();
 std::unique_ptr<WaveformActionHandler> make_inspect_signal_action();
 std::unique_ptr<WaveformActionHandler> make_detect_anomaly_action();
@@ -91,6 +92,7 @@ const WaveformActionRegistry& default_waveform_action_registry() {
         r->add(make_signal_stability_action());
         r->add(make_signal_trend_action());
         r->add(make_signal_statistics_action());
+        r->add(make_counter_statistics_action());
         r->add(make_sampled_pulse_inspect_action());
         r->add(make_inspect_signal_action());
         r->add(make_detect_anomaly_action());
