@@ -119,6 +119,18 @@ std::string xdebug_waveform_events_path(const std::string& session_id) {
     return xdebug_waveform_session_dir(session_id) + "/events.json";
 }
 
+std::string xdebug_waveform_streams_path(int session_id) {
+    return xdebug_waveform_streams_path(std::to_string(session_id));
+}
+
+std::string xdebug_waveform_streams_path(const std::string& session_id) {
+    return xdebug_waveform_session_dir(session_id) + "/streams.json";
+}
+
+std::string xdebug_waveform_stream_exports_dir(const std::string& session_id) {
+    return xdebug_waveform_session_dir(session_id) + "/stream_exports";
+}
+
 std::string xdebug_waveform_cursors_path(int session_id) {
     return xdebug_waveform_cursors_path(std::to_string(session_id));
 }
@@ -174,6 +186,7 @@ bool xdebug_waveform_remove_session_dir(const std::string& session_id) {
     remove_file_if_exists(dir + "/apb.json");
     remove_file_if_exists(dir + "/axi.json");
     remove_file_if_exists(dir + "/events.json");
+    remove_file_if_exists(dir + "/streams.json");
     remove_file_if_exists(dir + "/cursors.json");
     remove_file_if_exists(dir + "/endpoint.json");
     // Preserve debug.log and logs/ for post-failure diagnostics.

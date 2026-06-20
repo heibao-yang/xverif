@@ -66,6 +66,7 @@ ENGINE_SRCS = src/engine/main.cpp \
               src/engine/service/engine_waveform_handlers.cpp \
               src/engine/service/engine_protocol_handlers.cpp \
               src/engine/service/engine_design_handlers.cpp \
+              src/engine/service/engine_stream_handlers.cpp \
               src/engine/service/design_postprocess.cpp \
               src/engine/service/trace_bfs_engine.cpp \
               src/api/response.cpp \
@@ -134,7 +135,12 @@ WAVEFORM_SRCS = src/waveform/main.cpp \
                 src/waveform/axi/axi_analyzer.cpp \
                 src/waveform/event/event_manager.cpp \
                 src/waveform/event/event_expr.cpp \
-                src/waveform/event/event_analyzer.cpp
+                src/waveform/event/event_analyzer.cpp \
+                src/waveform/stream/stream_config.cpp \
+                src/waveform/stream/stream_manager.cpp \
+                src/waveform/stream/stream_expr.cpp \
+                src/waveform/stream/stream_analyzer.cpp \
+                src/waveform/stream/stream_exporter.cpp
 
 CORE_OBJS = $(CORE_SRCS:%.cpp=$(BUILD)/%.o)
 API_SUPPORT_OBJS = $(API_SUPPORT_SRCS:%.cpp=$(BUILD)/%.o)

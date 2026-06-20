@@ -144,6 +144,19 @@ void register_waveform(ActionRegistry& r) {
         }
         register_spec(r, spec);
     }
+    const char* stream_names[] = {
+        "stream.config.load",
+        "stream.config.list",
+        "stream.show",
+        "stream.validate",
+        "stream.query",
+        "stream.export"
+    };
+    for (size_t i = 0; i < sizeof(stream_names) / sizeof(stream_names[0]); ++i) {
+        ActionSpec spec = stable_spec(stream_names[i], "waveform",
+                                      ResourceRequirement::Waveform, "engine_forward");
+        register_spec(r, spec);
+    }
 }
 
 void register_combined(ActionRegistry& r) {

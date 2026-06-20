@@ -1,0 +1,6 @@
+out/
+csrc/
+simv.daidir/
+ucli.key
+vc_hdrs.h
+verdiLog/

@@ -14,6 +14,7 @@ namespace xdebug_design {
 void register_waveform_handlers(EngineActionRegistry& r);
 void register_protocol_handlers(EngineActionRegistry& r);
 void register_design_handlers(EngineActionRegistry& r);
+void register_stream_handlers(EngineActionRegistry& r);
 
 // ═══════════════════════════════════════════════════════════════════════
 // Combined action handlers (simple wrappers — kept here for visibility)
@@ -119,6 +120,9 @@ const EngineActionRegistry& engine_action_registry() {
 
         // ── Protocol handlers ──
         register_protocol_handlers(*r);
+
+        // ── Stream handlers ──
+        register_stream_handlers(*r);
 
         // ── Combined handlers ──
         r->add(std::unique_ptr<EngineActionHandler>(new ActiveDriverHandler));

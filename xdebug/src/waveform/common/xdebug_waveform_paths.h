@@ -25,6 +25,9 @@ std::string xdebug_waveform_axi_path(int session_id);
 std::string xdebug_waveform_axi_path(const std::string& session_id);
 std::string xdebug_waveform_events_path(int session_id);
 std::string xdebug_waveform_events_path(const std::string& session_id);
+std::string xdebug_waveform_streams_path(int session_id);
+std::string xdebug_waveform_streams_path(const std::string& session_id);
+std::string xdebug_waveform_stream_exports_dir(const std::string& session_id);
 std::string xdebug_waveform_cursors_path(int session_id);
 std::string xdebug_waveform_cursors_path(const std::string& session_id);
 

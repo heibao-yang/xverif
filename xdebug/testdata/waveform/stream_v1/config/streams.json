@@ -1,0 +1,86 @@
+{
+  "streams": [
+    {
+      "name": "valid_only",
+      "clock": "stream_v1_top.clk || 1'b0",
+      "clock_edge": "posedge",
+      "reset": "!stream_v1_top.rst_n",
+      "vld": "stream_v1_top.vo_vld",
+      "data": "stream_v1_top.vo_data",
+      "description": "valid-only stream"
+    },
+    {
+      "name": "ready_stream",
+      "clock": "stream_v1_top.clk",
+      "clock_edge": "posedge",
+      "reset": "!stream_v1_top.rst_n",
+      "vld": "stream_v1_top.ready_vld && !stream_v1_top.ready_flush",
+      "rdy": "stream_v1_top.ready_rdy",
+      "channel_id": "stream_v1_top.ready_chid",
+      "data_fields": {
+        "low8": "stream_v1_top.ready_data[7:0]",
+        "addr": "{stream_v1_top.ready_addr_hi, stream_v1_top.ready_addr_lo}",
+        "is_wr": "stream_v1_top.ready_cmd == 2'b01",
+        "data": "stream_v1_top.ready_data"
+      },
+      "description": "vld/rdy stream with gated valid, slice, concat, compare, and channel"
+    },
+    {
+      "name": "bp_stream",
+      "clock": "stream_v1_top.clk",
+      "clock_edge": "posedge",
+      "reset": "!stream_v1_top.rst_n",
+      "vld": "stream_v1_top.bp_vld",
+      "bp": "stream_v1_top.bp_bp",
+      "data": "stream_v1_top.bp_data",
+      "description": "vld/bp stream"
+    },
+    {
+      "name": "ready_packet",
+      "clock": "stream_v1_top.clk",
+      "clock_edge": "posedge",
+      "reset": "!stream_v1_top.rst_n",
+      "vld": "stream_v1_top.rpkt_vld",
+      "rdy": "stream_v1_top.rpkt_rdy",
+      "sop": "stream_v1_top.rpkt_sop",
+      "eop": "stream_v1_top.rpkt_eop",
+      "data_fields": {
+        "seq": "stream_v1_top.rpkt_seq",
+        "data": "stream_v1_top.rpkt_data"
+      },
+      "description": "vld/rdy/sop/eop packet stream"
+    },
+    {
+      "name": "bp_packet",
+      "clock": "stream_v1_top.clk",
+      "clock_edge": "posedge",
+      "reset": "!stream_v1_top.rst_n",
+      "vld": "stream_v1_top.bpkt_vld",
+      "bp": "stream_v1_top.bpkt_bp",
+      "sop": "stream_v1_top.bpkt_sop",
+      "eop": "stream_v1_top.bpkt_eop",
+      "data_fields": {
+        "seq": "stream_v1_top.bpkt_seq",
+        "data": "stream_v1_top.bpkt_data"
+      },
+      "description": "vld/bp/sop/eop packet stream"
+    },
+    {
+      "name": "ready_bp_packet_negedge",
+      "clock": "stream_v1_top.clk",
+      "clock_edge": "negedge",
+      "reset": "!stream_v1_top.rst_n",
+      "vld": "stream_v1_top.npkt_vld",
+      "rdy": "stream_v1_top.npkt_rdy",
+      "bp": "stream_v1_top.npkt_bp",
+      "sop": "stream_v1_top.npkt_sop",
+      "eop": "stream_v1_top.npkt_eop",
+      "channel_id": "stream_v1_top.npkt_chid",
+      "data_fields": {
+        "seq": "stream_v1_top.npkt_seq",
+        "data": "stream_v1_top.npkt_data"
+      },
+      "description": "negedge vld/rdy/bp/sop/eop packet stream"
+    }
+  ]
+}

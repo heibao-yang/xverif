@@ -1634,6 +1634,101 @@
       ]
     },
     {
+      "name": "stream.config.load",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/actions/stream.config.load.request.schema.json",
+        "response": "schemas/v1/actions/stream.config.load.response.schema.json"
+      },
+      "examples": {
+        "request": ["examples/requests/stream.config.load.basic.json"],
+        "response": ["examples/responses/stream.config.load.basic.json"]
+      },
+      "required_args": ["streams"]
+    },
+    {
+      "name": "stream.config.list",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/actions/stream.config.list.request.schema.json",
+        "response": "schemas/v1/actions/stream.config.list.response.schema.json"
+      },
+      "examples": {
+        "request": ["examples/requests/stream.config.list.basic.json"],
+        "response": ["examples/responses/stream.config.list.basic.json"]
+      }
+    },
+    {
+      "name": "stream.show",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/actions/stream.show.request.schema.json",
+        "response": "schemas/v1/actions/stream.show.response.schema.json"
+      },
+      "examples": {
+        "request": ["examples/requests/stream.show.basic.json"],
+        "response": ["examples/responses/stream.show.basic.json"]
+      },
+      "required_args": ["stream"]
+    },
+    {
+      "name": "stream.validate",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/actions/stream.validate.request.schema.json",
+        "response": "schemas/v1/actions/stream.validate.response.schema.json"
+      },
+      "examples": {
+        "request": ["examples/requests/stream.validate.basic.json"],
+        "response": ["examples/responses/stream.validate.basic.json"]
+      },
+      "required_args": ["stream"]
+    },
+    {
+      "name": "stream.query",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/actions/stream.query.request.schema.json",
+        "response": "schemas/v1/actions/stream.query.response.schema.json"
+      },
+      "examples": {
+        "request": ["examples/requests/stream.query.basic.json"],
+        "response": ["examples/responses/stream.query.basic.json"]
+      },
+      "required_args": ["stream", "query"]
+    },
+    {
+      "name": "stream.export",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/actions/stream.export.request.schema.json",
+        "response": "schemas/v1/actions/stream.export.response.schema.json"
+      },
+      "examples": {
+        "request": ["examples/requests/stream.export.basic.json"],
+        "response": ["examples/responses/stream.export.basic.json"]
+      },
+      "required_args": ["stream"]
+    },
+    {
       "name": "signal.search",
       "category": "design",
       "status": "removed",

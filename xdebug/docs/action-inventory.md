@@ -110,6 +110,12 @@ example 和 contract test 迁移使用。状态定义：
 | `axi.request_response_pair` | waveform | experimental | waveform | waveform engine forward | partial |
 | `axi.latency_outlier` | waveform | experimental | waveform | waveform engine forward | partial |
 | `apb.transfer_window` | waveform | experimental | waveform | waveform engine forward | partial |
+| `stream.config.load` | waveform | stable | waveform | waveform engine forward | synthetic |
+| `stream.config.list` | waveform | stable | waveform | waveform engine forward | synthetic |
+| `stream.show` | waveform | stable | waveform | waveform engine forward | synthetic |
+| `stream.validate` | waveform | stable | waveform | waveform engine forward | synthetic |
+| `stream.query` | waveform | stable | waveform | waveform engine forward | synthetic |
+| `stream.export` | waveform | stable | waveform | waveform engine forward | synthetic |
 
 ## Removed Actions
 
