@@ -31,14 +31,57 @@ int main() {
         {"data", {
             {"signal", "top.clk"},
             {"time", "10ns"},
-            {"value", "1"},
+            {"value", Json{{"value", "1"}, {"known", true}}},
             {"known", true}
         }}
     };
     text = render_xout_response(response);
     assert(text.find("@xdebug.value.at.v1") == 0);
     assert(text.find("target:\n  signal: top.clk\n  time: 10ns") != std::string::npos);
-    assert(text.find("summary:\n  value: 1\n  known: true") != std::string::npos);
+    assert(text.find("summary:\n  value: 'h1") != std::string::npos);
+
+    Json sized_value = {
+        {"value", "0x4000000c"},
+        {"bits", "01000000000000000000000000001100"},
+        {"known", true},
+        {"width", 32}
+    };
+    assert(json_to_xout_value(sized_value) == "32'h4000000c");
+
+    Json unsized_hex = {{"value", "'h22"}, {"known", true}};
+    assert(json_to_xout_value(unsized_hex) == "'h22");
+
+    Json binary_value = {{"value", "'b1010"}, {"known", true}};
+    assert(json_to_xout_value(binary_value) == "4'ha");
+
+    Json unknown_value = {
+        {"value", "0xx"},
+        {"bits", "10xz"},
+        {"known", false},
+        {"width", 4}
+    };
+    assert(json_to_xout_value(unknown_value) == "4'hx known=false bits=10xz width=4");
+
+    Json field_map = {
+        {"data", sized_value},
+        {"seq", Json{{"value", "0x000c"}, {"bits", "0000000000001100"}, {"known", true}, {"width", 16}}}
+    };
+    assert(json_to_xout_value(field_map) == "data=32'h4000000c seq=16'h000c");
+
+    Json table_response = {
+        {"api_version", "xdebug.v1"},
+        {"ok", true},
+        {"action", "stream.query"},
+        {"data", {
+            {"rows", Json::array({
+                Json{{"cycle", 18}, {"time", "185ns"}, {"fields", field_map}}
+            })}
+        }}
+    };
+    text = render_xout_response(table_response);
+    assert(text.find("cycle time fields\n  18 185ns data=32'h4000000c seq=16'h000c") != std::string::npos);
+    assert(text.find("bits:") == std::string::npos);
+    assert(text.find("known: true") == std::string::npos);
 
     Json error = {
         {"ok", false},

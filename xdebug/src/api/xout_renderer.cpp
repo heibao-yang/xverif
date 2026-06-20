@@ -12,7 +12,12 @@ namespace {
 
 bool has_scalar(const Json& object, const std::string& key) {
     return object.is_object() && object.contains(key) &&
-           (object[key].is_string() || object[key].is_number() || object[key].is_boolean());
+           xdebug::is_xout_scalar_json(object[key]);
+}
+
+bool should_emit_scalar_key(const std::string& key, const Json& value) {
+    if (key == "known" && value.is_boolean() && value.get<bool>()) return false;
+    return xdebug::is_xout_scalar_json(value);
 }
 
 std::string scalar_text(const Json& object, const std::string& key) {
@@ -24,7 +29,8 @@ void emit_scalar_keys(TextResponseBuilder& out, const Json& object,
                       const std::vector<std::string>& keys) {
     if (!object.is_object()) return;
     for (const auto& key : keys) {
-        if (has_scalar(object, key)) out.emit_kv(key, object[key]);
+        if (has_scalar(object, key) && should_emit_scalar_key(key, object[key]))
+            out.emit_kv(key, object[key]);
     }
 }
 
@@ -32,7 +38,7 @@ void emit_summary(TextResponseBuilder& out, const Json& response) {
     if (!response.contains("summary") || !response["summary"].is_object()) return;
     out.emit_section("summary");
     for (auto it = response["summary"].begin(); it != response["summary"].end(); ++it) {
-        if (it.value().is_string() || it.value().is_number() || it.value().is_boolean()) {
+        if (should_emit_scalar_key(it.key(), it.value())) {
             out.emit_kv(it.key(), it.value());
         }
     }
@@ -71,12 +77,12 @@ void emit_suggestions(TextResponseBuilder& out, const Json& response) {
 
 void render_data_value(TextResponseBuilder& out, const std::string& key,
                        const Json& val) {
-    if (val.is_string() || val.is_number() || val.is_boolean()) {
+    if (xdebug::is_xout_scalar_json(val)) {
         out.emit_kv(key, val);
     } else if (val.is_array() && val.empty()) {
         out.emit_kv(key, "[empty]");
     } else if (val.is_array() && val.size() > 0 &&
-               (val[0].is_string() || val[0].is_number() || val[0].is_boolean())) {
+               xdebug::is_xout_scalar_json(val[0])) {
         out.emit_section(key);
         int n = std::min(20, (int)val.size());
         for (int i = 0; i < n; ++i) out.emit_row({json_to_xout_value(val[i])});
@@ -91,8 +97,7 @@ void render_data_value(TextResponseBuilder& out, const std::string& key,
         std::set<std::string> seen;
         for (int i = 0; i < std::min(5, count); ++i) {
             for (auto ki = val[i].begin(); ki != val[i].end(); ++ki) {
-                if ((ki.value().is_string() || ki.value().is_number() ||
-                     ki.value().is_boolean()) &&
+                if (should_emit_scalar_key(ki.key(), ki.value()) &&
                     seen.insert(ki.key()).second) {
                     keys.push_back(ki.key());
                 }
@@ -123,7 +128,7 @@ void render_value_at(TextResponseBuilder& out, const Json& response) {
     out.emit_section("target");
     emit_scalar_keys(out, data, {"signal", "time"});
     out.emit_section("summary");
-    emit_scalar_keys(out, data, {"value", "known", "width"});
+    emit_scalar_keys(out, data, {"status", "value"});
     out.emit_section("data");
     emit_scalar_keys(out, data, {"bin", "hex", "decimal"});
 }
@@ -178,7 +183,7 @@ void render_active_driver(TextResponseBuilder& out, const Json& response) {
     if (data.is_object()) {
         out.emit_section("data");
         for (auto it = data.begin(); it != data.end(); ++it) {
-            if (it.value().is_string() || it.value().is_number() || it.value().is_boolean())
+            if (should_emit_scalar_key(it.key(), it.value()))
                 out.emit_kv(it.key(), it.value());
         }
     }
@@ -193,7 +198,7 @@ void render_active_driver(TextResponseBuilder& out, const Json& response) {
         out.emit_section(key);
         if (data[key].is_array()) {
             for (const auto& item : data[key])
-                out.emit_row({item.is_object() ? item.dump() : json_to_xout_value(item)});
+                out.emit_row({json_to_xout_value(item)});
         } else if (data[key].is_object()) {
             for (auto it = data[key].begin(); it != data[key].end(); ++it)
                 out.emit_row({it.key(), json_to_xout_value(it.value())});
@@ -219,9 +224,7 @@ void render_generic(TextResponseBuilder& out, const Json& response) {
     }
     if (response.contains("findings") && response["findings"].is_array() &&
         !response["findings"].empty()) {
-        out.emit_section("findings");
-        for (const auto& f : response["findings"])
-            out.emit_row({f.is_object() ? f.dump() : json_to_xout_value(f)});
+        render_data_value(out, "findings", response["findings"]);
     }
 }
 

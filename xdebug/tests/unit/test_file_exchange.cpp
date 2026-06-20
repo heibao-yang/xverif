@@ -40,7 +40,10 @@ static Json request_wrapper(const std::string& id, long long deadline_us) {
 }
 
 int main() {
-    std::string dir = "/tmp/xdebug_file_exchange_test_" + std::to_string(getpid());
+    char dir_template[] = "/tmp/xdebug_file_exchange_test_XXXXXX";
+    char* dir_path = mkdtemp(dir_template);
+    assert(dir_path != nullptr);
+    std::string dir = dir_path;
     assert(xdebug_core::ensure_file_transport_layout(dir));
     for (const char* sub : {"requests", "claims", "responses", "done", "failed", "tmp", "heartbeat"}) {
         assert(exists(join_path(dir, sub)));

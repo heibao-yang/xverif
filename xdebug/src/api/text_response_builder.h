@@ -42,6 +42,8 @@ private:
 
 std::string sanitize_xout_key(const std::string& key);
 std::string sanitize_xout_value(const std::string& value);
+bool is_xout_scalar_json(const Json& value);
+bool is_xout_field_map_json(const Json& value);
 std::string json_to_xout_value(const Json& value);
 
 } // namespace xdebug

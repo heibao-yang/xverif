@@ -172,9 +172,8 @@ private:
         if (d.contains("signal")) out.emit_kv("signal", d["signal"]);
         if (d.contains("time")) out.emit_kv("time", d["time"]);
         out.emit_section("summary");
+        if (d.contains("status")) out.emit_kv("status", d["status"]);
         if (d.contains("value")) out.emit_kv("value", d["value"]);
-        if (d.contains("known")) out.emit_kv("known", d["known"]);
-        if (d.contains("width")) out.emit_kv("width", d["width"]);
         return out.str();
     }
 };
@@ -256,9 +255,17 @@ private:
         if (s.contains("time")) out.emit_kv("time", s["time"]);
         if (s.contains("signal_count")) out.emit_kv("signal_count", s["signal_count"]);
         out.emit_section("values");
-        if (d.contains("signals") && d["signals"].is_object()) {
-            for (auto it = d["signals"].begin(); it != d["signals"].end(); ++it)
-                out.emit_row({it.key(), xdebug::json_to_xout_value(it.value()["value"])});
+        if (d.contains("values") && d["values"].is_array()) {
+            out.emit_row({"signal", "value", "status"});
+            for (const auto& item : d["values"]) {
+                if (!item.is_object()) continue;
+                out.emit_row({item.value("signal", std::string()),
+                              xdebug::json_to_xout_value(item.value("value", Json())),
+                              item.value("status", std::string())});
+            }
+        } else if (d.contains("values") && d["values"].is_object()) {
+            for (auto it = d["values"].begin(); it != d["values"].end(); ++it)
+                out.emit_row({it.key(), xdebug::json_to_xout_value(it.value())});
         }
         return out.str();
     }

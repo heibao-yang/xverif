@@ -44,7 +44,10 @@ static bool exists(const std::string& path) {
 }
 
 int main() {
-    std::string home = "/tmp/xdebug_action_log_test_" + std::to_string(getpid());
+    char home_template[] = "/tmp/xdebug_action_log_test_XXXXXX";
+    char* home_dir = mkdtemp(home_template);
+    assert(home_dir != nullptr);
+    std::string home = home_dir;
     setenv("HOME", home.c_str(), 1);
 
     Json request = {

@@ -60,6 +60,31 @@ def _query(
     )
 
 
+def _query_xout(
+    cli_runner: CliRunner,
+    request: dict[str, Any],
+    *,
+    case_name: str,
+    artifact_root: Path,
+    timeout_sec: float = 180.0,
+) -> str:
+    result = cli_runner.run(request, output_format="xout", timeout_sec=timeout_sec)
+    if result.returncode == 0 and not result.timed_out and isinstance(result.response, str):
+        return result.response
+    artifact_dir = ArtifactWriter(artifact_root).write(case_name, result)
+    pytest.fail(
+        "%s failed rc=%s timeout=%s; artifacts=%s\nstdout:\n%s\nstderr:\n%s"
+        % (
+            case_name,
+            result.returncode,
+            result.timed_out,
+            artifact_dir,
+            result.stdout_raw[-8000:],
+            result.stderr_raw[-8000:],
+        )
+    )
+
+
 @pytest.mark.synthetic
 @pytest.mark.waveform
 @pytest.mark.stream
@@ -329,6 +354,30 @@ def test_stream_v1_real_waveform_actions(
         assert packet_at["data"]["found"] is True
         assert packet_at["data"]["packet"]["packet_index"] == 3
         assert packet_at["data"]["packet"]["stable_fields"]["opcode"]["value"] == "0xa3"
+        packet_at_xout = _query_xout(
+            cli_runner,
+            {
+                "api_version": "xdebug.v1",
+                "action": "stream.query",
+                "target": target,
+                "args": {
+                    "stream": "ready_packet",
+                    "query": "packet_at",
+                    "packet_index": 3,
+                    "start": "0ns",
+                    "end": "250us",
+                    "limit": 1,
+                },
+            },
+            case_name="stream-v1-packet-at-xout",
+            artifact_root=artifact_root,
+        )
+        assert "stable_fields: opcode=8'ha3" in packet_at_xout
+        assert "fields: data=32'h4000000c seq=16'h000c" in packet_at_xout
+        assert "first_fields: data=32'h4000000c seq=16'h000c" in packet_at_xout
+        assert "last_fields: data=32'h4000000f seq=16'h000f" in packet_at_xout
+        assert "bits:" not in packet_at_xout
+        assert "known: true" not in packet_at_xout
 
         packet_oob = _query(
             cli_runner,
@@ -408,6 +457,27 @@ def test_stream_v1_real_waveform_actions(
         )
         assert len(packets["data"]["packets"]) == 4
         assert packets["data"]["summary"]["clock_edge"] == "negedge"
+        packets_xout = _query_xout(
+            cli_runner,
+            {
+                "api_version": "xdebug.v1",
+                "action": "stream.query",
+                "target": target,
+                "args": {
+                    "stream": "ready_bp_packet_negedge",
+                    "query": "packet_window",
+                    "start": "0ns",
+                    "end": "250us",
+                    "limit": 2,
+                },
+            },
+            case_name="stream-v1-packet-window-xout",
+            artifact_root=artifact_root,
+        )
+        assert "data=32'h60000000 seq=16'h0000" in packets_xout
+        assert "data=32'h60000003 seq=16'h0003" in packets_xout
+        assert "2'h0" in packets_xout
+        assert "bits:" not in packets_xout
 
         interleaved = _query(
             cli_runner,
@@ -450,6 +520,28 @@ def test_stream_v1_real_waveform_actions(
         )
         assert match["data"]["summary"]["match_count"] > 0
         assert match["data"]["rows"][0]["fields"]["low8"]["value"] == "0x5a"
+        match_xout = _query_xout(
+            cli_runner,
+            {
+                "api_version": "xdebug.v1",
+                "action": "stream.query",
+                "target": target,
+                "args": {
+                    "stream": "ready_stream",
+                    "query": "match_field",
+                    "start": "0ns",
+                    "end": "250us",
+                    "limit": 2,
+                    "match": {"field": "low8", "op": "==", "value": "0x5a"},
+                },
+            },
+            case_name="stream-v1-match-field-xout",
+            artifact_root=artifact_root,
+        )
+        assert "low8=8'h5a" in match_xout
+        assert "data=32'h2000015a" in match_xout
+        assert "channel_id" in match_xout
+        assert "bits:" not in match_xout
 
         channel = _query(
             cli_runner,

@@ -7,15 +7,24 @@
 
 namespace xdebug_design {
 
+namespace {
+
+bool should_emit_scalar_key(const std::string& key, const Json& value) {
+    if (key == "known" && value.is_boolean() && value.get<bool>()) return false;
+    return xdebug::is_xout_scalar_json(value);
+}
+
+} // namespace
+
 // Helper: recursively render a JSON value.
 static void render_data_value(xdebug::TextResponseBuilder& out,
                               const std::string& key, const Json& val) {
-    if (val.is_string() || val.is_number() || val.is_boolean()) {
+    if (should_emit_scalar_key(key, val)) {
         out.emit_kv(key, val);
     } else if (val.is_array() && val.empty()) {
         out.emit_kv(key, "[empty]");
     } else if (val.is_array() && val.size() > 0 &&
-               (val[0].is_string() || val[0].is_number() || val[0].is_boolean())) {
+               xdebug::is_xout_scalar_json(val[0])) {
         out.emit_section(key);
         int n = std::min(20, (int)val.size());
         for (int i = 0; i < n; ++i)
@@ -31,13 +40,12 @@ static void render_data_value(xdebug::TextResponseBuilder& out,
         std::set<std::string> seen;
         for (int i = 0; i < std::min(5, count); ++i) {
             for (auto ki = val[i].begin(); ki != val[i].end(); ++ki) {
-                if (ki.value().is_string() || ki.value().is_number() ||
-                    ki.value().is_boolean()) {
+                if (should_emit_scalar_key(ki.key(), ki.value())) {
                     if (seen.insert(ki.key()).second) keys.push_back(ki.key());
                 } else if (ki.value().is_object()) {
                     for (auto oi = ki.value().begin(); oi != ki.value().end(); ++oi) {
                         std::string fkey = ki.key() + "." + oi.key();
-                        if ((oi.value().is_string() || oi.value().is_number()) &&
+                        if (should_emit_scalar_key(oi.key(), oi.value()) &&
                             seen.insert(fkey).second) keys.push_back(fkey);
                     }
                 }
@@ -93,8 +101,7 @@ std::string EngineActionHandler::render_xout(const Json& response) const {
         out.emit_section("summary");
         for (auto it = response["summary"].begin();
              it != response["summary"].end(); ++it) {
-            if (it.value().is_string() || it.value().is_number() ||
-                it.value().is_boolean()) {
+            if (should_emit_scalar_key(it.key(), it.value())) {
                 out.emit_kv(it.key(), it.value());
             }
         }
@@ -113,9 +120,7 @@ std::string EngineActionHandler::render_xout(const Json& response) const {
     // ── findings ──
     if (response.contains("findings") && response["findings"].is_array() &&
         !response["findings"].empty()) {
-        out.emit_section("findings");
-        for (const auto& f : response["findings"])
-            out.emit_row({xdebug::json_to_xout_value(f)});
+        render_data_value(out, "findings", response["findings"]);
     }
 
     return out.str();
