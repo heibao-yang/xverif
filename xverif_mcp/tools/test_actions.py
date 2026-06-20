@@ -16,10 +16,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib
 import json
 import os
 import sys
 import time
+from types import SimpleNamespace
 from typing import Any
 
 # Add project to path
@@ -36,9 +38,9 @@ from mcp.client.stdio import stdio_client
 # Config
 # ---------------------------------------------------------------------------
 
-ALL_ACTIONS = [
+FALLBACK_ACTIONS = [
     "actions", "batch", "schema",
-    "session.open", "session.ensure", "session.list", "session.doctor",
+    "session.open", "session.list", "session.doctor",
     "session.gc", "session.kill", "session.close",
     "trace.driver", "trace.expand", "trace.explain", "trace.graph",
     "trace.load", "trace.path", "trace.query",
@@ -134,6 +136,52 @@ def _server_env() -> dict:
     return env
 
 
+class InProcessSession:
+    """Small adapter with the ClientSession.call_tool shape used below."""
+
+    def __init__(self):
+        self._server = None
+
+    async def initialize(self) -> None:
+        if "xverif_mcp.server" in sys.modules:
+            self._server = importlib.reload(sys.modules["xverif_mcp.server"])
+        else:
+            self._server = importlib.import_module("xverif_mcp.server")
+
+    async def call_tool(self, name: str, args: dict | None = None):
+        if self._server is None:
+            await self.initialize()
+        result = await self._server.mcp.call_tool(name, args or {})
+        content = result[0] if isinstance(result, tuple) else result
+        return SimpleNamespace(content=content)
+
+    async def close(self) -> None:
+        if self._server is None:
+            return
+        debug = getattr(self._server, "debug", None)
+        sessions = getattr(debug, "_sessions", None)
+        if sessions is not None:
+            sessions.close_all()
+        cov = getattr(self._server, "cov", None)
+        sessions = getattr(cov, "_sessions", None)
+        if sessions is not None:
+            sessions.close_all()
+
+
+async def _call_json(session, tool: str, args: dict | None = None) -> dict:
+    result = await session.call_tool(tool, args or {})
+    return json.loads(result.content[0].text)
+
+
+async def discover_actions(session) -> list[str]:
+    data = await _call_json(session, "xverif_debug_list_actions", {})
+    actions = data.get("data", {}) if isinstance(data, dict) else {}
+    implemented = actions.get("implemented")
+    if isinstance(implemented, list) and implemented:
+        return sorted(str(a) for a in implemented)
+    return FALLBACK_ACTIONS
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -147,14 +195,14 @@ async def _open_session(session, cfg):
     """Open session using config."""
     sn = cfg["session_name"]
     rv = await session.call_tool("xverif_debug_session_open", {
-        "name": sn, "daidir": cfg["daidir"], "fsdb": cfg["fsdb"], "reuse": True,
+        "name": sn, "daidir": cfg["daidir"], "fsdb": cfg["fsdb"],
     })
     d = json.loads(rv.content[0].text)
     if not d.get("ok"):
-        print(f"  {Colors.RED}FAIL session.open: {d.get('error')}{Colors.RESET}")
+        print(f"  {Colors.RED}FAIL session.open: {d.get('error')}{Colors.RESET}", flush=True)
         return False
     mode = d.get("summary", {}).get("mode", "?")
-    print(f"  Session '{sn}' opened (mode={mode})")
+    print(f"  Session '{sn}' opened (mode={mode})", flush=True)
     return True
 
 
@@ -167,14 +215,15 @@ async def _close_session(session, cfg):
 # ---------------------------------------------------------------------------
 
 
-async def test_all_schemas(session: ClientSession) -> tuple[int, int]:
+async def test_all_schemas(session) -> tuple[int, int]:
     """L1: 用 xdebug_schema tool 逐个验证全部 action 的 request/response schema。"""
-    print(f"\n{Colors.BOLD}=== L1: Schema 验证 (150 tests) ==={Colors.RESET}")
+    actions = await discover_actions(session)
+    print(f"\n{Colors.BOLD}=== L1: Schema 验证 ({len(actions) * 2} tests) ==={Colors.RESET}", flush=True)
     passed = 0
     failed = 0
 
     for kind in ["request", "response"]:
-        for action in ALL_ACTIONS:
+        for action in actions:
             result = await session.call_tool("xverif_debug_get_schema", {
                 "action": action, "kind": kind,
             })
@@ -182,11 +231,11 @@ async def test_all_schemas(session: ClientSession) -> tuple[int, int]:
 
             if data.get("ok"):
                 passed += 1
-                print(f"  {Colors.GREEN}OK{Colors.RESET}  schema {kind:8s} {action}")
+                print(f"  {Colors.GREEN}OK{Colors.RESET}  schema {kind:8s} {action}", flush=True)
             else:
                 failed += 1
                 err = data.get("error", {}).get("message", str(data))
-                print(f"  {Colors.RED}FAIL{Colors.RESET} schema {kind:8s} {action}: {err}")
+                print(f"  {Colors.RED}FAIL{Colors.RESET} schema {kind:8s} {action}: {err}", flush=True)
 
     return passed, failed
 
@@ -333,10 +382,47 @@ async def main():
     parser.add_argument("--schema-only", action="store_true", help="Only run L1 schema tests")
     parser.add_argument("--level", choices=["L1", "L2", "L3", "all"], default="all",
                         help="Test level (default: all)")
+    parser.add_argument("--transport", choices=["inprocess", "stdio"], default="inprocess",
+                        help="MCP transport for this smoke test (default: inprocess)")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
-    print(f"Config: daidir={cfg['daidir']}  fsdb={cfg['fsdb']}  signal={cfg.get('signal')}  clock={cfg.get('clock')}")
+    print(f"Config: daidir={cfg['daidir']}  fsdb={cfg['fsdb']}  signal={cfg.get('signal')}  clock={cfg.get('clock')}", flush=True)
+
+    async def run_suite(session) -> tuple[int, int]:
+        total_pass = 0
+        total_fail = 0
+
+        # --- L1: Schema (always run) ---
+        if args.level in ("L1", "all") or args.schema_only:
+            p, f = await test_all_schemas(session)
+            total_pass += p
+            total_fail += f
+
+        if args.schema_only or args.level == "L1":
+            pass  # skip L2/L3
+        elif args.level in ("L2", "all"):
+            # --- L2: Basic invocation ---
+            action_args = build_action_args(cfg["signal"], cfg["clock"], cfg["session_name"])
+            p, f = await test_l2_basic(session, cfg, action_args)
+            total_pass += p
+            total_fail += f
+
+            # --- Signal discovery ---
+            print(f"\n{Colors.CYAN}Discovering signal...{Colors.RESET}", flush=True)
+            signal = await discover_signal(session, cfg)
+            if signal:
+                print(f"  {Colors.GREEN}Found: {signal}{Colors.RESET}", flush=True)
+
+                # --- L3: Full verification ---
+                if args.level in ("L3", "all"):
+                    p, f = await test_with_signal(session, cfg, signal)
+                    total_pass += p
+                    total_fail += f
+            else:
+                print(f"  {Colors.YELLOW}No signal found, skipping L3{Colors.RESET}", flush=True)
+
+        return total_pass, total_fail
 
     server_params = StdioServerParameters(
         command=sys.executable,
@@ -345,47 +431,37 @@ async def main():
         cwd=ROOT,
     )
 
-    total_pass = 0
-    total_fail = 0
     started = time.time()
 
-    async with stdio_client(server_params) as (read, write):
-        async with ClientSession(read, write) as session:
+    if args.transport == "stdio":
+        stdio_timeout = False
+        try:
+            async with stdio_client(server_params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await asyncio.wait_for(session.initialize(), timeout=30)
+                    print(f"{Colors.CYAN}Connected to xverif-mcp FastMCP server (stdio){Colors.RESET}", flush=True)
+                    total_pass, total_fail = await run_suite(session)
+        except* TimeoutError:
+            stdio_timeout = True
+        if stdio_timeout:
+            print(
+                f"{Colors.RED}FAIL{Colors.RESET} stdio initialize timed out after 30s; "
+                "use the default inprocess transport for schema smoke, or debug the MCP SDK stdio transport separately.",
+                flush=True,
+            )
+            return 2
+    else:
+        session = InProcessSession()
+        try:
             await session.initialize()
-            print(f"{Colors.CYAN}Connected to xverif-mcp FastMCP server{Colors.RESET}")
-
-            # --- L1: Schema (always run) ---
-            if args.level in ("L1", "all") or args.schema_only:
-                p, f = await test_all_schemas(session)
-                total_pass += p
-                total_fail += f
-
-            if args.schema_only or args.level == "L1":
-                pass  # skip L2/L3
-            elif args.level in ("L2", "all"):
-                # --- L2: Basic invocation ---
-                action_args = build_action_args(cfg["signal"], cfg["clock"], cfg["session_name"])
-                p, f = await test_l2_basic(session, cfg, action_args)
-                total_pass += p
-                total_fail += f
-
-                # --- Signal discovery ---
-                print(f"\n{Colors.CYAN}Discovering signal...{Colors.RESET}")
-                signal = await discover_signal(session, cfg)
-                if signal:
-                    print(f"  {Colors.GREEN}Found: {signal}{Colors.RESET}")
-
-                    # --- L3: Full verification ---
-                    if args.level in ("L3", "all"):
-                        p, f = await test_with_signal(session, cfg, signal)
-                        total_pass += p
-                        total_fail += f
-                else:
-                    print(f"  {Colors.YELLOW}No signal found, skipping L3{Colors.RESET}")
+            print(f"{Colors.CYAN}Connected to xverif-mcp FastMCP server (inprocess){Colors.RESET}", flush=True)
+            total_pass, total_fail = await run_suite(session)
+        finally:
+            await session.close()
 
     # Summary
     elapsed = time.time() - started
-    print(f"\n{Colors.BOLD}=== 结果: {total_pass} passed, {total_fail} failed ({elapsed:.1f}s) ==={Colors.RESET}")
+    print(f"\n{Colors.BOLD}=== 结果: {total_pass} passed, {total_fail} failed ({elapsed:.1f}s) ==={Colors.RESET}", flush=True)
     return 0 if total_fail == 0 else 1
 
 
