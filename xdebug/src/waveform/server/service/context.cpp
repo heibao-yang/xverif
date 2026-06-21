@@ -317,13 +317,17 @@ bool parse_user_time(const char* text,
         while (*end && std::isspace(static_cast<unsigned char>(*end))) ++end;
         const char* unit = "ns";
         if (*end != '\0') {
-            if (strcasecmp(end, "us") == 0) unit = "us";
+            if (strcasecmp(end, "ms") == 0) {
+                value *= 1000.0;
+                unit = "us";
+            }
+            else if (strcasecmp(end, "us") == 0) unit = "us";
             else if (strcasecmp(end, "ns") == 0) unit = "ns";
             else if (strcasecmp(end, "ps") == 0) unit = "ps";
             else if (strcasecmp(end, "fs") == 0) unit = "fs";
             else {
                 error = std::string("Invalid time '") + source
-                      + "': unsupported unit, expected us/ns/ps/fs (FSDB scale "
+                      + "': unsupported unit, expected ms/us/ns/ps/fs (FSDB scale "
                       + fsdb_time_scale() + ")";
                 return false;
             }

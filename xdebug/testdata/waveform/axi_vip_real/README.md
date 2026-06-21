@@ -27,11 +27,19 @@ make -C xdebug pytest-axi-vip
 make -C xdebug/testdata/waveform/axi_vip_real run
 ```
 
-默认固定 seed 7，生成 2 个 ID、每个 ID 6 笔读和 6 笔写，允许每个
-ID/方向 4 笔 outstanding，并注入 1–8 cycle 的 slave response delay。
-这组参数已在当前 SVT VIP 上验证。参考环境的 delay sequence 与旧版 VIP
-内部约束存在共同合法域；例如把最大 delay 提高到 20 会导致 constraint
-inconsistency，因此压力参数调整必须先通过独立仿真门禁。
+默认固定 seed 7，生成 16 个 ID、每个 ID 200 笔读和 200 笔写，允许每个
+ID/方向 4 笔 outstanding，并注入 50–100 cycle 的 slave response delay。
+如果参考环境或 SVT VIP 约束无法接受该 delay 区间，fixture/test 约束必须被
+修正到真实跑通，不允许把该压力场景降级为可选门禁。
+
+本地 overlay 的 AXI scoreboard 会从 SVT VIP master monitor observed transaction
+打印机器可解析 golden log：
+
+```text
+AXI_EXPECTED_TXN_JSON {"dir":"WR",...}
+```
+
+pytest 会解析这些 JSON 行并与 `axi.export` 的 read/write 文件逐项对比。
 
 输出位置由 `manifest.json` 定义，`out/` 不进入版本库。pytest 会检查：
 

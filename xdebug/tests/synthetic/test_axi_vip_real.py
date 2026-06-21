@@ -94,7 +94,8 @@ def test_axi_vip_real_waveform_actions(
     log_text = sim_log.read_text(encoding="utf-8", errors="replace")
     assert "UVM_ERROR :    0" in log_text
     assert "UVM_FATAL :    0" in log_text
-    assert "Master WRITE transactions: 12" in log_text
-    assert "Master READ transactions:  12" in log_text
+    assert "Master WRITE transactions: 3200" in log_text
+    assert "Master READ transactions:  3200" in log_text
+    assert "AXI_EXPECTED_TXN_JSON" in log_text
     assert "TEST PASSED - All data comparisons OK" in log_text
     assert "PASS: xdebug complex waveform validation completed" in result.stdout_raw

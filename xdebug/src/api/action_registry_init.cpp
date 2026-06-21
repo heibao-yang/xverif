@@ -111,6 +111,7 @@ void register_waveform(ActionRegistry& r) {
         {"axi.query", ActionStatus::Stable},
         {"axi.cursor", ActionStatus::Stable},
         {"axi.analysis", ActionStatus::Stable},
+        {"axi.export", ActionStatus::Stable},
         {"event.config.load", ActionStatus::Stable},
         {"event.config.list", ActionStatus::Stable},
         {"event.find", ActionStatus::Stable},

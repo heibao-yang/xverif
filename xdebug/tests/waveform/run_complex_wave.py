@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import csv
 import json
 import os
 import shutil
@@ -25,6 +26,14 @@ AXI_FSDB = os.path.join(
     "axi_multi_id_test",
     "waves.fsdb",
 )
+AXI_SIM_LOG = os.path.join(
+    AXI_DIR,
+    "out",
+    "regression",
+    "test",
+    "axi_multi_id_test",
+    "sim.log",
+)
 
 
 def run_cmd(cmd, cwd=None, env=None, timeout=120, input_text=None):
@@ -46,6 +55,118 @@ def run_cmd(cmd, cwd=None, env=None, timeout=120, input_text=None):
 def require(cond, msg):
     if not cond:
         raise AssertionError(msg)
+
+
+def normalize_sv_hex(value):
+    text = str(value).strip().lower().replace("_", "")
+    if text.startswith("'h"):
+        text = text[2:]
+    elif text.startswith("0x"):
+        text = text[2:]
+    if text == "":
+        text = "0"
+    text = text.lstrip("0") or "0"
+    return "'h" + text
+
+
+def parse_axi_expected_log(path):
+    records = {"WR": [], "RD": []}
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            marker = "AXI_EXPECTED_TXN_JSON "
+            if marker not in line:
+                continue
+            payload = line.split(marker, 1)[1].strip()
+            rec = json.loads(payload)
+            rec["dir"] = rec["dir"].upper()
+            records[rec["dir"]].append(rec)
+    return records
+
+
+def read_axi_export_table(path):
+    delimiter = "," if path.endswith(".csv") else "\t"
+    with open(path, "r", encoding="utf-8", newline="") as fh:
+        reader = csv.DictReader(fh, delimiter=delimiter)
+        rows = list(reader)
+        require(reader.fieldnames is not None, "missing export header: {}".format(path))
+        require("data" not in reader.fieldnames, "export unexpectedly contains data column: {}".format(path))
+        return rows
+
+
+def axi_compare_key(row):
+    return (
+        normalize_sv_hex(row["id"]),
+        normalize_sv_hex(row["addr"]),
+        normalize_sv_hex(row["len"]),
+        normalize_sv_hex(row["size"]),
+        normalize_sv_hex(row["burst"]),
+        normalize_sv_hex(row["resp"]),
+        int(row["beat_count"]),
+        int(row["expected_beat_count"]),
+    )
+
+
+def expected_compare_key(row):
+    return (
+        normalize_sv_hex(row["id"]),
+        normalize_sv_hex(row["addr"]),
+        normalize_sv_hex(row["len"]),
+        normalize_sv_hex(row["size"]),
+        normalize_sv_hex(row["burst"]),
+        normalize_sv_hex(row["resp"]),
+        int(row["beat_count"]),
+        int(row["expected_beat_count"]),
+    )
+
+
+def require_completion_sorted(rows, label):
+    times = [int(row["completion_time_ps"]) for row in rows]
+    require(times == sorted(times), "{} export is not sorted by completion time".format(label))
+
+
+def compare_axi_export_to_log(export_data, expected_log):
+    write_file = export_data["data"]["write_file"]
+    read_file = export_data["data"]["read_file"]
+    meta_file = export_data["data"]["meta_file"]
+    writes = read_axi_export_table(write_file)
+    reads = read_axi_export_table(read_file)
+
+    require_completion_sorted(writes, "write")
+    require_completion_sorted(reads, "read")
+
+    require(os.path.exists(meta_file), "missing AXI export meta: {}".format(meta_file))
+    with open(meta_file, "r", encoding="utf-8") as fh:
+        meta = json.load(fh)
+
+    require(len(writes) == 3200, "unexpected exported write count: {}".format(len(writes)))
+    require(len(reads) == 3200, "unexpected exported read count: {}".format(len(reads)))
+    require(len(expected_log["WR"]) == 3200, "unexpected expected write log count: {}".format(len(expected_log["WR"])))
+    require(len(expected_log["RD"]) == 3200, "unexpected expected read log count: {}".format(len(expected_log["RD"])))
+
+    from collections import Counter
+
+    write_export = Counter(axi_compare_key(row) for row in writes)
+    read_export = Counter(axi_compare_key(row) for row in reads)
+    write_expected = Counter(expected_compare_key(row) for row in expected_log["WR"])
+    read_expected = Counter(expected_compare_key(row) for row in expected_log["RD"])
+    require(write_export == write_expected, "write export does not match VIP monitor log")
+    require(read_export == read_expected, "read export does not match VIP monitor log")
+
+    expected_ids = ["'h{:x}".format(i) for i in range(16)]
+    write_ids = {normalize_sv_hex(v) for v in meta["unique_write_ids"]}
+    read_ids = {normalize_sv_hex(v) for v in meta["unique_read_ids"]}
+    write_count_by_id = {normalize_sv_hex(k): v for k, v in meta["write_count_by_id"].items()}
+    read_count_by_id = {normalize_sv_hex(k): v for k, v in meta["read_count_by_id"].items()}
+    require(write_ids == set(expected_ids), "unexpected write id set: {}".format(meta["unique_write_ids"]))
+    require(read_ids == set(expected_ids), "unexpected read id set: {}".format(meta["unique_read_ids"]))
+    for axi_id in expected_ids:
+        require(write_count_by_id.get(axi_id) == 200, "write count mismatch for {}".format(axi_id))
+        require(read_count_by_id.get(axi_id) == 200, "read count mismatch for {}".format(axi_id))
+    require(meta["max_total_write_outstanding"] >= 16, "write outstanding pressure was not observed")
+    require(meta["max_total_read_outstanding"] >= 16, "read outstanding pressure was not observed")
+    require(meta["beat_count_mismatch_count"] == 0, "beat count mismatch in export meta")
+    require(meta["incomplete_write_count"] == 0, "incomplete writes in export meta")
+    require(meta["incomplete_read_count"] == 0, "incomplete reads in export meta")
 
 
 def make_axi_config(prefix, top="axi_vip_fixture_top"):
@@ -168,7 +289,7 @@ def build_axi():
         ],
         cwd=AXI_DIR,
         env=env,
-        timeout=600,
+        timeout=2400,
     )
     require(rc == 0, "AXI wave build failed\n{}\n{}".format(out[-4000:], err[-4000:]))
     require(os.path.exists(AXI_FSDB), "missing AXI fsdb: {}".format(AXI_FSDB))
@@ -334,7 +455,7 @@ def run_axi(xdebug, fsdb):
         r.query("axi.analysis", args={"name": "axi0", "analysis": "latency", "direction": "all"})
         r.query("axi.analysis", args={"name": "axi0", "analysis": "osd", "direction": "all"})
 
-        tr = {"begin": "0ns", "end": "20000us"}
+        tr = {"begin": "0ns", "end": "200ms"}
         pair_cold = r.query("axi.request_response_pair", args={"name": "axi0", "time_range": tr, "limit": 20})
         require(pair_cold["data"]["transaction_count"] > 0, "AXI request_response_pair empty")
         pair_cache = r.query("axi.request_response_pair", args={"name": "axi0", "time_range": tr, "limit": 20})
@@ -345,6 +466,34 @@ def run_axi(xdebug, fsdb):
         require(osd["data"]["sample_count"] > 0, "AXI outstanding_timeline empty")
         stall = r.query("axi.channel_stall", args={"name": "axi0", "channel": "r", "time_range": tr, "rules": {"max_wait_cycles": 2}, "max_samples": 1000000})
         require(stall["data"]["sample_count"] > 0, "AXI channel_stall did not sample")
+
+        expected_log = parse_axi_expected_log(AXI_SIM_LOG)
+        export_dir = tempfile.mkdtemp(prefix="xdebug_axi_export_")
+        export_prefix = os.path.join(export_dir, "axi0_full")
+        exported = r.query(
+            "axi.export",
+            args={
+                "name": "axi0",
+                "time_range": tr,
+                "format": "tsv",
+                "output_prefix": export_prefix,
+            },
+            timeout=240,
+        )
+        compare_axi_export_to_log(exported, expected_log)
+
+        windowed = r.query(
+            "axi.export",
+            args={
+                "name": "axi0",
+                "time_range": {"begin": "1us", "end": "200ms"},
+                "format": "tsv",
+                "output_prefix": os.path.join(export_dir, "axi0_windowed"),
+            },
+            timeout=240,
+        )
+        require(windowed["data"]["write_count"] <= exported["data"]["write_count"], "windowed write count exceeds full export")
+        require(windowed["data"]["read_count"] <= exported["data"]["read_count"], "windowed read count exceeds full export")
         return r.rows
     finally:
         r.cleanup()

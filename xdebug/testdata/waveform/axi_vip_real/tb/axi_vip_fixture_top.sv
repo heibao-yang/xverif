@@ -49,7 +49,7 @@ module axi_vip_fixture_top;
   end
 
   initial begin
-    #10ms;
+    #200ms;
     `uvm_fatal("TIMEOUT", "AXI VIP fixture timeout")
   end
 endmodule

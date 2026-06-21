@@ -13,11 +13,11 @@
     "simulation_log": "out/regression/test/axi_multi_id_test/sim.log"
   },
   "parameters": {
-    "num_ids": 2,
-    "transactions_per_id": 6,
+    "num_ids": 16,
+    "transactions_per_id": 200,
     "outstanding_depth": 4,
-    "min_delay_cycles": 1,
-    "max_delay_cycles": 8
+    "min_delay_cycles": 50,
+    "max_delay_cycles": 100
   },
   "required_env": [
     "AXI_REFERENCE_ROOT",

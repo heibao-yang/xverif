@@ -19,7 +19,7 @@ std::string trim(const std::string& s) {
 }
 
 bool valid_unit(const std::string& unit) {
-    return unit == "us" || unit == "ns" || unit == "ps" || unit == "fs";
+    return unit == "ms" || unit == "us" || unit == "ns" || unit == "ps" || unit == "fs";
 }
 
 bool is_cursor_name_char(char c) {
@@ -75,7 +75,7 @@ bool parse_duration_spec(const std::string& text, DurationSpec& out, std::string
         return false;
     }
     if (!valid_unit(unit)) {
-        error = "Invalid duration '" + text + "': unsupported unit, expected us/ns/ps/fs";
+        error = "Invalid duration '" + text + "': unsupported unit, expected ms/us/ns/ps/fs";
         return false;
     }
     out.value = value;

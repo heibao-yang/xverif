@@ -9,13 +9,13 @@ SVT_VIP_INCDIR   ?=
 SVT_VIP_SRCDIR   ?=
 VERDI_HOME       ?=
 
-NUM_IDS          ?= 2
-TRANS_PER_ID     ?= 6
+NUM_IDS          ?= 16
+TRANS_PER_ID     ?= 200
 OUTSTANDING_DEPTH ?= 4
-MIN_DELAY        ?= 1
-MAX_DELAY        ?= 8
+MIN_DELAY        ?= 50
+MAX_DELAY        ?= 100
 SEED             ?= 7
-VERBOSITY        ?= UVM_MEDIUM
+VERBOSITY        ?= UVM_LOW
 
 ROOT_DIR  := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 OUT_DIR   := $(ROOT_DIR)/out/$(MODE)
@@ -28,6 +28,10 @@ VCS_SHARED := -full64 -sverilog -ntb_opts uvm-1.2 \
 	+define+SVT_UVM_TECHNOLOGY \
 	+define+UVM_PACKER_MAX_BYTES=1500000 \
 	+define+UVM_DISABLE_AUTO_ITEM_RECORDING \
+	+define+SVT_AXI_MAX_AXI3_GENERIC_DELAY=128 \
+	+incdir+$(ROOT_DIR)/tb \
+	+incdir+$(ROOT_DIR)/tb/env \
+	+incdir+$(ROOT_DIR)/tests \
 	+incdir+$(AXI_REFERENCE_ROOT)/tb \
 	+incdir+$(AXI_REFERENCE_ROOT)/tb/env \
 	+incdir+$(AXI_REFERENCE_ROOT)/tests \
@@ -37,6 +41,7 @@ VCS_SHARED := -full64 -sverilog -ntb_opts uvm-1.2 \
 
 SIM_OPTS := +UVM_TESTNAME=$(TC) \
 	+UVM_VERBOSITY=$(VERBOSITY) \
+	+uvm_set_verbosity=uvm_test_top.env.axi_system_env*,_ALL_,UVM_NONE,run \
 	+num_ids=$(NUM_IDS) \
 	+trans_per_id=$(TRANS_PER_ID) \
 	+outstanding_depth=$(OUTSTANDING_DEPTH) \
@@ -70,7 +75,7 @@ vlog_tb: check-env
 	cd $(ANDB_DIR) && $(VLOGAN) $(VCS_SHARED) \
 		$(SVT_VIP_INCDIR)/svt_axi_if.svi \
 		$(SVT_VIP_INCDIR)/svt_axi.uvm.pkg \
-		$(AXI_REFERENCE_ROOT)/tests/test_pkg.sv \
+		$(ROOT_DIR)/tests/test_pkg.sv \
 		$(ROOT_DIR)/tb/axi_vip_fixture_top.sv \
 		-l $(BUILD_DIR)/vlog_tb.log
 

@@ -90,6 +90,7 @@ example 和 contract test 迁移使用。状态定义：
 | `axi.query` | waveform | stable | waveform | waveform engine forward | regression |
 | `axi.cursor` | waveform | stable | waveform | waveform engine forward | partial |
 | `axi.analysis` | waveform | stable | waveform | waveform engine forward | regression |
+| `axi.export` | waveform | stable | waveform | waveform engine forward | targeted |
 | `event.config.load` | waveform | stable | waveform | waveform engine forward | partial |
 | `event.config.list` | waveform | stable | waveform | waveform engine forward | partial |
 | `event.find` | waveform | stable | waveform | waveform engine forward | partial |

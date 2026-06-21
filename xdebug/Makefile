@@ -134,6 +134,7 @@ WAVEFORM_SRCS = src/waveform/main.cpp \
                 src/waveform/apb/apb_analyzer.cpp \
                 src/waveform/axi/axi_manager.cpp \
                 src/waveform/axi/axi_analyzer.cpp \
+                src/waveform/axi/axi_exporter.cpp \
                 src/waveform/event/event_manager.cpp \
                 src/waveform/event/event_expr.cpp \
                 src/waveform/event/event_analyzer.cpp \
