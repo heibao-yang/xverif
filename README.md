@@ -287,6 +287,7 @@ make full-test
 
 - xdebug 用户文档：[`xdebug/README.md`](xdebug/README.md)
 - xverif agent skill：[`skill/SKILL.md`](skill/SKILL.md)
+- x-npi agent skill：[`skills/x-npi/SKILL.md`](skills/x-npi/SKILL.md)，用于 AI 编写 Python `pynpi` 批量波形统计、APB/AXI/stream 离线分析和静态 driver/load 脚本；实时 active-driver 因果追踪仍用 xdebug。
 - xdebug agent reference：[`skill/references/xdebug/overview.md`](skill/references/xdebug/overview.md)
 - xdebug JSON API 速查：[`skill/references/xdebug/json-api.md`](skill/references/xdebug/json-api.md)
 - SDK-free xdebug wrapper：[`skill/references/sdk-free-xdebug/overview.md`](skill/references/sdk-free-xdebug/overview.md)
