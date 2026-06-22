@@ -25,6 +25,8 @@ regression/*
 !xbit/tests/**
 !xentry/tests/
 !xentry/tests/**
+!xwaveform/tests/
+!xwaveform/tests/**
 !xberif/tests/
 !xberif/tests/**
 !xcov/tests/

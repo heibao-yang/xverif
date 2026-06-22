@@ -125,6 +125,7 @@ WAVEFORM_SRCS = src/waveform/main.cpp \
                 src/waveform/server/service/event_handlers.cpp \
                 src/waveform/server/fsdb_value_reader.cpp \
                 src/waveform/server/fsdb_scan_utils.cpp \
+                src/waveform/export/waveform_exporter.cpp \
                 src/waveform/list/list_manager.cpp \
                 src/waveform/cursor/cursor_manager.cpp \
                 src/waveform/common/xdebug_waveform_paths.cpp \

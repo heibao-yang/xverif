@@ -894,6 +894,9 @@ TOOL_CATALOG = [
     {"name": "xverif_wave_generate_rc", "category": "debug", "backend": "xdebug",
      "stateful": True, "requires_session": True,
      "description": "Generate RC from config (alias for rc.generate)."},
+    {"name": "xverif_waveform_render_list", "category": "debug", "backend": "xdebug+xwaveform",
+     "stateful": True, "requires_session": True,
+     "description": "Export an xdebug signal list and render a fixed-width JPG waveform."},
     {"name": "xverif_design_trace_driver", "category": "debug", "backend": "xdebug",
      "stateful": True, "requires_session": True,
      "description": "Trace the driver of a signal (alias for trace.driver)."},
@@ -1078,6 +1081,79 @@ def xverif_wave_generate_rc(config_path: str, rc_path: str,
     return debug.query(action="rc.generate",
                        args={"config_path": config_path, "rc_path": rc_path},
                        session=session, output_format=output_format)
+
+
+@xverif_tool("debug")
+def xverif_waveform_render_list(
+    session: str,
+    name: str,
+    begin: str,
+    end: str,
+    output_dir: str = "",
+    image_file: str = "",
+    width: int = 4096,
+    height_per_signal: int = 24,
+    cursor_count: int = 32,
+    export_format: str = "u64bin",
+    image_format: str = "jpg",
+) -> dict:
+    """Export a waveform list and render a fixed-width JPG image."""
+    if image_format.lower() not in ("jpg", "jpeg"):
+        return _tool_error("INVALID_ARGUMENT", "image_format must be 'jpg'")
+    if export_format != "u64bin":
+        return _tool_error("INVALID_ARGUMENT", "xwaveform rendering requires export_format='u64bin'")
+    args: dict[str, Any] = {
+        "name": name,
+        "time_range": {"begin": begin, "end": end},
+        "format": export_format,
+    }
+    if output_dir:
+        args["output_dir"] = output_dir
+    exported = debug.query(
+        session=session,
+        action="list.export",
+        args=args,
+        output_format="json",
+    )
+    if not isinstance(exported, dict) or not exported.get("ok"):
+        return exported if isinstance(exported, dict) else _tool_error("EXPORT_FAILED", str(exported))
+    data = exported.get("data", {})
+    manifest = data.get("manifest_file")
+    export_dir = data.get("output_dir") or output_dir
+    if not manifest or not export_dir:
+        return _tool_error("EXPORT_FAILED", "list.export did not return manifest_file/output_dir")
+    if not image_file:
+        image_file = str(export_dir).rstrip("/") + "/wave.jpg"
+
+    from xverif_mcp.runner import StatelessCliRunner
+    rendered = StatelessCliRunner().run_json(
+        "xwaveform",
+        [
+            "render",
+            "--manifest", str(manifest),
+            "--output", str(image_file),
+            "--width", str(width),
+            "--height-per-signal", str(height_per_signal),
+            "--cursor-count", str(cursor_count),
+            "--json",
+        ],
+    )
+    if not isinstance(rendered, dict) or not rendered.get("ok"):
+        return rendered if isinstance(rendered, dict) else _tool_error("RENDER_FAILED", str(rendered))
+    return {
+        "ok": True,
+        "export_dir": export_dir,
+        "manifest_file": manifest,
+        "image_file": rendered.get("image_file"),
+        "stats_file": rendered.get("stats_file"),
+        "signal_count": rendered.get("signal_count", data.get("signal_count")),
+        "row_count": rendered.get("row_count", data.get("row_count")),
+        "format": data.get("format"),
+        "image_format": "jpg",
+        "width": rendered.get("width", width),
+        "cursor_count": rendered.get("cursor_count", cursor_count),
+        "time_direction": "left_to_right",
+    }
 
 
 @xverif_tool("debug")

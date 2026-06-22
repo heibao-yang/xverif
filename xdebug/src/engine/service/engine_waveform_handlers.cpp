@@ -9,6 +9,8 @@
 #include "../../waveform/event/event_analyzer.h"
 #include "../../waveform/list/list_manager.h"
 #include "../../waveform/list/signal_list.h"
+#include "../../waveform/export/waveform_exporter.h"
+#include "../../waveform/common/xdebug_waveform_paths.h"
 #include "../../waveform/service/rc_generator.h"
 #include "../../waveform/value/logic_value.h"
 
@@ -908,6 +910,82 @@ public:
         return out;
     }
 };
+
+class ListExportHandler : public EngineActionHandler {
+public:
+    const char* action_name() const override { return "list.export"; }
+    bool needs_design() const override { return false; }
+    bool needs_waveform() const override { return true; }
+    Json run(const Json& r) const override {
+        Json a = r.value("args", Json::object());
+        std::string n = a.value("name", a.value("list", ""));
+        if (n.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
+        xdebug_waveform::SignalList lst;
+        if (!read_list_storage(n, lst))
+            return Json({{"error","LIST_NOT_FOUND"},{"message",n}});
+
+        Json tr = a.value("time_range", Json::object());
+        std::string bs = tr.value("begin", tr.value("from", std::string()));
+        std::string es = tr.value("end", tr.value("to", std::string()));
+        if (bs.empty()) bs = a.value("start", a.value("begin", a.value("from", std::string())));
+        if (es.empty()) es = a.value("end", a.value("to", std::string()));
+        if (bs.empty() || es.empty())
+            return Json({{"error","MISSING_FIELD"},{"message","list.export requires begin/end"}});
+
+        auto ptime = [](const std::string& s, bool allow_max, npiFsdbTime& t) -> bool {
+            if (allow_max && (s == "max" || s == "inf")) {
+                t = 0xffffffffffffffffULL;
+                return true;
+            }
+            double v; std::string u; char* e = nullptr;
+            v = std::strtod(s.c_str(), &e);
+            while (e && *e && std::isspace(*e)) ++e;
+            u = e;
+            return !u.empty() && npi_fsdb_convert_time_in(xdebug_waveform::g_fsdb_file, v, u.c_str(), t);
+        };
+        npiFsdbTime begin = 0, end = 0;
+        if (!ptime(bs, false, begin) || !ptime(es, true, end))
+            return Json({{"error","TIME_SPEC_INVALID"},{"message","failed to parse list.export time range"}});
+        if (end < begin)
+            return Json({{"error","TIME_SPEC_INVALID"},{"message","end time is before begin time"}});
+        if (end - begin < 256000ULL)
+            return Json({{"error","TIME_RANGE_TOO_SMALL"},{"message","list.export requires at least 256ns; use list.value_at or value.batch_at for point reads"}});
+
+        std::string format = a.value("format", std::string("u64bin"));
+        std::string output_dir = a.value("output_dir", std::string());
+        if (output_dir.empty()) {
+            output_dir = xdebug_waveform::xdebug_waveform_list_exports_dir(xdebug_waveform::g_session_id)
+                + "/" + n + "_" + std::to_string(begin) + "_" + std::to_string(end)
+                + "_" + std::to_string(static_cast<long long>(time(nullptr)));
+        }
+        xdebug_waveform::ListExportOptions options;
+        options.session_id = xdebug_waveform::g_session_id;
+        options.list_name = n;
+        options.output_dir = output_dir;
+        options.format = format;
+        options.begin = begin;
+        options.end = end;
+        xdebug_waveform::ListExportResult result;
+        std::string error;
+        if (!xdebug_waveform::export_signal_list(xdebug_waveform::g_fsdb_file, lst, options, result, error))
+            return Json({{"error","EXPORT_FAILED"},{"message",error}});
+
+        Json out;
+        out["summary"] = {{"name", n}, {"signal_count", result.signal_count},
+                          {"row_count", result.row_count}, {"format", result.format}};
+        out["output_dir"] = result.output_dir;
+        out["manifest_file"] = result.manifest_file;
+        out["format"] = result.format;
+        out["signal_count"] = result.signal_count;
+        out["row_count"] = result.row_count;
+        out["signals"] = result.signals;
+        out["begin"] = xdebug_waveform::format_time(begin);
+        out["end"] = xdebug_waveform::format_time(end);
+        out["begin_ps"] = begin;
+        out["end_ps"] = end;
+        return out;
+    }
+};
 // ── rc.generate ────────────────────────────────────────────────────────
 
 class RcGenerateHandler : public EngineActionHandler {
@@ -979,6 +1057,7 @@ void register_waveform_handlers(EngineActionRegistry& r) {
     r.add(std::unique_ptr<EngineActionHandler>(new ListValueAtHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new ListValidateHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new ListDiffHandler));
+    r.add(std::unique_ptr<EngineActionHandler>(new ListExportHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new RcGenerateHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new VerifyConditionsHandler));
     // Cursor actions

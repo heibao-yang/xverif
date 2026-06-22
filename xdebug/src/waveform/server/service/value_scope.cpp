@@ -1,4 +1,5 @@
 #include "../server_internal.h"
+#include "../../export/waveform_exporter.h"
 
 namespace xdebug_waveform {
 
@@ -178,6 +179,50 @@ void handle_list_diff(int client_fd, const char* list_name, npiFsdbTime begin_ti
         std::string response = "(no diff found)\n" + std::string(END_MARKER);
         send_all(client_fd, response.c_str(), response.length());
     }
+}
+
+void handle_list_export(int client_fd, const char* list_name, npiFsdbTime begin_time,
+                        npiFsdbTime end_time, const char* output_dir,
+                        const char* format) {
+    SignalList list;
+    if (!read_list_from_storage(g_session_id, list_name, list)) {
+        std::string err = std::string(ERROR_PREFIX) + "List not found: " + list_name + "\n" + END_MARKER;
+        send_all(client_fd, err.c_str(), err.length());
+        return;
+    }
+
+    ListExportOptions options;
+    options.session_id = g_session_id;
+    options.list_name = list.name;
+    options.begin = begin_time;
+    options.end = end_time;
+    options.format = format && *format ? format : "u64bin";
+    options.output_dir = output_dir && *output_dir ? output_dir :
+        xdebug_waveform_list_exports_dir(g_session_id) + "/" + list.name + "_" +
+        std::to_string(begin_time) + "_" + std::to_string(end_time) + "_" +
+        std::to_string(static_cast<long long>(time(nullptr)));
+
+    ListExportResult result;
+    std::string error;
+    if (!export_signal_list(g_fsdb_file, list, options, result, error)) {
+        std::string err = std::string(ERROR_PREFIX) + error + "\n" + END_MARKER;
+        send_all(client_fd, err.c_str(), err.length());
+        return;
+    }
+
+    Json out;
+    out["output_dir"] = result.output_dir;
+    out["manifest_file"] = result.manifest_file;
+    out["format"] = result.format;
+    out["signal_count"] = result.signal_count;
+    out["row_count"] = result.row_count;
+    out["signals"] = result.signals;
+    out["begin"] = format_time(begin_time);
+    out["end"] = format_time(end_time);
+    out["begin_ps"] = begin_time;
+    out["end_ps"] = end_time;
+    std::string response = json_response(out);
+    send_all(client_fd, response.c_str(), response.length());
 }
 
 std::string format_apb_txn(const xdebug_waveform::ApbTransaction* txn) {

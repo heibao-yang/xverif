@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "xdebug.list.export.response.v1",
+  "title": "list.export response",
+  "type": "object",
+  "required": ["api_version", "ok", "action", "summary", "data"],
+  "properties": {
+    "api_version": {"type": "string", "enum": ["xdebug.v1"]},
+    "request_id": {"type": "string"},
+    "ok": {"type": "boolean"},
+    "action": {"type": "string", "enum": ["list.export"]},
+    "summary": {"type": "object", "additionalProperties": true},
+    "data": {"type": "object", "additionalProperties": true},
+    "warnings": {"type": "array"},
+    "error": {},
+    "meta": {"type": "object"}
+  },
+  "additionalProperties": true
+}

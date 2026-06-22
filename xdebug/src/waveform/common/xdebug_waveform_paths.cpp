@@ -115,6 +115,10 @@ std::string xdebug_waveform_axi_exports_dir(const std::string& session_id) {
     return xdebug_waveform_session_dir(session_id) + "/axi_exports";
 }
 
+std::string xdebug_waveform_list_exports_dir(const std::string& session_id) {
+    return xdebug_waveform_session_dir(session_id) + "/list_exports";
+}
+
 std::string xdebug_waveform_events_path(int session_id) {
     return xdebug_waveform_events_path(std::to_string(session_id));
 }

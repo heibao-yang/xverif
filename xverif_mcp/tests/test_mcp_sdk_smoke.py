@@ -91,6 +91,7 @@ def test_mcp_tools_list(monkeypatch: pytest.MonkeyPatch):
     assert "xverif_session_use" not in names
     assert "xverif_session_close" not in names
     assert "xverif_debug_raw_request" in names
+    assert "xverif_waveform_render_list" in names
     assert "xverif_tools" in names
     assert "xverif_bit_eval" in names
     assert "xverif_entry_decode" in names
@@ -124,6 +125,7 @@ def test_tool_group_disable_debug(monkeypatch: pytest.MonkeyPatch):
     assert "xverif_debug_query" not in names
     assert "xverif_debug_session_open" not in names
     assert "xverif_wave_value_at" not in names
+    assert "xverif_waveform_render_list" not in names
     assert "xverif_cov_query" in names
     assert "xverif_bit_eval" in names
 

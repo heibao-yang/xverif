@@ -162,6 +162,28 @@ bool handle_client(int client_fd, bool& should_quit) {
         return true;
     }
 
+    // Handle LIST_EXPORT <list_name> <begin_time> <end_time> <output_dir|-> <format>
+    if (cl.verb == CMD_LIST_EXPORT) {
+        if (cl.positional.size() >= 5) {
+            npiFsdbTime begin = 0;
+            npiFsdbTime end = 0;
+            std::string error;
+            if (!parse_user_time(cl.positional[1].c_str(), false, begin, error) ||
+                !parse_user_time(cl.positional[2].c_str(), true, end, error)) {
+                send_error(client_fd, error);
+                return true;
+            }
+            const std::string& dir_arg = cl.positional[3];
+            const char* output_dir = dir_arg == "-" ? "" : dir_arg.c_str();
+            handle_list_export(client_fd, cl.positional[0].c_str(), begin, end,
+                               output_dir, cl.positional[4].c_str());
+        } else {
+            const char* err = ERROR_PREFIX "Usage: LIST_EXPORT <list> <begin> <end> <output_dir|-> <format>\n" END_MARKER;
+            send_all(client_fd, err, strlen(err));
+        }
+        return true;
+    }
+
     // --- APB/AXI/Event handlers: keep existing sscanf-based parsing ---
     // These are more complex (mixed positional + keyword flags) and the
     // CommandParser currently treats keywords as positional; deferring full

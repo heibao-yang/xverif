@@ -33,8 +33,10 @@ bool build_range_specs(const Json& args,
                        bool& around_window,
                        std::string& err) {
     Json tr = args.value("time_range", Json::object());
-    begin = string_or(tr, "begin", string_or(args, "begin", ""));
-    end = string_or(tr, "end", string_or(args, "end", ""));
+    begin = string_or(tr, "begin", string_or(tr, "from",
+        string_or(args, "begin", string_or(args, "start", string_or(args, "from", "")))));
+    end = string_or(tr, "end", string_or(tr, "to",
+        string_or(args, "end", string_or(args, "to", ""))));
     around_window = false;
     if (!begin.empty() || !end.empty()) {
         if (begin.empty()) begin = "0ns";

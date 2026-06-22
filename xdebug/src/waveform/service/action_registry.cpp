@@ -15,6 +15,7 @@ std::unique_ptr<WaveformActionHandler> make_list_show_action();
 std::unique_ptr<WaveformActionHandler> make_list_value_at_action();
 std::unique_ptr<WaveformActionHandler> make_list_validate_action();
 std::unique_ptr<WaveformActionHandler> make_list_diff_action();
+std::unique_ptr<WaveformActionHandler> make_list_export_action();
 
 // rc_generate_action.cpp
 std::unique_ptr<WaveformActionHandler> make_rc_generate_action();
@@ -73,6 +74,7 @@ const WaveformActionRegistry& default_waveform_action_registry() {
         r->add(make_list_value_at_action());
         r->add(make_list_validate_action());
         r->add(make_list_diff_action());
+        r->add(make_list_export_action());
 
         // rc.generate
         r->add(make_rc_generate_action());

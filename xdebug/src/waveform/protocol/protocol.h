@@ -22,6 +22,7 @@
 #define CMD_VALUE           "VALUE"
 #define CMD_LIST_VALUE      "LIST_VALUE"
 #define CMD_LIST_DIFF       "LIST_DIFF"
+#define CMD_LIST_EXPORT     "LIST_EXPORT"
 #define CMD_SIGNAL_CHECK    "SIGNAL_CHECK"
 #define CMD_LIST_VALIDATE   "LIST_VALIDATE"
 #define CMD_SCOPE           "SCOPE"

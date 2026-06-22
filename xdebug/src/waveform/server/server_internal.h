@@ -102,6 +102,9 @@ void handle_scope(int client_fd, const char* scope_path, bool recursive, bool js
 bool read_apb_from_registry(const std::string& session_id, const char* name, ApbConfig& out_config);
 bool read_axi_from_registry(const std::string& session_id, const char* name, AxiConfig& out_config);
 void handle_list_diff(int client_fd, const char* list_name, npiFsdbTime begin_time, npiFsdbTime end_time);
+void handle_list_export(int client_fd, const char* list_name, npiFsdbTime begin_time,
+                        npiFsdbTime end_time, const char* output_dir,
+                        const char* format);
 void handle_apb_wr(int client_fd, const char* name, const char* addr_str, int num, bool last_flag, bool json);
 void handle_apb_rd(int client_fd, const char* name, const char* addr_str, int num, bool last_flag, bool json);
 void handle_apb_begin(int client_fd, const char* name, int filter, bool json);

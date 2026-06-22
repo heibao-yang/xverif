@@ -1,0 +1,34 @@
+{
+  "api_version": "xdebug.v1",
+  "ok": true,
+  "action": "list.export",
+  "summary": {
+    "name": "if0",
+    "signal_count": 2,
+    "row_count": 16,
+    "format": "u64bin.v1"
+  },
+  "data": {
+    "output_dir": "/tmp/if0_list_export",
+    "manifest_file": "/tmp/if0_list_export/manifest.json",
+    "format": "u64bin.v1",
+    "signal_count": 2,
+    "row_count": 16,
+    "begin": "0ns",
+    "end": "1us",
+    "begin_ps": 0,
+    "end_ps": 1000000,
+    "signals": [
+      {
+        "index": 0,
+        "signal": "top.u.valid",
+        "file": "0001_top_u_valid.u64bin",
+        "row_count": 8,
+        "width": 1,
+        "word_count": 1,
+        "columns": 3
+      }
+    ]
+  },
+  "warnings": []
+}

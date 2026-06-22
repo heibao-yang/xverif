@@ -198,6 +198,67 @@ public:
     }
 };
 
+class ListExportAction : public WaveformActionHandler {
+public:
+    const char* action_name() const override { return "list.export"; }
+
+    int run(const WaveformActionContext& ctx) const override {
+        ListManager lm;
+        std::string name = string_or(ctx.args, "name", string_or(ctx.args, "list", ""));
+        if (name.empty()) lm.get_latest_list(ctx.sid, name);
+        if (name.empty())
+            return print_error_and_return(ctx.req, ctx.action, "MISSING_FIELD", "list.export requires args.name or latest list", ctx.elapsed_ms);
+        std::string begin, end, err;
+        bool around_window = false;
+        if (!build_range_specs(ctx.args, begin, end, around_window, err))
+            return print_error_and_return(ctx.req, ctx.action, "TIME_SPEC_INVALID", err, ctx.elapsed_ms);
+        Json begin_resolved = resolve_time_spec_json(ctx.sid, begin, false, err);
+        if (begin_resolved.is_null())
+            return print_error_and_return(ctx.req, ctx.action, "TIME_SPEC_INVALID", err, ctx.elapsed_ms);
+        Json end_resolved = resolve_time_spec_json(ctx.sid, end, true, err);
+        if (end_resolved.is_null())
+            return print_error_and_return(ctx.req, ctx.action, "TIME_SPEC_INVALID", err, ctx.elapsed_ms);
+        uint64_t begin_ps = begin_resolved.value("time_value", 0ULL);
+        uint64_t end_ps = end_resolved.value("time_value", 0ULL);
+        if (end_ps < begin_ps)
+            return print_error_and_return(ctx.req, ctx.action, "TIME_SPEC_INVALID", "list.export end time is before begin time", ctx.elapsed_ms);
+        const uint64_t kMinWindowPs = 256000ULL;
+        if (end_ps - begin_ps < kMinWindowPs) {
+            Json out = error_response(ctx.req, ctx.action, "TIME_RANGE_TOO_SMALL",
+                "list.export requires a time range of at least 256ns; use list.value_at or value.batch_at for point reads",
+                true, ctx.elapsed_ms);
+            fill_session(out, ctx.info);
+            out["data"]["min_window"] = "256ns";
+            out["data"]["suggested_actions"] = Json::array({"list.value_at", "value.batch_at"});
+            return emit(ctx, out, 1);
+        }
+
+        std::string format = string_or(ctx.args, "format", "u64bin");
+        if (format != "u64bin" && format != "hex_tsv")
+            return print_error_and_return(ctx.req, ctx.action, "INVALID_REQUEST", "format must be u64bin or hex_tsv", ctx.elapsed_ms);
+        std::string output_dir = string_or(ctx.args, "output_dir", "-");
+        if (output_dir.empty()) output_dir = "-";
+
+        Json data;
+        std::string cmd = CommandBuilder(CMD_LIST_EXPORT)
+            .arg(name).arg(begin).arg(end).arg(output_dir).arg(format).build();
+        bool ok = capture_server_json(ctx.sid, cmd, data, err);
+        Json out = base_response(ctx.req, ctx.action, ok, ctx.elapsed_ms);
+        fill_session(out, ctx.info);
+        out["summary"] = Json::object();
+        out["summary"]["name"] = name;
+        out["summary"]["signal_count"] = ok && data.contains("signal_count") ? data["signal_count"] : Json(0);
+        out["summary"]["row_count"] = ok && data.contains("row_count") ? data["row_count"] : Json(0);
+        out["summary"]["format"] = ok && data.contains("format") ? data["format"] : Json(format);
+        if (ok) {
+            out["data"] = data;
+        } else {
+            out["error"] = {{"code", "EXPORT_FAILED"}, {"message", err}, {"recoverable", true}};
+        }
+        return emit(ctx, out, ok ? 0 : 1);
+    }
+};
+
 } // namespace
 
 std::unique_ptr<WaveformActionHandler> make_list_create_action() {
@@ -220,6 +281,9 @@ std::unique_ptr<WaveformActionHandler> make_list_validate_action() {
 }
 std::unique_ptr<WaveformActionHandler> make_list_diff_action() {
     return std::unique_ptr<WaveformActionHandler>(new ListDiffAction());
+}
+std::unique_ptr<WaveformActionHandler> make_list_export_action() {
+    return std::unique_ptr<WaveformActionHandler>(new ListExportAction());
 }
 
 } // namespace xdebug_waveform

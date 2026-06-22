@@ -336,6 +336,37 @@ def run_nonaxi(xdebug, fsdb):
         r.query("list.validate", args={"name": "basic"})
         diff = r.query("list.diff", args={"name": "basic", "begin": "0ns", "end": "120ns"})
         require("ns" in diff["summary"]["diff_time"] or "ps" in diff["summary"]["diff_time"], "list.diff did not return time")
+        list_export_dir = tempfile.mkdtemp(prefix="xdebug_list_export_")
+        list_export = r.query("list.export", args={
+            "name": "basic",
+            "time_range": {"begin": "0ns", "end": "400ns"},
+            "format": "u64bin",
+            "output_dir": list_export_dir,
+        })
+        manifest_file = list_export["data"]["manifest_file"]
+        require(os.path.exists(manifest_file), "missing list.export manifest")
+        with open(manifest_file, "r", encoding="utf-8") as fh:
+            manifest = json.load(fh)
+        require(manifest["format"] == "u64bin.v1", "unexpected list.export format")
+        require(manifest["signal_count"] == 2, "unexpected exported signal count")
+        require(manifest["row_count"] >= 2, "list.export did not write rows")
+        for item in manifest["signals"]:
+            require(os.path.exists(os.path.join(list_export_dir, item["file"])), "missing list.export signal file")
+        image_file = os.path.join(list_export_dir, "wave.jpg")
+        rc, out, err, _ = run_cmd([
+            os.path.join(REPO_ROOT, "tools", "xwaveform"),
+            "render",
+            "--manifest", manifest_file,
+            "--output", image_file,
+            "--width", "4096",
+            "--cursor-count", "32",
+            "--json",
+        ], cwd=REPO_ROOT, env=r.env, timeout=60)
+        require(rc == 0, "xwaveform render failed\n{}\n{}".format(out, err))
+        rendered = json.loads(out)
+        require(rendered["width"] == 4096, "xwaveform did not render 4096px width")
+        require(os.path.exists(rendered["image_file"]), "missing xwaveform JPG")
+        require(os.path.exists(rendered["stats_file"]), "missing xwaveform stats")
         r.query("list.delete", args={"name": "basic", "index": "2"})
         r.query("list.show", args={"name": "basic"})
 

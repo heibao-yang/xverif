@@ -81,6 +81,7 @@ example 和 contract test 迁移使用。状态定义：
 | `list.value_at` | waveform | stable | waveform | waveform engine forward | partial |
 | `list.validate` | waveform | stable | waveform | waveform engine forward | partial |
 | `list.diff` | waveform | stable | waveform | waveform engine forward | partial |
+| `list.export` | waveform | stable | waveform | waveform engine forward | targeted |
 | `apb.config.load` | waveform | stable | waveform | waveform engine forward | partial |
 | `apb.config.list` | waveform | stable | waveform | waveform engine forward | partial |
 | `apb.query` | waveform | stable | waveform | waveform engine forward | regression |

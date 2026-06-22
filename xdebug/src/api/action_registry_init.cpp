@@ -102,6 +102,7 @@ void register_waveform(ActionRegistry& r) {
         {"list.value_at", ActionStatus::Stable},
         {"list.validate", ActionStatus::Stable},
         {"list.diff", ActionStatus::Stable},
+        {"list.export", ActionStatus::Stable},
         {"apb.config.load", ActionStatus::Stable},
         {"apb.config.list", ActionStatus::Stable},
         {"apb.query", ActionStatus::Stable},
