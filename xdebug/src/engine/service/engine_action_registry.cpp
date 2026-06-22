@@ -44,28 +44,6 @@ public:
     }
 };
 
-class NotImplementedHandler : public EngineActionHandler {
-    std::string name_;
-    bool nd_, nw_;
-public:
-    NotImplementedHandler(const char* name, bool needs_design, bool needs_waveform)
-        : name_(name), nd_(needs_design), nw_(needs_waveform) {}
-    const char* action_name() const override { return name_.c_str(); }
-    bool needs_design() const override { return nd_; }
-    bool needs_waveform() const override { return nw_; }
-    Json run(const Json&) const override {
-        Json e; e["error"] = "NOT_IMPLEMENTED";
-        e["message"] = "action not yet implemented in unified engine: " + name_;
-        return e;
-    }
-};
-
-static void add_ni(EngineActionRegistry& r, const char* name,
-                   bool nd, bool nw) {
-    r.add(std::unique_ptr<EngineActionHandler>(
-        new NotImplementedHandler(name, nd, nw)));
-}
-
 } // namespace
 
 // ═══════════════════════════════════════════════════════════════════════
