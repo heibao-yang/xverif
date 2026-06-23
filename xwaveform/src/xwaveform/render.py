@@ -10,12 +10,6 @@ from PIL import Image, ImageDraw, ImageFont
 from .loader import SignalData, load_manifest, load_signal
 
 
-def _low_word(data: SignalData) -> np.ndarray:
-    if data.value_words.shape[1] == 0:
-        return np.zeros(data.row_count, dtype=np.uint64)
-    return np.asarray(data.value_words[:, 0], dtype=np.uint64)
-
-
 def _known(data: SignalData) -> np.ndarray:
     if data.known_words.shape[1] == 0:
         return np.zeros(data.row_count, dtype=bool)
@@ -42,6 +36,39 @@ def _words_to_int(words: np.ndarray) -> int:
     for word in reversed(words.tolist()):
         value = (value << 64) | int(word)
     return value
+
+
+def _ratio_from_ints(value: int, minimum: int, maximum: int) -> float:
+    span = maximum - minimum
+    if span <= 0:
+        return 0.5
+    offset = value - minimum
+    shift = max(0, span.bit_length() - 53)
+    return float(offset >> shift) / float(span >> shift)
+
+
+def _value_y_positions(data: SignalData, high: int, low: int, mid: int) -> tuple[np.ndarray, np.ndarray]:
+    known = _known(data)
+    ys = np.full(data.row_count, mid, dtype=np.int64)
+    if data.row_count == 0:
+        return ys, known
+
+    values = [_words_to_int(np.asarray(data.value_words[idx], dtype=np.uint64)) for idx in range(data.row_count)]
+    known_values = [values[idx] for idx, is_known in enumerate(known.tolist()) if is_known]
+    if not known_values:
+        return ys, known
+
+    minimum = min(known_values)
+    maximum = max(known_values)
+    last_y = mid
+    for idx, value in enumerate(values):
+        if bool(known[idx]):
+            ratio = _ratio_from_ints(value, minimum, maximum)
+            last_y = int(round(low - ratio * (low - high)))
+            ys[idx] = last_y
+        else:
+            ys[idx] = last_y
+    return ys, known
 
 
 def _stats_for(data: SignalData) -> dict[str, Any]:
@@ -89,6 +116,37 @@ def _format_time(ps: int) -> str:
     return f"{ps}ps"
 
 
+def _format_time_ns(ps: int) -> str:
+    ns = ps / 1000.0
+    if ps % 1000 == 0:
+        return f"{ps // 1000}ns"
+    text = f"{ns:.3f}".rstrip("0").rstrip(".")
+    return f"{text}ns"
+
+
+def _text_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> int:
+    if hasattr(draw, "textlength"):
+        return int(draw.textlength(text, font=font))
+    return len(text) * 6
+
+
+def _label_x(draw: ImageDraw.ImageDraw, text: str, x: int, width: int, font: ImageFont.ImageFont) -> int:
+    text_width = _text_width(draw, text, font)
+    return max(0, min(width - text_width, x - text_width // 2))
+
+
+def _signal_label(entry: dict[str, Any]) -> str:
+    return str(entry.get("signal", ""))[-48:]
+
+
+def _plot_left(draw: ImageDraw.ImageDraw, signals: list[dict[str, Any]],
+               font: ImageFont.ImageFont, label_x: int = 8, label_gap: int = 30) -> int:
+    if not signals:
+        return label_x + label_gap
+    max_label_width = max(_text_width(draw, _signal_label(entry), font) for entry in signals)
+    return label_x + max_label_width + label_gap
+
+
 def _time_to_x(time_ps: np.ndarray, begin: int, end: int, left: int, plot_width: int) -> np.ndarray:
     if end <= begin:
         return np.full(time_ps.shape, left, dtype=np.int64)
@@ -106,9 +164,7 @@ def _draw_signal(draw: ImageDraw.ImageDraw, data: SignalData, begin: int, end: i
     if data.row_count == 0:
         return
     xs = _time_to_x(np.asarray(data.time_ps), begin, end, left, plot_width)
-    values = _low_word(data)
-    known = _known(data)
-    ys = np.where((values & np.uint64(1)) != 0, high, low)
+    ys, known = _value_y_positions(data, high, low, mid)
     for i in range(data.row_count):
         x0 = int(xs[i])
         x1 = int(xs[i + 1]) if i + 1 < data.row_count else left + plot_width - 1
@@ -130,17 +186,22 @@ def render_waveform(manifest_path: str | Path, output: str | Path,
     stats_path = Path(stats_file) if stats_file else output_path.with_suffix(output_path.suffix + ".stats.json")
     begin = int(manifest.get("begin_ps", 0))
     end = int(manifest.get("end_ps", begin + 1))
-    left = 320
     right = 24
     top = 48
     bottom = 32
-    plot_width = max(1, width - left - right)
     height = top + bottom + max(1, len(signals)) * height_per_signal
     image = Image.new("RGB", (width, height), (255, 255, 255))
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default()
+    left = _plot_left(draw, signals, font)
+    plot_width = max(1, width - left - right)
 
-    draw.text((8, 8), f"{manifest.get('list', 'list')}  {_format_time(begin)} -> {_format_time(end)}", fill=(20, 24, 31), font=font)
+    for index, _entry in enumerate(signals):
+        y = top + index * height_per_signal
+        fill = (255, 255, 255) if index % 2 == 0 else (232, 234, 237)
+        draw.rectangle((0, y, width, y + height_per_signal - 1), fill=fill)
+
+    draw.text((8, 8), f"{manifest.get('list', 'list')}  {_format_time_ns(begin)} -> {_format_time_ns(end)}", fill=(20, 24, 31), font=font)
     if cursor_count < 2:
         cursor_count = 2
     for idx in range(cursor_count):
@@ -148,8 +209,8 @@ def render_waveform(manifest_path: str | Path, output: str | Path,
         x = left + int(round(ratio * (plot_width - 1)))
         t = begin + int(round(ratio * (end - begin)))
         draw.line((x, top - 12, x, height - bottom + 4), fill=(230, 200, 120), width=1)
-        if idx % 4 == 0 or idx in (0, cursor_count - 1):
-            draw.text((max(left, x - 18), height - bottom + 8), _format_time(t), fill=(100, 80, 30), font=font)
+        label = _format_time_ns(t)
+        draw.text((_label_x(draw, label, x, width, font), height - bottom + 8), label, fill=(100, 80, 30), font=font)
 
     stats: dict[str, Any] = {
         "manifest_file": str(Path(manifest_path)),
@@ -164,7 +225,7 @@ def render_waveform(manifest_path: str | Path, output: str | Path,
     for index, entry in enumerate(signals):
         data = load_signal(manifest, index)
         y = top + index * height_per_signal
-        draw.text((8, y + 5), data.signal[-48:], fill=(20, 24, 31), font=font)
+        draw.text((8, y + 5), _signal_label(entry), fill=(20, 24, 31), font=font)
         _draw_signal(draw, data, begin, end, left, y, plot_width, height_per_signal)
         item = _stats_for(data)
         stats["signals"].append(item)
