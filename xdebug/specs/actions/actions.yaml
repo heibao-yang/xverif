@@ -1090,6 +1090,25 @@
       ]
     },
     {
+      "name": "scope.roots",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "any",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/actions/scope.roots.request.schema.json",
+        "response": "schemas/v1/actions/scope.roots.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/scope.roots.basic.json"
+        ],
+        "response": [
+          "examples/responses/scope.roots.basic.json"
+        ]
+      }
+    },
+    {
       "name": "sequential.update",
       "category": "design",
       "status": "stable",

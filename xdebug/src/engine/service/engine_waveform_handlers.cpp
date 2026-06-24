@@ -17,10 +17,14 @@
 #include "npi.h"
 #include "npi_fsdb.h"
 #include "npi_L1.h"
+#include "npi_hdl.h"
 
 #include <fstream>
 #include <memory>
 #include <algorithm>
+#include <map>
+#include <sstream>
+#include <vector>
 
 namespace xdebug_design {
 namespace {
@@ -41,6 +45,46 @@ static std::string trim_copy(const std::string& text) {
 static Json value_object(const std::string& raw) {
     return xdebug_waveform::logic_value_json(
         xdebug_waveform::logic_value_from_fsdb_raw(raw, 'h'));
+}
+
+static std::string npi_str(NPI_INT32 property, npiHandle hdl) {
+    const char* value = hdl ? npi_get_str(property, hdl) : nullptr;
+    return value ? std::string(value) : std::string();
+}
+
+static std::string fsdb_scope_str(npiFsdbScopePropertyType property,
+                                  npiFsdbScopeHandle scope) {
+    const char* value = scope ? npi_fsdb_scope_property_str(property, scope) : nullptr;
+    return value ? std::string(value) : std::string();
+}
+
+static int fsdb_scope_int(npiFsdbScopePropertyType property,
+                          npiFsdbScopeHandle scope) {
+    int value = 0;
+    if (!scope || !npi_fsdb_scope_property(property, scope, &value)) return 0;
+    return value;
+}
+
+static std::string normalize_root_path(std::string path) {
+    path = trim_copy(path);
+    while (!path.empty() && path[0] == '/') path.erase(path.begin());
+    while (!path.empty() && path.back() == '/') path.pop_back();
+    return path;
+}
+
+static std::string join_strings(const Json& arr) {
+    std::ostringstream os;
+    if (!arr.is_array()) return "";
+    for (size_t i = 0; i < arr.size(); ++i) {
+        if (i) os << ",";
+        os << arr[i].get<std::string>();
+    }
+    return os.str();
+}
+
+static std::string object_string_field(const Json& obj, const char* key) {
+    if (!obj.is_object()) return "";
+    return obj.value(key, std::string());
 }
 
 static std::string with_value_prefix(const std::string& raw, char fmt) {
@@ -310,6 +354,239 @@ public:
     }
 
 private:
+    static Json err(const char* code, const std::string& msg) {
+        Json e; e["error"] = code; e["message"] = msg; return e;
+    }
+};
+
+class ScopeRootsHandler : public EngineActionHandler {
+public:
+    const char* action_name() const override { return "scope.roots"; }
+    bool needs_design() const override { return false; }
+    bool needs_waveform() const override { return false; }
+
+    Json run(const Json& request) const override {
+        Json args = request.value("args", Json::object());
+        std::string source = args.value("source", std::string("auto"));
+        if (source.empty()) source = "auto";
+        if (source != "auto" && source != "wave" && source != "design")
+            return err("INVALID_REQUEST", "args.source must be auto, wave, or design");
+
+        const bool want_wave = source == "auto" || source == "wave";
+        const bool want_design = source == "auto" || source == "design";
+        Json limitations = Json::array();
+        Json wave_roots = Json::array();
+        Json wave_root_candidates = Json::array();
+        Json design_roots = Json::array();
+
+        if (want_wave) {
+            if (g_has_waveform && g_fsdb_file) {
+                wave_roots = collect_wave_roots(limitations);
+                wave_root_candidates = wave_roots;
+            } else {
+                limitations.push_back("wave roots unavailable: waveform not loaded");
+            }
+        }
+        if (want_design) {
+            if (g_has_design) {
+                if (wave_root_candidates.empty() && g_has_waveform && g_fsdb_file) {
+                    Json candidate_limitations = Json::array();
+                    wave_root_candidates = collect_wave_roots(candidate_limitations);
+                }
+                design_roots = collect_design_roots(limitations, wave_root_candidates);
+            } else {
+                limitations.push_back("design roots unavailable: design not loaded");
+            }
+        }
+
+        Json roots = merge_roots(wave_roots, design_roots);
+        int matched_count = 0;
+        for (const auto& root : roots) {
+            if (root.value("status", "") == "matched") ++matched_count;
+        }
+
+        Json recommended = nullptr;
+        std::string reason = "none";
+        if (roots.size() == 1) {
+            recommended = roots[0].value("path", "");
+            reason = "unique root";
+        } else if (matched_count == 1) {
+            for (const auto& root : roots) {
+                if (root.value("status", "") == "matched") {
+                    recommended = root.value("path", "");
+                    reason = "unique matched root";
+                    break;
+                }
+            }
+        } else if (roots.empty()) {
+            reason = "no roots discovered";
+        } else if (matched_count > 1) {
+            reason = "multiple matched roots";
+        } else {
+            reason = "multiple roots or design/wave mismatch";
+        }
+
+        Json out;
+        out["source"] = source;
+        out["roots"] = roots;
+        out["wave_roots"] = wave_roots;
+        out["design_roots"] = design_roots;
+        out["summary"] = {
+            {"source", source},
+            {"root_count", static_cast<int>(roots.size())},
+            {"wave_count", static_cast<int>(wave_roots.size())},
+            {"design_count", static_cast<int>(design_roots.size())},
+            {"matched_count", matched_count},
+            {"recommended_root", recommended},
+            {"recommended_reason", reason}
+        };
+        if (!limitations.empty()) out["limitations"] = limitations;
+        return out;
+    }
+
+    std::string render_xout(const Json& r) const override {
+        xdebug::TextResponseBuilder out("xdebug");
+        out.emit_header("scope.roots");
+        Json summary = r.value("summary", Json::object());
+        out.emit_section("summary");
+        out.emit_kv("recommended",
+                    summary.value("recommended_root", Json(nullptr)).is_null()
+                        ? "none (" + summary.value("recommended_reason", std::string("unknown")) + ")"
+                        : summary.value("recommended_root", std::string()));
+        out.emit_kv("source", summary.value("source", std::string("auto")));
+        out.emit_kv("roots", summary.value("root_count", 0));
+        out.emit_kv("matched", summary.value("matched_count", 0));
+        out.emit_kv("wave", summary.value("wave_count", 0));
+        out.emit_kv("design", summary.value("design_count", 0));
+
+        Json data = r.value("data", Json::object());
+        Json roots = data.value("roots", Json::array());
+        out.emit_section("roots");
+        out.emit_row({"path", "status", "sources", "wave", "design"});
+        for (const auto& root : roots) {
+            out.emit_row({
+                root.value("path", std::string()),
+                root.value("status", std::string()),
+                join_strings(root.value("sources", Json::array())),
+                object_string_field(root.value("wave", Json()), "full_name"),
+                object_string_field(root.value("design", Json()), "full_name")
+            });
+        }
+        if (roots.empty()) out.emit_row({"[empty]", "", "", "", ""});
+
+        Json limitations = data.value("limitations", Json::array());
+        if (!limitations.empty()) {
+            out.emit_section("limitations");
+            for (const auto& item : limitations) {
+                out.emit_row({xdebug::json_to_xout_value(item)});
+            }
+        }
+        return out.str();
+    }
+
+private:
+    static Json collect_wave_roots(Json& limitations) {
+        Json roots = Json::array();
+        npiFsdbScopeIter iter = npi_fsdb_iter_top_scope(g_fsdb_file);
+        if (!iter) {
+            limitations.push_back("wave root iterator returned no scopes");
+            return roots;
+        }
+        while (npiFsdbScopeHandle scope = npi_fsdb_iter_scope_next(iter)) {
+            Json root;
+            std::string full_name = fsdb_scope_str(npiFsdbScopeFullName, scope);
+            std::string name = fsdb_scope_str(npiFsdbScopeName, scope);
+            if (full_name.empty()) full_name = name;
+            root["path"] = normalize_root_path(full_name);
+            root["name"] = name;
+            root["full_name"] = full_name;
+            root["def_name"] = fsdb_scope_str(npiFsdbScopeDefName, scope);
+            root["type"] = fsdb_scope_int(npiFsdbScopeType, scope);
+            root["queryable"] = true;
+            roots.push_back(root);
+        }
+        npi_fsdb_iter_scope_stop(iter);
+        return roots;
+    }
+
+    static Json collect_design_roots(Json& limitations, const Json& wave_candidates) {
+        Json roots = Json::array();
+        npiHandle iter = npi_iterate(npiTop, nullptr);
+        if (iter) {
+            while (npiHandle hdl = npi_scan(iter)) {
+                Json root = design_root_from_handle(hdl, "npi_top");
+                if (!root.value("path", std::string()).empty()) roots.push_back(root);
+            }
+        }
+        if (!roots.empty()) return roots;
+
+        for (const auto& candidate : wave_candidates) {
+            std::string path = candidate.value("path", std::string());
+            if (path.empty()) continue;
+            npiHandle hdl = npi_handle_by_name(path.c_str(), nullptr);
+            if (!hdl) continue;
+            int type = npi_get(npiType, hdl);
+            if (type != npiModule && type != npiInterface && type != npiProgram) continue;
+            Json root = design_root_from_handle(hdl, "verified_wave_root");
+            if (!root.value("path", std::string()).empty()) roots.push_back(root);
+        }
+        if (roots.empty()) limitations.push_back("design root discovery returned no top handles");
+        return roots;
+    }
+
+    static Json design_root_from_handle(npiHandle hdl, const std::string& discovery) {
+        Json root;
+        std::string full_name = npi_str(npiFullName, hdl);
+        std::string name = npi_str(npiName, hdl);
+        if (full_name.empty()) full_name = name;
+        root["path"] = normalize_root_path(full_name);
+        root["name"] = name;
+        root["full_name"] = full_name;
+        root["def_name"] = npi_str(npiDefName, hdl);
+        int type = npi_get(npiType, hdl);
+        if (type == npiModule) root["kind"] = "module";
+        else if (type == npiInterface) root["kind"] = "interface";
+        else if (type == npiProgram) root["kind"] = "program";
+        else root["kind"] = "scope";
+        root["discovery"] = discovery;
+        root["traceable"] = true;
+        return root;
+    }
+
+    static Json merge_roots(const Json& wave_roots, const Json& design_roots) {
+        struct Entry {
+            Json wave = nullptr;
+            Json design = nullptr;
+        };
+        std::map<std::string, Entry> by_path;
+        for (const auto& root : wave_roots) {
+            std::string path = normalize_root_path(root.value("path", std::string()));
+            if (!path.empty()) by_path[path].wave = root;
+        }
+        for (const auto& root : design_roots) {
+            std::string path = normalize_root_path(root.value("path", std::string()));
+            if (!path.empty()) by_path[path].design = root;
+        }
+
+        Json roots = Json::array();
+        for (auto& kv : by_path) {
+            Json item;
+            item["path"] = kv.first;
+            item["sources"] = Json::array();
+            item["wave"] = kv.second.wave;
+            item["design"] = kv.second.design;
+            const bool has_wave = !kv.second.wave.is_null();
+            const bool has_design = !kv.second.design.is_null();
+            if (has_design) item["sources"].push_back("design");
+            if (has_wave) item["sources"].push_back("wave");
+            if (has_design && has_wave) item["status"] = "matched";
+            else if (has_design) item["status"] = "design_only";
+            else item["status"] = "wave_only";
+            roots.push_back(item);
+        }
+        return roots;
+    }
+
     static Json err(const char* code, const std::string& msg) {
         Json e; e["error"] = code; e["message"] = msg; return e;
     }
@@ -1050,6 +1327,7 @@ void register_waveform_handlers(EngineActionRegistry& r) {
     r.add(std::unique_ptr<EngineActionHandler>(new ValueAtHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new ValueBatchAtHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new ScopeListHandler));
+    r.add(std::unique_ptr<EngineActionHandler>(new ScopeRootsHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new ListCreateHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new ListAddHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new ListDeleteHandler));

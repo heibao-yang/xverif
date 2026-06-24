@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "xdebug.scope.roots.request.v1",
+  "title": "scope.roots request",
+  "type": "object",
+  "required": [
+    "api_version",
+    "action",
+    "target"
+  ],
+  "properties": {
+    "api_version": {
+      "type": "string",
+      "enum": [
+        "xdebug.v1"
+      ]
+    },
+    "request_id": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "scope.roots"
+      ]
+    },
+    "target": {
+      "type": "object"
+    },
+    "args": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "wave",
+            "design"
+          ],
+          "default": "auto"
+        }
+      },
+      "additionalProperties": true
+    },
+    "limits": {
+      "type": "object"
+    },
+    "output": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

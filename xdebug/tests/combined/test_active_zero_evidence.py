@@ -137,6 +137,130 @@ def _query(
     )
 
 
+def _simple_query(
+    cli_runner: CliRunner,
+    session_id: str,
+    action: str,
+    args: dict[str, Any] | None,
+    *,
+    artifact_root: Path,
+    output_format: str = "json",
+) -> dict[str, Any] | str:
+    result = cli_runner.run(
+        {
+            "api_version": "xdebug.v1",
+            "action": action,
+            "target": {"session_id": session_id},
+            "args": args or {},
+        },
+        output_format=output_format,
+        timeout_sec=120,
+    )
+    if output_format == "xout":
+        if result.returncode == 0 and not result.timed_out and isinstance(result.response, str):
+            return result.response
+        artifact_dir = ArtifactWriter(artifact_root).write(
+            f"{action}-xout", result, extra={"args": args or {}}
+        )
+        pytest.fail(f"{action} xout failed; artifacts={artifact_dir}")
+    return _require_success(
+        result,
+        case_name=action,
+        artifact_root=artifact_root,
+        extra={"args": args or {}},
+    )
+
+
+@pytest.mark.combined
+@pytest.mark.synthetic
+@pytest.mark.regression
+@pytest.mark.slow
+def test_scope_roots_discovers_combined_top(
+    cli_runner: CliRunner,
+    active_zero_evidence_session: str,
+    artifact_root: Path,
+) -> None:
+    response = _simple_query(
+        cli_runner,
+        active_zero_evidence_session,
+        "scope.roots",
+        {"source": "auto"},
+        artifact_root=artifact_root,
+    )
+
+    assert isinstance(response, dict)
+    assert response["summary"]["recommended_root"] == "active_zero_evidence_tb"
+    assert response["summary"]["matched_count"] == 1
+    roots = response["data"]["roots"]
+    root = next(item for item in roots if item["path"] == "active_zero_evidence_tb")
+    assert root["status"] == "matched"
+    assert root["sources"] == ["design", "wave"]
+    assert root["wave"]["queryable"] is True
+    assert root["design"]["traceable"] is True
+
+    scope_response = _simple_query(
+        cli_runner,
+        active_zero_evidence_session,
+        "scope.list",
+        {"path": response["summary"]["recommended_root"], "recursive": False},
+        artifact_root=artifact_root,
+    )
+    assert isinstance(scope_response, dict)
+    assert scope_response["summary"]["signal_count"] > 0
+
+
+@pytest.mark.combined
+@pytest.mark.synthetic
+@pytest.mark.regression
+@pytest.mark.slow
+def test_scope_roots_supports_source_filters_and_xout(
+    cli_runner: CliRunner,
+    active_zero_evidence_session: str,
+    artifact_root: Path,
+) -> None:
+    wave = _simple_query(
+        cli_runner,
+        active_zero_evidence_session,
+        "scope.roots",
+        {"source": "wave"},
+        artifact_root=artifact_root,
+    )
+    design = _simple_query(
+        cli_runner,
+        active_zero_evidence_session,
+        "scope.roots",
+        {"source": "design"},
+        artifact_root=artifact_root,
+    )
+    xout = _simple_query(
+        cli_runner,
+        active_zero_evidence_session,
+        "scope.roots",
+        {"source": "auto"},
+        artifact_root=artifact_root,
+        output_format="xout",
+    )
+
+    assert isinstance(wave, dict)
+    assert wave["summary"]["wave_count"] == 1
+    assert wave["summary"]["design_count"] == 0
+    assert wave["summary"]["recommended_root"] == "active_zero_evidence_tb"
+    assert wave["data"]["roots"][0]["status"] == "wave_only"
+
+    assert isinstance(design, dict)
+    assert design["summary"]["design_count"] == 1
+    assert design["summary"]["wave_count"] == 0
+    assert design["summary"]["recommended_root"] == "active_zero_evidence_tb"
+    assert design["data"]["roots"][0]["status"] == "design_only"
+
+    assert isinstance(xout, str)
+    assert "@xdebug.scope.roots.v1" in xout
+    assert "recommended: active_zero_evidence_tb" in xout
+    assert "path status sources wave design" in xout
+    assert "active_zero_evidence_tb matched design,wave" in xout
+    assert "limitations:" not in xout
+
+
 @pytest.mark.combined
 @pytest.mark.active_trace
 @pytest.mark.synthetic

@@ -212,6 +212,49 @@ void render_active_driver(TextResponseBuilder& out, const Json& response) {
     }
 }
 
+void render_scope_roots(TextResponseBuilder& out, const Json& response) {
+    const Json summary = response.value("summary", Json::object());
+    const Json data = response.value("data", Json::object());
+    out.emit_section("summary");
+    if (summary.contains("recommended_root") && !summary["recommended_root"].is_null()) {
+        out.emit_kv("recommended", summary["recommended_root"]);
+    } else {
+        out.emit_kv("recommended",
+                    "none (" + summary.value("recommended_reason", std::string("unknown")) + ")");
+    }
+    emit_scalar_keys(out, summary,
+                     {"source", "root_count", "matched_count", "wave_count", "design_count"});
+
+    out.emit_section("roots");
+    out.emit_row({"path", "status", "sources", "wave", "design"});
+    const Json roots = data.value("roots", Json::array());
+    for (const auto& root : roots) {
+        std::string sources;
+        if (root.contains("sources") && root["sources"].is_array()) {
+            for (size_t i = 0; i < root["sources"].size(); ++i) {
+                if (i) sources += ",";
+                sources += root["sources"][i].get<std::string>();
+            }
+        }
+        const Json wave = root.value("wave", Json());
+        const Json design = root.value("design", Json());
+        out.emit_row({
+            scalar_text(root, "path"),
+            scalar_text(root, "status"),
+            sources,
+            wave.is_object() ? scalar_text(wave, "full_name") : std::string(),
+            design.is_object() ? scalar_text(design, "full_name") : std::string()
+        });
+    }
+    if (roots.empty()) out.emit_row({"[empty]", "", "", "", ""});
+
+    const Json limitations = data.value("limitations", Json::array());
+    if (!limitations.empty()) {
+        out.emit_section("limitations");
+        for (const auto& item : limitations) out.emit_row({json_to_xout_value(item)});
+    }
+}
+
 // ── Generic renderer (enhanced with recursive tree) ──────────────
 
 void render_generic(TextResponseBuilder& out, const Json& response) {
@@ -269,6 +312,8 @@ std::string render_xout_response(const Json& response) {
         render_signal_changes(out, response);
     else if (action == "trace.active_driver" || action == "trace.active_driver_chain")
         render_active_driver(out, response);
+    else if (action == "scope.roots")
+        render_scope_roots(out, response);
     else
         render_generic(out, response);
 

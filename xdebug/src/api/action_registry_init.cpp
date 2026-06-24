@@ -92,6 +92,7 @@ void register_waveform(ActionRegistry& r) {
         {"cursor.delete", ActionStatus::Stable},
         {"cursor.use", ActionStatus::Stable},
         {"scope.list", ActionStatus::Stable},
+        {"scope.roots", ActionStatus::Stable},
         {"rc.generate", ActionStatus::Stable},
         {"value.at", ActionStatus::Stable},
         {"value.batch_at", ActionStatus::Stable},
@@ -136,8 +137,11 @@ void register_waveform(ActionRegistry& r) {
         {"apb.transfer_window", ActionStatus::Experimental}
     };
     for (size_t i = 0; i < sizeof(entries) / sizeof(entries[0]); ++i) {
+        ResourceRequirement resource = std::string(entries[i].name) == "scope.roots"
+            ? ResourceRequirement::Any
+            : ResourceRequirement::Waveform;
         ActionSpec spec = make_spec(entries[i].name, "waveform", entries[i].status,
-                                    ResourceRequirement::Waveform, "engine_forward");
+                                    resource, "engine_forward");
         if (spec.name == "value.at") {
             spec.args.required.push_back("signal");
             spec.args.required.push_back("time");

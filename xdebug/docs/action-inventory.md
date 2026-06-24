@@ -71,6 +71,7 @@ example 和 contract test 迁移使用。状态定义：
 | `cursor.delete` | waveform | stable | waveform | waveform engine forward | partial |
 | `cursor.use` | waveform | stable | waveform | waveform engine forward | partial |
 | `scope.list` | waveform | stable | waveform | waveform engine forward | regression |
+| `scope.roots` | waveform | stable | any | waveform engine forward | targeted |
 | `rc.generate` | waveform | stable | waveform | waveform engine forward | partial |
 | `value.at` | waveform | stable | waveform | waveform engine forward | regression |
 | `value.batch_at` | waveform | stable | waveform | waveform engine forward | regression |

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "xdebug.scope.roots.response.v1",
+  "title": "scope.roots response",
+  "type": "object",
+  "required": [
+    "api_version",
+    "ok",
+    "action",
+    "summary",
+    "data"
+  ],
+  "properties": {
+    "api_version": {
+      "type": "string",
+      "enum": [
+        "xdebug.v1"
+      ]
+    },
+    "request_id": {
+      "type": "string"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "scope.roots"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "root_count": {
+          "type": "integer"
+        },
+        "wave_count": {
+          "type": "integer"
+        },
+        "design_count": {
+          "type": "integer"
+        },
+        "matched_count": {
+          "type": "integer"
+        },
+        "recommended_root": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recommended_reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "roots": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "wave_roots": {
+          "type": "array"
+        },
+        "design_roots": {
+          "type": "array"
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "findings": {
+      "type": "array"
+    },
+    "warnings": {
+      "type": "array"
+    },
+    "error": {},
+    "meta": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}
