@@ -1,6 +1,5 @@
 #pragma once
 
-#include "server.h"
 #include "fsdb_value_reader.h"
 #include "fsdb_scan_utils.h"
 #include "../protocol/protocol.h"
@@ -72,10 +71,6 @@ extern AxiAnalyzer g_axi_analyzer;
 extern EventAnalyzer g_event_analyzer;
 extern FILE* g_debug_log;
 
-void server_debug_open_log();
-void server_debug_log(const char* fmt, ...);
-void cleanup_and_exit(int sig);
-void daemonize_io();
 bool send_all(int fd, const char* buf, size_t len);
 bool read_command_line(int fd, char* line, size_t line_size);
 char* trim_command(char* cmd);

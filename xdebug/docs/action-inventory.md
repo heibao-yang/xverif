@@ -34,8 +34,8 @@ example 和 contract test 迁移使用。状态定义：
 | `session.kill` | session | stable | session | dispatcher + backend session managers | partial |
 | `session.close` | session | stable | session | alias-compatible close path | partial |
 | `session.gc` | session | stable | none | dispatcher + waveform gc | partial |
-| `trace.active_driver` | combined | stable | any | `ActiveTraceService` | regression |
-| `trace.active_driver_chain` | combined | stable | any | `ActiveTraceChainService` | partial |
+| `trace.active_driver` | combined | stable | any | unified engine handler + combined helper | regression |
+| `trace.active_driver_chain` | combined | stable | any | unified engine handler + combined helper | partial |
 
 ## Design Actions
 

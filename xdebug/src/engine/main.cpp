@@ -1,4 +1,4 @@
-#include "../design/commands/cmd_ai.h"
+#include "engine_query.h"
 #include "server.h"
 
 #include <cstdio>
@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
 
     if (argc == 4 && std::strcmp(argv[1], "ai") == 0 &&
         std::strcmp(argv[2], "query") == 0 && std::strcmp(argv[3], "-") == 0) {
-        return cmd_ai(argc, argv);
+        return engine_query_main(argc, argv);
     }
 
     std::fprintf(stderr, "ERROR: xdebug internal design engine accepts JSON requests only\n");

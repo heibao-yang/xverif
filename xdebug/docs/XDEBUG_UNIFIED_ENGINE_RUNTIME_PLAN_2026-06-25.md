@@ -129,8 +129,8 @@ public xdebug CLI / stdio-loop / MCP
   - `npi_fsdb_close`
   - `npi_end`
 - 删除 standalone waveform server 中的 NPI init/open server path。
-- 删除或禁用 `ActiveTraceService::run()` 这种自行 init/load/open 的旧入口，只保留 `run_engine(...)`。
-- `ActiveTraceChainService` 同样改为 engine-only。
+- 删除 `ActiveTraceService::run()`、`ActiveTraceService::run_engine()` 这类 service/action 入口；combined 目录只保留无生命周期的 helper payload builder。
+- `ActiveTraceChainService` 同样删除；`trace.active_driver_chain` 只能由 engine handler 调用 combined helper。
 - `active_trace_common.h` 删除 `NpiSessionGuard`、`FsdbFileGuard`，或移动到测试专用代码；product runtime 只允许轻量 handle guard。
 - 增加源码 contract：生产代码除 engine resource manager/server 外不得出现上述 NPI lifecycle 调用。
 
@@ -152,7 +152,6 @@ public xdebug CLI / stdio-loop / MCP
   - `src/waveform/service/router.cpp`
   - `src/waveform/service/action_registry.cpp`
   - `src/waveform/service/action_registry.h`
-  - `src/waveform/service/action_handler.h`
   - `src/waveform/service/actions/*.cpp`
 - 保留并复用：
   - `src/waveform/server/service/*` 中非 server-envelope 的 value/scope/signal/event helper。
@@ -186,8 +185,11 @@ public xdebug CLI / stdio-loop / MCP
   - `handle_request`
   - `base_response`
   - `error_response`
+  - `finalize_response`
+  - `response_verbosity`
   - `action_known`
   - `print_actions`
+- `src/combined` 下不得出现 `run_engine`、`ActiveTraceService`、`ActiveTraceChainService`、`NpiSessionGuard`、`FsdbFileGuard`。
 - `src/design`、`src/waveform`、`src/combined` 下不得调用资源 lifecycle API：
   - `npi_init`
   - `npi_load_design`

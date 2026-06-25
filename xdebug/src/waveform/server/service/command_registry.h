@@ -14,7 +14,7 @@ namespace xdebug_waveform {
 using CommandHandler = std::function<bool(int client_fd, const CommandLine& cl)>;
 
 // Lightweight registry mapping command verbs to handlers.
-// Provides the same dispatch pattern used by WaveformActionRegistry on the service side.
+// Provides dispatch for engine-owned waveform service helper commands.
 class CommandRegistry {
 public:
     void add(const std::string& verb, CommandHandler handler) {

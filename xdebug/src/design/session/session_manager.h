@@ -76,7 +76,7 @@ public:
     SessionEnsureResult ensure_session(const std::vector<std::string>& design_args, const std::string& session_name,
                                        const SessionTransportOptions& transport);
 
-    // Kill a specific session (calls npi_end() in server)
+    // Kill a specific session through the unified engine server.
     bool kill_session(const std::string& session_id);
 
     // Kill all sessions

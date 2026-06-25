@@ -77,7 +77,7 @@ public:
     bool touch_session(const std::string& session_id);
     bool touch_session(int session_id) { return touch_session(std::to_string(session_id)); }
 
-    // Kill a specific session (calls npi_end() in server)
+    // Kill a specific session through the unified engine server.
     bool kill_session(const std::string& session_id);
     bool kill_session(int session_id) { return kill_session(std::to_string(session_id)); }
 

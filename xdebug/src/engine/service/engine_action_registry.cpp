@@ -17,7 +17,7 @@ void register_design_handlers(EngineActionRegistry& r);
 void register_stream_handlers(EngineActionRegistry& r);
 
 // ═══════════════════════════════════════════════════════════════════════
-// Combined action handlers (simple wrappers — kept here for visibility)
+// Combined action handlers: engine-owned action entries backed by helper payload builders.
 // ═══════════════════════════════════════════════════════════════════════
 
 namespace {
@@ -28,8 +28,7 @@ public:
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return true; }
     Json run(const Json& request) const override {
-        xdebug::ActiveTraceService svc;
-        return svc.run_engine(request, g_daidir_path, g_fsdb_path, g_fsdb_file);
+        return xdebug::build_active_driver_payload(request, g_daidir_path, g_fsdb_path, g_fsdb_file);
     }
 };
 
@@ -39,8 +38,7 @@ public:
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return true; }
     Json run(const Json& request) const override {
-        xdebug::ActiveTraceChainService svc;
-        return svc.run_engine(request, g_daidir_path, g_fsdb_path, g_fsdb_file);
+        return xdebug::build_active_driver_chain_payload(request, g_daidir_path, g_fsdb_path, g_fsdb_file);
     }
 };
 

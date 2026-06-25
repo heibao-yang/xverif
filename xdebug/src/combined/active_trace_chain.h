@@ -6,16 +6,9 @@
 
 namespace xdebug {
 
-class ActiveTraceChainService {
-public:
-    // Original entry point.
-    Json run(const Json& request, const Json& target) const;
-
-    // Unified-engine entry point: NPI + FSDB already loaded by the engine.
-    nlohmann::ordered_json run_engine(const Json& request,
-                                       const std::string& daidir,
-                                       const std::string& fsdb_path,
-                                       npiFsdbFileHandle fsdb) const;
-};
+nlohmann::ordered_json build_active_driver_chain_payload(const Json& request,
+                                                         const std::string& daidir,
+                                                         const std::string& fsdb_path,
+                                                         npiFsdbFileHandle fsdb);
 
 } // namespace xdebug

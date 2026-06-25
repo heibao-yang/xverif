@@ -396,76 +396,12 @@ std::string chain_to_xout(const std::string& signal, const std::string& time,
 
 } // namespace
 
-// ═══════════════════════════════════════════════════════════════════
-// public run()
-// ═══════════════════════════════════════════════════════════════════
-
-Json ActiveTraceChainService::run(const Json& request, const Json& target) const {
-    const std::string action = "trace.active_driver_chain";
-    Json args = request.value("args", Json::object());
-    std::string daidir = target.value("daidir", "");
-    std::string fsdb_path = target.value("fsdb", "");
-    std::string signal = args.value("signal", "");
-    std::string req_time = args.value("requested_time", "");
-    std::string clk_period = args.value("clk_period", "10ns");
-
-    // resource validation already done by dispatcher; only check business params
-    if (signal.empty() || req_time.empty())
-        return make_error(request, action, "MISSING_FIELD",
-                          "requires args.signal and args.requested_time");
-
-    Json limits_j = request.value("limits", args.value("limits", Json::object()));
-    int max_depth = std::max(1, limits_j.value("max_depth", 20));
-    int max_nodes = std::max(1, limits_j.value("max_nodes", 50));
-
-    ScopedRuntimeWorkDir workdir("combined");
-    if (!workdir.ok())
-        return make_error(request, action, "WORKDIR_FAILED", "failed to enter workdir");
-
-    std::vector<std::string> npi_args = {current_executable(), "-dbdir", daidir, "-ssf", fsdb_path};
-    std::vector<char*> npi_argv;
-    for (auto& s : npi_args) npi_argv.push_back(const_cast<char*>(s.c_str()));
-    int npi_argc = static_cast<int>(npi_argv.size());
-    char** npi_argv_ptr = npi_argv.data();
-
-    ScopedStdoutSilence silence;
-    NpiSessionGuard npi;
-    if (!npi.init(npi_argc, npi_argv_ptr))
-        return make_error(request, action, "NPI_INIT_FAILED", "npi_init failed");
-    if (!npi.load_design(npi_argc, npi_argv_ptr))
-        return make_error(request, action, "DESIGN_LOAD_FAILED", "npi_load_design failed");
-    FsdbFileGuard fsdb(fsdb_path);
-    if (!fsdb)
-        return make_error(request, action, "FSDB_OPEN_FAILED", "npi_fsdb_open failed");
-    NpiHandleGuard sig_hdl(npi_handle_by_name(signal.c_str(), nullptr));
-    if (!sig_hdl.get())
-        return make_error(request, action, "SIGNAL_NOT_FOUND", "signal not found: " + signal);
-
-    ChainResult result = build_chain(fsdb.get(), signal, req_time, clk_period,
-                                      max_depth, max_nodes);
-
-    Json resp = make_response(request, action);
-    resp["session"] = {{"mode", "combined"}, {"daidir", daidir}, {"fsdb", fsdb_path}};
-    resp["summary"] = {
-        {"signal", signal}, {"start_time", req_time},
-        {"chain_length", static_cast<int>(result.chain.size())},
-        {"termination", result.termination},
-        {"evidence_source", result.evidence_source.empty() ? Json(nullptr) : Json(result.evidence_source)},
-        {"static_candidate_count", result.static_candidate_count},
-        {"active_check_count", result.active_check_count},
-        {"temporal_boundaries", result.stats.temporal_boundaries}
-    };
-    resp["data"] = chain_to_json(result);
-    resp["text"] = chain_to_xout(signal, req_time, result);
-    resp["meta"]["truncated"] = result.truncated;
-    return resp;
-}
-
-nlohmann::ordered_json ActiveTraceChainService::run_engine(const Json& request,
-                                          const std::string& daidir,
-                                          const std::string& fsdb_path,
-                                          npiFsdbFileHandle fsdb) const {
-    const std::string action = "trace.active_driver_chain";
+nlohmann::ordered_json build_active_driver_chain_payload(const Json& request,
+                                                         const std::string& daidir,
+                                                         const std::string& fsdb_path,
+                                                         npiFsdbFileHandle fsdb) {
+    (void)daidir;
+    (void)fsdb_path;
     Json args = request.value("args", Json::object());
     std::string signal = args.value("signal", "");
     std::string req_time = args.value("requested_time", "");

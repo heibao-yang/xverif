@@ -213,7 +213,7 @@ bool load_config_json_arg(const Json& args, Json& config, std::string& err) {
         return false;
     }
     std::string text;
-    if (!read_file(path, text)) {
+    if (!load_text_file(path, text)) {
         err = "cannot read config_path: " + path;
         return false;
     }

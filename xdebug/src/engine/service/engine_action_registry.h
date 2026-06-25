@@ -8,7 +8,7 @@
 
 namespace xdebug_design {
 
-// Map-based action registry — same pattern as WaveformActionRegistry.
+// Map-based action registry for the unified engine runtime.
 // Thread-safe for reads after initialisation (populated once at startup).
 
 class EngineActionRegistry {

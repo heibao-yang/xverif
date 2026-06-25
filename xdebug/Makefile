@@ -60,6 +60,7 @@ APP_SRCS = src/main.cpp \
            src/runtime/work_dir.cpp
 
 ENGINE_SRCS = src/engine/main.cpp \
+              src/engine/engine_query.cpp \
               src/engine/server.cpp \
               src/engine/service/engine_action_registry.cpp \
               src/engine/service/engine_action_handler.cpp \
@@ -80,14 +81,8 @@ DESIGN_SRCS = src/design/session/session_registry.cpp \
               src/design/session/session_manager.cpp \
               src/design/session/session_transport.cpp \
               src/design/client/client.cpp \
-              src/design/commands/cmd_ai.cpp \
               src/design/service/action_support.cpp \
               src/design/service/trace_actions.cpp \
-              src/design/service/graph_actions.cpp \
-              src/design/service/source_actions.cpp \
-              src/design/service/semantic_actions.cpp \
-              src/design/service/port_actions.cpp \
-              src/design/service/router.cpp \
               src/design/common/xdebug_design_paths.cpp \
               src/design/ast/ast_extractor.cpp \
               src/design/port/port_analyzer.cpp \
@@ -95,27 +90,14 @@ DESIGN_SRCS = src/design/session/session_registry.cpp \
               src/design/trace/trace_engine.cpp \
               src/design/signal/signal_finder.cpp
 
-WAVEFORM_SRCS = src/waveform/main.cpp \
-                src/waveform/session/session_registry.cpp \
+WAVEFORM_SRCS = src/waveform/session/session_registry.cpp \
                 src/waveform/session/session_manager.cpp \
                 src/waveform/session/session_transport.cpp \
                 src/waveform/client/client.cpp \
-                src/waveform/commands/cmd_ai.cpp \
                 src/waveform/service/action_support.cpp \
                 src/waveform/service/value_support.cpp \
-                src/waveform/service/response_support.cpp \
                 src/waveform/service/config_support.cpp \
-                src/waveform/service/query_expression_support.cpp \
                 src/waveform/service/rc_generator.cpp \
-                src/waveform/service/action_registry.cpp \
-                src/waveform/service/actions/value_query_actions.cpp \
-                src/waveform/service/actions/list_actions.cpp \
-                src/waveform/service/actions/rc_generate_action.cpp \
-                src/waveform/service/actions/verify_conditions_action.cpp \
-                src/waveform/service/actions/ai_query_actions.cpp \
-                src/waveform/service/session_actions.cpp \
-                src/waveform/service/protocol_actions.cpp \
-                src/waveform/service/router.cpp \
                 src/waveform/value/logic_value.cpp \
                 src/waveform/server/service/context.cpp \
                 src/waveform/server/service/value_scope.cpp \
@@ -164,8 +146,8 @@ all: $(EXE) internal-engines
 
 internal-engines: $(LIBEXEC)/xdebug-engine
 
-# Unified engine: engine + design + waveform objects (excl. waveform/main.o).
-UNIFIED_OBJS = $(ENGINE_OBJS) $(DESIGN_OBJS) $(filter-out $(BUILD)/src/waveform/main.o,$(WAVEFORM_OBJS))
+# Unified engine: engine + design helper + waveform helper objects.
+UNIFIED_OBJS = $(ENGINE_OBJS) $(DESIGN_OBJS) $(WAVEFORM_OBJS)
 $(LIBEXEC)/xdebug-engine: $(CORE_OBJS) $(UNIFIED_OBJS)
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -DXDEBUG_INTERNAL_ENGINE -o $@ $^ $(LDFLAGS)

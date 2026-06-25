@@ -21,56 +21,6 @@
 
 namespace xdebug {
 
-// ═══════════════════════════════════════════════════════════════════
-// RAII guards
-// ═══════════════════════════════════════════════════════════════════
-
-class ScopedStdoutSilence {
-public:
-    ScopedStdoutSilence() : saved_(-1), sink_(-1) {
-        std::fflush(stdout);
-        saved_ = dup(STDOUT_FILENO);
-        sink_ = open("/dev/null", O_WRONLY);
-        if (saved_ >= 0 && sink_ >= 0) dup2(sink_, STDOUT_FILENO);
-    }
-    ~ScopedStdoutSilence() {
-        std::fflush(stdout);
-        if (saved_ >= 0) { dup2(saved_, STDOUT_FILENO); close(saved_); }
-        if (sink_ >= 0) close(sink_);
-    }
-private:
-    int saved_, sink_;
-};
-
-class NpiSessionGuard {
-public:
-    NpiSessionGuard() = default;
-    NpiSessionGuard(const NpiSessionGuard&) = delete;
-    NpiSessionGuard& operator=(const NpiSessionGuard&) = delete;
-    ~NpiSessionGuard() { if (loaded_) npi_end(); }
-    bool init(int argc, char** argv) {
-        if (!npi_init(argc, argv)) return false;
-        loaded_ = true; return true;
-    }
-    bool load_design(int argc, char** argv) {
-        return loaded_ && npi_load_design(argc, argv) != 0;
-    }
-private:
-    bool loaded_ = false;
-};
-
-class FsdbFileGuard {
-public:
-    explicit FsdbFileGuard(const std::string& p) : h_(npi_fsdb_open(p.c_str())) {}
-    FsdbFileGuard(const FsdbFileGuard&) = delete;
-    FsdbFileGuard& operator=(const FsdbFileGuard&) = delete;
-    ~FsdbFileGuard() { if (h_) npi_fsdb_close(h_); }
-    npiFsdbFileHandle get() const { return h_; }
-    explicit operator bool() const { return h_ != nullptr; }
-private:
-    npiFsdbFileHandle h_ = nullptr;
-};
-
 class NpiHandleGuard {
 public:
     explicit NpiHandleGuard(npiHandle h = nullptr) : h_(h) {}
@@ -90,12 +40,6 @@ private:
 inline std::string npi_string(int prop, npiHandle h) {
     const char* s = h ? npi_get_str(prop, h) : nullptr;
     return s ? s : "";
-}
-
-inline std::string current_executable() {
-    char path[4096] = {};
-    ssize_t n = readlink("/proc/self/exe", path, sizeof(path) - 1);
-    return n > 0 ? std::string(path, static_cast<size_t>(n)) : "xdebug";
 }
 
 inline std::string handle_info(npiHandle h) {
