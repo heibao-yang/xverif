@@ -3,6 +3,7 @@
 import inspect
 import json
 import time
+from contextlib import asynccontextmanager
 from typing import Any, Optional
 
 from mcp.server.fastmcp import FastMCP
@@ -93,9 +94,27 @@ structured text, saves tokens vs JSON). Use output_format="json" only when you
 need structured data for programmatic analysis.
 """
 
+
+def _cleanup_stateful_sessions() -> None:
+    for adapter in (debug, cov):
+        try:
+            adapter.close_all()
+        except Exception:
+            pass
+
+
+@asynccontextmanager
+async def _mcp_lifespan(app):
+    try:
+        yield {}
+    finally:
+        _cleanup_stateful_sessions()
+
+
 mcp = FastMCP(
     name="xverif",
     instructions=INSTRUCTIONS,
+    lifespan=_mcp_lifespan,
 )
 
 debug = XverifDebugAdapter()
@@ -1182,4 +1201,7 @@ def xverif_design_trace_driver(signal: str, time: str = "0ns",
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    mcp.run()
+    try:
+        mcp.run()
+    finally:
+        _cleanup_stateful_sessions()

@@ -73,6 +73,48 @@ def test_mcp_server_initialize(monkeypatch: pytest.MonkeyPatch):
     assert server.mcp.name == "xverif"
 
 
+def test_stateful_cleanup_calls_debug_and_cov(monkeypatch: pytest.MonkeyPatch):
+    server = _server(monkeypatch)
+    calls: list[str] = []
+
+    class DummyAdapter:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+        def close_all(self) -> None:
+            calls.append(self.name)
+
+    monkeypatch.setattr(server, "debug", DummyAdapter("debug"))
+    monkeypatch.setattr(server, "cov", DummyAdapter("cov"))
+
+    server._cleanup_stateful_sessions()
+
+    assert calls == ["debug", "cov"]
+
+
+def test_lifespan_cleanup_runs_on_exit(monkeypatch: pytest.MonkeyPatch):
+    server = _server(monkeypatch)
+    calls: list[str] = []
+
+    class DummyAdapter:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+        def close_all(self) -> None:
+            calls.append(self.name)
+
+    monkeypatch.setattr(server, "debug", DummyAdapter("debug"))
+    monkeypatch.setattr(server, "cov", DummyAdapter("cov"))
+
+    async def _run() -> None:
+        async with server._mcp_lifespan(server.mcp):
+            assert calls == []
+
+    anyio.run(_run)
+
+    assert calls == ["debug", "cov"]
+
+
 def test_mcp_tools_list(monkeypatch: pytest.MonkeyPatch):
     """tools/list must include all expected read-only tool names by default."""
     names = _tool_names(monkeypatch)
