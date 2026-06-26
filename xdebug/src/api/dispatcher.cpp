@@ -669,8 +669,16 @@ bool Dispatcher::send_to_socket(const std::string& session_id,
             err.value("message", "engine server error"), true);
         Json details = engine_resp.value("details", Json::object());
         if (details.is_object() && !details.empty()) {
-            if (details.contains("summary") && details["summary"].is_object())
+            if (details.contains("summary") && details["summary"].is_object()) {
                 response["summary"] = details["summary"];
+            } else {
+                Json detail_summary = Json::object();
+                for (auto it = details.begin(); it != details.end(); ++it) {
+                    if (it->is_string() || it->is_number() || it->is_boolean())
+                        detail_summary[it.key()] = it.value();
+                }
+                response["summary"] = detail_summary;
+            }
             Json detail_error = details.value("error", Json());
             if (detail_error.is_object()) {
                 for (const char* key : {"recoverable", "candidates", "suggested_actions"}) {

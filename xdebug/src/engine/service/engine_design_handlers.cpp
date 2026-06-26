@@ -271,8 +271,11 @@ public:
 
         Json out;
         bool compact = compact_mode(request) && !include_arg(request, "include_debug");
-        out["summary"] = trace_expand_summary(
-            root, direction, bfs, graph, rel_edges, agg_count, compact);
+        Json summary = trace_expand_summary(root, direction, bfs, graph, rel_edges, agg_count, compact);
+        for (auto it = summary.begin(); it != summary.end(); ++it) {
+            if (it.value().is_string() || it.value().is_number() || it.value().is_boolean())
+                out[it.key()] = it.value();
+        }
         out["truncated"] = bfs.truncated;
         out["graph"] = Json::parse(graph.dump());
         if (!compact || include_arg(request, "include_trace"))
@@ -343,10 +346,11 @@ public:
 
         Json out;
         bool compact = compact_mode(request);
-        out["summary"] = {{"root_signal",root},{"direction",direction},
-            {"explanation_count",explanations.size()},
-            {"edge_count",rel_edges.size()},{"skipped_empty_dependency_count",skipped},
-            {"truncated",bfs.truncated}};
+        out["root_signal"] = root;
+        out["direction"] = direction;
+        out["explanation_count"] = explanations.size();
+        out["edge_count"] = rel_edges.size();
+        out["skipped_empty_dependency_count"] = skipped;
         out["truncated"] = bfs.truncated;
         out["explanations"] = Json::parse(explanations.dump());
         if (!compact || include_arg(request, "include_trace"))
@@ -425,10 +429,11 @@ public:
         }
 
         Json out;
-        out["summary"] = {{"from_signal",from_sig},{"to_signal",to_sig},
-            {"found",found},{"path_count",paths.size()},{"truncated",bfs.truncated}};
-        out["truncated"] = bfs.truncated;
+        out["from_signal"] = from_sig;
+        out["to_signal"] = to_sig;
         out["found"] = found;
+        out["path_count"] = paths.size();
+        out["truncated"] = bfs.truncated;
         out["paths"] = Json::parse(paths.dump());
         return out;
     }
@@ -535,18 +540,22 @@ public:
             enclosing = nlohmann::json{{"type","unknown"}};
 
         Json out;
-        out["summary"] = {{"signal",signal},{"assignment_count",assignments.size()},
-            {"branch_count",branches.size()},{"default_count",defaults.size()},
-            {"confidence",trace.value("confidence","unknown")}};
-        out["procedural_assignment"] = Json::parse(nlohmann::json{
+        out["signal"] = signal;
+        out["assignment_count"] = assignments.size();
+        out["branch_count"] = branches.size();
+        out["default_count"] = defaults.size();
+        out["confidence"] = trace.value("confidence","unknown");
+        nlohmann::json procedural_assignment = {
             {"target",signal},{"enclosing_block",enclosing},
-            {"assignments",assignments},{"default_assignments",defaults},
+            {"assignments",assignments},
             {"branch_assignments",branches},
             {"control_dependencies",trace.value("control_dependencies",nlohmann::json::array())},
             {"dependency_edges",trace.value("dependency_edges",nlohmann::json::array())},
             {"confidence",trace.value("confidence","unknown")},
             {"confidence_reason",trace.value("confidence_reason","")}
-        }.dump());
+        };
+        if (defaults != assignments) procedural_assignment["default_assignments"] = defaults;
+        out["procedural_assignment"] = Json::parse(procedural_assignment.dump());
         return out;
     }
 };

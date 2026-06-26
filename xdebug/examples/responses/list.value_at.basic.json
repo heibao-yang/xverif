@@ -3,14 +3,18 @@
   "ok": true,
   "action": "list.value_at",
   "summary": {
-    "truncated": false
+    "name": "if0",
+    "time": "100ns"
   },
   "data": {
-    "examples": [
-      {
-        "time": "100ns"
+    "name": "if0",
+    "time": "100ns",
+    "values": {
+      "top.u.valid": {
+        "value": "1'b1",
+        "known": true
       }
-    ]
+    }
   },
   "warnings": []
 }

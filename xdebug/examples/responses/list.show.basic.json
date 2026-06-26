@@ -3,14 +3,18 @@
   "ok": true,
   "action": "list.show",
   "summary": {
-    "truncated": false
+    "name": "if0",
+    "signal_count": 1
   },
   "data": {
-    "examples": [
+    "name": "if0",
+    "signals": [
       {
-        "time": "100ns"
+        "index": 1,
+        "signal": "top.u.valid"
       }
-    ]
+    ],
+    "signal_count": 1
   },
   "warnings": []
 }

@@ -154,6 +154,39 @@ def test_all_examples_validate_against_action_schemas(xdebug_root: Path) -> None
 
 
 @pytest.mark.contract
+def test_response_examples_do_not_encode_removed_redundant_payloads(
+    xdebug_root: Path,
+) -> None:
+    response_dir = xdebug_root / "examples" / "responses"
+    cases = {
+        "scope.list.basic.json": ["data.signals_preview", "data.examples"],
+        "event.find.basic.json": ["data.examples"],
+        "event.export.basic.json": ["data.examples"],
+        "verify.conditions.basic.json": ["data.results", "data.examples"],
+        "list.create.basic.json": ["data.summary", "data.examples"],
+        "list.add.basic.json": ["data.summary", "data.examples"],
+        "list.delete.basic.json": ["data.summary", "data.examples"],
+        "list.show.basic.json": ["data.count", "data.summary", "data.examples"],
+        "list.value_at.basic.json": ["data.summary", "data.examples"],
+        "list.validate.basic.json": ["data.summary", "data.examples"],
+        "list.diff.basic.json": ["data.time", "data.summary", "data.examples"],
+        "list.export.basic.json": ["data.summary", "data.examples"],
+        "trace.active_driver_chain.basic.json": ["data.text", "data.chain.text"],
+    }
+    for filename, forbidden_paths in cases.items():
+        example = _load_json(response_dir / filename)
+        for dotted_path in forbidden_paths:
+            current = example
+            found = True
+            for part in dotted_path.split("."):
+                if not isinstance(current, dict) or part not in current:
+                    found = False
+                    break
+                current = current[part]
+            assert not found, "%s must not contain %s" % (filename, dotted_path)
+
+
+@pytest.mark.contract
 @pytest.mark.parametrize("action", ["actions", "schema", "batch"])
 def test_safe_request_examples_execute_with_real_binary(
     cli_runner: CliRunner, xdebug_root: Path, action: str

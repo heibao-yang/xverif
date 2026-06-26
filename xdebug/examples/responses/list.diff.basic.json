@@ -3,14 +3,12 @@
   "ok": true,
   "action": "list.diff",
   "summary": {
-    "truncated": false
+    "name": "if0",
+    "diff_time": "120ns"
   },
   "data": {
-    "examples": [
-      {
-        "time": "100ns"
-      }
-    ]
+    "name": "if0",
+    "diff_time": "120ns"
   },
   "warnings": []
 }

@@ -3,14 +3,14 @@
   "ok": true,
   "action": "list.delete",
   "summary": {
-    "truncated": false
+    "name": "if0",
+    "deleted": true,
+    "removed": "top.u.valid"
   },
   "data": {
-    "examples": [
-      {
-        "time": "100ns"
-      }
-    ]
+    "name": "if0",
+    "deleted": true,
+    "removed": "top.u.valid"
   },
   "warnings": []
 }

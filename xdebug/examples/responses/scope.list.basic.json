@@ -3,14 +3,30 @@
   "ok": true,
   "action": "scope.list",
   "summary": {
+    "path": "top",
+    "recursive": true,
+    "signal_count": 1,
     "truncated": false
   },
   "data": {
-    "examples": [
+    "path": "top",
+    "recursive": true,
+    "scopes": [
       {
-        "time": "100ns"
+        "name": "top.u0",
+        "type": "module"
       }
-    ]
+    ],
+    "signals": [
+      {
+        "name": "top.clk",
+        "width": 1,
+        "type": "wire"
+      }
+    ],
+    "total_signals": 1,
+    "truncated": false,
+    "signal_count": 1
   },
   "warnings": []
 }

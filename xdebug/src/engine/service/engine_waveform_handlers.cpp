@@ -346,11 +346,9 @@ public:
         out["recursive"] = recursive;
         out["scopes"] = scopes;
         out["signals"] = signals;
-        out["signals_preview"] = signals;
         out["total_signals"] = static_cast<int>(total_signals);
         out["truncated"] = truncated;
-        out["summary"] = {{"path", path}, {"recursive", recursive},
-                          {"signal_count", signals.size()}, {"truncated", truncated}};
+        out["signal_count"] = signals.size();
         return out;
     }
 
@@ -730,7 +728,6 @@ public:
         }
         if (include_events) {
             out["events"] = arr;
-            out["examples"] = arr;
         }
         out["count"] = static_cast<int>(arr.size());
         out["event_count"] = out["count"];
@@ -744,15 +741,6 @@ public:
         if (scan_limit > 0) out["scan_limit"] = scan_limit;
         out["sampling_mode"] = "clock_edge";
         out["inline"] = name.empty();
-        out["summary"] = {
-            {"event_count", out["event_count"]},
-            {"first", out.value("first", Json())},
-            {"last", out.value("last", Json())},
-            {"count", out["count"]},
-            {"mode", mode},
-            {"inline", name.empty()}
-        };
-        if (scan_limit > 0) out["summary"]["scan_limit"] = scan_limit;
         return out;
     }
 };
@@ -880,12 +868,13 @@ public:
         Json out;
         out["time"] = time_str;
         out["all_pass"] = failed == 0 && unknown == 0;
+        out["verdict"] = out["all_pass"].get<bool>() ? "pass" : "fail";
+        out["condition_count"] = results.size();
+        out["all_passed"] = out["all_pass"];
+        out["passed"] = passed;
+        out["failed"] = failed;
+        out["unknown"] = unknown;
         out["checks"] = results;
-        out["results"] = results;
-        out["summary"] = {{"verdict", out["all_pass"].get<bool>() ? "pass" : "fail"},
-                          {"condition_count", results.size()},
-                          {"all_passed", out["all_pass"]},
-                          {"passed", passed}, {"failed", failed}, {"unknown", unknown}};
         return out;
     }
 private:
@@ -994,12 +983,11 @@ public:
         xdebug_waveform::ListManager lm;
         if (!lm.create_list(xdebug_waveform::g_session_id, n))
             return Json({{"error","CREATE_FAILED"},{"message",n}});
-        Json out; out["name"] = n; out["created"] = true;
+        Json out; out["name"] = n; out["status"] = "created"; out["created"] = true;
         // Optionally add initial signals
         Json sigs = a.value("signals", Json::array());
         for (auto& s : sigs) if (s.is_string())
             lm.add_signal(xdebug_waveform::g_session_id, n, s.get<std::string>());
-        out["summary"] = {{"name", n}, {"status", "created"}};
         return out;
     }
 };
@@ -1019,8 +1007,7 @@ public:
         xdebug_waveform::ListManager lm;
         if (!lm.add_signal(xdebug_waveform::g_session_id, n, sig))
             return Json({{"error","ADD_FAILED"},{"message",sig}});
-        Json out; out["name"] = n; out["signal"] = sig; out["added"] = true;
-        out["summary"] = {{"name", n}, {"signal", sig}, {"status", "added"}};
+        Json out; out["name"] = n; out["signal"] = sig; out["status"] = "added"; out["added"] = true;
         return out;
     }
 };
@@ -1041,7 +1028,6 @@ public:
         if (!lm.del_signal(xdebug_waveform::g_session_id, n, signal))
             return Json({{"error","DEL_FAILED"}});
         Json out; out["name"] = n; out["deleted"] = true; out["removed"] = signal;
-        out["summary"] = {{"name", n}, {"removed", signal}};
         return out;
     }
 };
@@ -1062,8 +1048,8 @@ public:
         Json arr = Json::array();
         for (size_t i = 0; i < lst.signals.size(); ++i)
             arr.push_back({{"index", static_cast<int>(i) + 1}, {"signal", lst.signals[i]}});
-        out["signals"] = arr; out["count"] = static_cast<int>(lst.signals.size());
-        out["summary"] = {{"name", n}, {"signal_count", arr.size()}};
+        out["signals"] = arr;
+        out["signal_count"] = static_cast<int>(lst.signals.size());
         return out;
     }
 };
@@ -1096,7 +1082,6 @@ public:
         for (size_t i = 0; i < lst.signals.size(); i++)
             sv[lst.signals[i]] = found[i] ? vals[i] : "NOT_FOUND";
         out["values"] = sv;
-        out["summary"] = {{"name", n}, {"time", ts}};
         return out;
     }
 };
@@ -1125,7 +1110,7 @@ public:
         for (const auto& item : arr) {
             if (item.value("status", "") != "ok") all_found = false;
         }
-        out["summary"] = {{"name", n}, {"all_found", all_found}};
+        out["all_found"] = all_found;
         return out;
     }
 };
@@ -1160,10 +1145,8 @@ public:
         if (found) {
             std::string formatted = xdebug_waveform::format_time(dt);
             out["diff_time"] = formatted;
-            out["time"] = formatted;
-            out["summary"] = {{"name", n}, {"diff_time", formatted}};
         } else {
-            out["summary"] = {{"name", n}, {"diff_time", ""}};
+            out["diff_time"] = "";
         }
         return out;
     }
@@ -1229,8 +1212,7 @@ public:
             return Json({{"error","EXPORT_FAILED"},{"message",error}});
 
         Json out;
-        out["summary"] = {{"name", n}, {"signal_count", result.signal_count},
-                          {"row_count", result.row_count}, {"format", result.format}};
+        out["name"] = n;
         out["output_dir"] = result.output_dir;
         out["manifest_file"] = result.manifest_file;
         out["format"] = result.format;

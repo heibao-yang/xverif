@@ -1,7 +1,6 @@
 #include "combined/active_trace_chain.h"
 #include "combined/active_trace_common.h"
 #include "api/response.h"
-#include "api/text_response_builder.h"
 #include "runtime/work_dir.h"
 
 #include <set>
@@ -357,43 +356,6 @@ Json chain_to_json(const ChainResult& r) {
     return data;
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// XOUT output
-// ═══════════════════════════════════════════════════════════════════
-
-std::string chain_to_xout(const std::string& signal, const std::string& time,
-                           const ChainResult& r) {
-    TextResponseBuilder xout("xdebug");
-    xout.emit_header(signal + " @" + time + " -> " + r.termination
-                     + "  " + std::to_string(r.chain.size()) + " hops");
-    xout.emit_section("chain");
-    for (auto& n : r.chain) {
-        std::string fl = n.file;
-        if (n.line > 0) fl += ":" + std::to_string(n.line);
-        if (fl.size() > 45) fl = "..." + fl.substr(fl.size() - 42);
-        xout.emit_row({std::to_string(n.index) + " " + n.hop,
-                        n.signal, n.active_time, n.value_str, n.driver, fl});
-    }
-    xout.emit_section("stats");
-    xout.emit_kv("calls", r.stats.calls);
-    xout.emit_kv("edgecheck_direct", r.stats.edgecheck_direct);
-    xout.emit_kv("fallback", r.stats.fallback);
-    xout.emit_kv("temporal_boundaries", r.stats.temporal_boundaries);
-    if (r.truncated) xout.emit_kv("truncated", "true");
-    if (!r.branch_evidence.empty()) {
-        xout.emit_section("branch_evidence");
-        for (auto& be : r.branch_evidence) {
-            xout.emit_kv("signal", be.signal); xout.emit_kv("time", be.time);
-            xout.emit_kv("reason", be.reason);
-            for (auto& c : be.candidates) {
-                xout.emit_row({c.toggled ? " [x]" : " [ ]",
-                                c.name, c.value_before, "->", c.value_at});
-            }
-        }
-    }
-    return xout.str();
-}
-
 } // namespace
 
 nlohmann::ordered_json build_active_driver_chain_payload(const Json& request,
@@ -437,7 +399,6 @@ nlohmann::ordered_json build_active_driver_chain_payload(const Json& request,
     resp["active_check_count"] = result.active_check_count;
     resp["temporal_boundaries"] = result.stats.temporal_boundaries;
     resp["chain"] = chain_to_json(result);
-    resp["text"] = chain_to_xout(signal, req_time, result);
     resp["truncated"] = result.truncated;
     return resp;
 }

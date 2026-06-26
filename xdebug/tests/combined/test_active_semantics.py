@@ -227,6 +227,8 @@ def test_active_trace_semantic_branches_and_gates(
             "26ns",
         )
         nodes = chain["data"]["chain"]["chain"]
+        assert "text" not in chain["data"]
+        assert "text" not in chain["data"]["chain"]
         assert chain["summary"]["chain_length"] == 4
         assert chain["summary"]["termination"] == "primary_input"
         assert [node["signal"] for node in nodes] == [

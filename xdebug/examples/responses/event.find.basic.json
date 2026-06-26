@@ -3,14 +3,31 @@
   "ok": true,
   "action": "event.find",
   "summary": {
+    "event_count": 1,
+    "count": 1,
+    "mode": "first",
+    "inline": false,
     "truncated": false
   },
   "data": {
-    "examples": [
+    "events": [
       {
-        "time": "100ns"
+        "time": "100ns",
+        "signals": {
+          "valid": {
+            "value": "1'b1",
+            "known": true
+          }
+        }
       }
-    ]
+    ],
+    "count": 1,
+    "event_count": 1,
+    "begin": "0ns",
+    "end": "200ns",
+    "mode": "first",
+    "sampling_mode": "clock_edge",
+    "inline": false
   },
   "warnings": []
 }

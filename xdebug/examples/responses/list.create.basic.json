@@ -3,14 +3,14 @@
   "ok": true,
   "action": "list.create",
   "summary": {
-    "truncated": false
+    "name": "if0",
+    "status": "created",
+    "created": true
   },
   "data": {
-    "examples": [
-      {
-        "time": "100ns"
-      }
-    ]
+    "name": "if0",
+    "status": "created",
+    "created": true
   },
   "warnings": []
 }

@@ -308,6 +308,8 @@ def run_nonaxi(xdebug, fsdb):
 
         scope = r.query("scope.list", args={"path": "ai_complex_top", "recursive": True}, limits={"max_rows": 8})
         require(scope["meta"]["truncated"] is True, "scope.list did not truncate")
+        require("signals_preview" not in scope["data"], "scope.list generated redundant data.signals_preview")
+        require("examples" not in scope["data"], "scope.list generated placeholder data.examples")
 
         v = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "time": "75ns", "format": "hex"})
         require(v["data"]["value"]["value"] == "'h22" and v["data"]["value"]["known"] is True, "unexpected sig_a value")
@@ -329,16 +331,23 @@ def run_nonaxi(xdebug, fsdb):
         require(unsupported["data"]["status"] == "unsupported_format", "array_indexed unsupported diagnostic missing")
         r.query("value.at", args={"signal": "ai_complex_top.no_such", "time": "10ns"}, expect_ok=False)
 
-        r.query("list.create", args={"name": "basic"})
-        r.query("list.add", args={"name": "basic", "signal": "ai_complex_top.sig_a"})
+        created = r.query("list.create", args={"name": "basic"})
+        require("summary" not in created["data"], "list.create generated nested data.summary")
+        added_a = r.query("list.add", args={"name": "basic", "signal": "ai_complex_top.sig_a"})
+        require("summary" not in added_a["data"], "list.add generated nested data.summary")
         r.query("list.add", args={"name": "basic", "signal": "ai_complex_top.sig_b"})
         r.query("list.add", args={"name": "basic", "signal": "ai_complex_top.no_such"}, expect_ok=False)
         show = r.query("list.show", args={"name": "basic"})
         require(show["summary"]["signal_count"] == 2, "list.show count mismatch")
-        r.query("list.value_at", args={"name": "basic", "time": "75ns", "format": "hex"})
-        r.query("list.validate", args={"name": "basic"})
+        require("count" not in show["data"], "list.show generated redundant data.count")
+        values = r.query("list.value_at", args={"name": "basic", "time": "75ns", "format": "hex"})
+        require("summary" not in values["data"], "list.value_at generated nested data.summary")
+        validated = r.query("list.validate", args={"name": "basic"})
+        require("all_found" in validated["data"], "list.validate did not expose all_found at source")
+        require("summary" not in validated["data"], "list.validate generated nested data.summary")
         diff = r.query("list.diff", args={"name": "basic", "begin": "0ns", "end": "120ns"})
         require("ns" in diff["summary"]["diff_time"] or "ps" in diff["summary"]["diff_time"], "list.diff did not return time")
+        require("time" not in diff["data"], "list.diff generated redundant data.time")
         list_export_dir = tempfile.mkdtemp(prefix="xdebug_list_export_")
         list_export = r.query("list.export", args={
             "name": "basic",
@@ -346,6 +355,7 @@ def run_nonaxi(xdebug, fsdb):
             "format": "u64bin",
             "output_dir": list_export_dir,
         })
+        require("summary" not in list_export["data"], "list.export generated nested data.summary")
         manifest_file = list_export["data"]["manifest_file"]
         require(os.path.exists(manifest_file), "missing list.export manifest")
         with open(manifest_file, "r", encoding="utf-8") as fh:
@@ -387,6 +397,7 @@ def run_nonaxi(xdebug, fsdb):
         r.query("event.config.list", args={"name": "evt0"})
         found = r.query("event.find", args={"name": "evt0", "expr": "vld && !rdy && payload_lo != 0", "time_range": {"begin": "0ns", "end": "200ns"}})
         require(len(found["data"]["events"]) == 1, "event.find did not return one event")
+        require("examples" not in found["data"], "event.find generated redundant data.examples")
         inline = r.query("event.find", args={
             "expr": "vld && !rdy",
             "clk": "ai_complex_top.clk",
@@ -399,8 +410,10 @@ def run_nonaxi(xdebug, fsdb):
             "mode": "last"
         })
         require(inline["summary"]["inline"] is True and len(inline["data"]["events"]) == 1, "inline event.find failed")
+        require("examples" not in inline["data"], "inline event.find generated redundant data.examples")
         exported = r.query("event.export", args={"name": "evt0", "expr": "vld && !rdy", "time_range": {"begin": "0ns", "end": "200ns"}, "limit": 1})
         require(len(exported["data"]["events"]) == 1, "event.export limit failed")
+        require("examples" not in exported["data"], "event.export generated redundant data.examples")
         event_vld = exported["data"]["events"][0]["signals"]["vld"]
         require("'h" in event_vld["value"] and event_vld["known"] is True, "event signal value is not normalized")
         agg = r.query("event.export", args={"name": "evt0", "expr": "vld && !rdy", "time_range": {"begin": "0ns", "end": "200ns"}, "aggregate": {"count": True, "group_by": ["payload_lo"], "events": False}})
@@ -419,6 +432,8 @@ def run_nonaxi(xdebug, fsdb):
             ],
         })
         require(checks["summary"]["passed"] == 1 and checks["summary"]["failed"] == 1 and checks["summary"]["unknown"] == 1, "verify.conditions mismatch")
+        require("results" not in checks["data"], "verify.conditions generated redundant data.results")
+        require("checks" in checks["data"], "verify.conditions did not expose data.checks")
 
         expr = r.query("expr.eval_at", args={
             "time": "145ns",

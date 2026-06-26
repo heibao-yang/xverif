@@ -3,12 +3,36 @@
   "ok": true,
   "action": "verify.conditions",
   "summary": {
-    "truncated": false
+    "verdict": "fail",
+    "condition_count": 2,
+    "all_passed": false,
+    "passed": 1,
+    "failed": 1,
+    "unknown": 0
   },
   "data": {
-    "examples": [
+    "time": "100ns",
+    "all_pass": false,
+    "verdict": "fail",
+    "condition_count": 2,
+    "all_passed": false,
+    "passed": 1,
+    "failed": 1,
+    "unknown": 0,
+    "checks": [
       {
-        "time": "100ns"
+        "signal": "top.valid",
+        "op": "==",
+        "expected": "1'b1",
+        "actual": "1'b1",
+        "status": "pass"
+      },
+      {
+        "signal": "top.ready",
+        "op": "==",
+        "expected": "1'b1",
+        "actual": "1'b0",
+        "status": "fail"
       }
     ]
   },

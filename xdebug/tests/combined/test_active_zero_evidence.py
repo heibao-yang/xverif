@@ -548,6 +548,8 @@ def test_active_driver_chain_direct_module_input_follows_parent_connection(
     )
 
     nodes = response["data"]["chain"]["chain"]
+    assert "text" not in response["data"]
+    assert "text" not in response["data"]["chain"]
     assert len(nodes) >= 2
     assert nodes[0]["signal"] == "active_zero_evidence_tb.u_input_child.data_i"
     assert nodes[0]["next"] == "active_zero_evidence_tb.parent_src"

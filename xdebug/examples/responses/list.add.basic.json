@@ -3,14 +3,16 @@
   "ok": true,
   "action": "list.add",
   "summary": {
-    "truncated": false
+    "name": "if0",
+    "signal": "top.u.valid",
+    "status": "added",
+    "added": true
   },
   "data": {
-    "examples": [
-      {
-        "time": "100ns"
-      }
-    ]
+    "name": "if0",
+    "signal": "top.u.valid",
+    "status": "added",
+    "added": true
   },
   "warnings": []
 }

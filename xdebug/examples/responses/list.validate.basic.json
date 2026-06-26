@@ -3,14 +3,18 @@
   "ok": true,
   "action": "list.validate",
   "summary": {
-    "truncated": false
+    "name": "if0",
+    "all_found": true
   },
   "data": {
-    "examples": [
+    "name": "if0",
+    "signals": [
       {
-        "time": "100ns"
+        "signal": "top.u.valid",
+        "status": "ok"
       }
-    ]
+    ],
+    "all_found": true
   },
   "warnings": []
 }
