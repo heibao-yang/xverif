@@ -1,4 +1,5 @@
 #include "control_dep.h"
+#include "core/npi/resource_guard.h"
 #include <cstdio>
 #include <cstring>
 #include "npi_util_basic.h"
@@ -107,14 +108,12 @@ void ControlDepTracer::extract_signals_from_expr(npiHandle expr_handle,
             return;
         }
         // Fall through to operand iteration
-        npiHandle operand_iter = npi_iterate(npiOperand, expr_handle);
-        npiHandle operand;
-        while ((operand = npi_scan(operand_iter)) != NULL) {
-            extract_signals_from_expr(operand, signals);
-            npi_release_handle(operand);
-        }
+        xdebug::NpiIteratorGuard operand_iter(npi_iterate(npiOperand, expr_handle));
         if (operand_iter) {
-            npi_release_handle(operand_iter);
+            while (npiHandle raw_operand = npi_scan(operand_iter.get())) {
+                xdebug::NpiHandleGuard operand(raw_operand);
+                extract_signals_from_expr(operand.get(), signals);
+            }
         }
         return;
     }
@@ -225,36 +224,31 @@ void ControlDepTracer::analyze_stmt(npiHandle stmt, const char* target_signal,
 
         case npiCase: {
             // For case statements, the condition is the case expression
-            npiHandle case_expr = npi_handle(npiCondition, stmt);
+            xdebug::NpiHandleGuard case_expr(npi_handle(npiCondition, stmt));
 
             // Iterate case items
-            npiHandle item_iter = npi_iterate(npiCaseItem, stmt);
-            npiHandle item;
-            while ((item = npi_scan(item_iter)) != NULL) {
-                // Each case item may have a statement
-                npiHandle item_stmt = npi_handle(npiStmt, item);
-                if (item_stmt) {
-                    // The case expression itself is part of control
-                    // We could also check if the item has expressions
-                    npiHandle item_expr = npi_handle(npiExpr, item);
-                    if (item_expr) {
-                        // Combine case expression with item expression
-                        // For simplicity, we treat both as control signals
-                        analyze_stmt(item_stmt, target_signal, case_expr, results);
-                        npi_release_handle(item_expr);
-                    } else {
-                        // Default case - still controlled by case expression
-                        analyze_stmt(item_stmt, target_signal, case_expr, results);
-                    }
-                    npi_release_handle(item_stmt);
-                }
-                npi_release_handle(item);
-            }
+            xdebug::NpiIteratorGuard item_iter(npi_iterate(npiCaseItem, stmt));
             if (item_iter) {
-                npi_release_handle(item_iter);
-            }
-            if (case_expr) {
-                npi_release_handle(case_expr);
+                while (npiHandle raw_item = npi_scan(item_iter.get())) {
+                    xdebug::NpiHandleGuard item(raw_item);
+                    // Each case item may have a statement
+                    xdebug::NpiHandleGuard item_stmt(npi_handle(npiStmt, item.get()));
+                    if (item_stmt) {
+                        // The case expression itself is part of control
+                        // We could also check if the item has expressions
+                        xdebug::NpiHandleGuard item_expr(npi_handle(npiExpr, item.get()));
+                        if (item_expr) {
+                            // Combine case expression with item expression
+                            // For simplicity, we treat both as control signals
+                            analyze_stmt(item_stmt.get(), target_signal, case_expr.get(), results);
+                        } else {
+                            // Default case - still controlled by case expression
+                            analyze_stmt(item_stmt.get(), target_signal, case_expr.get(), results);
+                        }
+                    } else {
+                        continue;
+                    }
+                }
             }
             break;
         }
@@ -305,14 +299,12 @@ void ControlDepTracer::analyze_scope(npiHandle scope, const char* target_signal,
     }
 
     // For other scopes, try iterating statements
-    npiHandle stmt_iter = npi_iterate(npiStmt, scope);
-    npiHandle stmt;
-    while ((stmt = npi_scan(stmt_iter)) != NULL) {
-        analyze_stmt(stmt, target_signal, current_condition, results);
-        npi_release_handle(stmt);
-    }
+    xdebug::NpiIteratorGuard stmt_iter(npi_iterate(npiStmt, scope));
     if (stmt_iter) {
-        npi_release_handle(stmt_iter);
+        while (npiHandle raw_stmt = npi_scan(stmt_iter.get())) {
+            xdebug::NpiHandleGuard stmt(raw_stmt);
+            analyze_stmt(stmt.get(), target_signal, current_condition, results);
+        }
     }
 }
 
@@ -340,15 +332,13 @@ std::set<std::string> ControlDepTracer::trace_control_deps(const char* signal_na
     }
 
     // Iterate all processes (always, initial blocks) in the module
-    npiHandle process_iter = npi_iterate(npiProcess, module);
-    npiHandle process;
-    while ((process = npi_scan(process_iter)) != NULL) {
-        // Analyze each process scope
-        analyze_scope(process, signal_name, NULL, results);
-        npi_release_handle(process);
-    }
+    xdebug::NpiIteratorGuard process_iter(npi_iterate(npiProcess, module));
     if (process_iter) {
-        npi_release_handle(process_iter);
+        while (npiHandle raw_process = npi_scan(process_iter.get())) {
+            xdebug::NpiHandleGuard process(raw_process);
+            // Analyze each process scope
+            analyze_scope(process.get(), signal_name, NULL, results);
+        }
     }
 
     npi_release_handle(module);
@@ -450,15 +440,12 @@ void ControlDepTracer::extract_signals_from_expr_with_info(npiHandle expr_handle
             results.push_back(info);
             return;
         }
-        // Fall through to operand iteration
-        npiHandle operand_iter = npi_iterate(npiOperand, expr_handle);
-        npiHandle operand;
-        while ((operand = npi_scan(operand_iter)) != NULL) {
-            extract_signals_from_expr_with_info(operand, control_stmt, results);
-            npi_release_handle(operand);
-        }
+        xdebug::NpiIteratorGuard operand_iter(npi_iterate(npiOperand, expr_handle));
         if (operand_iter) {
-            npi_release_handle(operand_iter);
+            while (npiHandle raw_operand = npi_scan(operand_iter.get())) {
+                xdebug::NpiHandleGuard operand(raw_operand);
+                extract_signals_from_expr_with_info(operand.get(), control_stmt, results);
+            }
         }
         return;
     }
@@ -588,28 +575,23 @@ void ControlDepTracer::analyze_stmt_with_info(npiHandle stmt, const char* target
         }
 
         case npiCase: {
-            npiHandle case_expr = npi_handle(npiCondition, stmt);
-            npiHandle item_iter = npi_iterate(npiCaseItem, stmt);
-            npiHandle item;
-            while ((item = npi_scan(item_iter)) != NULL) {
-                npiHandle item_stmt = npi_handle(npiStmt, item);
-                if (item_stmt) {
-                    npiHandle item_expr = npi_handle(npiExpr, item);
-                    if (item_expr) {
-                        analyze_stmt_with_info(item_stmt, target_signal, case_expr, stmt, results);
-                        npi_release_handle(item_expr);
-                    } else {
-                        analyze_stmt_with_info(item_stmt, target_signal, case_expr, stmt, results);
-                    }
-                    npi_release_handle(item_stmt);
-                }
-                npi_release_handle(item);
-            }
+            xdebug::NpiHandleGuard case_expr(npi_handle(npiCondition, stmt));
+            xdebug::NpiIteratorGuard item_iter(npi_iterate(npiCaseItem, stmt));
             if (item_iter) {
-                npi_release_handle(item_iter);
-            }
-            if (case_expr) {
-                npi_release_handle(case_expr);
+                while (npiHandle raw_item = npi_scan(item_iter.get())) {
+                    xdebug::NpiHandleGuard item(raw_item);
+                    xdebug::NpiHandleGuard item_stmt(npi_handle(npiStmt, item.get()));
+                    if (item_stmt) {
+                        xdebug::NpiHandleGuard item_expr(npi_handle(npiExpr, item.get()));
+                        if (item_expr) {
+                            analyze_stmt_with_info(item_stmt.get(), target_signal, case_expr.get(), stmt, results);
+                        } else {
+                            analyze_stmt_with_info(item_stmt.get(), target_signal, case_expr.get(), stmt, results);
+                        }
+                    } else {
+                        continue;
+                    }
+                }
             }
             break;
         }
@@ -655,14 +637,12 @@ void ControlDepTracer::analyze_scope_with_info(npiHandle scope, const char* targ
         }
     }
 
-    npiHandle stmt_iter = npi_iterate(npiStmt, scope);
-    npiHandle stmt;
-    while ((stmt = npi_scan(stmt_iter)) != NULL) {
-        analyze_stmt_with_info(stmt, target_signal, current_condition, control_stmt, results);
-        npi_release_handle(stmt);
-    }
+    xdebug::NpiIteratorGuard stmt_iter(npi_iterate(npiStmt, scope));
     if (stmt_iter) {
-        npi_release_handle(stmt_iter);
+        while (npiHandle raw_stmt = npi_scan(stmt_iter.get())) {
+            xdebug::NpiHandleGuard stmt(raw_stmt);
+            analyze_stmt_with_info(stmt.get(), target_signal, current_condition, control_stmt, results);
+        }
     }
 }
 
@@ -688,14 +668,12 @@ std::vector<ControlDepInfo> ControlDepTracer::trace_control_deps_with_info(const
         return results;
     }
 
-    npiHandle process_iter = npi_iterate(npiProcess, module);
-    npiHandle process;
-    while ((process = npi_scan(process_iter)) != NULL) {
-        analyze_scope_with_info(process, signal_name, NULL, NULL, results);
-        npi_release_handle(process);
-    }
+    xdebug::NpiIteratorGuard process_iter(npi_iterate(npiProcess, module));
     if (process_iter) {
-        npi_release_handle(process_iter);
+        while (npiHandle raw_process = npi_scan(process_iter.get())) {
+            xdebug::NpiHandleGuard process(raw_process);
+            analyze_scope_with_info(process.get(), signal_name, NULL, NULL, results);
+        }
     }
 
     npi_release_handle(module);

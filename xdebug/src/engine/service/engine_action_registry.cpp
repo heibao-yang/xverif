@@ -27,7 +27,7 @@ public:
     const char* action_name() const override { return "trace.active_driver"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         return xdebug::build_active_driver_payload(request, g_daidir_path, g_fsdb_path, g_fsdb_file);
     }
 };
@@ -37,7 +37,7 @@ public:
     const char* action_name() const override { return "trace.active_driver_chain"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         return xdebug::build_active_driver_chain_payload(request, g_daidir_path, g_fsdb_path, g_fsdb_file);
     }
 };

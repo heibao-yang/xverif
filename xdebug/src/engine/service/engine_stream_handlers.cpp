@@ -139,7 +139,7 @@ public:
     const char* action_name() const override { return "stream.config.load"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         Json root;
         std::string error;
@@ -179,7 +179,7 @@ public:
     const char* action_name() const override { return "stream.config.list"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         bool verbose = request.value("args", Json::object()).value("verbose", false);
         StreamManager manager;
         auto streams = manager.list_streams(xdebug_waveform::g_session_id);
@@ -204,7 +204,7 @@ public:
     const char* action_name() const override { return "stream.show"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json fail;
         StreamConfig config;
         if (!get_config(request.value("args", Json::object()), config, fail)) return fail;
@@ -228,7 +228,7 @@ public:
     const char* action_name() const override { return "stream.validate"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         Json fail;
         StreamConfig config;
@@ -266,7 +266,7 @@ public:
     const char* action_name() const override { return "stream.query"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         Json fail;
         StreamConfig config;
@@ -393,7 +393,7 @@ public:
     const char* action_name() const override { return "stream.export"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         Json fail;
         StreamConfig config;

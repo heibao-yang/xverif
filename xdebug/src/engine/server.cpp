@@ -60,6 +60,14 @@ npiFsdbFileHandle g_fsdb_file = nullptr;
 std::string g_fsdb_path;
 std::string g_daidir_path;
 
+static void close_fsdb_file() {
+    if (!g_fsdb_file) return;
+    npi_fsdb_close(g_fsdb_file);
+    g_fsdb_file = nullptr;
+    xdebug_waveform::g_fsdb_file = nullptr;
+    xdebug_waveform::g_fsdb_file_path.clear();
+}
+
 static bool server_debug_enabled() {
     const char* env = getenv("XDEBUG_DESIGN_DEBUG");
     return env && env[0] != '\0' && strcmp(env, "0") != 0 &&
@@ -95,7 +103,7 @@ static void cleanup_and_exit(int sig) {
                                      {{"signal", sig}});
     if (g_srv_fd >= 0) close(g_srv_fd);
     if (strlen(g_sock_path) > 0) unlink(g_sock_path);
-    if (g_fsdb_file) { npi_fsdb_close(g_fsdb_file); g_fsdb_file = nullptr; }
+    close_fsdb_file();
     if (g_debug_log) { fclose(g_debug_log); g_debug_log = nullptr; }
     if (g_crash_fd >= 0) { close(g_crash_fd); g_crash_fd = -1; }
     exit(0);
@@ -442,7 +450,9 @@ static bool handle_client(int client_fd, bool& should_quit) {
         return send_response(client_fd, error_response("WAVEFORM_NOT_LOADED",
             "waveform not loaded; open session with -fsdb"));
 
-    Json data = h->run(request);
+    ActionResourceScope resources;
+    EngineActionContext ctx(g_session_id, action, resources);
+    Json data = h->run(request, ctx);
     if (data.contains("error"))
         return send_response(client_fd, action_error_response(data));
     Json resp = ok_response(data);
@@ -556,7 +566,7 @@ int server_main(int argc, char** argv) {
         if (npi_load_design(npi_argc, npi_argv) == 0) {
             server_debug_log("npi_load_design: failed");
             xdebug_core::log_lifecycle_event("engine", g_session_id, "npi_load_design.failed", false);
-    if (g_fsdb_file) { npi_fsdb_close(g_fsdb_file); g_fsdb_file = nullptr; }
+            close_fsdb_file();
             npi_end(); delete[] npi_argv; return 1;
         }
         g_has_design = true;
@@ -574,7 +584,7 @@ int server_main(int argc, char** argv) {
         if (!g_fsdb_file) {
             server_debug_log("npi_fsdb_open: failed");
             xdebug_core::log_lifecycle_event("engine", g_session_id, "npi_fsdb_open.failed", false);
-    if (g_fsdb_file) { npi_fsdb_close(g_fsdb_file); g_fsdb_file = nullptr; }
+            close_fsdb_file();
             npi_end(); delete[] npi_argv; return 1;
         }
         g_has_waveform = true;
@@ -600,6 +610,7 @@ int server_main(int argc, char** argv) {
     if (g_transport == "file") {
         std::string file_dir = xdebug_core::file_transport_dir(xdebug_design_session_dir(g_session_id));
         int rc = file_transport_loop(file_dir);
+        close_fsdb_file();
         npi_end();
         xdebug_core::log_lifecycle_event("engine", g_session_id, "server.normal_exit", rc == 0);
         if (g_debug_log) {
@@ -626,7 +637,7 @@ int server_main(int argc, char** argv) {
             server_debug_log("tcp getaddrinfo failed: %s", gai_strerror(gai));
             xdebug_core::log_lifecycle_event("engine", g_session_id, "transport.tcp_getaddrinfo_failed", false,
                                              {{"message", gai_strerror(gai)}, {"bind_host", g_bind_host}, {"port", g_port}});
-    if (g_fsdb_file) { npi_fsdb_close(g_fsdb_file); g_fsdb_file = nullptr; }
+            close_fsdb_file();
             npi_end();
             return 1;
         }
@@ -644,7 +655,7 @@ int server_main(int argc, char** argv) {
             server_debug_log("tcp bind failed");
             xdebug_core::log_lifecycle_event("engine", g_session_id, "transport.tcp_bind_failed", false,
                                              {{"bind_host", g_bind_host}, {"port", g_port}});
-    if (g_fsdb_file) { npi_fsdb_close(g_fsdb_file); g_fsdb_file = nullptr; }
+            close_fsdb_file();
             npi_end();
             return 1;
         }
@@ -662,7 +673,7 @@ int server_main(int argc, char** argv) {
         if (g_srv_fd < 0) {
             server_debug_log("socket: failed");
             xdebug_core::log_lifecycle_event("engine", g_session_id, "transport.uds_socket_failed", false);
-    if (g_fsdb_file) { npi_fsdb_close(g_fsdb_file); g_fsdb_file = nullptr; }
+            close_fsdb_file();
             npi_end();
             return 1;
         }
@@ -677,7 +688,7 @@ int server_main(int argc, char** argv) {
             xdebug_core::log_lifecycle_event("engine", g_session_id, "transport.uds_bind_failed", false,
                                              {{"socket_path", g_sock_path}});
             close(g_srv_fd);
-    if (g_fsdb_file) { npi_fsdb_close(g_fsdb_file); g_fsdb_file = nullptr; }
+            close_fsdb_file();
             npi_end();
             return 1;
         }
@@ -693,6 +704,7 @@ int server_main(int argc, char** argv) {
                                          {{"transport", g_transport}, {"socket_path", g_sock_path}, {"port", g_port}});
         close(g_srv_fd);
         unlink(g_sock_path);
+        close_fsdb_file();
         npi_end();
         return 1;
     }
@@ -735,6 +747,7 @@ int server_main(int argc, char** argv) {
     xdebug_core::log_lifecycle_event("engine", g_session_id, "server.cleanup_begin", true);
     close(g_srv_fd);
     unlink(g_sock_path);
+    close_fsdb_file();
     npi_end();
     server_debug_log("normal_exit: cleanup done");
     xdebug_core::log_lifecycle_event("engine", g_session_id, "server.normal_exit", true);

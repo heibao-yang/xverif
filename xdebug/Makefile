@@ -163,6 +163,8 @@ unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)
 	mkdir -p $(BUILD)/tests
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_core_types tests/unit/test_core_types.cpp $(CORE_OBJS)
 	$(BUILD)/tests/test_core_types
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_unique_resource tests/unit/test_unique_resource.cpp
+	$(BUILD)/tests/test_unique_resource
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_action_log tests/unit/test_action_log.cpp $(CORE_OBJS)
 	$(BUILD)/tests/test_action_log
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_file_exchange tests/unit/test_file_exchange.cpp $(CORE_OBJS)

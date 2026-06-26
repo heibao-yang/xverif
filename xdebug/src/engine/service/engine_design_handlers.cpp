@@ -94,7 +94,7 @@ public:
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
 
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string signal = args.value("signal", std::string());
         if (signal.empty()) return err("MISSING_FIELD", "args.signal is required");
@@ -115,7 +115,7 @@ public:
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
 
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string signal = args.value("signal", std::string());
         if (signal.empty()) return err("MISSING_FIELD", "args.signal is required");
@@ -136,7 +136,7 @@ public:
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
 
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string signal = args.value("signal", std::string());
         if (signal.empty()) return err("MISSING_FIELD", "args.signal is required");
@@ -157,7 +157,7 @@ public:
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
 
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string path = args.value("path", std::string());
         if (path.empty()) return err("MISSING_FIELD", "args.path is required");
@@ -180,7 +180,7 @@ public:
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
 
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string path = args.value("path", std::string());
         if (path.empty()) return err("MISSING_FIELD", "args.path is required");
@@ -200,7 +200,7 @@ public:
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
 
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string path = args.value("path", std::string());
         if (path.empty()) return err("MISSING_FIELD", "args.path is required");
@@ -219,7 +219,7 @@ public:
     const char* action_name() const override { return "trace.query"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string signal = args.value("signal", "");
         if (signal.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.signal"}});
@@ -237,7 +237,7 @@ public:
     const char* action_name() const override { return "trace.expand"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string root = args.value("root_signal", args.value("signal", ""));
         std::string direction = args.value("direction", "driver");
@@ -290,10 +290,10 @@ public:
     const char* action_name() const override { return "trace.graph"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         // trace.graph is an alias for trace.expand
         TraceExpandHandler h;
-        return h.run(request);
+        return h.run(request, ctx);
     }
 };
 
@@ -302,7 +302,7 @@ public:
     const char* action_name() const override { return "trace.explain"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string root = args.value("root_signal", args.value("signal", ""));
         std::string direction = args.value("direction", "driver");
@@ -364,7 +364,7 @@ public:
     const char* action_name() const override { return "trace.path"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string from_sig = args.value("from_signal", "");
         std::string to_sig = args.value("to_signal", "");
@@ -441,7 +441,7 @@ public:
     const char* action_name() const override { return "control.explain"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string signal = args.value("signal", "");
         if (signal.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.signal"}});
@@ -477,7 +477,7 @@ public:
     const char* action_name() const override { return "expr.normalize"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string signal = args.value("signal", "");
 
@@ -511,7 +511,7 @@ public:
     const char* action_name() const override { return "procedural.assignment"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string signal = args.value("signal", "");
         if (signal.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.signal"}});
@@ -556,7 +556,7 @@ public:
     const char* action_name() const override { return "sequential.update"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string signal = args.value("signal", "");
         if (signal.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.signal"}});
@@ -607,10 +607,10 @@ public:
     const char* action_name() const override { return "fsm.explain"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         // Reuse SequentialUpdateHandler logic
         SequentialUpdateHandler seq_handler;
-        Json seq_resp = seq_handler.run(request);
+        Json seq_resp = seq_handler.run(request, ctx);
         if (seq_resp.contains("error")) return seq_resp;
 
         Json args = request.value("args", Json::object());
@@ -650,9 +650,9 @@ public:
     const char* action_name() const override { return "counter.explain"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         SequentialUpdateHandler seq_handler;
-        Json seq_resp = seq_handler.run(request);
+        Json seq_resp = seq_handler.run(request, ctx);
         if (seq_resp.contains("error")) return seq_resp;
 
         Json args = request.value("args", Json::object());
@@ -692,7 +692,7 @@ public:
     const char* action_name() const override { return "source.context"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string file = args.value("file", "");
         int line = args.value("line", 0);
@@ -737,7 +737,7 @@ public:
     const char* action_name() const override { return "signal.canonicalize"; }
     bool needs_design() const override { return true; }
     bool needs_waveform() const override { return false; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string query = args.value("signal", "");
         if (query.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.signal"}});

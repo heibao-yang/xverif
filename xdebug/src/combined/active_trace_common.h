@@ -1,6 +1,7 @@
 #pragma once
 
 #include "api/json_types.h"
+#include "core/npi/resource_guard.h"
 
 #include "npi.h"
 #include "npi_fsdb.h"
@@ -20,18 +21,6 @@
 #include <vector>
 
 namespace xdebug {
-
-class NpiHandleGuard {
-public:
-    explicit NpiHandleGuard(npiHandle h = nullptr) : h_(h) {}
-    NpiHandleGuard(const NpiHandleGuard&) = delete;
-    NpiHandleGuard& operator=(const NpiHandleGuard&) = delete;
-    ~NpiHandleGuard() { if (h_) npi_release_handle(h_); }
-    npiHandle get() const { return h_; }
-    explicit operator bool() const { return h_ != nullptr; }
-private:
-    npiHandle h_ = nullptr;
-};
 
 // ═══════════════════════════════════════════════════════════════════
 // NPI helpers

@@ -144,7 +144,7 @@ public:
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
 
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string signal = args.value("signal", std::string());
         std::string time_str = args.value("time", args.value("at", std::string()));
@@ -211,7 +211,7 @@ public:
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
 
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         Json signals_j = args.value("signals", Json::array());
         std::string time_str = args.value("time", args.value("at", std::string()));
@@ -304,7 +304,7 @@ public:
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
 
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string path = args.value("path", std::string(""));
         bool recursive = args.value("recursive", true);
@@ -366,7 +366,7 @@ public:
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return false; }
 
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string source = args.value("source", std::string("auto"));
         if (source.empty()) source = "auto";
@@ -382,7 +382,7 @@ public:
 
         if (want_wave) {
             if (g_has_waveform && g_fsdb_file) {
-                wave_roots = collect_wave_roots(limitations);
+                wave_roots = collect_wave_roots(ctx, limitations);
                 wave_root_candidates = wave_roots;
             } else {
                 limitations.push_back("wave roots unavailable: waveform not loaded");
@@ -392,9 +392,9 @@ public:
             if (g_has_design) {
                 if (wave_root_candidates.empty() && g_has_waveform && g_fsdb_file) {
                     Json candidate_limitations = Json::array();
-                    wave_root_candidates = collect_wave_roots(candidate_limitations);
+                    wave_root_candidates = collect_wave_roots(ctx, candidate_limitations);
                 }
-                design_roots = collect_design_roots(limitations, wave_root_candidates);
+                design_roots = collect_design_roots(ctx, limitations, wave_root_candidates);
             } else {
                 limitations.push_back("design roots unavailable: design not loaded");
             }
@@ -486,9 +486,10 @@ public:
     }
 
 private:
-    static Json collect_wave_roots(Json& limitations) {
+    static Json collect_wave_roots(EngineActionContext& ctx, Json& limitations) {
         Json roots = Json::array();
-        npiFsdbScopeIter iter = npi_fsdb_iter_top_scope(g_fsdb_file);
+        npiFsdbScopeIter iter = ctx.resources.own_fsdb_scope_iter(
+            npi_fsdb_iter_top_scope(g_fsdb_file));
         if (!iter) {
             limitations.push_back("wave root iterator returned no scopes");
             return roots;
@@ -506,15 +507,14 @@ private:
             root["queryable"] = true;
             roots.push_back(root);
         }
-        npi_fsdb_iter_scope_stop(iter);
         return roots;
     }
 
-    static Json collect_design_roots(Json& limitations, const Json& wave_candidates) {
+    static Json collect_design_roots(EngineActionContext& ctx, Json& limitations, const Json& wave_candidates) {
         Json roots = Json::array();
-        npiHandle iter = npi_iterate(npiTop, nullptr);
+        npiHandle iter = ctx.resources.own_npi(npi_iterate(npiTop, nullptr));
         if (iter) {
-            while (npiHandle hdl = npi_scan(iter)) {
+            while (npiHandle hdl = ctx.resources.own_npi(npi_scan(iter))) {
                 Json root = design_root_from_handle(hdl, "npi_top");
                 if (!root.value("path", std::string()).empty()) roots.push_back(root);
             }
@@ -524,7 +524,7 @@ private:
         for (const auto& candidate : wave_candidates) {
             std::string path = candidate.value("path", std::string());
             if (path.empty()) continue;
-            npiHandle hdl = npi_handle_by_name(path.c_str(), nullptr);
+            npiHandle hdl = ctx.resources.own_npi(npi_handle_by_name(path.c_str(), nullptr));
             if (!hdl) continue;
             int type = npi_get(npiType, hdl);
             if (type != npiModule && type != npiInterface && type != npiProgram) continue;
@@ -601,7 +601,7 @@ public:
     const char* action_name() const override { return export_mode_ ? "event.export" : "event.find"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         using namespace xdebug_waveform;
         Json args = request.value("args", Json::object());
         std::string name = args.value("name", "");
@@ -770,7 +770,7 @@ public:
     const char* action_name() const override { return name_.c_str(); }
     bool needs_design() const override { return nd_; }
     bool needs_waveform() const override { return nw_; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         std::string error;
         Json effective_request = request;
         if (name_ == "inspect_signal") {
@@ -807,7 +807,7 @@ public:
     const char* action_name() const override { return "verify.conditions"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         Json conditions = args.value("conditions", Json::array());
         std::string time_str = args.value("time", args.value("at", ""));
@@ -902,7 +902,7 @@ public:
     const char* action_name() const override { return "event.config.load"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         using namespace xdebug_waveform;
         Json args = request.value("args", Json::object());
         std::string name = args.value("name", "");
@@ -934,7 +934,7 @@ public:
     const char* action_name() const override { return "event.config.list"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         using namespace xdebug_waveform;
         Json args = request.value("args", Json::object());
         std::string name = args.value("name", "");
@@ -962,7 +962,7 @@ public:
     const char* action_name() const override { return name_.c_str(); }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& request) const override {
+    Json run(const Json& request, EngineActionContext& ctx) const override {
         std::string action = request.value("action", std::string());
         Json args = request.value("args", Json::object());
         std::string error;
@@ -987,7 +987,7 @@ public:
     const char* action_name() const override { return "list.create"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", "");
         if (n.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
@@ -1009,7 +1009,7 @@ public:
     const char* action_name() const override { return "list.add"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", ""), sig = a.value("signal", "");
         if (n.empty() || sig.empty())
@@ -1030,7 +1030,7 @@ public:
     const char* action_name() const override { return "list.delete"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", "");
         if (n.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
@@ -1051,7 +1051,7 @@ public:
     const char* action_name() const override { return "list.show"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", "");
         if (n.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
@@ -1073,7 +1073,7 @@ public:
     const char* action_name() const override { return "list.value_at"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", ""), ts = a.value("time", "");
         if (n.empty() || ts.empty())
@@ -1106,7 +1106,7 @@ public:
     const char* action_name() const override { return "list.validate"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", "");
         if (n.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
@@ -1135,7 +1135,7 @@ public:
     const char* action_name() const override { return "list.diff"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", ""), bs = a.value("begin", ""), es = a.value("end", "");
         if (n.empty() || bs.empty() || es.empty())
@@ -1174,7 +1174,7 @@ public:
     const char* action_name() const override { return "list.export"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", a.value("list", ""));
         if (n.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
@@ -1251,7 +1251,7 @@ public:
     const char* action_name() const override { return "rc.generate"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string config_path = a.value("config_path", "");
         std::string rc_path = a.value("rc_path", "");

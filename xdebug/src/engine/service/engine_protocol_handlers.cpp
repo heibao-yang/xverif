@@ -79,7 +79,7 @@ public:
     const char* action_name() const override { return "apb.config.load"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         using namespace xdebug_waveform;
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
@@ -130,7 +130,7 @@ public:
     const char* action_name() const override { return "apb.config.list"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
         xdebug_waveform::ApbManager am;
@@ -151,7 +151,7 @@ public:
     const char* action_name() const override { return "apb.query"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         using namespace xdebug_waveform;
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
@@ -222,7 +222,7 @@ public:
     const char* action_name() const override { return "apb.cursor"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         using namespace xdebug_waveform;
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
@@ -264,7 +264,7 @@ public:
     const char* action_name() const override { return "axi.config.load"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         using namespace xdebug_waveform;
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
@@ -324,7 +324,7 @@ public:
     const char* action_name() const override { return "axi.config.list"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
         xdebug_waveform::AxiManager am;
@@ -343,7 +343,7 @@ public:
     const char* action_name() const override { return "axi.query"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         using namespace xdebug_waveform;
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
@@ -438,7 +438,7 @@ public:
     const char* action_name() const override { return "axi.cursor"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         using namespace xdebug_waveform;
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
@@ -479,7 +479,7 @@ public:
     const char* action_name() const override { return "axi.analysis"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         using namespace xdebug_waveform;
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
@@ -526,7 +526,7 @@ public:
     const char* action_name() const override { return "axi.export"; }
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
-    Json run(const Json& r) const override {
+    Json run(const Json& r, EngineActionContext& ctx) const override {
         using namespace xdebug_waveform;
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");

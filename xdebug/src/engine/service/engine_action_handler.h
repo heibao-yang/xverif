@@ -1,5 +1,7 @@
 #pragma once
 
+#include "action_resource_scope.h"
+
 #include "json.hpp"
 
 #include <string>
@@ -17,7 +19,7 @@ public:
     virtual const char* action_name() const = 0;
     virtual bool needs_design() const = 0;
     virtual bool needs_waveform() const = 0;
-    virtual Json run(const Json& request) const = 0;
+    virtual Json run(const Json& request, EngineActionContext& ctx) const = 0;
 
     // XOUT text rendering.  Default recursively renders summary + data tree.
     // Subclasses may override additively:

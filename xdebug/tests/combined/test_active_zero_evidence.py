@@ -262,6 +262,38 @@ def test_scope_roots_supports_source_filters_and_xout(
 
 
 @pytest.mark.combined
+@pytest.mark.synthetic
+@pytest.mark.regression
+@pytest.mark.slow
+def test_scope_roots_repeated_queries_keep_session_stable(
+    cli_runner: CliRunner,
+    active_zero_evidence_session: str,
+    artifact_root: Path,
+) -> None:
+    for i in range(50):
+        response = _simple_query(
+            cli_runner,
+            active_zero_evidence_session,
+            "scope.roots",
+            {"source": "auto"},
+            artifact_root=artifact_root,
+        )
+        assert isinstance(response, dict), "iteration %d returned non-json" % i
+        assert response["summary"]["recommended_root"] == "active_zero_evidence_tb"
+        assert response["summary"]["matched_count"] == 1
+
+    doctor = _simple_query(
+        cli_runner,
+        active_zero_evidence_session,
+        "session.doctor",
+        {},
+        artifact_root=artifact_root,
+    )
+    assert isinstance(doctor, dict)
+    assert doctor["summary"]["healthy"] is True
+
+
+@pytest.mark.combined
 @pytest.mark.active_trace
 @pytest.mark.synthetic
 @pytest.mark.regression
