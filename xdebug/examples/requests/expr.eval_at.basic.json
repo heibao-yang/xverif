@@ -6,6 +6,10 @@
   },
   "args": {
     "expr": "valid && !ready",
-    "time": "100ns"
+    "time": "100ns",
+    "signals": {
+      "valid": "top.u.valid",
+      "ready": "top.u.ready"
+    }
   }
 }

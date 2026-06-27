@@ -3,5 +3,6 @@
   "action": "list.show",
   "target": {
     "session_id": "case_a"
-  }
+  },
+  "args": {}
 }

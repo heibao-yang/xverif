@@ -34,6 +34,15 @@ def _action(path: Path) -> str:
     return obj["response"]["action"]
 
 
+def _public_spec_actions() -> set[str]:
+    specs = json.loads((XDEBUG / "specs" / "actions" / "actions.yaml").read_text(encoding="utf-8"))
+    return {
+        spec["name"]
+        for spec in specs["actions"]
+        if spec["status"] != "removed"
+    }
+
+
 def test_checked_in_json_responses_have_no_public_redundancy() -> None:
     candidates = [
         XDEBUG / "examples" / "responses",
@@ -55,7 +64,7 @@ def test_json_after_cleanup_contains_all_runtime_action_samples() -> None:
     after_dir = XDEBUG / "doc" / "json_after_cleanup"
     files = _response_files(after_dir)
     actions = {_action(path) for path in files}
-    assert len(actions) == 85
+    assert actions == _public_spec_actions()
     assert "signal.search" not in actions
 
 

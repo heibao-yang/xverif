@@ -1,1 +1,10 @@
-{"api_version":"xdebug.v1","action":"stream.show","target":{"session_id":"wave0"},"args":{"stream":"req_stream"}}
+{
+  "api_version": "xdebug.v1",
+  "action": "stream.show",
+  "target": {
+    "session_id": "wave0"
+  },
+  "args": {
+    "stream": "req_stream"
+  }
+}

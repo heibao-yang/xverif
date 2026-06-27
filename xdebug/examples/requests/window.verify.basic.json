@@ -5,11 +5,14 @@
     "session_id": "case_a"
   },
   "args": {
+    "clock": "top.u.clk",
     "conditions": [
       {
-        "signal": "top.u.valid",
-        "op": "==",
-        "value": "'h1"
+        "expr": "valid == 1",
+        "signals": {
+          "valid": "top.u.valid"
+        },
+        "mode": "always"
       }
     ],
     "time_range": {

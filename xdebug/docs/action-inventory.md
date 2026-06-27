@@ -57,9 +57,6 @@ example 和 contract test 迁移使用。状态定义：
 | `sequential.update` | design | stable | design | design engine forward | partial |
 | `fsm.explain` | design | stable | design | design engine forward | partial |
 | `counter.explain` | design | stable | design | design engine forward | partial |
-| `port.trace` | design | stable | design | design engine forward | partial |
-| `instance.map` | design | stable | design | design engine forward | partial |
-| `interface.resolve` | design | stable | design | design engine forward | partial |
 
 ## Waveform Actions
 
@@ -102,7 +99,6 @@ example 和 contract test 迁移使用。状态定义：
 | `window.verify` | waveform | stable | waveform | waveform engine forward | partial |
 | `signal.changes` | waveform | stable | waveform | waveform engine forward | regression |
 | `signal.stability` | waveform | stable | waveform | waveform engine forward | partial |
-| `signal.trend` | waveform | stable | waveform | waveform engine forward | partial |
 | `signal.statistics` | waveform | stable | waveform | waveform engine forward | regression |
 | `counter.statistics` | waveform | stable | waveform | waveform engine forward | targeted |
 | `sampled_pulse.inspect` | waveform | experimental | waveform | waveform engine forward | partial |

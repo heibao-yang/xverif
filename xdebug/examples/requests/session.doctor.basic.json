@@ -3,5 +3,6 @@
   "action": "session.doctor",
   "target": {
     "session_id": "case_a"
-  }
+  },
+  "args": {}
 }

@@ -1294,7 +1294,6 @@ void register_waveform_handlers(EngineActionRegistry& r) {
     // ai_* actions
     r.add(std::unique_ptr<EngineActionHandler>(new AiActionHandler("signal.changes",        false, true)));
     r.add(std::unique_ptr<EngineActionHandler>(new AiActionHandler("signal.stability",      false, true)));
-    r.add(std::unique_ptr<EngineActionHandler>(new AiActionHandler("signal.trend",          false, true)));
     r.add(std::unique_ptr<EngineActionHandler>(new AiActionHandler("signal.statistics",     false, true)));
     r.add(std::unique_ptr<EngineActionHandler>(new AiActionHandler("counter.statistics",    false, true)));
     r.add(std::unique_ptr<EngineActionHandler>(new AiActionHandler("expr.eval_at",          false, true)));

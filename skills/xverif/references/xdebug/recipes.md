@@ -101,7 +101,7 @@ MCP 场景下，本文所有原生 xdebug action 都通过 `xverif_debug_query` 
 
 ## Counter / FSM 异常
 
-1. `value.at` 或 `signal.trend` 确认状态/计数异常。
+1. `value.at` 或 `signal.statistics` 确认状态/计数异常。
 2. `fsm.explain` 或 `counter.explain` 获取更新规则。
 3. `trace.driver` 查更新条件。
 4. `source.context` 获取 `file:line` evidence。

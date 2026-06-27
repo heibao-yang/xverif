@@ -173,6 +173,15 @@
       },
       "required_args": [
         "name"
+      ],
+      "required_arg_groups": [
+        [
+          "time_range"
+        ],
+        [
+          "start",
+          "end"
+        ]
       ]
     },
     {
@@ -482,7 +491,10 @@
         "response": [
           "examples/responses/cursor.get.basic.json"
         ]
-      }
+      },
+      "required_args": [
+        "name"
+      ]
     },
     {
       "name": "cursor.list",
@@ -522,6 +534,7 @@
         ]
       },
       "required_args": [
+        "name",
         "time"
       ]
     },
@@ -630,6 +643,15 @@
       },
       "required_args": [
         "expr"
+      ],
+      "required_arg_groups": [
+        [
+          "name"
+        ],
+        [
+          "clk",
+          "signals"
+        ]
       ]
     },
     {
@@ -652,6 +674,15 @@
       },
       "required_args": [
         "expr"
+      ],
+      "required_arg_groups": [
+        [
+          "name"
+        ],
+        [
+          "clk",
+          "signals"
+        ]
       ]
     },
     {
@@ -674,7 +705,8 @@
       },
       "required_args": [
         "expr",
-        "time"
+        "time",
+        "signals"
       ]
     },
     {
@@ -740,52 +772,9 @@
         ]
       },
       "required_args": [
+        "clock",
         "valid",
         "ready"
-      ]
-    },
-    {
-      "name": "instance.map",
-      "category": "design",
-      "status": "stable",
-      "requires": "design",
-      "handler_kind": "engine_forward",
-      "schemas": {
-        "request": "schemas/v1/actions/instance.map.request.schema.json",
-        "response": "schemas/v1/actions/instance.map.response.schema.json"
-      },
-      "examples": {
-        "request": [
-          "examples/requests/instance.map.basic.json"
-        ],
-        "response": [
-          "examples/responses/instance.map.basic.json"
-        ]
-      },
-      "required_args": [
-        "instance"
-      ]
-    },
-    {
-      "name": "interface.resolve",
-      "category": "design",
-      "status": "stable",
-      "requires": "design",
-      "handler_kind": "engine_forward",
-      "schemas": {
-        "request": "schemas/v1/actions/interface.resolve.request.schema.json",
-        "response": "schemas/v1/actions/interface.resolve.response.schema.json"
-      },
-      "examples": {
-        "request": [
-          "examples/requests/interface.resolve.basic.json"
-        ],
-        "response": [
-          "examples/responses/interface.resolve.basic.json"
-        ]
-      },
-      "required_args": [
-        "interface"
       ]
     },
     {
@@ -808,7 +797,7 @@
       },
       "required_args": [
         "name",
-        "signals"
+        "signal"
       ]
     },
     {
@@ -830,8 +819,7 @@
         ]
       },
       "required_args": [
-        "name",
-        "signals"
+        "name"
       ]
     },
     {
@@ -854,6 +842,14 @@
       },
       "required_args": [
         "name"
+      ],
+      "required_arg_groups": [
+        [
+          "signal"
+        ],
+        [
+          "index"
+        ]
       ]
     },
     {
@@ -876,8 +872,8 @@
       },
       "required_args": [
         "name",
-        "time_a",
-        "time_b"
+        "begin",
+        "end"
       ]
     },
     {
@@ -967,28 +963,6 @@
       ]
     },
     {
-      "name": "port.trace",
-      "category": "design",
-      "status": "stable",
-      "requires": "design",
-      "handler_kind": "engine_forward",
-      "schemas": {
-        "request": "schemas/v1/actions/port.trace.request.schema.json",
-        "response": "schemas/v1/actions/port.trace.response.schema.json"
-      },
-      "examples": {
-        "request": [
-          "examples/requests/port.trace.basic.json"
-        ],
-        "response": [
-          "examples/responses/port.trace.basic.json"
-        ]
-      },
-      "required_args": [
-        "port"
-      ]
-    },
-    {
       "name": "procedural.assignment",
       "category": "design",
       "status": "stable",
@@ -1029,7 +1003,8 @@
         ]
       },
       "required_args": [
-        "signal"
+        "clock",
+        "valid"
       ]
     },
     {
@@ -1068,10 +1043,7 @@
         "response": [
           "examples/responses/scope.list.basic.json"
         ]
-      },
-      "required_args": [
-        "scope"
-      ]
+      }
     },
     {
       "name": "scope.roots",
@@ -1338,28 +1310,6 @@
         ],
         "response": [
           "examples/responses/signal.statistics.basic.json"
-        ]
-      },
-      "required_args": [
-        "signal"
-      ]
-    },
-    {
-      "name": "signal.trend",
-      "category": "waveform",
-      "status": "stable",
-      "requires": "waveform",
-      "handler_kind": "engine_forward",
-      "schemas": {
-        "request": "schemas/v1/actions/signal.trend.request.schema.json",
-        "response": "schemas/v1/actions/signal.trend.response.schema.json"
-      },
-      "examples": {
-        "request": [
-          "examples/requests/signal.trend.basic.json"
-        ],
-        "response": [
-          "examples/responses/signal.trend.basic.json"
         ]
       },
       "required_args": [
@@ -1701,8 +1651,8 @@
         ]
       },
       "required_args": [
-        "conditions",
-        "time_range"
+        "clock",
+        "conditions"
       ]
     },
     {
@@ -1716,10 +1666,16 @@
         "response": "schemas/v1/actions/stream.config.load.response.schema.json"
       },
       "examples": {
-        "request": ["examples/requests/stream.config.load.basic.json"],
-        "response": ["examples/responses/stream.config.load.basic.json"]
+        "request": [
+          "examples/requests/stream.config.load.basic.json"
+        ],
+        "response": [
+          "examples/responses/stream.config.load.basic.json"
+        ]
       },
-      "required_args": ["streams"]
+      "required_args": [
+        "streams"
+      ]
     },
     {
       "name": "stream.config.list",
@@ -1732,8 +1688,12 @@
         "response": "schemas/v1/actions/stream.config.list.response.schema.json"
       },
       "examples": {
-        "request": ["examples/requests/stream.config.list.basic.json"],
-        "response": ["examples/responses/stream.config.list.basic.json"]
+        "request": [
+          "examples/requests/stream.config.list.basic.json"
+        ],
+        "response": [
+          "examples/responses/stream.config.list.basic.json"
+        ]
       }
     },
     {
@@ -1747,10 +1707,16 @@
         "response": "schemas/v1/actions/stream.show.response.schema.json"
       },
       "examples": {
-        "request": ["examples/requests/stream.show.basic.json"],
-        "response": ["examples/responses/stream.show.basic.json"]
+        "request": [
+          "examples/requests/stream.show.basic.json"
+        ],
+        "response": [
+          "examples/responses/stream.show.basic.json"
+        ]
       },
-      "required_args": ["stream"]
+      "required_args": [
+        "stream"
+      ]
     },
     {
       "name": "stream.validate",
@@ -1763,10 +1729,16 @@
         "response": "schemas/v1/actions/stream.validate.response.schema.json"
       },
       "examples": {
-        "request": ["examples/requests/stream.validate.basic.json"],
-        "response": ["examples/responses/stream.validate.basic.json"]
+        "request": [
+          "examples/requests/stream.validate.basic.json"
+        ],
+        "response": [
+          "examples/responses/stream.validate.basic.json"
+        ]
       },
-      "required_args": ["stream"]
+      "required_args": [
+        "stream"
+      ]
     },
     {
       "name": "stream.query",
@@ -1779,10 +1751,17 @@
         "response": "schemas/v1/actions/stream.query.response.schema.json"
       },
       "examples": {
-        "request": ["examples/requests/stream.query.basic.json"],
-        "response": ["examples/responses/stream.query.basic.json"]
+        "request": [
+          "examples/requests/stream.query.basic.json"
+        ],
+        "response": [
+          "examples/responses/stream.query.basic.json"
+        ]
       },
-      "required_args": ["stream", "query"]
+      "required_args": [
+        "stream",
+        "query"
+      ]
     },
     {
       "name": "stream.export",
@@ -1795,10 +1774,26 @@
         "response": "schemas/v1/actions/stream.export.response.schema.json"
       },
       "examples": {
-        "request": ["examples/requests/stream.export.basic.json"],
-        "response": ["examples/responses/stream.export.basic.json"]
+        "request": [
+          "examples/requests/stream.export.basic.json"
+        ],
+        "response": [
+          "examples/responses/stream.export.basic.json"
+        ]
       },
-      "required_args": ["stream"]
+      "required_args": [
+        "stream"
+      ],
+      "conditional_required_args": [
+        {
+          "when": {
+            "kind": "packet_beats"
+          },
+          "required": [
+            "output_file"
+          ]
+        }
+      ]
     },
     {
       "name": "signal.search",

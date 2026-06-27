@@ -474,8 +474,6 @@ def run_nonaxi(xdebug, fsdb):
         require(changes["meta"]["truncated"] is True, "signal.changes did not truncate")
         stab = r.query("signal.stability", args={"signal": "ai_complex_top.stable_sig", "time_range": {"begin": "0ns", "end": "400ns"}})
         require(stab["data"]["stable"] is True, "stable_sig should be stable")
-        trend = r.query("signal.trend", args={"signal": "ai_complex_top.counter_nonmono", "clock": "ai_complex_top.clk", "time_range": {"begin": "40ns", "end": "110ns"}})
-        require(trend["data"]["monotonic"] == "none", "counter_nonmono should be non-monotonic")
         stats = r.query("signal.statistics", args={"signal": "ai_complex_top.hs_valid", "clock": "ai_complex_top.clk", "time_range": {"begin": "120ns", "end": "210ns"}, "max_samples": 1000})
         require(stats["data"]["sample_count"] > 0 and stats["data"]["known_count"] > 0, "signal.statistics did not sample")
         require("high_cycles" in stats["data"] and "low_cycles" in stats["data"], "signal.statistics missing cycle counts")

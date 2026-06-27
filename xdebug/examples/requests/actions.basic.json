@@ -1,4 +1,5 @@
 {
   "api_version": "xdebug.v1",
-  "action": "actions"
+  "action": "actions",
+  "args": {}
 }

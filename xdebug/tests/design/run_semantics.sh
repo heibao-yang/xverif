@@ -80,7 +80,6 @@ printf '%s\n' '{"api_version":"xdebug.v1","action":"actions"}' | "$XDEBUG" --jso
 import json,sys
 d=json.load(sys.stdin)["data"]
 assert "trace.driver" in d["implemented"]
-assert "port.trace" in d["implemented"]
 assert "sequential.update" in d["implemented"]
 assert "counter.explain" in d["implemented"]
 '
@@ -122,20 +121,6 @@ query '{"api_version":"xdebug.v1","action":"expr.normalize","target":{"session_i
 
 query '{"api_version":"xdebug.v1","action":"expr.normalize","args":{"expr":"valid && !ready"}}' \
   | check_json 'd["ok"] and d["summary"]["source"] == "string_fallback" and d["summary"]["confidence"] == "low"'
-
-if [[ -d "$IFACE_DB" ]]; then
-query "{\"api_version\":\"xdebug.v1\",\"action\":\"session.open\",\"target\":{\"daidir\":\"$IFACE_DB\"},\"args\":{\"name\":\"iface_ai\"}}" \
-  | check_json 'd["ok"] and d["summary"]["session_id"] == "iface_ai"'
-
-query '{"api_version":"xdebug.v1","action":"instance.map","target":{"session_id":"iface_ai"},"args":{"path":"test_top.uut"}}' \
-  | check_json 'd["ok"] and d["summary"]["port_count"] >= 8 and d["data"]["port_count"] >= 8'
-
-query '{"api_version":"xdebug.v1","action":"interface.resolve","target":{"session_id":"iface_ai"},"args":{"path":"test_top.bus_if_inst"}}' \
-  | check_json 'd["ok"] and d["data"]["object"]["type"] == "interface" and d["summary"]["port_count"] >= 1'
-
-query '{"api_version":"xdebug.v1","action":"port.trace","target":{"session_id":"iface_ai"},"args":{"path":"test_top.uut"},"limits":{"max_results":3}}' \
-  | check_json 'd["ok"] and d["summary"]["port_count"] == 3 and d["summary"]["truncated"] is True'
-fi
 
 query "{\"api_version\":\"xdebug.v1\",\"action\":\"session.open\",\"target\":{\"daidir\":\"$P3_DB\"},\"args\":{\"name\":\"p3_ai\"}}" \
   | check_json 'd["ok"] and d["summary"]["session_id"] == "p3_ai"'

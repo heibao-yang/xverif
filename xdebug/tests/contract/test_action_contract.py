@@ -25,6 +25,15 @@ def _runtime_catalog(cli_runner: CliRunner) -> Dict[str, Any]:
     return result.response
 
 
+def _request_schema_args_required(schema: Dict[str, Any]) -> list[str]:
+    args_schema = schema.get("properties", {}).get("args", {})
+    return list(args_schema.get("required", []))
+
+
+def _example_satisfies_groups(args: Dict[str, Any], groups: list[list[str]]) -> bool:
+    return any(all(key in args for key in group) for group in groups)
+
+
 @pytest.mark.contract
 def test_runtime_catalog_matches_specs_and_referenced_files(
     cli_runner: CliRunner, xdebug_root: Path
@@ -68,6 +77,49 @@ def test_runtime_catalog_matches_specs_and_referenced_files(
             *descriptor["response_examples"],
         ):
             assert (xdebug_root / reference).is_file(), reference
+
+
+@pytest.mark.contract
+def test_action_required_args_match_runtime_schema_and_examples(
+    cli_runner: CliRunner, xdebug_root: Path
+) -> None:
+    catalog = _runtime_catalog(cli_runner)
+    specs = _load_json(xdebug_root / "specs" / "actions" / "actions.yaml")[
+        "actions"
+    ]
+    descriptors = {
+        descriptor["name"]: descriptor
+        for descriptor in catalog["data"]["actions"]
+    }
+
+    for spec in specs:
+        if spec["status"] == "removed":
+            continue
+        name = spec["name"]
+        required_args = list(spec.get("required_args", []))
+        descriptor = descriptors[name]
+        assert list(descriptor.get("required_args", [])) == required_args
+
+        request_schema = _load_json(xdebug_root / spec["schemas"]["request"])
+        assert _request_schema_args_required(request_schema) == required_args
+
+        for example_ref in spec["examples"]["request"]:
+            example = _load_json(xdebug_root / example_ref)
+            args = example.get("args", {})
+            for key in required_args:
+                assert key in args, "%s example is missing args.%s" % (name, key)
+            for group in spec.get("required_arg_groups", []):
+                assert _example_satisfies_groups(args, [group]) or _example_satisfies_groups(
+                    args, spec["required_arg_groups"]
+                ), "%s example does not satisfy any required_arg_groups" % name
+            for conditional in spec.get("conditional_required_args", []):
+                when = conditional.get("when", {})
+                if all(args.get(key) == value for key, value in when.items()):
+                    for key in conditional.get("required", []):
+                        assert key in args, "%s example is missing conditional args.%s" % (
+                            name,
+                            key,
+                        )
 
 
 @pytest.mark.contract

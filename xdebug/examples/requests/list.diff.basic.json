@@ -6,7 +6,7 @@
   },
   "args": {
     "name": "if0",
-    "time_a": "100ns",
-    "time_b": "200ns"
+    "begin": "100ns",
+    "end": "200ns"
   }
 }

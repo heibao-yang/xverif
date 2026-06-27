@@ -3,30 +3,230 @@
   "$id": "xdebug.axi.export.request.v1",
   "title": "axi.export request",
   "type": "object",
-  "required": ["api_version", "action", "target", "args"],
+  "required": [
+    "api_version",
+    "action",
+    "target",
+    "args"
+  ],
   "properties": {
-    "api_version": {"type": "string", "enum": ["xdebug.v1"]},
-    "request_id": {"type": "string"},
-    "action": {"type": "string", "enum": ["axi.export"]},
-    "target": {"type": "object"},
+    "api_version": {
+      "type": "string",
+      "enum": [
+        "xdebug.v1"
+      ]
+    },
+    "request_id": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "axi.export"
+      ]
+    },
+    "target": {
+      "type": "object"
+    },
     "args": {
       "type": "object",
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "properties": {
-        "name": {"type": "string"},
-        "time_range": {"type": "object"},
-        "start": {"type": "string"},
-        "end": {"type": "string"},
-        "begin": {"type": "string"},
-        "from": {"type": "string"},
-        "to": {"type": "string"},
-        "format": {"type": "string", "enum": ["tsv", "csv"]},
-        "output_prefix": {"type": "string"}
+        "name": {
+          "type": "string"
+        },
+        "time_range": {
+          "type": "object"
+        },
+        "start": {
+          "type": "string"
+        },
+        "end": {
+          "type": "string"
+        },
+        "begin": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "tsv",
+            "csv"
+          ]
+        },
+        "output_prefix": {
+          "type": "string"
+        },
+        "clock": {
+          "type": "string"
+        },
+        "clk": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string"
+        },
+        "payloads": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "signal": {
+          "type": "string"
+        },
+        "signals": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "index": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "output_file": {
+          "type": "string"
+        },
+        "sampling": {
+          "type": "string"
+        },
+        "max_samples": {
+          "type": "integer"
+        },
+        "max_events": {
+          "type": "integer"
+        },
+        "max_findings": {
+          "type": "integer"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "rst_n": {
+          "type": "string"
+        },
+        "edge": {
+          "type": "string"
+        },
+        "stream": {
+          "type": "string"
+        },
+        "query": {
+          "type": "object"
+        },
+        "streams": {
+          "type": "array"
+        },
+        "config_path": {
+          "type": "string"
+        },
+        "rc_path": {
+          "type": "string"
+        },
+        "requested_time": {
+          "type": "string"
+        },
+        "from_signal": {
+          "type": "string"
+        },
+        "to_signal": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        },
+        "expr": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "op": {
+          "type": "string"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "time": {
+          "type": "string"
+        },
+        "vld": {
+          "type": "string"
+        },
+        "cnt": {
+          "type": "string"
+        },
+        "requests": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "valid": {
+          "type": "string"
+        },
+        "ready": {
+          "type": "string"
+        }
       },
-      "additionalProperties": true
+      "additionalProperties": true,
+      "anyOf": [
+        {
+          "required": [
+            "time_range"
+          ]
+        },
+        {
+          "required": [
+            "start",
+            "end"
+          ]
+        }
+      ]
     },
-    "limits": {"type": "object"},
-    "output": {"type": "object"}
+    "limits": {
+      "type": "object"
+    },
+    "output": {
+      "type": "object"
+    }
   },
   "additionalProperties": true
 }

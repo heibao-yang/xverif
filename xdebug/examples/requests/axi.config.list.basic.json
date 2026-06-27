@@ -5,6 +5,7 @@
     "session_id": "case_a"
   },
   "args": {
-    "include_transactions": false
+    "include_transactions": false,
+    "name": "if0"
   }
 }

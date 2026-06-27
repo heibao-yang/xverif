@@ -5,6 +5,14 @@
     "session_id": "case_a"
   },
   "args": {
-    "signal": "top.u.ready"
+    "clock": "ai_complex_top.clk",
+    "valid": "ai_complex_top.glitch_sig",
+    "payload": "ai_complex_top.hs_data",
+    "time_range": {
+      "begin": "0ns",
+      "end": "200ns"
+    },
+    "sampling": "posedge",
+    "max_findings": 5
   }
 }
