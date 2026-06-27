@@ -1,0 +1,224 @@
+{
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "instance.map",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "ok": true,
+      "port_count": 5,
+      "query": "if_root_tb.u_src"
+    },
+    "data": {
+      "instance": {
+        "full_name": "if_root_tb.u_src",
+        "location": {
+          "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+          "line": 50
+        },
+        "name": "u_src",
+        "npi_type": 32,
+        "text": "if_source  u_src(.rst_n(if_root_tb.rst_n), .sel(if_root_tb.sel), .a(if_root_tb.a), .b(if_root_tb.b), .bus(if_root_tb.link));",
+        "type": "module"
+      },
+      "ports": [
+        {
+          "actual": null,
+          "direction": "input",
+          "highconn": {
+            "full_name": "if_root_tb.rst_n",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 42
+            },
+            "name": "rst_n",
+            "npi_type": 48,
+            "text": "if_root_tb.rst_n",
+            "type": "reg"
+          },
+          "lowconn": {
+            "full_name": "if_root_tb.u_src.rst_n",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 11
+            },
+            "name": "rst_n",
+            "npi_type": 36,
+            "text": "if_root_tb.u_src.rst_n",
+            "type": "net"
+          },
+          "port": {
+            "full_name": "",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 11
+            },
+            "name": "rst_n",
+            "npi_type": 44,
+            "text": "rst_n",
+            "type": "port"
+          },
+          "ref": null
+        },
+        {
+          "actual": null,
+          "direction": "input",
+          "highconn": {
+            "full_name": "if_root_tb.sel",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 43
+            },
+            "name": "sel",
+            "npi_type": 48,
+            "text": "if_root_tb.sel",
+            "type": "reg"
+          },
+          "lowconn": {
+            "full_name": "if_root_tb.u_src.sel",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 12
+            },
+            "name": "sel",
+            "npi_type": 36,
+            "text": "if_root_tb.u_src.sel",
+            "type": "net"
+          },
+          "port": {
+            "full_name": "",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 12
+            },
+            "name": "sel",
+            "npi_type": 44,
+            "text": "sel",
+            "type": "port"
+          },
+          "ref": null
+        },
+        {
+          "actual": null,
+          "direction": "input",
+          "highconn": {
+            "full_name": "if_root_tb.a",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 44
+            },
+            "name": "a",
+            "npi_type": 48,
+            "text": "if_root_tb.a",
+            "type": "reg"
+          },
+          "lowconn": {
+            "full_name": "if_root_tb.u_src.a",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 13
+            },
+            "name": "a",
+            "npi_type": 36,
+            "text": "if_root_tb.u_src.a",
+            "type": "net"
+          },
+          "port": {
+            "full_name": "",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 13
+            },
+            "name": "a",
+            "npi_type": 44,
+            "text": "a",
+            "type": "port"
+          },
+          "ref": null
+        },
+        {
+          "actual": null,
+          "direction": "input",
+          "highconn": {
+            "full_name": "if_root_tb.b",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 45
+            },
+            "name": "b",
+            "npi_type": 48,
+            "text": "if_root_tb.b",
+            "type": "reg"
+          },
+          "lowconn": {
+            "full_name": "if_root_tb.u_src.b",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 14
+            },
+            "name": "b",
+            "npi_type": 36,
+            "text": "if_root_tb.u_src.b",
+            "type": "net"
+          },
+          "port": {
+            "full_name": "",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 14
+            },
+            "name": "b",
+            "npi_type": 44,
+            "text": "b",
+            "type": "port"
+          },
+          "ref": null
+        },
+        {
+          "actual": null,
+          "direction": "direction_-1",
+          "highconn": {
+            "full_name": "if_root_tb.link",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 48
+            },
+            "name": "link",
+            "npi_type": 608,
+            "text": "if_root_tb.link",
+            "type": "ref_obj"
+          },
+          "lowconn": {
+            "full_name": "if_root_tb.u_src.bus",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 15
+            },
+            "name": "bus",
+            "npi_type": 608,
+            "text": "if_root_tb.u_src.bus",
+            "type": "ref_obj"
+          },
+          "port": {
+            "full_name": "",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 15
+            },
+            "name": "bus",
+            "npi_type": 44,
+            "text": "bus",
+            "type": "port"
+          },
+          "ref": null
+        }
+      ]
+    },
+    "error": null
+  },
+  "stderr": ""
+}

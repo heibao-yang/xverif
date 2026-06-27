@@ -13,8 +13,6 @@
     "valid": true
   },
   "data": {
-    "config_path": "wave_view.json",
-    "rc_path": "signal.rc",
     "validation": {
       "signals": [
         {

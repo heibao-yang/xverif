@@ -1,0 +1,67 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "expr.eval_at",
+    "target": {
+      "session_id": "sample_wave"
+    },
+    "args": {
+      "expr": "clk && rst",
+      "signals": {
+        "clk": "ai_complex_top.clk",
+        "rst": "ai_complex_top.rst_n"
+      },
+      "time": "100ns"
+    },
+    "limits": {
+      "timeout_ms": 120000
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "expr.eval_at",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "expr": "clk&&rst",
+      "time": "100ns",
+      "time_ps": 100000,
+      "status": "false",
+      "known": true,
+      "expr_value": false
+    },
+    "data": {
+      "operands": [
+        {
+          "alias": "clk",
+          "signal": "ai_complex_top.clk",
+          "value": {
+            "value": "1'h0",
+            "known": true,
+            "width": 1,
+            "bits": "0"
+          }
+        },
+        {
+          "alias": "rst",
+          "signal": "ai_complex_top.rst_n",
+          "value": {
+            "value": "1'h1",
+            "known": true,
+            "width": 1,
+            "bits": "1"
+          }
+        }
+      ]
+    },
+    "error": null
+  },
+  "stderr": ""
+}

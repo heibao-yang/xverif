@@ -6,11 +6,10 @@ namespace xdebug {
 Json ResponseBuilder::success(const RequestEnvelope& request, const ActionSpec& spec, const ActionResult& result) const {
     if (result.envelope.is_object()) return result.envelope;
     Json response = make_response(request.raw, spec.name, result.ok);
-    response["summary"] = result.summary;
-    response["data"] = result.data;
-    response["warnings"] = result.warnings;
-    response["meta"] = result.meta.is_object() ? result.meta : Json::object();
-    if (!response["meta"].contains("truncated")) response["meta"]["truncated"] = false;
+    if (result.summary.is_object() && !result.summary.empty()) response["summary"] = result.summary;
+    if (!result.data.is_null()) response["data"] = result.data;
+    if (result.warnings.is_array() && !result.warnings.empty()) response["warnings"] = result.warnings;
+    if (result.meta.is_object() && !result.meta.empty()) response["meta"] = result.meta;
     if (!result.ok && !result.error.is_null()) response["error"] = result.error;
     if (!spec.response_schema.empty()) response["schema_version"] = spec.response_schema;
     return response;

@@ -47,11 +47,7 @@ OrderedJson make_response(const OrderedJson& request, const std::string& action,
     response["session"] = nullptr;
     response["summary"] = OrderedJson::object();
     response["data"] = OrderedJson::object();
-    response["findings"] = OrderedJson::array();
-    response["suggested_next_actions"] = OrderedJson::array();
-    response["warnings"] = OrderedJson::array();
     response["error"] = nullptr;
-    response["meta"] = {{"elapsed_ms", nullptr}, {"truncated", false}};
     return response;
 }
 
@@ -65,9 +61,7 @@ OrderedJson make_error(const OrderedJson& request,
     response["error"] = {
         {"code", code},
         {"message", message},
-        {"recoverable", recoverable},
-        {"candidates", OrderedJson::array()},
-        {"suggested_actions", OrderedJson::array()}
+        {"recoverable", recoverable}
     };
     return response;
 }
@@ -159,9 +153,6 @@ OrderedJson scalar_summary(const OrderedJson& data) {
     if (!data.is_object()) return summary;
     OrderedJson existing = data.value("summary", OrderedJson::object());
     if (existing.is_object() && !existing.empty()) return existing;
-    for (auto it = data.begin(); it != data.end(); ++it) {
-        if (it->is_string() || it->is_number() || it->is_boolean()) summary[it.key()] = it.value();
-    }
     return summary;
 }
 
@@ -198,10 +189,8 @@ OrderedJson handle_local_zero_resource_action(const OrderedJson& request,
         int end = std::min(static_cast<int>(lines.size()), line + ctx_lines);
         nlohmann::json enclosing = detail::infer_enclosing_block(lines, line);
 
+        OrderedJson summary = {{"file", file}, {"line", line}};
         OrderedJson data;
-        data["summary"] = {{"file", file}, {"line", line}};
-        data["file"] = file;
-        data["line"] = line;
         data["symbol"] = args.value("symbol", std::string());
         data["context_kind"] = enclosing.value("type", "unknown");
         data["enclosing"] = OrderedJson::parse(enclosing.dump());
@@ -214,7 +203,7 @@ OrderedJson handle_local_zero_resource_action(const OrderedJson& request,
         }
 
         OrderedJson response = make_response(request, action);
-        response["summary"] = data["summary"];
+        response["summary"] = summary;
         response["data"] = data;
         return response;
     }
@@ -226,13 +215,12 @@ OrderedJson handle_local_zero_resource_action(const OrderedJson& request,
         if (!signal.empty() || expr.empty()) return make_response(request, action, false);
 
         handled = true;
+        OrderedJson summary = {{"expr", expr}, {"source", "string_fallback"}, {"confidence", "low"}};
         OrderedJson data;
-        data["summary"] = {{"expr", expr}, {"source", "string_fallback"}, {"confidence", "low"}};
         data["expr"] = OrderedJson::parse(parse_expr_ast(expr).dump());
-        data["confidence"] = "low";
         data["confidence_reason"] = "parsed from raw string without NPI handle";
         OrderedJson response = make_response(request, action);
-        response["summary"] = data["summary"];
+        response["summary"] = summary;
         response["data"] = data;
         return response;
     }
@@ -328,9 +316,27 @@ OrderedJson handle_engine_forward(const OrderedJson& request, const std::string&
     OrderedJson response = make_response(request, action);
     if (have_session_info) response["session"] = session_to_json(session_info);
     response["summary"] = scalar_summary(ordered_data);
+    if (ordered_data.is_object() && ordered_data.contains("summary")) ordered_data.erase("summary");
+    if (response["summary"].is_object() && ordered_data.is_object()) {
+        for (auto it = response["summary"].begin(); it != response["summary"].end(); ++it) {
+            auto data_it = ordered_data.find(it.key());
+            if (data_it != ordered_data.end() && *data_it == it.value()) {
+                ordered_data.erase(data_it);
+            }
+        }
+    }
+    if (ordered_data.is_object() && ordered_data.contains("truncated") &&
+        ordered_data["truncated"].is_boolean()) {
+        if (ordered_data["truncated"].get<bool>()) response["meta"] = {{"truncated", true}};
+        ordered_data.erase("truncated");
+    }
+    if (!response.contains("meta") && response["summary"].is_object() &&
+        response["summary"].contains("truncated") &&
+        response["summary"]["truncated"].is_boolean() &&
+        response["summary"]["truncated"].get<bool>()) {
+        response["meta"] = {{"truncated", true}};
+    }
     response["data"] = ordered_data;
-    if (data.contains("truncated") && data["truncated"].is_boolean())
-        response["meta"] = {{"truncated", data["truncated"].get<bool>()}};
     return response;
 }
 

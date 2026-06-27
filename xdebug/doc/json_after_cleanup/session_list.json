@@ -1,0 +1,27 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "session.list",
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "session.list",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "session_count": 0
+    },
+    "data": {
+      "sessions": []
+    },
+    "error": null
+  },
+  "stderr": ""
+}

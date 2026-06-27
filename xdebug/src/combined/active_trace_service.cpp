@@ -1224,10 +1224,17 @@ nlohmann::ordered_json build_active_driver_payload(const Json& request,
         driver_status = "resolved";
 
     nlohmann::ordered_json resp;
-    resp["signal"] = signal_name;
-    resp["requested_time"] = requested_time;
-    resp["active_time"] = first_active_time;
-    resp["driver_status"] = driver_status;
+    resp["summary"] = {
+        {"signal", signal_name},
+        {"requested_time", requested_time},
+        {"active_time", first_active_time},
+        {"driver_status", driver_status},
+        {"evidence_source", trace_result.evidence_source.empty()
+            ? nlohmann::ordered_json(nullptr) : nlohmann::ordered_json(trace_result.evidence_source)},
+        {"static_candidate_count", trace_result.static_candidate_count},
+        {"active_check_count", trace_result.active_check_count},
+        {"trace_node_count", trace_result.node_count}
+    };
     resp["driver"] = trace_result.current_driver.is_null()
         ? nlohmann::ordered_json(nullptr) : trace_result.current_driver;
     resp["root_driver"] = trace_result.root_driver.is_null()
@@ -1236,17 +1243,9 @@ nlohmann::ordered_json build_active_driver_payload(const Json& request,
     resp["events"] = nodes_to_json(trace_result.events);
     resp["values"] = {{"requested", requested_values}, {"active", active_values}};
     resp["limitations"] = strings_to_json(limitations);
-    resp["evidence_source"] = trace_result.evidence_source.empty()
-        ? nlohmann::ordered_json(nullptr) : nlohmann::ordered_json(trace_result.evidence_source);
-    resp["static_candidate_count"] = trace_result.static_candidate_count;
-    resp["active_check_count"] = trace_result.active_check_count;
-    resp["statement_count"] = trace_result.node_count;
-    resp["trace_node_count"] = trace_result.node_count;
 
     if (request_options.include_alias_candidates || !trace_result.alias_candidates.empty())
         resp["alias_candidates"] = alias_candidates_to_json(trace_result.alias_candidates);
-    else
-        resp["alias_candidates"] = nlohmann::ordered_json::array();
 
     if (request_options.include_trace) {
         resp["trace"] = {{"nodes", nodes_to_json(trace_result.nodes)},

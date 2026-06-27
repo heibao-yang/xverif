@@ -1,0 +1,117 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "expr.normalize",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix_uart"
+    },
+    "args": {
+      "signal": "uart_16550.RXDin"
+    },
+    "limits": {
+      "max_depth": 2,
+      "max_nodes": 20,
+      "max_edges": 50,
+      "max_results": 10
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "expr.normalize",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "signal": "uart_16550.RXDin",
+      "source": "npi_trace_assignment",
+      "confidence": "high"
+    },
+    "data": {
+      "expr": {
+        "args": [
+          {
+            "kind": "signal",
+            "name": "uart_16550.loopback",
+            "npi_type": 36,
+            "text": "uart_16550.loopback"
+          },
+          {
+            "kind": "signal",
+            "name": "uart_16550.TXD",
+            "npi_type": 36,
+            "text": "uart_16550.TXD"
+          },
+          {
+            "kind": "signal",
+            "name": "uart_16550.RXD",
+            "npi_type": 36,
+            "text": "uart_16550.RXD"
+          }
+        ],
+        "kind": "operation",
+        "op": "ternary",
+        "op_type": 32,
+        "text": "(uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)"
+      },
+      "assignment": {
+        "kind": "continuous_assignment",
+        "lhs": {
+          "kind": "signal",
+          "name": "uart_16550.RXDin",
+          "npi_type": 36,
+          "text": "uart_16550.RXDin"
+        },
+        "location": {
+          "file": "/home/yian/xverif/xdebug/testdata/design/uart/uart_16550.sv",
+          "line": 164
+        },
+        "npi_type": 8,
+        "rhs": {
+          "args": [
+            {
+              "kind": "signal",
+              "name": "uart_16550.loopback",
+              "npi_type": 36,
+              "text": "uart_16550.loopback"
+            },
+            {
+              "kind": "signal",
+              "name": "uart_16550.TXD",
+              "npi_type": 36,
+              "text": "uart_16550.TXD"
+            },
+            {
+              "kind": "signal",
+              "name": "uart_16550.RXD",
+              "npi_type": 36,
+              "text": "uart_16550.RXD"
+            }
+          ],
+          "kind": "operation",
+          "op": "ternary",
+          "op_type": 32,
+          "text": "(uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)"
+        },
+        "rhs_signals": [
+          "uart_16550.RXD",
+          "uart_16550.TXD",
+          "uart_16550.loopback"
+        ],
+        "source": "assign uart_16550.RXDin = (uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)"
+      },
+      "rhs_signals": [
+        "uart_16550.RXD",
+        "uart_16550.TXD",
+        "uart_16550.loopback"
+      ]
+    },
+    "error": null
+  },
+  "stderr": ""
+}

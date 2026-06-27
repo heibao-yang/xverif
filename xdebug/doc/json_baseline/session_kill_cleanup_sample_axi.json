@@ -1,0 +1,75 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "session.kill",
+    "target": {
+      "session_id": "sample_axi"
+    },
+    "args": {
+      "session_id": "sample_axi"
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "session.kill",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "session_id": "sample_axi",
+      "mode": "waveform",
+      "removed": true
+    },
+    "data": {
+      "session": {
+        "id": "sample_axi",
+        "session_id": "sample_axi",
+        "mode": "waveform",
+        "fsdb": "/home/yian/xverif/xdebug/testdata/waveform/axi_vip_real/out/regression/test/axi_multi_id_test/waves.fsdb",
+        "socket_path": "/tmp/xdebug_action_sampling/home/.xdebug/engine/sessions/sample_axi_9d07aef7cdfe10de/socket",
+        "transport": "uds",
+        "file_dir": "/tmp/xdebug_action_sampling/home/.xdebug/engine/sessions/sample_axi_9d07aef7cdfe10de/transport",
+        "server_host": "localhost.localdomain"
+      },
+      "backends": {
+        "api_version": "xdebug.v1",
+        "request_id": "",
+        "ok": true,
+        "action": "session.kill",
+        "tool": {
+          "name": "xdebug",
+          "version": "0.1.0"
+        },
+        "session": null,
+        "summary": {
+          "id": "sample_axi",
+          "session_id": "sample_axi",
+          "killed": true
+        },
+        "data": {},
+        "findings": [],
+        "suggested_next_actions": [],
+        "warnings": [],
+        "error": null,
+        "meta": {
+          "elapsed_ms": null,
+          "truncated": false
+        }
+      }
+    },
+    "findings": [],
+    "suggested_next_actions": [],
+    "warnings": [],
+    "error": null,
+    "meta": {
+      "truncated": false
+    }
+  },
+  "stderr": ""
+}

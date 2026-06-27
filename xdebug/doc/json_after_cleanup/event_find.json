@@ -1,0 +1,86 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "event.find",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix_wave"
+    },
+    "args": {
+      "name": "evt0",
+      "expr": "vld && !rdy && payload_lo != 0",
+      "time_range": {
+        "begin": "0ns",
+        "end": "200ns"
+      }
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "event.find",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "event_count": 1,
+      "first": "105ns",
+      "last": "105ns",
+      "begin": "0ns",
+      "end": "200ns",
+      "mode": "first",
+      "sampling_mode": "clock_edge",
+      "inline": false
+    },
+    "data": {
+      "events": [
+        {
+          "time": "105ns",
+          "time_ps": 105000,
+          "signals": {
+            "payload": {
+              "value": "8'h5a",
+              "known": true,
+              "width": 8,
+              "bits": "01011010"
+            },
+            "rdy": {
+              "value": "1'h0",
+              "known": true,
+              "width": 1,
+              "bits": "0"
+            },
+            "vld": {
+              "value": "1'h1",
+              "known": true,
+              "width": 1,
+              "bits": "1"
+            },
+            "xz": {
+              "value": "8'hzz",
+              "known": false,
+              "width": 8,
+              "bits": "zzzzzzzz",
+              "has_x": false,
+              "has_z": true
+            }
+          },
+          "fields": {
+            "payload_lo": {
+              "value": "4'ha",
+              "known": true,
+              "width": 4,
+              "bits": "1010"
+            }
+          }
+        }
+      ]
+    },
+    "error": null
+  },
+  "stderr": ""
+}

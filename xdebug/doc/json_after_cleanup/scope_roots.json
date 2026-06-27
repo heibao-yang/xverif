@@ -1,0 +1,73 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "scope.roots",
+    "target": {
+      "session_id": "sample_wave"
+    },
+    "args": {
+      "source": "auto"
+    },
+    "limits": {
+      "timeout_ms": 120000
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "scope.roots",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "source": "auto",
+      "root_count": 1,
+      "wave_count": 1,
+      "design_count": 0,
+      "matched_count": 0,
+      "recommended_root": "ai_complex_top",
+      "recommended_reason": "unique root"
+    },
+    "data": {
+      "roots": [
+        {
+          "path": "ai_complex_top",
+          "sources": [
+            "wave"
+          ],
+          "wave": {
+            "path": "ai_complex_top",
+            "name": "ai_complex_top",
+            "full_name": "ai_complex_top",
+            "def_name": "ai_complex_top",
+            "type": 0,
+            "queryable": true
+          },
+          "design": null,
+          "status": "wave_only"
+        }
+      ],
+      "wave_roots": [
+        {
+          "path": "ai_complex_top",
+          "name": "ai_complex_top",
+          "full_name": "ai_complex_top",
+          "def_name": "ai_complex_top",
+          "type": 0,
+          "queryable": true
+        }
+      ],
+      "design_roots": [],
+      "limitations": [
+        "design roots unavailable: design not loaded"
+      ]
+    },
+    "error": null
+  },
+  "stderr": ""
+}

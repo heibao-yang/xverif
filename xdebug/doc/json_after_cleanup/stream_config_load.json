@@ -1,0 +1,51 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "stream.config.load",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix_stream"
+    },
+    "args": {
+      "config_path": "/home/yian/xverif/xdebug/testdata/waveform/stream_v1/config/streams.json",
+      "mode": "replace"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "stream.config.load",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "loaded": 7,
+      "mode": "replace"
+    },
+    "data": {
+      "streams": [
+        "valid_only",
+        "ready_stream",
+        "bp_stream",
+        "ready_packet",
+        "bp_packet",
+        "ready_bp_packet_negedge",
+        "interleaved_packet"
+      ],
+      "issues": [
+        {
+          "stream": "valid_only",
+          "severity": "WARNING",
+          "code": "CLOCK_COMPLEX",
+          "message": "clock expression is not a plain signal; edge detection uses expression dependency changes"
+        }
+      ]
+    },
+    "error": null
+  },
+  "stderr": ""
+}

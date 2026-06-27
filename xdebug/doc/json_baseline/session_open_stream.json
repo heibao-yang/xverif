@@ -1,0 +1,58 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "session.open",
+    "target": {
+      "fsdb": "/home/yian/xverif/xdebug/testdata/waveform/stream_v1/out/waves.fsdb"
+    },
+    "args": {
+      "name": "sample_stream"
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "session.open",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": {
+      "id": "sample_stream",
+      "session_id": "sample_stream",
+      "mode": "waveform",
+      "fsdb": "/home/yian/xverif/xdebug/testdata/waveform/stream_v1/out/waves.fsdb",
+      "socket_path": "/tmp/xdebug_action_sampling/home/.xdebug/engine/sessions/sample_stream_b3eef096b9b9196a/socket",
+      "transport": "uds",
+      "file_dir": "/tmp/xdebug_action_sampling/home/.xdebug/engine/sessions/sample_stream_b3eef096b9b9196a/transport",
+      "server_host": "localhost.localdomain"
+    },
+    "summary": {
+      "session_id": "sample_stream",
+      "mode": "waveform"
+    },
+    "data": {
+      "session": {
+        "id": "sample_stream",
+        "session_id": "sample_stream",
+        "mode": "waveform",
+        "fsdb": "/home/yian/xverif/xdebug/testdata/waveform/stream_v1/out/waves.fsdb",
+        "socket_path": "/tmp/xdebug_action_sampling/home/.xdebug/engine/sessions/sample_stream_b3eef096b9b9196a/socket",
+        "transport": "uds",
+        "file_dir": "/tmp/xdebug_action_sampling/home/.xdebug/engine/sessions/sample_stream_b3eef096b9b9196a/transport",
+        "server_host": "localhost.localdomain"
+      }
+    },
+    "findings": [],
+    "suggested_next_actions": [],
+    "warnings": [],
+    "error": null,
+    "meta": {
+      "truncated": false
+    }
+  },
+  "stderr": ""
+}

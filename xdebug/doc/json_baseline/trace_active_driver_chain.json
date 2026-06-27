@@ -1,0 +1,49 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "trace.active_driver_chain",
+    "target": {
+      "session_id": "sample_combined"
+    },
+    "args": {
+      "signal": "active_driver_tb.dut.data_out",
+      "requested_time": "50ns",
+      "clk_period": "10ns"
+    },
+    "limits": {
+      "timeout_ms": 120000
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": false,
+    "action": "trace.active_driver_chain",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "error": "SIGNAL_NOT_FOUND",
+      "message": "signal not found: active_driver_tb.dut.data_out"
+    },
+    "data": null,
+    "findings": [],
+    "suggested_next_actions": [],
+    "warnings": [],
+    "error": {
+      "code": "SIGNAL_NOT_FOUND",
+      "message": "signal not found: active_driver_tb.dut.data_out",
+      "recoverable": true,
+      "candidates": [],
+      "suggested_actions": []
+    },
+    "meta": {
+      "truncated": false
+    }
+  },
+  "stderr": ""
+}

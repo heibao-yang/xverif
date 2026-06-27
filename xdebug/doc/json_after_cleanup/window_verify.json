@@ -1,0 +1,58 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "window.verify",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix3_wave"
+    },
+    "args": {
+      "clock": "ai_complex_top.clk",
+      "conditions": [
+        {
+          "expr": "rst == 1",
+          "signals": {
+            "rst": "ai_complex_top.rst_n"
+          }
+        }
+      ],
+      "time_range": {
+        "begin": "80ns",
+        "end": "120ns"
+      }
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "window.verify",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "all_passed": true,
+      "sample_count": 4,
+      "failed_samples": 0,
+      "unknown_samples": 0,
+      "truncated": false
+    },
+    "data": {
+      "conditions": [
+        {
+          "expr": "rst==1",
+          "mode": "always",
+          "passed": true,
+          "pass_samples": 4,
+          "failed_samples": 0,
+          "unknown_samples": 0
+        }
+      ]
+    },
+    "error": null
+  },
+  "stderr": ""
+}

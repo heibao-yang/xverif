@@ -1,0 +1,32 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "list.delete",
+    "target": {
+      "session_id": "json_after_missing_wave"
+    },
+    "args": {
+      "name": "delete_me",
+      "signal": "ai_complex_top.clk"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "list.delete",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {},
+    "data": {
+      "name": "delete_me",
+      "deleted": true,
+      "removed": "ai_complex_top.clk"
+    },
+    "error": null
+  },
+  "returncode": 0,
+  "stderr_tail": ""
+}

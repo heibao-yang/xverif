@@ -1,0 +1,112 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "trace.active_driver",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix_active"
+    },
+    "args": {
+      "signal": "active_semantics_tb.u_dut.mux_y",
+      "requested_time": "26ns",
+      "include_trace": false
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "trace.active_driver",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "signal": "active_semantics_tb.u_dut.mux_y",
+      "requested_time": "26ns",
+      "active_time": "22ns",
+      "driver_status": "resolved",
+      "evidence_source": "fsdb_precise_time_static_trace",
+      "static_candidate_count": 3,
+      "active_check_count": 2,
+      "trace_node_count": 2,
+      "truncated": false
+    },
+    "data": {
+      "driver": {
+        "id": "n0",
+        "role": "assignment",
+        "kind": "assignment",
+        "signal": "active_semantics_tb.u_dut.mux_y",
+        "signals": [
+          "active_semantics_tb.u_dut.data_b"
+        ],
+        "file": "/home/yian/xverif/xdebug/testdata/combined/active_semantics/active_semantics_tb.sv",
+        "line": 43,
+        "text": "npiAssignment, active_semantics_tb.u_dut.mux_y = data_b;, {/home/yian/xverif/xdebug/testdata/combined/active_semantics/active_semantics_tb.sv : 43}",
+        "active_time": "22ns",
+        "value": {
+          "value": "10110001",
+          "known": true
+        },
+        "next_signal": "active_semantics_tb.u_dut.data_b",
+        "alias_kind": "none"
+      },
+      "root_driver": {
+        "kind": "assignment",
+        "file": "/home/yian/xverif/xdebug/testdata/combined/active_semantics/active_semantics_tb.sv",
+        "line": 43
+      },
+      "controls": [
+        {
+          "id": "n1",
+          "role": "control",
+          "kind": "if_else",
+          "signal": "active_semantics_tb.u_dut.mux_y",
+          "signals": [
+            "active_semantics_tb.u_dut.sel"
+          ],
+          "file": "/home/yian/xverif/xdebug/testdata/combined/active_semantics/active_semantics_tb.sv",
+          "line": 40,
+          "text": "npiIfElse, active_semantics_tb.u_dut.if (sel) ... else ..., {/home/yian/xverif/xdebug/testdata/combined/active_semantics/active_semantics_tb.sv : 40}",
+          "active_time": "22ns",
+          "value": {
+            "value": "10110001",
+            "known": true
+          },
+          "next_signal": "",
+          "alias_kind": "none"
+        }
+      ],
+      "events": [],
+      "values": {
+        "requested": {
+          "active_semantics_tb.u_dut.mux_y": {
+            "value": "10110001",
+            "known": true
+          },
+          "active_semantics_tb.u_dut.data_b": {
+            "value": "10110001",
+            "known": true
+          }
+        },
+        "active": {
+          "active_semantics_tb.u_dut.mux_y": {
+            "value": "10110001",
+            "known": true
+          },
+          "active_semantics_tb.u_dut.data_b": {
+            "value": "10110001",
+            "known": true
+          }
+        }
+      },
+      "limitations": [],
+      "alias_candidates": []
+    },
+    "error": null
+  },
+  "stderr": ""
+}

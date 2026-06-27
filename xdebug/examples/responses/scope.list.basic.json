@@ -9,8 +9,6 @@
     "truncated": false
   },
   "data": {
-    "path": "top",
-    "recursive": true,
     "scopes": [
       {
         "name": "top.u0",
@@ -24,9 +22,6 @@
         "type": "wire"
       }
     ],
-    "total_signals": 1,
-    "truncated": false,
-    "signal_count": 1
-  },
-  "warnings": []
+    "total_signals": 1
+  }
 }

@@ -7,14 +7,11 @@
     "time": "100ns"
   },
   "data": {
-    "name": "if0",
-    "time": "100ns",
     "values": {
       "top.u.valid": {
         "value": "1'b1",
         "known": true
       }
     }
-  },
-  "warnings": []
+  }
 }

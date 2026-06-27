@@ -14,8 +14,6 @@
     "sampling": "posedge",
     "begin": "100ns",
     "end": "200ns",
-    "sample_count": 10,
-    "valid_count": 6,
     "valid_false_count": 3,
     "unknown_count": 1,
     "truncated": false,
@@ -27,15 +25,11 @@
         "ready": "top.ready"
       }
     },
-    "min_value": "3",
-    "max_value": "9",
-    "average_value": "5.5",
     "min_count": 2,
     "max_count": 1,
     "min_first_time": "120ns",
     "max_first_time": "180ns",
     "min_first_time_ps": 120000,
     "max_first_time_ps": 180000
-  },
-  "warnings": []
+  }
 }

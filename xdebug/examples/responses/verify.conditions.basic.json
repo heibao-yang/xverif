@@ -13,12 +13,6 @@
   "data": {
     "time": "100ns",
     "all_pass": false,
-    "verdict": "fail",
-    "condition_count": 2,
-    "all_passed": false,
-    "passed": 1,
-    "failed": 1,
-    "unknown": 0,
     "checks": [
       {
         "signal": "top.valid",
@@ -35,6 +29,5 @@
         "status": "fail"
       }
     ]
-  },
-  "warnings": []
+  }
 }

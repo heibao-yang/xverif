@@ -1,0 +1,74 @@
+{
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "interface.resolve",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "modport_port_count": 0,
+      "ok": true,
+      "port_count": 1,
+      "query": "if_root_tb.link"
+    },
+    "data": {
+      "modport_ports": [],
+      "object": {
+        "full_name": "if_root_tb.link",
+        "location": {
+          "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+          "line": 48
+        },
+        "name": "link",
+        "npi_type": 601,
+        "text": "data_if  link(.clk(if_root_tb.clk));",
+        "type": "interface"
+      },
+      "ports": [
+        {
+          "actual": null,
+          "direction": "input",
+          "highconn": {
+            "full_name": "if_root_tb.clk",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 41
+            },
+            "name": "clk",
+            "npi_type": 48,
+            "text": "if_root_tb.clk",
+            "type": "reg"
+          },
+          "lowconn": {
+            "full_name": "if_root_tb.link.clk",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 3
+            },
+            "name": "clk",
+            "npi_type": 36,
+            "text": "if_root_tb.link.clk",
+            "type": "net"
+          },
+          "port": {
+            "full_name": "",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 3
+            },
+            "name": "clk",
+            "npi_type": 44,
+            "text": "clk",
+            "type": "port"
+          },
+          "ref": null
+        }
+      ]
+    },
+    "error": null
+  },
+  "stderr": ""
+}

@@ -1,0 +1,52 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "signal.trend",
+    "target": {
+      "session_id": "sample_wave"
+    },
+    "args": {
+      "signal": "ai_complex_top.counter_inc",
+      "time_range": {
+        "begin": "50ns",
+        "end": "120ns"
+      },
+      "max_items": 20
+    },
+    "limits": {
+      "timeout_ms": 120000
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": false,
+    "action": "signal.trend",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "error": "ACTION_FAILED",
+      "message": "signal.trend requires args.signal and args.clock"
+    },
+    "data": null,
+    "findings": [],
+    "suggested_next_actions": [],
+    "warnings": [],
+    "error": {
+      "code": "ACTION_FAILED",
+      "message": "signal.trend requires args.signal and args.clock",
+      "recoverable": true,
+      "candidates": [],
+      "suggested_actions": []
+    },
+    "meta": {
+      "truncated": false
+    }
+  },
+  "stderr": ""
+}

@@ -20,7 +20,6 @@
     "evidence_source": "fsdb_precise_time_static_trace",
     "static_candidate_count": 1,
     "active_check_count": 1,
-    "statement_count": 1,
     "trace_node_count": 1,
     "root_driver": {
       "kind": "unknown",
@@ -29,10 +28,6 @@
     }
   },
   "data": {
-    "signal": "top.u.state",
-    "requested_time": "100ns",
-    "active_time": "100ns",
-    "driver_status": "control_only",
     "driver": null,
     "root_driver": null,
     "controls": [
@@ -41,29 +36,25 @@
         "file": "rtl/foo.sv",
         "line": 88,
         "text": "2'b11: state = next_state",
-        "signals": ["top.u.mode"]
+        "signals": [
+          "top.u.mode"
+        ]
       }
     ],
     "events": [],
     "values": {
       "requested": {
-        "top.u.state": {"value": "xx", "known": false}
+        "top.u.state": {
+          "value": "xx",
+          "known": false
+        }
       },
       "active": {}
     },
     "alias_candidates": [],
-    "evidence_source": "fsdb_precise_time_static_trace",
-    "static_candidate_count": 1,
-    "active_check_count": 1,
     "limitations": [
       "control context confirmed but NPI active evidence did not confirm specific assignment"
     ]
   },
-  "findings": [],
-  "suggested_next_actions": [],
-  "warnings": [],
-  "error": null,
-  "meta": {
-    "truncated": false
-  }
+  "error": null
 }

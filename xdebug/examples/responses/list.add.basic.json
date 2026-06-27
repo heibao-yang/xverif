@@ -8,11 +8,5 @@
     "status": "added",
     "added": true
   },
-  "data": {
-    "name": "if0",
-    "signal": "top.u.valid",
-    "status": "added",
-    "added": true
-  },
-  "warnings": []
+  "data": {}
 }

@@ -1,0 +1,114 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "trace.active_driver_chain",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix3_active"
+    },
+    "args": {
+      "signal": "active_semantics_tb.u_dut.chain_out",
+      "requested_time": "26ns",
+      "clk_period": "10ns"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "trace.active_driver_chain",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "signal": "active_semantics_tb.u_dut.chain_out",
+      "start_time": "26ns",
+      "chain_length": 4,
+      "termination": "primary_input",
+      "evidence_source": "fsdb_precise_time_static_trace",
+      "static_candidate_count": 1,
+      "active_check_count": 1,
+      "temporal_boundaries": 1,
+      "truncated": false
+    },
+    "data": {
+      "chain": {
+        "chain": [
+          {
+            "index": 0,
+            "signal": "active_semantics_tb.u_dut.chain_out",
+            "time": "26ns",
+            "active_time": "22ns",
+            "value": "8'h31",
+            "value_known": true,
+            "driver_kind": "assignment",
+            "driver": "active_semantics_tb.u_dut.assign chain_out = chain_mid,",
+            "file": "/home/yian/xverif/xdebug/testdata/combined/active_semantics/active_semantics_tb.sv",
+            "line": 28,
+            "hop": "⏱",
+            "next": "active_semantics_tb.u_dut.chain_mid"
+          },
+          {
+            "index": 1,
+            "signal": "active_semantics_tb.u_dut.chain_mid",
+            "time": "22ns",
+            "active_time": "22ns",
+            "value": "8'h31",
+            "value_known": true,
+            "driver_kind": "assignment",
+            "driver": "active_semantics_tb.u_dut.assign chain_mid = chain_src,",
+            "file": "/home/yian/xverif/xdebug/testdata/combined/active_semantics/active_semantics_tb.sv",
+            "line": 27,
+            "hop": "→",
+            "next": "active_semantics_tb.u_dut.chain_src"
+          },
+          {
+            "index": 2,
+            "signal": "active_semantics_tb.u_dut.chain_src",
+            "time": "22ns",
+            "active_time": "22ns",
+            "value": "8'h31",
+            "value_known": true,
+            "driver_kind": "assignment",
+            "driver": "active_semantics_tb.chain_src = 'h31;,",
+            "file": "/home/yian/xverif/xdebug/testdata/combined/active_semantics/active_semantics_tb.sv",
+            "line": 149,
+            "hop": "→",
+            "next": "active_semantics_tb.chain_src"
+          },
+          {
+            "index": 3,
+            "signal": "active_semantics_tb.chain_src",
+            "time": "22ns",
+            "active_time": "22ns",
+            "value": "8'h31",
+            "value_known": true,
+            "driver_kind": "assignment",
+            "driver": "active_semantics_tb.chain_src = 'h31;,",
+            "file": "/home/yian/xverif/xdebug/testdata/combined/active_semantics/active_semantics_tb.sv",
+            "line": 149,
+            "hop": "■",
+            "next": ""
+          }
+        ],
+        "branch_evidence": [],
+        "stats": {
+          "calls": 4,
+          "edgecheck_direct": 3,
+          "fallback": 0,
+          "temporal_boundaries": 1
+        },
+        "limitations": [],
+        "evidence_source": "fsdb_precise_time_static_trace",
+        "static_candidate_count": 1,
+        "active_check_count": 1,
+        "truncated": false
+      }
+    },
+    "error": null
+  },
+  "stderr": ""
+}

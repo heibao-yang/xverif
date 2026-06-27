@@ -125,15 +125,15 @@ import sys
 assignment, force, default, relative = (json.load(open(path)) for path in sys.argv[1:])
 for result in (assignment, force, default, relative):
     assert result["ok"] is True, result
-assert assignment["data"]["active_time"] == "25ns"
-assert assignment["data"]["driver_status"] == "resolved"
+assert assignment["summary"]["active_time"] == "25ns"
+assert assignment["summary"]["driver_status"] == "resolved"
 assert assignment["data"]["driver"]["kind"] == "assignment"
 assert assignment["data"]["driver"]["line"] == 20
-assert force["data"]["active_time"] == "37ns"
+assert force["summary"]["active_time"] == "37ns"
 assert force["data"]["driver"]["kind"] == "force"
 assert force["data"]["driver"]["line"] == 82
-assert default["data"]["active_time"] == "50ns"
-assert default["data"]["driver_status"] == "control_only"
+assert default["summary"]["active_time"] == "50ns"
+assert default["summary"]["driver_status"] == "control_only"
 assert default["data"]["driver"] is None
 assert relative["data"]["driver"]["line"] == 20
 PY
@@ -146,7 +146,7 @@ import sys
 
 with open(sys.argv[1]) as f:
     result = json.load(f)
-assert result["data"]["driver_status"] == "resolved"
+assert result["summary"]["driver_status"] == "resolved"
 assert result["data"]["driver"]["line"] == 20
 PY
 

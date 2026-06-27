@@ -1,0 +1,53 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "event.config.load",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix_wave"
+    },
+    "args": {
+      "name": "evt0",
+      "config_path": "/home/yian/xverif/xdebug/testdata/waveform/ai_complex_wave/config/event0.json"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "event.config.load",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "name": "evt0",
+      "status": "loaded"
+    },
+    "data": {
+      "config": {
+        "name": "evt0",
+        "clk": "ai_complex_top.clk",
+        "rst_n": "ai_complex_top.rst_n",
+        "edge": "posedge",
+        "signals": {
+          "payload": "ai_complex_top.event_payload",
+          "rdy": "ai_complex_top.event_rdy",
+          "vld": "ai_complex_top.event_vld",
+          "xz": "ai_complex_top.xz_bus"
+        },
+        "fields": {
+          "payload_lo": {
+            "signal": "payload",
+            "left": 3,
+            "right": 0
+          }
+        }
+      }
+    },
+    "error": null
+  },
+  "stderr": ""
+}

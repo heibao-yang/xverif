@@ -88,7 +88,7 @@ Json catalog_schema_response(const Json& request) {
             return make_error(request, "schema", "ACTION_SCHEMA_NOT_FOUND", "schema not found for " + action + " " + kind);
         }
         response["summary"] = {{"action", action}, {"kind", kind}};
-        response["data"] = {{"action", action}, {"kind", kind}, {"schema", schema}, {"schema_path", rel}};
+        response["data"] = {{"schema", schema}, {"schema_path", rel}};
         return response;
     }
     response["data"] = {

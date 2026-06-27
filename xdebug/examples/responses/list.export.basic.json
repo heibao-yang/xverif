@@ -11,9 +11,6 @@
   "data": {
     "output_dir": "/tmp/if0_list_export",
     "manifest_file": "/tmp/if0_list_export/manifest.json",
-    "format": "u64bin.v1",
-    "signal_count": 2,
-    "row_count": 16,
     "begin": "0ns",
     "end": "1us",
     "begin_ps": 0,
@@ -29,6 +26,5 @@
         "columns": 3
       }
     ]
-  },
-  "warnings": []
+  }
 }

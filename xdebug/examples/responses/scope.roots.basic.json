@@ -13,7 +13,6 @@
     "recommended_reason": "unique root"
   },
   "data": {
-    "source": "auto",
     "roots": [
       {
         "path": "top",

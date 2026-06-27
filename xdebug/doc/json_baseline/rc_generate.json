@@ -1,0 +1,51 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "rc.generate",
+    "target": {
+      "session_id": "sample_wave"
+    },
+    "args": {
+      "config": {
+        "signals": [
+          "ai_complex_top.clk",
+          "ai_complex_top.rst_n"
+        ]
+      },
+      "rc_path": "/tmp/xdebug_action_sampling/sample.rc",
+      "include_preview": true
+    },
+    "limits": {
+      "timeout_ms": 120000
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": false,
+    "action": "rc.generate",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {},
+    "data": null,
+    "findings": [],
+    "suggested_next_actions": [],
+    "warnings": [],
+    "error": {
+      "code": "MISSING_FIELD",
+      "message": "args.config_path is required",
+      "recoverable": true,
+      "candidates": [],
+      "suggested_actions": []
+    },
+    "meta": {
+      "truncated": false
+    }
+  },
+  "stderr": ""
+}

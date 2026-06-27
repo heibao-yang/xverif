@@ -4,7 +4,6 @@
   "action": "event.export",
   "summary": {
     "event_count": 1,
-    "count": 1,
     "mode": "all",
     "inline": false,
     "truncated": false
@@ -21,13 +20,8 @@
         }
       }
     ],
-    "count": 1,
-    "event_count": 1,
     "begin": "0ns",
     "end": "200ns",
-    "mode": "all",
-    "sampling_mode": "clock_edge",
-    "inline": false
-  },
-  "warnings": []
+    "sampling_mode": "clock_edge"
+  }
 }

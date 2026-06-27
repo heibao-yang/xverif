@@ -1,0 +1,50 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "stream.validate",
+    "target": {
+      "session_id": "sample_stream"
+    },
+    "args": {
+      "stream": "in_packet",
+      "start": "0ns",
+      "end": "250us",
+      "max_edges": 256
+    },
+    "limits": {
+      "timeout_ms": 120000
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": false,
+    "action": "stream.validate",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "error": "STREAM_NOT_FOUND",
+      "message": "stream config not found: in_packet"
+    },
+    "data": null,
+    "findings": [],
+    "suggested_next_actions": [],
+    "warnings": [],
+    "error": {
+      "code": "STREAM_NOT_FOUND",
+      "message": "stream config not found: in_packet",
+      "recoverable": true,
+      "candidates": [],
+      "suggested_actions": []
+    },
+    "meta": {
+      "truncated": false
+    }
+  },
+  "stderr": ""
+}

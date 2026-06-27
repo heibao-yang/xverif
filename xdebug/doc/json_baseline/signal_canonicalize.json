@@ -1,0 +1,58 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "signal.canonicalize",
+    "target": {
+      "session_id": "sample_design"
+    },
+    "args": {
+      "signal": "uart_top.tx_busy",
+      "max_items": 10
+    },
+    "limits": {
+      "timeout_ms": 120000
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "signal.canonicalize",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "query": "uart_top.tx_busy",
+      "ambiguous": false
+    },
+    "data": {
+      "summary": {
+        "query": "uart_top.tx_busy",
+        "ambiguous": false
+      },
+      "query": "uart_top.tx_busy",
+      "canonical": "uart_top.tx_busy",
+      "rtl_path": null,
+      "leaf": null,
+      "scope": null,
+      "base_signal": null,
+      "select": null,
+      "ambiguous": false,
+      "aliases": [],
+      "fsdb_candidates": [],
+      "port_mappings": []
+    },
+    "findings": [],
+    "suggested_next_actions": [],
+    "warnings": [],
+    "error": null,
+    "meta": {
+      "truncated": false
+    }
+  },
+  "stderr": ""
+}

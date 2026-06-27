@@ -1,0 +1,33 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "apb.config.list",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix_wave"
+    },
+    "args": {
+      "name": "apb0"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "apb.config.list",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "name": "apb0",
+      "clk": "ai_complex_top.clk",
+      "rst_n": "ai_complex_top.rst_n"
+    },
+    "data": {},
+    "error": null
+  },
+  "stderr": ""
+}

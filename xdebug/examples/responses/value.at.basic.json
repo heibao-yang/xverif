@@ -7,12 +7,7 @@
     "time": "10ns"
   },
   "data": {
-    "signal": "top.clk",
-    "time": "10ns",
     "value": "'h1",
     "known": true
-  },
-  "meta": {
-    "truncated": false
   }
 }

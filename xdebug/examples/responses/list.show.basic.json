@@ -7,14 +7,11 @@
     "signal_count": 1
   },
   "data": {
-    "name": "if0",
     "signals": [
       {
         "index": 1,
         "signal": "top.u.valid"
       }
-    ],
-    "signal_count": 1
-  },
-  "warnings": []
+    ]
+  }
 }

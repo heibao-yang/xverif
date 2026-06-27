@@ -1,0 +1,61 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "session.open",
+    "target": {
+      "daidir": "/home/yian/xverif/xdebug/testdata/combined/active_driver/out/simv.daidir",
+      "fsdb": "/home/yian/xverif/xdebug/testdata/combined/active_driver/out/waves.fsdb"
+    },
+    "args": {
+      "name": "sample_combined"
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "session.open",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": {
+      "id": "sample_combined",
+      "session_id": "sample_combined",
+      "mode": "combined",
+      "daidir": "/home/yian/xverif/xdebug/testdata/combined/active_driver/out/simv.daidir",
+      "fsdb": "/home/yian/xverif/xdebug/testdata/combined/active_driver/out/waves.fsdb",
+      "socket_path": "/tmp/xdebug_action_sampling/home/.xdebug/engine/sessions/sample_combined_046ab20da633bbd9/socket",
+      "transport": "uds",
+      "file_dir": "/tmp/xdebug_action_sampling/home/.xdebug/engine/sessions/sample_combined_046ab20da633bbd9/transport",
+      "server_host": "localhost.localdomain"
+    },
+    "summary": {
+      "session_id": "sample_combined",
+      "mode": "combined"
+    },
+    "data": {
+      "session": {
+        "id": "sample_combined",
+        "session_id": "sample_combined",
+        "mode": "combined",
+        "daidir": "/home/yian/xverif/xdebug/testdata/combined/active_driver/out/simv.daidir",
+        "fsdb": "/home/yian/xverif/xdebug/testdata/combined/active_driver/out/waves.fsdb",
+        "socket_path": "/tmp/xdebug_action_sampling/home/.xdebug/engine/sessions/sample_combined_046ab20da633bbd9/socket",
+        "transport": "uds",
+        "file_dir": "/tmp/xdebug_action_sampling/home/.xdebug/engine/sessions/sample_combined_046ab20da633bbd9/transport",
+        "server_host": "localhost.localdomain"
+      }
+    },
+    "findings": [],
+    "suggested_next_actions": [],
+    "warnings": [],
+    "error": null,
+    "meta": {
+      "truncated": false
+    }
+  },
+  "stderr": ""
+}

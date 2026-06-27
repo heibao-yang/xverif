@@ -20,7 +20,6 @@
     "evidence_source": "fsdb_precise_time_static_trace",
     "static_candidate_count": 2,
     "active_check_count": 1,
-    "statement_count": 2,
     "trace_node_count": 2,
     "root_driver": {
       "kind": "assignment",
@@ -29,43 +28,34 @@
     }
   },
   "data": {
-    "signal": "top.u.ready",
-    "requested_time": "120ns",
-    "active_time": "115ns",
-    "driver_status": "resolved",
     "driver": {
       "kind": "assignment",
       "file": "rtl/foo.sv",
       "line": 123,
       "text": "ready <= valid & ~full",
-      "signals": ["top.u.valid", "top.u.full"]
-    },
-    "root_driver": {
-      "kind": "assignment",
-      "file": "rtl/foo.sv",
-      "line": 123
+      "signals": [
+        "top.u.valid",
+        "top.u.full"
+      ]
     },
     "controls": [],
     "events": [],
     "values": {
       "requested": {
-        "top.u.ready": {"value": "1", "known": true}
+        "top.u.ready": {
+          "value": "1",
+          "known": true
+        }
       },
       "active": {
-        "top.u.ready": {"value": "1", "known": true}
+        "top.u.ready": {
+          "value": "1",
+          "known": true
+        }
       }
     },
     "alias_candidates": [],
-    "evidence_source": "fsdb_precise_time_static_trace",
-    "static_candidate_count": 2,
-    "active_check_count": 1,
     "limitations": []
   },
-  "findings": [],
-  "suggested_next_actions": [],
-  "warnings": [],
-  "error": null,
-  "meta": {
-    "truncated": false
-  }
+  "error": null
 }

@@ -1,0 +1,62 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "signal.changes",
+    "target": {
+      "session_id": "sample_wave"
+    },
+    "args": {
+      "signal": "ai_complex_top.clk",
+      "time_range": {
+        "begin": "0ns",
+        "end": "100ns"
+      },
+      "aggregate_only": true
+    },
+    "limits": {
+      "timeout_ms": 120000
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "signal.changes",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "signal": "ai_complex_top.clk",
+      "begin": "0ps",
+      "end": "100ns",
+      "returned_change_rows": 21,
+      "includes_initial_value": true,
+      "actual_transition_count": 20,
+      "semantic_note": "signal.changes returns value-change rows for timeline inspection. Do not use row counts as sampled high cycles; use signal.statistics.high_cycles for clock-sampled activity.",
+      "transition_count": 20,
+      "truncated": false,
+      "first_change": "0ps",
+      "last_change": "100ns"
+    },
+    "data": {
+      "initial_value": {
+        "value": "1'h0",
+        "known": true,
+        "width": 1,
+        "bits": "0"
+      },
+      "final_value": {
+        "value": "1'h0",
+        "known": true,
+        "width": 1,
+        "bits": "0"
+      }
+    },
+    "error": null
+  },
+  "stderr": ""
+}

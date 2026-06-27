@@ -710,21 +710,36 @@ bool Dispatcher::send_to_socket(const std::string& session_id,
         return true;
     }
 
-    // Wrap engine response into xdebug.v1 format
+    // Wrap engine response into xdebug.v1 format.
+    // The engine owns summary construction. Do not infer public summary from
+    // arbitrary data scalars because that creates two public sources for the
+    // same fact.
     Json data_payload = engine_resp.value("data", Json::object());
     response = make_response(request, action, true);
-    // Build summary from data's top-level scalar fields (same logic as router.cpp)
     Json result_summary = data_payload.value("summary", Json::object());
-    if (result_summary.empty()) {
-        for (auto it = data_payload.begin(); it != data_payload.end(); ++it) {
-            if (it->is_string() || it->is_number() || it->is_boolean())
-                result_summary[it.key()] = it.value();
+    if (data_payload.is_object() && data_payload.contains("summary")) {
+        data_payload.erase("summary");
+    }
+    if (result_summary.is_object() && data_payload.is_object()) {
+        for (auto it = result_summary.begin(); it != result_summary.end(); ++it) {
+            auto data_it = data_payload.find(it.key());
+            if (data_it != data_payload.end() && *data_it == it.value()) {
+                data_payload.erase(data_it);
+            }
         }
     }
-    response["summary"] = result_summary;
+    if (result_summary.is_object() && !result_summary.empty()) response["summary"] = result_summary;
+    if (data_payload.is_object() && data_payload.contains("truncated") &&
+        data_payload["truncated"].is_boolean()) {
+        if (data_payload["truncated"].get<bool>()) response["meta"] = {{"truncated", true}};
+        data_payload.erase("truncated");
+    }
+    if (!response.contains("meta") && result_summary.is_object() &&
+        result_summary.contains("truncated") && result_summary["truncated"].is_boolean() &&
+        result_summary["truncated"].get<bool>()) {
+        response["meta"] = {{"truncated", true}};
+    }
     response["data"] = data_payload;
-    if (data_payload.contains("truncated") && data_payload["truncated"].is_boolean())
-        response["meta"] = {{"truncated", data_payload["truncated"].get<bool>()}};
     Json ctx = transport_context(request, "socket.request.end", session_id, socket_path, timeout_ms);
     ctx["elapsed_ms"] = elapsed_ms_since(begin);
     ctx["response"] = xdebug_core::response_summary_for_log(response);

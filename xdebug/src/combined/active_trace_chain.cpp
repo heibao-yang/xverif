@@ -389,15 +389,16 @@ nlohmann::ordered_json build_active_driver_chain_payload(const Json& request,
                                       max_depth, max_nodes);
 
     nlohmann::ordered_json resp;
-    resp["signal"] = signal;
-    resp["start_time"] = req_time;
-    resp["chain_length"] = static_cast<int>(result.chain.size());
-    resp["termination"] = result.termination;
-    resp["evidence_source"] = result.evidence_source.empty()
-        ? nlohmann::ordered_json(nullptr) : nlohmann::ordered_json(result.evidence_source);
-    resp["static_candidate_count"] = result.static_candidate_count;
-    resp["active_check_count"] = result.active_check_count;
-    resp["temporal_boundaries"] = result.stats.temporal_boundaries;
+    resp["summary"] = {
+        {"signal", signal},
+        {"start_time", req_time},
+        {"chain_length", static_cast<int>(result.chain.size())},
+        {"termination", result.termination},
+        {"evidence_source", result.evidence_source.empty()
+            ? nlohmann::ordered_json(nullptr) : nlohmann::ordered_json(result.evidence_source)},
+        {"static_candidate_count", result.static_candidate_count},
+        {"active_check_count", result.active_check_count}
+    };
     resp["chain"] = chain_to_json(result);
     resp["truncated"] = result.truncated;
     return resp;

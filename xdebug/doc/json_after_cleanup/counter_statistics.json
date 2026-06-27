@@ -1,0 +1,60 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "counter.statistics",
+    "target": {
+      "session_id": "sample_wave"
+    },
+    "args": {
+      "clock": "ai_complex_top.clk",
+      "time_range": {
+        "begin": "55ns",
+        "end": "95ns"
+      },
+      "vld": "ai_complex_top.rst_n",
+      "cnt": "ai_complex_top.counter_inc",
+      "max_samples": 1000
+    },
+    "limits": {
+      "timeout_ms": 120000
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "counter.statistics",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "clock": "ai_complex_top.clk",
+      "sampling": "posedge",
+      "begin": "55ns",
+      "end": "95ns",
+      "sample_count": 5,
+      "valid_count": 5,
+      "valid_false_count": 0,
+      "unknown_count": 0,
+      "truncated": false,
+      "cnt": "ai_complex_top.counter_inc",
+      "vld": "ai_complex_top.rst_n",
+      "min_value": "1",
+      "max_value": "5",
+      "average_value": "3",
+      "min_count": 1,
+      "max_count": 1,
+      "min_first_time": "55ns",
+      "max_first_time": "95ns",
+      "min_first_time_ps": 55000,
+      "max_first_time_ps": 95000
+    },
+    "data": {},
+    "error": null
+  },
+  "stderr": ""
+}

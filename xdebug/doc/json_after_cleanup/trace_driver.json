@@ -1,0 +1,294 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "trace.driver",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix_uart"
+    },
+    "args": {
+      "signal": "uart_16550.RXDin"
+    },
+    "limits": {
+      "max_depth": 2,
+      "max_nodes": 20,
+      "max_edges": 50,
+      "max_results": 10
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "trace.driver",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "confidence": "high",
+      "confidence_reason": "exact signal references, source locations, and structured expressions were resolved",
+      "has_statement_only": false,
+      "mode": "driver",
+      "ok": true,
+      "query": "uart_16550.RXDin",
+      "resolution": "signal",
+      "result_count": 3,
+      "truncated": false
+    },
+    "data": {
+      "assignment": {
+        "kind": "continuous_assignment",
+        "lhs": {
+          "kind": "signal",
+          "name": "uart_16550.RXDin",
+          "npi_type": 36,
+          "text": "uart_16550.RXDin"
+        },
+        "location": {
+          "file": "/home/yian/xverif/xdebug/testdata/design/uart/uart_16550.sv",
+          "line": 164
+        },
+        "npi_type": 8,
+        "rhs": {
+          "args": [
+            {
+              "kind": "signal",
+              "name": "uart_16550.loopback",
+              "npi_type": 36,
+              "text": "uart_16550.loopback"
+            },
+            {
+              "kind": "signal",
+              "name": "uart_16550.TXD",
+              "npi_type": 36,
+              "text": "uart_16550.TXD"
+            },
+            {
+              "kind": "signal",
+              "name": "uart_16550.RXD",
+              "npi_type": 36,
+              "text": "uart_16550.RXD"
+            }
+          ],
+          "kind": "operation",
+          "op": "ternary",
+          "op_type": 32,
+          "text": "(uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)"
+        },
+        "rhs_signals": [
+          "uart_16550.RXD",
+          "uart_16550.TXD",
+          "uart_16550.loopback"
+        ],
+        "source": "assign uart_16550.RXDin = (uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)"
+      },
+      "assignments": [
+        {
+          "kind": "continuous_assignment",
+          "lhs": {
+            "kind": "signal",
+            "name": "uart_16550.RXDin",
+            "npi_type": 36,
+            "text": "uart_16550.RXDin"
+          },
+          "location": {
+            "file": "/home/yian/xverif/xdebug/testdata/design/uart/uart_16550.sv",
+            "line": 164
+          },
+          "npi_type": 8,
+          "rhs": {
+            "args": [
+              {
+                "kind": "signal",
+                "name": "uart_16550.loopback",
+                "npi_type": 36,
+                "text": "uart_16550.loopback"
+              },
+              {
+                "kind": "signal",
+                "name": "uart_16550.TXD",
+                "npi_type": 36,
+                "text": "uart_16550.TXD"
+              },
+              {
+                "kind": "signal",
+                "name": "uart_16550.RXD",
+                "npi_type": 36,
+                "text": "uart_16550.RXD"
+              }
+            ],
+            "kind": "operation",
+            "op": "ternary",
+            "op_type": 32,
+            "text": "(uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)"
+          },
+          "rhs_signals": [
+            "uart_16550.RXD",
+            "uart_16550.TXD",
+            "uart_16550.loopback"
+          ],
+          "source": "assign uart_16550.RXDin = (uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)"
+        }
+      ],
+      "control_dependencies": [],
+      "dependency_edges": [
+        {
+          "assignment_type": "continuous_assignment",
+          "confidence": "high",
+          "expr": {
+            "args": [
+              {
+                "kind": "signal",
+                "name": "uart_16550.loopback",
+                "npi_type": 36,
+                "text": "uart_16550.loopback"
+              },
+              {
+                "kind": "signal",
+                "name": "uart_16550.TXD",
+                "npi_type": 36,
+                "text": "uart_16550.TXD"
+              },
+              {
+                "kind": "signal",
+                "name": "uart_16550.RXD",
+                "npi_type": 36,
+                "text": "uart_16550.RXD"
+              }
+            ],
+            "kind": "operation",
+            "op": "ternary",
+            "op_type": 32,
+            "text": "(uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)"
+          },
+          "file": "/home/yian/xverif/xdebug/testdata/design/uart/uart_16550.sv",
+          "from": "uart_16550.loopback",
+          "line": 164,
+          "resolution": "signal",
+          "role": "driver",
+          "source": "assign uart_16550.RXDin = (uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)",
+          "to": "uart_16550.RXDin",
+          "type": "data_dependency"
+        },
+        {
+          "assignment_type": "continuous_assignment",
+          "confidence": "high",
+          "expr": {
+            "args": [
+              {
+                "kind": "signal",
+                "name": "uart_16550.loopback",
+                "npi_type": 36,
+                "text": "uart_16550.loopback"
+              },
+              {
+                "kind": "signal",
+                "name": "uart_16550.TXD",
+                "npi_type": 36,
+                "text": "uart_16550.TXD"
+              },
+              {
+                "kind": "signal",
+                "name": "uart_16550.RXD",
+                "npi_type": 36,
+                "text": "uart_16550.RXD"
+              }
+            ],
+            "kind": "operation",
+            "op": "ternary",
+            "op_type": 32,
+            "text": "(uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)"
+          },
+          "file": "/home/yian/xverif/xdebug/testdata/design/uart/uart_16550.sv",
+          "from": "uart_16550.TXD",
+          "line": 164,
+          "resolution": "signal",
+          "role": "driver",
+          "source": "assign uart_16550.RXDin = (uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)",
+          "to": "uart_16550.RXDin",
+          "type": "data_dependency"
+        },
+        {
+          "assignment_type": "continuous_assignment",
+          "confidence": "high",
+          "expr": {
+            "args": [
+              {
+                "kind": "signal",
+                "name": "uart_16550.loopback",
+                "npi_type": 36,
+                "text": "uart_16550.loopback"
+              },
+              {
+                "kind": "signal",
+                "name": "uart_16550.TXD",
+                "npi_type": 36,
+                "text": "uart_16550.TXD"
+              },
+              {
+                "kind": "signal",
+                "name": "uart_16550.RXD",
+                "npi_type": 36,
+                "text": "uart_16550.RXD"
+              }
+            ],
+            "kind": "operation",
+            "op": "ternary",
+            "op_type": 32,
+            "text": "(uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)"
+          },
+          "file": "/home/yian/xverif/xdebug/testdata/design/uart/uart_16550.sv",
+          "from": "uart_16550.RXD",
+          "line": 164,
+          "resolution": "signal",
+          "role": "driver",
+          "source": "assign uart_16550.RXDin = (uart_16550.loopback ? uart_16550.TXD : uart_16550.RXD)",
+          "to": "uart_16550.RXDin",
+          "type": "data_dependency"
+        }
+      ],
+      "files": [
+        "/home/yian/xverif/xdebug/testdata/design/uart/uart_16550.sv"
+      ],
+      "results": [
+        {
+          "file": "/home/yian/xverif/xdebug/testdata/design/uart/uart_16550.sv",
+          "line": 164,
+          "resolution": "signal",
+          "role": "driver",
+          "signal": "uart_16550.loopback",
+          "source": "assign RXDin = loopback ? TXD : RXD;"
+        },
+        {
+          "file": "/home/yian/xverif/xdebug/testdata/design/uart/uart_16550.sv",
+          "line": 164,
+          "resolution": "signal",
+          "role": "driver",
+          "signal": "uart_16550.TXD",
+          "source": "assign RXDin = loopback ? TXD : RXD;"
+        },
+        {
+          "file": "/home/yian/xverif/xdebug/testdata/design/uart/uart_16550.sv",
+          "line": 164,
+          "resolution": "signal",
+          "role": "driver",
+          "signal": "uart_16550.RXD",
+          "source": "assign RXDin = loopback ? TXD : RXD;"
+        }
+      ],
+      "rhs_signals": [
+        "uart_16550.loopback",
+        "uart_16550.TXD",
+        "uart_16550.RXD"
+      ],
+      "roles": [
+        "driver"
+      ]
+    },
+    "error": null
+  },
+  "stderr": ""
+}

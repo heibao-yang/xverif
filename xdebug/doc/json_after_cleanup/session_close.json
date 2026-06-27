@@ -1,0 +1,57 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "session.close",
+    "target": {
+      "session_id": "json_after_missing_wave"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "session.close",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "session_id": "json_after_missing_wave",
+      "mode": "waveform",
+      "removed": true
+    },
+    "data": {
+      "session": {
+        "id": "json_after_missing_wave",
+        "session_id": "json_after_missing_wave",
+        "mode": "waveform",
+        "fsdb": "/home/yian/xverif/xdebug/testdata/waveform/ai_complex_wave/out/waves.fsdb",
+        "socket_path": "/home/yian/.xdebug/engine/sessions/json_after_missi_684029234a189b91/socket",
+        "transport": "uds",
+        "file_dir": "/home/yian/.xdebug/engine/sessions/json_after_missi_684029234a189b91/transport",
+        "server_host": "localhost.localdomain"
+      },
+      "backends": {
+        "api_version": "xdebug.v1",
+        "request_id": "",
+        "ok": true,
+        "action": "session.kill",
+        "tool": {
+          "name": "xdebug",
+          "version": "0.1.0"
+        },
+        "session": null,
+        "summary": {
+          "id": "json_after_missing_wave",
+          "session_id": "json_after_missing_wave",
+          "killed": true
+        },
+        "data": {},
+        "error": null
+      }
+    },
+    "error": null
+  },
+  "returncode": 0,
+  "stderr_tail": ""
+}

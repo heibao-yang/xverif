@@ -1,0 +1,198 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "fsm.explain",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix_p3"
+    },
+    "args": {
+      "signal": "p3_sem_top.u_mid.u_leaf.state_q"
+    },
+    "limits": {
+      "max_results": 30,
+      "max_depth": 1,
+      "max_nodes": 20,
+      "max_edges": 80
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "fsm.explain",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "signal": "p3_sem_top.u_mid.u_leaf.state_q",
+      "transition_count": 4,
+      "confidence": "low"
+    },
+    "data": {
+      "fsm": {
+        "clock": "clk",
+        "confidence": "low",
+        "confidence_reason": "trace contains statement_only fallback records",
+        "reset": "rst_n",
+        "rules": [
+          {
+            "condition": {
+              "ast": {},
+              "signals": [],
+              "text": ""
+            },
+            "kind": "reset",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/design/p3_semantics/p3_semantics.sv",
+              "line": 71
+            },
+            "next_value": {
+              "args": [
+                {
+                  "kind": "const",
+                  "npi_type": 41,
+                  "parameter": true,
+                  "text": "p3_sem_top.u_mid.u_leaf.RESET_STATE"
+                }
+              ],
+              "kind": "operation",
+              "op": "cast",
+              "op_type": 1012,
+              "text": "enum logic unsigned [1:0] {ST_IDLE = 0, ST_RUN = 1, ST_DONE = 2}'(p3_sem_top.u_mid.u_leaf.RESET_STATE)"
+            },
+            "next_value_text": "enum logic unsigned [1:0] {ST_IDLE = 0, ST_RUN = 1, ST_DONE = 2}'(p3_sem_top.u_mid.u_leaf.RESET_STATE)",
+            "rhs_signals": [],
+            "source": "p3_sem_top.u_mid.u_leaf.state_q <= enum logic unsigned [1:0] {ST_IDLE = 0, ST_RUN = 1, ST_DONE = 2}'(p3_sem_top.u_mid.u_leaf.RESET_STATE);"
+          },
+          {
+            "condition": {
+              "ast": {},
+              "signals": [],
+              "text": ""
+            },
+            "kind": "update",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/design/p3_semantics/p3_semantics.sv",
+              "line": 73
+            },
+            "next_value": {
+              "kind": "unknown",
+              "npi_type": 617,
+              "text": "p3_sem_top.u_mid.u_leaf.state_d"
+            },
+            "next_value_text": "p3_sem_top.u_mid.u_leaf.state_d",
+            "rhs_signals": [],
+            "source": "p3_sem_top.u_mid.u_leaf.state_q <= p3_sem_top.u_mid.u_leaf.state_d;"
+          },
+          {
+            "condition": {
+              "ast": {},
+              "signals": [],
+              "text": ""
+            },
+            "kind": "reset",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/design/p3_semantics/p3_semantics.sv",
+              "line": 69
+            },
+            "next_value": {
+              "kind": "unknown",
+              "text": ""
+            },
+            "next_value_text": "",
+            "rhs_signals": [],
+            "source": "if ((!p3_sem_top.u_mid.u_leaf.rst_n)) ... else ..."
+          },
+          {
+            "condition": {
+              "ast": {},
+              "signals": [],
+              "text": ""
+            },
+            "kind": "reset",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/design/p3_semantics/p3_semantics.sv",
+              "line": 68
+            },
+            "next_value": {
+              "kind": "unknown",
+              "text": ""
+            },
+            "next_value_text": "",
+            "rhs_signals": [],
+            "source": "@(((posedge p3_sem_top.u_mid.u_leaf.clk) or (negedge p3_sem_top.u_mid.u_leaf.rst_n)))"
+          }
+        ],
+        "state_signal": "p3_sem_top.u_mid.u_leaf.state_q",
+        "transitions": [
+          {
+            "condition": {
+              "ast": {},
+              "signals": [],
+              "text": ""
+            },
+            "from": "current",
+            "kind": "reset_transition",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/design/p3_semantics/p3_semantics.sv",
+              "line": 71
+            },
+            "source": "p3_sem_top.u_mid.u_leaf.state_q <= enum logic unsigned [1:0] {ST_IDLE = 0, ST_RUN = 1, ST_DONE = 2}'(p3_sem_top.u_mid.u_leaf.RESET_STATE);",
+            "to": "enum logic unsigned [1:0] {ST_IDLE = 0, ST_RUN = 1, ST_DONE = 2}'(p3_sem_top.u_mid.u_leaf.RESET_STATE)"
+          },
+          {
+            "condition": {
+              "ast": {},
+              "signals": [],
+              "text": ""
+            },
+            "from": "current",
+            "kind": "transition",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/design/p3_semantics/p3_semantics.sv",
+              "line": 73
+            },
+            "source": "p3_sem_top.u_mid.u_leaf.state_q <= p3_sem_top.u_mid.u_leaf.state_d;",
+            "to": "p3_sem_top.u_mid.u_leaf.state_d"
+          },
+          {
+            "condition": {
+              "ast": {},
+              "signals": [],
+              "text": ""
+            },
+            "from": "current",
+            "kind": "reset_transition",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/design/p3_semantics/p3_semantics.sv",
+              "line": 69
+            },
+            "source": "if ((!p3_sem_top.u_mid.u_leaf.rst_n)) ... else ...",
+            "to": ""
+          },
+          {
+            "condition": {
+              "ast": {},
+              "signals": [],
+              "text": ""
+            },
+            "from": "current",
+            "kind": "reset_transition",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/design/p3_semantics/p3_semantics.sv",
+              "line": 68
+            },
+            "source": "@(((posedge p3_sem_top.u_mid.u_leaf.clk) or (negedge p3_sem_top.u_mid.u_leaf.rst_n)))",
+            "to": ""
+          }
+        ]
+      }
+    },
+    "error": null
+  },
+  "stderr": ""
+}

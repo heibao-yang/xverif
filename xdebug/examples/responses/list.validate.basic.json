@@ -7,14 +7,11 @@
     "all_found": true
   },
   "data": {
-    "name": "if0",
     "signals": [
       {
         "signal": "top.u.valid",
         "status": "ok"
       }
-    ],
-    "all_found": true
-  },
-  "warnings": []
+    ]
+  }
 }

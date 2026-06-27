@@ -530,6 +530,12 @@ Json ai_expr_eval_at(const Json& args, std::string& error) {
     ExprTri result = ExprTri::Unknown;
     if (!xdebug_waveform::eval_event_expression(expr, value_map, result, error)) return Json();
     Json data;
+    data["summary"] = {
+        {"expr", expr},
+        {"time", format_time(t)},
+        {"status", xdebug_waveform::expr_tri_text(result)},
+        {"known", result != ExprTri::Unknown}
+    };
     data["expr"] = expr;
     data["time"] = format_time(t);
     data["time_ps"] = t;
@@ -623,6 +629,13 @@ Json ai_window_verify(const Json& args, std::string& error) {
                          {"pass_samples", st.pass}, {"failed_samples", st.fail}, {"unknown_samples", st.unknown}});
     }
     Json data;
+    data["summary"] = {
+        {"all_passed", all_passed},
+        {"sample_count", samples},
+        {"failed_samples", failed_samples},
+        {"unknown_samples", unknown_samples},
+        {"truncated", truncated}
+    };
     data["all_passed"] = all_passed;
     data["sample_count"] = samples;
     data["failed_samples"] = failed_samples;

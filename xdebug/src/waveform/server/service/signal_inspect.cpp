@@ -298,6 +298,12 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
         }, error, samples, truncated)) return Json();
     if (in_stall && stall_cycles > max_stall) max_stall = stall_cycles;
     Json data;
+    data["summary"] = {
+        {"sample_count", samples},
+        {"transfer_count", transfers},
+        {"max_stall_cycles", max_stall},
+        {"truncated", truncated}
+    };
     data["sample_count"] = samples;
     data["transfer_count"] = transfers;
     data["max_stall_cycles"] = max_stall;
@@ -402,6 +408,10 @@ Json ai_detect_anomaly(const Json& args, std::string& error) {
         }
     }
     Json data;
+    data["summary"] = {
+        {"finding_count", findings.size()},
+        {"truncated", max_findings >= 0 && static_cast<int>(findings.size()) >= max_findings}
+    };
     data["finding_count"] = findings.size();
     data["findings"] = findings;
     data["truncated"] = max_findings >= 0 && static_cast<int>(findings.size()) >= max_findings;

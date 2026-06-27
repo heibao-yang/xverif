@@ -1,0 +1,48 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "signal.canonicalize",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix_uart"
+    },
+    "args": {
+      "signal": "uart_16550.RXDin"
+    },
+    "limits": {
+      "max_depth": 2,
+      "max_nodes": 20,
+      "max_edges": 50,
+      "max_results": 10
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "signal.canonicalize",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "query": "uart_16550.RXDin",
+      "ambiguous": false
+    },
+    "data": {
+      "canonical": "uart_16550.RXDin",
+      "rtl_path": null,
+      "leaf": null,
+      "scope": null,
+      "base_signal": null,
+      "select": null,
+      "aliases": [],
+      "fsdb_candidates": [],
+      "port_mappings": []
+    },
+    "error": null
+  },
+  "stderr": ""
+}

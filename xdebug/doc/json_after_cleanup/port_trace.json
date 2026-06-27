@@ -1,0 +1,706 @@
+{
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "port.trace",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "ok": true,
+      "port_count": 5,
+      "query": "if_root_tb.u_src"
+    },
+    "data": {
+      "object": {
+        "full_name": "if_root_tb.u_src",
+        "location": {
+          "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+          "line": 50
+        },
+        "name": "u_src",
+        "npi_type": 32,
+        "text": "if_source  u_src(.rst_n(if_root_tb.rst_n), .sel(if_root_tb.sel), .a(if_root_tb.a), .b(if_root_tb.b), .bus(if_root_tb.link));",
+        "type": "module"
+      },
+      "ports": [
+        {
+          "actual": null,
+          "direction": "input",
+          "highconn": {
+            "full_name": "if_root_tb.rst_n",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 42
+            },
+            "name": "rst_n",
+            "npi_type": 48,
+            "text": "if_root_tb.rst_n",
+            "type": "reg"
+          },
+          "lowconn": {
+            "full_name": "if_root_tb.u_src.rst_n",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 11
+            },
+            "name": "rst_n",
+            "npi_type": 36,
+            "text": "if_root_tb.u_src.rst_n",
+            "type": "net"
+          },
+          "port": {
+            "full_name": "",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 11
+            },
+            "name": "rst_n",
+            "npi_type": 44,
+            "text": "rst_n",
+            "type": "port"
+          },
+          "ref": null,
+          "trace": {
+            "assignment": {
+              "kind": "procedural_assignment",
+              "lhs": {
+                "kind": "signal",
+                "name": "if_root_tb.rst_n",
+                "npi_type": 48,
+                "text": "if_root_tb.rst_n"
+              },
+              "location": {
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "line": 70
+              },
+              "npi_type": 3,
+              "rhs": {
+                "kind": "const",
+                "npi_type": 7,
+                "text": "1'b0"
+              },
+              "rhs_signals": [],
+              "source": "if_root_tb.rst_n = 1'b0;"
+            },
+            "assignments": [
+              {
+                "kind": "procedural_assignment",
+                "lhs": {
+                  "kind": "signal",
+                  "name": "if_root_tb.rst_n",
+                  "npi_type": 48,
+                  "text": "if_root_tb.rst_n"
+                },
+                "location": {
+                  "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                  "line": 70
+                },
+                "npi_type": 3,
+                "rhs": {
+                  "kind": "const",
+                  "npi_type": 7,
+                  "text": "1'b0"
+                },
+                "rhs_signals": [],
+                "source": "if_root_tb.rst_n = 1'b0;"
+              },
+              {
+                "kind": "procedural_assignment",
+                "lhs": {
+                  "kind": "signal",
+                  "name": "if_root_tb.rst_n",
+                  "npi_type": 48,
+                  "text": "if_root_tb.rst_n"
+                },
+                "location": {
+                  "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                  "line": 76
+                },
+                "npi_type": 3,
+                "rhs": {
+                  "kind": "const",
+                  "npi_type": 7,
+                  "text": "1'b1"
+                },
+                "rhs_signals": [],
+                "source": "if_root_tb.rst_n = 1'b1;"
+              }
+            ],
+            "confidence": "low",
+            "confidence_reason": "trace contains statement_only fallback records",
+            "control_dependencies": [],
+            "dependency_edges": [
+              {
+                "confidence": "low",
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "from": "",
+                "line": 70,
+                "resolution": "statement_only",
+                "role": "driver",
+                "source": "if_root_tb.rst_n = 1'b0;",
+                "to": "if_root_tb.rst_n",
+                "type": "statement_only"
+              },
+              {
+                "confidence": "low",
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "from": "",
+                "line": 76,
+                "resolution": "statement_only",
+                "role": "driver",
+                "source": "if_root_tb.rst_n = 1'b1;",
+                "to": "if_root_tb.rst_n",
+                "type": "statement_only"
+              }
+            ],
+            "files": [
+              "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv"
+            ],
+            "has_statement_only": true,
+            "mode": "driver",
+            "ok": true,
+            "query": "if_root_tb.rst_n",
+            "resolution": "statement_only",
+            "result_count": 2,
+            "results": [
+              {
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "line": 70,
+                "resolution": "statement_only",
+                "role": "driver",
+                "signal": "npiAssignment, if_root_tb.rst_n = 'b0;, {/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv : 70}",
+                "source": "    rst_n = 1'b0;"
+              },
+              {
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "line": 76,
+                "resolution": "statement_only",
+                "role": "driver",
+                "signal": "npiAssignment, if_root_tb.rst_n = 'b1;, {/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv : 76}",
+                "source": "    rst_n = 1'b1;"
+              }
+            ],
+            "rhs_signals": [],
+            "roles": [
+              "driver"
+            ],
+            "truncated": false
+          }
+        },
+        {
+          "actual": null,
+          "direction": "input",
+          "highconn": {
+            "full_name": "if_root_tb.sel",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 43
+            },
+            "name": "sel",
+            "npi_type": 48,
+            "text": "if_root_tb.sel",
+            "type": "reg"
+          },
+          "lowconn": {
+            "full_name": "if_root_tb.u_src.sel",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 12
+            },
+            "name": "sel",
+            "npi_type": 36,
+            "text": "if_root_tb.u_src.sel",
+            "type": "net"
+          },
+          "port": {
+            "full_name": "",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 12
+            },
+            "name": "sel",
+            "npi_type": 44,
+            "text": "sel",
+            "type": "port"
+          },
+          "ref": null,
+          "trace": {
+            "assignment": {
+              "kind": "procedural_assignment",
+              "lhs": {
+                "kind": "signal",
+                "name": "if_root_tb.sel",
+                "npi_type": 48,
+                "text": "if_root_tb.sel"
+              },
+              "location": {
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "line": 71
+              },
+              "npi_type": 3,
+              "rhs": {
+                "kind": "const",
+                "npi_type": 7,
+                "text": "1'b0"
+              },
+              "rhs_signals": [],
+              "source": "if_root_tb.sel = 1'b0;"
+            },
+            "assignments": [
+              {
+                "kind": "procedural_assignment",
+                "lhs": {
+                  "kind": "signal",
+                  "name": "if_root_tb.sel",
+                  "npi_type": 48,
+                  "text": "if_root_tb.sel"
+                },
+                "location": {
+                  "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                  "line": 71
+                },
+                "npi_type": 3,
+                "rhs": {
+                  "kind": "const",
+                  "npi_type": 7,
+                  "text": "1'b0"
+                },
+                "rhs_signals": [],
+                "source": "if_root_tb.sel = 1'b0;"
+              },
+              {
+                "kind": "procedural_assignment",
+                "lhs": {
+                  "kind": "signal",
+                  "name": "if_root_tb.sel",
+                  "npi_type": 48,
+                  "text": "if_root_tb.sel"
+                },
+                "location": {
+                  "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                  "line": 77
+                },
+                "npi_type": 3,
+                "rhs": {
+                  "kind": "const",
+                  "npi_type": 7,
+                  "text": "1'b1"
+                },
+                "rhs_signals": [],
+                "source": "if_root_tb.sel = 1'b1;"
+              },
+              {
+                "kind": "procedural_assignment",
+                "lhs": {
+                  "kind": "signal",
+                  "name": "if_root_tb.sel",
+                  "npi_type": 48,
+                  "text": "if_root_tb.sel"
+                },
+                "location": {
+                  "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                  "line": 80
+                },
+                "npi_type": 3,
+                "rhs": {
+                  "kind": "const",
+                  "npi_type": 7,
+                  "text": "1'b0"
+                },
+                "rhs_signals": [],
+                "source": "if_root_tb.sel = 1'b0;"
+              }
+            ],
+            "confidence": "low",
+            "confidence_reason": "trace contains statement_only fallback records",
+            "control_dependencies": [],
+            "dependency_edges": [
+              {
+                "confidence": "low",
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "from": "",
+                "line": 71,
+                "resolution": "statement_only",
+                "role": "driver",
+                "source": "if_root_tb.sel = 1'b0;",
+                "to": "if_root_tb.sel",
+                "type": "statement_only"
+              },
+              {
+                "confidence": "low",
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "from": "",
+                "line": 77,
+                "resolution": "statement_only",
+                "role": "driver",
+                "source": "if_root_tb.sel = 1'b1;",
+                "to": "if_root_tb.sel",
+                "type": "statement_only"
+              },
+              {
+                "confidence": "low",
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "from": "",
+                "line": 80,
+                "resolution": "statement_only",
+                "role": "driver",
+                "source": "if_root_tb.sel = 1'b0;",
+                "to": "if_root_tb.sel",
+                "type": "statement_only"
+              }
+            ],
+            "files": [
+              "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv"
+            ],
+            "has_statement_only": true,
+            "mode": "driver",
+            "ok": true,
+            "query": "if_root_tb.sel",
+            "resolution": "statement_only",
+            "result_count": 3,
+            "results": [
+              {
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "line": 71,
+                "resolution": "statement_only",
+                "role": "driver",
+                "signal": "npiAssignment, if_root_tb.sel = 'b0;, {/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv : 71}",
+                "source": "    sel   = 1'b0;"
+              },
+              {
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "line": 77,
+                "resolution": "statement_only",
+                "role": "driver",
+                "signal": "npiAssignment, if_root_tb.sel = 'b1;, {/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv : 77}",
+                "source": "    sel   = 1'b1;  // u_src drives link.data <= a at 15ns"
+              },
+              {
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "line": 80,
+                "resolution": "statement_only",
+                "role": "driver",
+                "signal": "npiAssignment, if_root_tb.sel = 'b0;, {/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv : 80}",
+                "source": "    sel = 1'b0;    // u_src drives link.data <= b at 25ns"
+              }
+            ],
+            "rhs_signals": [],
+            "roles": [
+              "driver"
+            ],
+            "truncated": false
+          }
+        },
+        {
+          "actual": null,
+          "direction": "input",
+          "highconn": {
+            "full_name": "if_root_tb.a",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 44
+            },
+            "name": "a",
+            "npi_type": 48,
+            "text": "if_root_tb.a",
+            "type": "reg"
+          },
+          "lowconn": {
+            "full_name": "if_root_tb.u_src.a",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 13
+            },
+            "name": "a",
+            "npi_type": 36,
+            "text": "if_root_tb.u_src.a",
+            "type": "net"
+          },
+          "port": {
+            "full_name": "",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 13
+            },
+            "name": "a",
+            "npi_type": 44,
+            "text": "a",
+            "type": "port"
+          },
+          "ref": null,
+          "trace": {
+            "assignment": {
+              "kind": "procedural_assignment",
+              "lhs": {
+                "kind": "signal",
+                "name": "if_root_tb.a",
+                "npi_type": 48,
+                "text": "if_root_tb.a"
+              },
+              "location": {
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "line": 72
+              },
+              "npi_type": 3,
+              "rhs": {
+                "kind": "const",
+                "npi_type": 7,
+                "text": "8'ha5"
+              },
+              "rhs_signals": [],
+              "source": "if_root_tb.a = 8'ha5;"
+            },
+            "assignments": [
+              {
+                "kind": "procedural_assignment",
+                "lhs": {
+                  "kind": "signal",
+                  "name": "if_root_tb.a",
+                  "npi_type": 48,
+                  "text": "if_root_tb.a"
+                },
+                "location": {
+                  "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                  "line": 72
+                },
+                "npi_type": 3,
+                "rhs": {
+                  "kind": "const",
+                  "npi_type": 7,
+                  "text": "8'ha5"
+                },
+                "rhs_signals": [],
+                "source": "if_root_tb.a = 8'ha5;"
+              }
+            ],
+            "confidence": "low",
+            "confidence_reason": "trace contains statement_only fallback records",
+            "control_dependencies": [],
+            "dependency_edges": [
+              {
+                "confidence": "low",
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "from": "",
+                "line": 72,
+                "resolution": "statement_only",
+                "role": "driver",
+                "source": "if_root_tb.a = 8'ha5;",
+                "to": "if_root_tb.a",
+                "type": "statement_only"
+              }
+            ],
+            "files": [
+              "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv"
+            ],
+            "has_statement_only": true,
+            "mode": "driver",
+            "ok": true,
+            "query": "if_root_tb.a",
+            "resolution": "statement_only",
+            "result_count": 1,
+            "results": [
+              {
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "line": 72,
+                "resolution": "statement_only",
+                "role": "driver",
+                "signal": "npiAssignment, if_root_tb.a = 'ha5;, {/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv : 72}",
+                "source": "    a     = 8'hA5;"
+              }
+            ],
+            "rhs_signals": [],
+            "roles": [
+              "driver"
+            ],
+            "truncated": false
+          }
+        },
+        {
+          "actual": null,
+          "direction": "input",
+          "highconn": {
+            "full_name": "if_root_tb.b",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 45
+            },
+            "name": "b",
+            "npi_type": 48,
+            "text": "if_root_tb.b",
+            "type": "reg"
+          },
+          "lowconn": {
+            "full_name": "if_root_tb.u_src.b",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 14
+            },
+            "name": "b",
+            "npi_type": 36,
+            "text": "if_root_tb.u_src.b",
+            "type": "net"
+          },
+          "port": {
+            "full_name": "",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 14
+            },
+            "name": "b",
+            "npi_type": 44,
+            "text": "b",
+            "type": "port"
+          },
+          "ref": null,
+          "trace": {
+            "assignment": {
+              "kind": "procedural_assignment",
+              "lhs": {
+                "kind": "signal",
+                "name": "if_root_tb.b",
+                "npi_type": 48,
+                "text": "if_root_tb.b"
+              },
+              "location": {
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "line": 73
+              },
+              "npi_type": 3,
+              "rhs": {
+                "kind": "const",
+                "npi_type": 7,
+                "text": "8'h5a"
+              },
+              "rhs_signals": [],
+              "source": "if_root_tb.b = 8'h5a;"
+            },
+            "assignments": [
+              {
+                "kind": "procedural_assignment",
+                "lhs": {
+                  "kind": "signal",
+                  "name": "if_root_tb.b",
+                  "npi_type": 48,
+                  "text": "if_root_tb.b"
+                },
+                "location": {
+                  "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                  "line": 73
+                },
+                "npi_type": 3,
+                "rhs": {
+                  "kind": "const",
+                  "npi_type": 7,
+                  "text": "8'h5a"
+                },
+                "rhs_signals": [],
+                "source": "if_root_tb.b = 8'h5a;"
+              }
+            ],
+            "confidence": "low",
+            "confidence_reason": "trace contains statement_only fallback records",
+            "control_dependencies": [],
+            "dependency_edges": [
+              {
+                "confidence": "low",
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "from": "",
+                "line": 73,
+                "resolution": "statement_only",
+                "role": "driver",
+                "source": "if_root_tb.b = 8'h5a;",
+                "to": "if_root_tb.b",
+                "type": "statement_only"
+              }
+            ],
+            "files": [
+              "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv"
+            ],
+            "has_statement_only": true,
+            "mode": "driver",
+            "ok": true,
+            "query": "if_root_tb.b",
+            "resolution": "statement_only",
+            "result_count": 1,
+            "results": [
+              {
+                "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+                "line": 73,
+                "resolution": "statement_only",
+                "role": "driver",
+                "signal": "npiAssignment, if_root_tb.b = 'h5a;, {/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv : 73}",
+                "source": "    b     = 8'h5A;"
+              }
+            ],
+            "rhs_signals": [],
+            "roles": [
+              "driver"
+            ],
+            "truncated": false
+          }
+        },
+        {
+          "actual": null,
+          "direction": "direction_-1",
+          "highconn": {
+            "full_name": "if_root_tb.link",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 48
+            },
+            "name": "link",
+            "npi_type": 608,
+            "text": "if_root_tb.link",
+            "type": "ref_obj"
+          },
+          "lowconn": {
+            "full_name": "if_root_tb.u_src.bus",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 15
+            },
+            "name": "bus",
+            "npi_type": 608,
+            "text": "if_root_tb.u_src.bus",
+            "type": "ref_obj"
+          },
+          "port": {
+            "full_name": "",
+            "location": {
+              "file": "/home/yian/xverif/xdebug/testdata/combined/interface_port_root/if_root_tb.sv",
+              "line": 15
+            },
+            "name": "bus",
+            "npi_type": 44,
+            "text": "bus",
+            "type": "port"
+          },
+          "ref": null,
+          "trace": {
+            "assignments": [],
+            "confidence": "unknown",
+            "confidence_reason": "",
+            "control_dependencies": [],
+            "dependency_edges": [],
+            "files": [],
+            "has_statement_only": false,
+            "mode": "driver",
+            "ok": true,
+            "query": "if_root_tb.link",
+            "resolution": "unknown",
+            "result_count": 0,
+            "results": [],
+            "rhs_signals": [],
+            "roles": [],
+            "truncated": false
+          }
+        }
+      ]
+    },
+    "error": null
+  },
+  "stderr": ""
+}

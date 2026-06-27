@@ -16,24 +16,55 @@
   },
   "data": {
     "chain": [
-      {"index": 0, "signal": "top.data_out", "time": "50ns", "active_time": "50ns",
-       "value": "8'hA5", "value_known": true,
-       "driver_kind": "cont_assign", "driver": "assign out = mid", "file": "tb.sv", "line": 88,
-       "hop": "→", "next": "top.mid"},
-      {"index": 1, "signal": "top.mid", "time": "50ns", "active_time": "50ns",
-       "value": "8'hA5", "value_known": true,
-       "driver_kind": "cont_assign", "driver": "assign mid = in", "file": "dut.sv", "line": 45,
-       "hop": "→", "next": "top.in"},
-      {"index": 2, "signal": "top.in", "time": "50ns", "active_time": "50ns",
-       "value": "8'hA5", "value_known": true,
-       "driver_kind": "primary_input", "driver": "(primary input)", "file": "", "line": 0,
-       "hop": "■", "next": ""}
+      {
+        "index": 0,
+        "signal": "top.data_out",
+        "time": "50ns",
+        "active_time": "50ns",
+        "value": "8'hA5",
+        "value_known": true,
+        "driver_kind": "cont_assign",
+        "driver": "assign out = mid",
+        "file": "tb.sv",
+        "line": 88,
+        "hop": "→",
+        "next": "top.mid"
+      },
+      {
+        "index": 1,
+        "signal": "top.mid",
+        "time": "50ns",
+        "active_time": "50ns",
+        "value": "8'hA5",
+        "value_known": true,
+        "driver_kind": "cont_assign",
+        "driver": "assign mid = in",
+        "file": "dut.sv",
+        "line": 45,
+        "hop": "→",
+        "next": "top.in"
+      },
+      {
+        "index": 2,
+        "signal": "top.in",
+        "time": "50ns",
+        "active_time": "50ns",
+        "value": "8'hA5",
+        "value_known": true,
+        "driver_kind": "primary_input",
+        "driver": "(primary input)",
+        "file": "",
+        "line": 0,
+        "hop": "■",
+        "next": ""
+      }
     ],
-    "stats": {"calls": 3, "edgecheck_direct": 2, "fallback": 0, "temporal_boundaries": 0},
-    "evidence_source": "fsdb_precise_time_static_trace",
-    "static_candidate_count": 2,
-    "active_check_count": 1,
+    "stats": {
+      "calls": 3,
+      "edgecheck_direct": 2,
+      "fallback": 0,
+      "temporal_boundaries": 0
+    },
     "limitations": []
-  },
-  "meta": {"truncated": false}
+  }
 }

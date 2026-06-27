@@ -1,0 +1,47 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "list.show",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix_wave"
+    },
+    "args": {
+      "name": "basic"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "list.show",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "name": "basic",
+      "signal_count": 3
+    },
+    "data": {
+      "signals": [
+        {
+          "index": 1,
+          "signal": "ai_complex_top.clk"
+        },
+        {
+          "index": 2,
+          "signal": "ai_complex_top.rst_n"
+        },
+        {
+          "index": 3,
+          "signal": "ai_complex_top.sig_a"
+        }
+      ]
+    },
+    "error": null
+  },
+  "stderr": ""
+}

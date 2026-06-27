@@ -328,7 +328,7 @@ def run_nonaxi(xdebug, fsdb):
         hint = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "time": "75ns", "format": "hex", "slice_hint": {"chunk_width": 4, "count": 2}})
         require(hint["data"]["xbit_hints"]["status"] == "ready", "xbit hints not generated")
         unsupported = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "time": "75ns", "format": "array_indexed"})
-        require(unsupported["data"]["status"] == "unsupported_format", "array_indexed unsupported diagnostic missing")
+        require(unsupported["summary"]["status"] == "unsupported_format", "array_indexed unsupported diagnostic missing")
         r.query("value.at", args={"signal": "ai_complex_top.no_such", "time": "10ns"}, expect_ok=False)
 
         created = r.query("list.create", args={"name": "basic"})
@@ -343,7 +343,7 @@ def run_nonaxi(xdebug, fsdb):
         values = r.query("list.value_at", args={"name": "basic", "time": "75ns", "format": "hex"})
         require("summary" not in values["data"], "list.value_at generated nested data.summary")
         validated = r.query("list.validate", args={"name": "basic"})
-        require("all_found" in validated["data"], "list.validate did not expose all_found at source")
+        require("all_found" in validated["summary"], "list.validate did not expose all_found at source")
         require("summary" not in validated["data"], "list.validate generated nested data.summary")
         diff = r.query("list.diff", args={"name": "basic", "begin": "0ns", "end": "120ns"})
         require("ns" in diff["summary"]["diff_time"] or "ps" in diff["summary"]["diff_time"], "list.diff did not return time")
@@ -457,7 +457,7 @@ def run_nonaxi(xdebug, fsdb):
         require(win["summary"]["all_passed"] is True, "window.verify expected pass")
 
         changes = r.query("signal.changes", args={"signal": "ai_complex_top.sig_a", "time_range": {"begin": "0ns", "end": "120ns"}, "limit": 2})
-        require(changes["data"]["truncated"] is True, "signal.changes did not truncate")
+        require(changes["meta"]["truncated"] is True, "signal.changes did not truncate")
         stab = r.query("signal.stability", args={"signal": "ai_complex_top.stable_sig", "time_range": {"begin": "0ns", "end": "400ns"}})
         require(stab["data"]["stable"] is True, "stable_sig should be stable")
         trend = r.query("signal.trend", args={"signal": "ai_complex_top.counter_nonmono", "clock": "ai_complex_top.clk", "time_range": {"begin": "40ns", "end": "110ns"}})

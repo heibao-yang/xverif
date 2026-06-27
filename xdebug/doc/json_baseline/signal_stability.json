@@ -1,0 +1,90 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "signal.stability",
+    "target": {
+      "session_id": "sample_wave"
+    },
+    "args": {
+      "signal": "ai_complex_top.rst_n",
+      "time_range": {
+        "begin": "80ns",
+        "end": "120ns"
+      }
+    },
+    "limits": {
+      "timeout_ms": 120000
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "signal.stability",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "signal": "ai_complex_top.rst_n",
+      "begin": "80ns",
+      "end": "120ns",
+      "transition_count": 1,
+      "truncated": false,
+      "first_change": "80ns",
+      "last_change": "80ns",
+      "stable": true
+    },
+    "data": {
+      "signal": "ai_complex_top.rst_n",
+      "begin": "80ns",
+      "end": "120ns",
+      "changes": [
+        {
+          "time": "80ns",
+          "time_ps": 80000,
+          "value": {
+            "value": "1'h1",
+            "known": true,
+            "width": 1,
+            "bits": "1"
+          }
+        }
+      ],
+      "transition_count": 1,
+      "truncated": false,
+      "initial_value": {
+        "value": "1'h1",
+        "known": true,
+        "width": 1,
+        "bits": "1"
+      },
+      "final_value": {
+        "value": "1'h1",
+        "known": true,
+        "width": 1,
+        "bits": "1"
+      },
+      "first_change": "80ns",
+      "last_change": "80ns",
+      "stable": true,
+      "value": {
+        "value": "1'h1",
+        "known": true,
+        "width": 1,
+        "bits": "1"
+      }
+    },
+    "findings": [],
+    "suggested_next_actions": [],
+    "warnings": [],
+    "error": null,
+    "meta": {
+      "truncated": false
+    }
+  },
+  "stderr": ""
+}

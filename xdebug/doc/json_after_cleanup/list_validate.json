@@ -1,0 +1,50 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "list.validate",
+    "target": {
+      "session_id": "sample_wave"
+    },
+    "args": {
+      "name": "basic"
+    },
+    "limits": {
+      "timeout_ms": 120000
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "list.validate",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "name": "basic",
+      "all_found": true
+    },
+    "data": {
+      "signals": [
+        {
+          "signal": "ai_complex_top.clk",
+          "status": "ok"
+        },
+        {
+          "signal": "ai_complex_top.rst_n",
+          "status": "ok"
+        },
+        {
+          "signal": "ai_complex_top.counter_inc",
+          "status": "ok"
+        }
+      ]
+    },
+    "error": null
+  },
+  "stderr": ""
+}

@@ -1,0 +1,34 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "apb.query",
+    "output": {
+      "verbosity": "compact"
+    },
+    "target": {
+      "session_id": "fix_wave"
+    },
+    "args": {
+      "name": "apb0",
+      "direction": "wr"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": true,
+    "action": "apb.query",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {
+      "name": "apb0",
+      "direction": "wr",
+      "count": 2
+    },
+    "data": {},
+    "error": null
+  },
+  "stderr": ""
+}

@@ -12,11 +12,7 @@ Json make_response(const Json& request, const std::string& action, bool ok) {
     response["session"] = nullptr;
     response["summary"] = Json::object();
     response["data"] = ok ? Json::object() : Json(nullptr);
-    response["findings"] = Json::array();
-    response["suggested_next_actions"] = Json::array();
-    response["warnings"] = Json::array();
     response["error"] = nullptr;
-    response["meta"] = {{"truncated", false}};
     return response;
 }
 
@@ -29,9 +25,7 @@ Json make_error(const Json& request,
     response["error"] = {
         {"code", code},
         {"message", message},
-        {"recoverable", recoverable},
-        {"candidates", Json::array()},
-        {"suggested_actions", Json::array()}
+        {"recoverable", recoverable}
     };
     return response;
 }

@@ -1,0 +1,38 @@
+{
+  "request": {
+    "api_version": "xdebug.v1",
+    "action": "session.doctor",
+    "target": {
+      "session_id": "missing_sampling_session"
+    },
+    "output": {
+      "verbosity": "compact"
+    }
+  },
+  "response": {
+    "api_version": "xdebug.v1",
+    "ok": false,
+    "action": "session.doctor",
+    "tool": {
+      "name": "xdebug",
+      "version": "0.1.0"
+    },
+    "session": null,
+    "summary": {},
+    "data": null,
+    "findings": [],
+    "suggested_next_actions": [],
+    "warnings": [],
+    "error": {
+      "code": "SESSION_NOT_FOUND",
+      "message": "session not found: missing_sampling_session",
+      "recoverable": true,
+      "candidates": [],
+      "suggested_actions": []
+    },
+    "meta": {
+      "truncated": false
+    }
+  },
+  "stderr": ""
+}
