@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "trace.load: 查找信号 load。",
+  "x-purpose": "查找信号 load。",
+  "x-how_it_works": "从设计数据库遍历信号使用点。",
+  "x-when_to_use": "回答信号影响到哪里。",
+  "x-arg_contract_notes": "required: signal"
 }

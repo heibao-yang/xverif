@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "fsm.explain: 解释 FSM 状态。",
+  "x-purpose": "解释 FSM 状态。",
+  "x-how_it_works": "围绕 state signal 分析状态更新和转移条件。",
+  "x-when_to_use": "帮助理解状态机为什么跳转。",
+  "x-arg_contract_notes": "required: signal"
 }

@@ -48,7 +48,8 @@
                 "type": "string"
               }
             }
-          ]
+          ],
+          "description": "信号列表，或 alias 到信号路径的映射。"
         },
         "time": {
           "type": "string"
@@ -75,13 +76,15 @@
           "type": "integer"
         },
         "expr": {
-          "type": "string"
+          "type": "string",
+          "description": "需要求值或匹配的布尔表达式。"
         },
         "scope": {
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -192,7 +195,8 @@
           "type": "string"
         },
         "clk": {
-          "type": "string"
+          "type": "string",
+          "description": "事件配置使用的 clock 信号路径。"
         },
         "payload": {
           "type": "string"
@@ -299,5 +303,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "event.export: 导出满足表达式的事件。",
+  "x-purpose": "导出满足表达式的事件。",
+  "x-how_it_works": "与 event.find 同样分析，但按 export 模式返回/写出更多命中数据。",
+  "x-when_to_use": "把事件列表交给后处理或报告。",
+  "x-arg_contract_notes": "required: expr; also one of: name / clk + signals"
 }

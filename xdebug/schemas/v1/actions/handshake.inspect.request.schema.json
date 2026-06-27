@@ -105,10 +105,12 @@
           "type": "string"
         },
         "valid": {
-          "type": "string"
+          "type": "string",
+          "description": "valid-ready 握手或采样检查中的 valid 信号路径。"
         },
         "ready": {
-          "type": "string"
+          "type": "string",
+          "description": "valid-ready 握手中的 ready 信号路径。"
         },
         "port": {
           "type": "string"
@@ -189,7 +191,8 @@
           "type": "boolean"
         },
         "clock": {
-          "type": "string"
+          "type": "string",
+          "description": "采样、统计或协议检查使用的 clock 信号路径。"
         },
         "clk": {
           "type": "string"
@@ -288,5 +291,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "handshake.inspect: 检查 valid/ready 握手。",
+  "x-purpose": "检查 valid/ready 握手。",
+  "x-how_it_works": "按 clock 采样 valid/ready/data，统计 stall、transfer 和数据稳定性违规。",
+  "x-when_to_use": "定位握手停顿和协议风险。",
+  "x-arg_contract_notes": "required: clock, valid, ready"
 }

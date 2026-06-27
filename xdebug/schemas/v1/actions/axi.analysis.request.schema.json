@@ -81,7 +81,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "axi.analysis: 汇总 AXI 行为。",
+  "x-purpose": "汇总 AXI 行为。",
+  "x-how_it_works": "基于 AXI 解析结果统计 channel、latency、stall 等。",
+  "x-when_to_use": "快速判断 AXI 接口健康度。",
+  "x-arg_contract_notes": "required: name"
 }

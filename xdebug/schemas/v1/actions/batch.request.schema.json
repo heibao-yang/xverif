@@ -98,7 +98,8 @@
           "type": "array",
           "items": {
             "type": "object"
-          }
+          },
+          "description": "batch action 中按顺序执行的 request 列表。"
         },
         "session_id": {
           "type": "string"
@@ -285,5 +286,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "batch: 批量执行多个 xdebug request。",
+  "x-purpose": "批量执行多个 xdebug request。",
+  "x-how_it_works": "按 requests 顺序复用同一入口逐条调度，汇总每条响应。",
+  "x-when_to_use": "减少多轮 IPC 和保持一组查询的上下文一致。",
+  "x-arg_contract_notes": "required: requests"
 }

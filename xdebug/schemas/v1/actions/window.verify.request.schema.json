@@ -90,7 +90,8 @@
           "type": "array",
           "items": {
             "type": "object"
-          }
+          },
+          "description": "需要验证的条件列表。"
         },
         "time_range": {
           "type": "object"
@@ -189,7 +190,8 @@
           "type": "boolean"
         },
         "clock": {
-          "type": "string"
+          "type": "string",
+          "description": "采样、统计或协议检查使用的 clock 信号路径。"
         },
         "clk": {
           "type": "string"
@@ -287,5 +289,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "window.verify: 按 clock 在窗口内验证条件。",
+  "x-purpose": "按 clock 在窗口内验证条件。",
+  "x-how_it_works": "按 clock edge 采样 signals，逐个 condition 统计 pass/fail/unknown。",
+  "x-when_to_use": "判断协议或断言类条件是否持续满足。",
+  "x-arg_contract_notes": "required: clock, conditions"
 }

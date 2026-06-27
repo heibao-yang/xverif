@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "trace.expand: 展开 driver/load 图。",
+  "x-purpose": "展开 driver/load 图。",
+  "x-how_it_works": "从 root signal 递归 trace，做节点/边限制和去重聚合。",
+  "x-when_to_use": "生成可供 AI 总结的因果图。",
+  "x-arg_contract_notes": "required: signal"
 }

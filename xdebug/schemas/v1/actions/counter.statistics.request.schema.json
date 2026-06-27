@@ -38,7 +38,8 @@
       ],
       "properties": {
         "clock": {
-          "type": "string"
+          "type": "string",
+          "description": "采样、统计或协议检查使用的 clock 信号路径。"
         },
         "sampling": {
           "type": "string",
@@ -48,7 +49,8 @@
           ]
         },
         "time_range": {
-          "type": "object"
+          "type": "object",
+          "description": "查询或分析的时间窗口。"
         },
         "vld": {
           "oneOf": [
@@ -74,10 +76,12 @@
               },
               "additionalProperties": true
             }
-          ]
+          ],
+          "description": "计数器统计使用的 valid 信号路径。"
         },
         "cnt": {
-          "type": "string"
+          "type": "string",
+          "description": "计数器统计使用的 counter 信号路径。"
         },
         "max_samples": {
           "type": "integer"
@@ -235,5 +239,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "counter.statistics: 统计计数器行为。",
+  "x-purpose": "统计计数器行为。",
+  "x-how_it_works": "按 clock/vld/cnt 采样，分析递增、回绕、停顿和异常。",
+  "x-when_to_use": "判断计数器是否符合预期。",
+  "x-arg_contract_notes": "required: clock, time_range, vld, cnt"
 }

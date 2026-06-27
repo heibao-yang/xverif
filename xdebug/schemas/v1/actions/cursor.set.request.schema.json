@@ -51,7 +51,8 @@
           ]
         },
         "time": {
-          "type": "string"
+          "type": "string",
+          "description": "查询或验证的目标时间点。"
         },
         "requested_time": {
           "type": "string"
@@ -81,7 +82,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -287,5 +289,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "cursor.set: 保存命名时间游标。",
+  "x-purpose": "保存命名时间游标。",
+  "x-how_it_works": "解析 time/at 为 FSDB 时间，写入 CursorManager，可设 active。",
+  "x-when_to_use": "给后续窗口、比较和人工定位复用时间点。",
+  "x-arg_contract_notes": "required: name, time"
 }

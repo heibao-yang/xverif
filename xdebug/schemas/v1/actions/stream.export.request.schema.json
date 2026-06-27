@@ -32,7 +32,8 @@
       ],
       "properties": {
         "stream": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存 stream 配置名称。"
         },
         "kind": {
           "type": "string",
@@ -40,7 +41,8 @@
             "transfer",
             "packet",
             "packet_beats"
-          ]
+          ],
+          "description": "导出或查询的结果类型。"
         },
         "format": {
           "type": "string",
@@ -51,7 +53,8 @@
           ]
         },
         "output_file": {
-          "type": "string"
+          "type": "string",
+          "description": "导出结果写入的文件路径。"
         },
         "start": {
           "type": "string"
@@ -231,5 +234,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "stream.export: 导出 stream 查询结果。",
+  "x-purpose": "导出 stream 查询结果。",
+  "x-how_it_works": "运行 stream query 后按 kind/format 写出。packet_beats 需要 output_file。",
+  "x-when_to_use": "把流数据输出给外部脚本。",
+  "x-arg_contract_notes": "required: stream; when kind=packet_beats: output_file"
 }

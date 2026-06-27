@@ -3,17 +3,48 @@
   "$id": "xdebug.axi.export.response.v1",
   "title": "axi.export response",
   "type": "object",
-  "required": ["api_version", "ok", "action", "summary", "data"],
+  "required": [
+    "api_version",
+    "ok",
+    "action",
+    "summary",
+    "data"
+  ],
   "properties": {
-    "api_version": {"type": "string", "enum": ["xdebug.v1"]},
-    "request_id": {"type": "string"},
-    "ok": {"type": "boolean"},
-    "action": {"type": "string", "enum": ["axi.export"]},
-    "summary": {"type": "object", "additionalProperties": true},
-    "data": {"type": "object"},
-    "warnings": {"type": "array"},
+    "api_version": {
+      "type": "string",
+      "enum": [
+        "xdebug.v1"
+      ]
+    },
+    "request_id": {
+      "type": "string"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "axi.export"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "data": {
+      "type": "object"
+    },
+    "warnings": {
+      "type": "array"
+    },
     "error": {},
-    "meta": {"type": "object"}
+    "meta": {
+      "type": "object"
+    }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "axi.export response: 导出 AXI 数据。",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
 }

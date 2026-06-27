@@ -81,7 +81,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "axi.outstanding_timeline: 实验性 AXI outstanding 时间线。",
+  "x-purpose": "实验性 AXI outstanding 时间线。",
+  "x-how_it_works": "跟踪请求和响应，统计未完成事务数量随时间变化。",
+  "x-when_to_use": "发现 outstanding 积压或乱序风险。",
+  "x-arg_contract_notes": "required: name"
 }

@@ -32,13 +32,15 @@
       "type": "object",
       "properties": {
         "config_path": {
-          "type": "string"
+          "type": "string",
+          "description": "输入配置文件路径。"
         },
         "json_path": {
           "type": "string"
         },
         "rc_path": {
-          "type": "string"
+          "type": "string",
+          "description": "输出 nWave rc 文件路径。"
         },
         "output_path": {
           "type": "string"
@@ -221,5 +223,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "rc.generate: 根据分组生成波形 rc。",
+  "x-purpose": "根据分组生成波形 rc。",
+  "x-how_it_works": "读取配置并写出 rc_path，返回 group/signal 统计。",
+  "x-when_to_use": "把调试信号集合导入波形工具。",
+  "x-arg_contract_notes": "required: config_path, rc_path"
 }

@@ -18,6 +18,7 @@ description: >
 | 任务 | 读取 |
 | --- | --- |
 | 查询 daidir、FSDB、波形值、driver、active driver、APB/AXI、verify、rc | [references/xdebug/overview.md](references/xdebug/overview.md) |
+| 查询 xdebug action 作用、适用场景、工作原理、参数合同 | [references/xdebug/action-reference.md](references/xdebug/action-reference.md) |
 | 构造 xdebug JSON request、raw CLI request、查 action/schema | [references/xdebug/json-api.md](references/xdebug/json-api.md) |
 | 按流程做 xdebug debug | [references/xdebug/recipes.md](references/xdebug/recipes.md) |
 | 参考 xdebug 实战示例和证据链写法 | [references/xdebug/examples.md](references/xdebug/examples.md) |

@@ -48,7 +48,8 @@
           "type": "array",
           "items": {
             "type": "object"
-          }
+          },
+          "description": "需要加载的 stream 配置列表。"
         },
         "clock": {
           "type": "string"
@@ -215,5 +216,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "stream.config.load: 加载 stream 配置。",
+  "x-purpose": "加载 stream 配置。",
+  "x-how_it_works": "把 stream 定义写入 stream manager。",
+  "x-when_to_use": "定义 valid/ready/data 类流接口。",
+  "x-arg_contract_notes": "required: streams"
 }

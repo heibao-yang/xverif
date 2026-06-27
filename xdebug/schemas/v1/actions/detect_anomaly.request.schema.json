@@ -48,7 +48,8 @@
                 "type": "string"
               }
             }
-          ]
+          ],
+          "description": "信号列表，或 alias 到信号路径的映射。"
         },
         "time": {
           "type": "string"
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "detect_anomaly: 扫描常见波形异常。",
+  "x-purpose": "扫描常见波形异常。",
+  "x-how_it_works": "对 signals 执行 glitch/stuck/unknown 等检查并返回 findings。",
+  "x-when_to_use": "快速发现值得展开的异常窗口。",
+  "x-arg_contract_notes": "required: signals"
 }

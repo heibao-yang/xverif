@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "list": {
           "type": "string"
@@ -221,5 +222,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "list.export: 导出 list 数据。",
+  "x-purpose": "导出 list 数据。",
+  "x-how_it_works": "读取 list 信号并按请求格式写出波形表。",
+  "x-when_to_use": "把窗口数据交给外部分析。",
+  "x-arg_contract_notes": "required: name"
 }

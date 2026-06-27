@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "procedural.assignment: 分析过程赋值。",
+  "x-purpose": "分析过程赋值。",
+  "x-how_it_works": "查找 always/procedural assignment 的分支、条件和 RHS。",
+  "x-when_to_use": "解释寄存器或变量在哪些分支被赋值。",
+  "x-arg_contract_notes": "required: signal"
 }

@@ -63,10 +63,12 @@
           "type": "string"
         },
         "from_signal": {
-          "type": "string"
+          "type": "string",
+          "description": "路径查询的起点信号。"
         },
         "to_signal": {
-          "type": "string"
+          "type": "string",
+          "description": "路径查询的终点信号。"
         },
         "file": {
           "type": "string"
@@ -287,5 +289,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "trace.path: 寻找两个信号之间路径。",
+  "x-purpose": "寻找两个信号之间路径。",
+  "x-how_it_works": "在设计依赖图中从 from_signal 到 to_signal 搜索。",
+  "x-when_to_use": "证明两个信号是否存在因果连接。",
+  "x-arg_contract_notes": "required: from_signal, to_signal"
 }

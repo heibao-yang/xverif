@@ -102,7 +102,8 @@
           }
         },
         "session_id": {
-          "type": "string"
+          "type": "string",
+          "description": "目标 xdebug session 标识。"
         },
         "valid": {
           "type": "string"
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "session.kill: 强制移除指定 session。",
+  "x-purpose": "强制移除指定 session。",
+  "x-how_it_works": "按 session_id 清理记录和关联资源。",
+  "x-when_to_use": "处理异常残留 session。",
+  "x-arg_contract_notes": "required: session_id"
 }

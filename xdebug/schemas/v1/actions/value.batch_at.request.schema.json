@@ -48,10 +48,12 @@
                 "type": "string"
               }
             }
-          ]
+          ],
+          "description": "信号列表，或 alias 到信号路径的映射。"
         },
         "time": {
-          "type": "string"
+          "type": "string",
+          "description": "查询或验证的目标时间点。"
         },
         "requested_time": {
           "type": "string"
@@ -293,5 +295,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "value.batch_at: 批量读取多个信号值。",
+  "x-purpose": "批量读取多个信号值。",
+  "x-how_it_works": "对 signals 列表在同一时间执行 FSDB 读取。",
+  "x-when_to_use": "减少多信号同一时刻检查的开销。",
+  "x-arg_contract_notes": "required: signals, time"
 }

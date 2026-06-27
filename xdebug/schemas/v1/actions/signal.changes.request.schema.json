@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -297,5 +298,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "signal.changes: 读取信号变化点。",
+  "x-purpose": "读取信号变化点。",
+  "x-how_it_works": "扫描 FSDB value changes，支持窗口、limit 和聚合。",
+  "x-when_to_use": "看信号何时跳变。",
+  "x-arg_contract_notes": "required: signal"
 }

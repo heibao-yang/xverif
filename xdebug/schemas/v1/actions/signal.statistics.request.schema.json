@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "signal.statistics: 统计信号活动。",
+  "x-purpose": "统计信号活动。",
+  "x-how_it_works": "无 clock 时统计原始变化；有 clock 时按边沿采样，统计 known/high/low/unknown。",
+  "x-when_to_use": "量化活跃度、占空和采样质量。",
+  "x-arg_contract_notes": "required: signal"
 }

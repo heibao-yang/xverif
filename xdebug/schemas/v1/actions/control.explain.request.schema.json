@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "control.explain: 解释控制信号来源。",
+  "x-purpose": "解释控制信号来源。",
+  "x-how_it_works": "围绕 signal 的控制依赖和赋值条件做设计分析。",
+  "x-when_to_use": "说明 enable/reset/select 类信号为什么变化。",
+  "x-arg_contract_notes": "required: signal"
 }

@@ -81,7 +81,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "apb.transfer_window: 实验性 APB 窗口分析。",
+  "x-purpose": "实验性 APB 窗口分析。",
+  "x-how_it_works": "围绕指定 APB transfer 返回相关信号窗口。",
+  "x-when_to_use": "解释单笔 APB 访问现场。",
+  "x-arg_contract_notes": "required: name"
 }

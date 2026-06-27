@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "trace.explain: 解释信号因果。",
+  "x-purpose": "解释信号因果。",
+  "x-how_it_works": "在 trace 结果上抽取解释、证据和置信度。",
+  "x-when_to_use": "给用户可读的根因说明。",
+  "x-arg_contract_notes": "required: signal"
 }

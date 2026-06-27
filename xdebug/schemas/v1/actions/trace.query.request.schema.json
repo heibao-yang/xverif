@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "trace.query: 执行通用 trace 查询。",
+  "x-purpose": "执行通用 trace 查询。",
+  "x-how_it_works": "按方向和参数调度设计 trace 逻辑。",
+  "x-when_to_use": "提供低层 trace 入口。",
+  "x-arg_contract_notes": "required: signal"
 }

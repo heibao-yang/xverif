@@ -44,11 +44,11 @@
       "properties": {
         "signal": {
           "type": "string",
-          "description": "Exact hierarchical signal path to trace the active driver for"
+          "description": "目标信号路径。"
         },
         "requested_time": {
           "type": "string",
-          "description": "Waveform time to query the active driver, e.g. '120ns'"
+          "description": "需要解释或追溯的目标时间点。"
         },
         "include_control": {
           "type": "boolean",
@@ -282,5 +282,10 @@
       "additionalProperties": false
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "description": "trace.active_driver_chain: 展开 active driver 链。",
+  "x-purpose": "展开 active driver 链。",
+  "x-how_it_works": "从 signal/requested_time 递归追溯 active driver。",
+  "x-when_to_use": "给出跨级根因链。",
+  "x-arg_contract_notes": "required: signal, requested_time"
 }

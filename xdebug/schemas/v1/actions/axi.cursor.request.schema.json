@@ -81,10 +81,12 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
-          "type": "string"
+          "type": "string",
+          "description": "游标移动或协议浏览操作。"
         },
         "conditions": {
           "type": "array",
@@ -287,5 +289,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "axi.cursor: 在 AXI transfer 间移动游标。",
+  "x-purpose": "在 AXI transfer 间移动游标。",
+  "x-how_it_works": "基于 AXI 查询结果按 op/direction 定位事务。",
+  "x-when_to_use": "交互式浏览 AXI 事务。",
+  "x-arg_contract_notes": "required: name, op"
 }

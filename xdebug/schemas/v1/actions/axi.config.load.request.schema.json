@@ -81,7 +81,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "axi.config.load: 加载 AXI 配置。",
+  "x-purpose": "加载 AXI 配置。",
+  "x-how_it_works": "保存 AXI channel 信号映射。",
+  "x-when_to_use": "定义后续 AXI 查询对象。",
+  "x-arg_contract_notes": "required: name"
 }

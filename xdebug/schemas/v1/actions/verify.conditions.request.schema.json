@@ -51,7 +51,8 @@
           ]
         },
         "time": {
-          "type": "string"
+          "type": "string",
+          "description": "查询或验证的目标时间点。"
         },
         "requested_time": {
           "type": "string"
@@ -90,7 +91,8 @@
           "type": "array",
           "items": {
             "type": "object"
-          }
+          },
+          "description": "需要验证的条件列表。"
         },
         "time_range": {
           "type": "object"
@@ -287,5 +289,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "verify.conditions: 在单个时间验证条件集合。",
+  "x-purpose": "在单个时间验证条件集合。",
+  "x-how_it_works": "解析 time，读取条件引用信号并求值。",
+  "x-when_to_use": "检查某个时间点的多条件事实。",
+  "x-arg_contract_notes": "required: conditions, time"
 }

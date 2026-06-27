@@ -80,7 +80,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -285,5 +286,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "apb.config.list: 列出 APB 配置。",
+  "x-purpose": "列出 APB 配置。",
+  "x-how_it_works": "读取 APB 配置存储。",
+  "x-when_to_use": "查看可用 APB interface 名称。",
+  "x-arg_contract_notes": "required: name"
 }

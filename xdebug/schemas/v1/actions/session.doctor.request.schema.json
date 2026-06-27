@@ -282,5 +282,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "session.doctor: 诊断当前 session。",
+  "x-purpose": "诊断当前 session。",
+  "x-how_it_works": "检查 session 资源、路径和可访问状态。",
+  "x-when_to_use": "定位 daidir/fsdb/session 绑定问题。",
+  "x-arg_contract_notes": "none"
 }

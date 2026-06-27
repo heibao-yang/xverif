@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "trace.driver: 查找信号直接 driver。",
+  "x-purpose": "查找信号直接 driver。",
+  "x-how_it_works": "调用设计 trace 能力分析赋值、依赖和来源。",
+  "x-when_to_use": "解释某个信号由什么驱动。",
+  "x-arg_contract_notes": "required: signal"
 }

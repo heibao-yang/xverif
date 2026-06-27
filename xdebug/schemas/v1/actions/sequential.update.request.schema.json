@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "sequential.update: 分析时序更新规则。",
+  "x-purpose": "分析时序更新规则。",
+  "x-how_it_works": "识别 reset/hold/increment/decrement 等寄存器更新模式。",
+  "x-when_to_use": "解释状态或计数器每拍如何演进。",
+  "x-arg_contract_notes": "required: signal"
 }

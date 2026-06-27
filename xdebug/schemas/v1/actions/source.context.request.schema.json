@@ -68,10 +68,12 @@
           "type": "string"
         },
         "file": {
-          "type": "string"
+          "type": "string",
+          "description": "源码文件路径。"
         },
         "line": {
-          "type": "integer"
+          "type": "integer",
+          "description": "源码行号。"
         },
         "expr": {
           "type": "string"
@@ -286,5 +288,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "source.context: 读取源码上下文。",
+  "x-purpose": "读取源码上下文。",
+  "x-how_it_works": "按 file/line 读取附近源码并尝试识别 enclosing 结构。",
+  "x-when_to_use": "把查询结果锚定到可读源码位置。",
+  "x-arg_contract_notes": "required: file, line"
 }

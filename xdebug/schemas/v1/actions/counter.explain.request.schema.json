@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "counter.explain: 解释计数器设计逻辑。",
+  "x-purpose": "解释计数器设计逻辑。",
+  "x-how_it_works": "分析 counter signal 的时序赋值和更新规则。",
+  "x-when_to_use": "判断它是否像 counter 以及由什么控制。",
+  "x-arg_contract_notes": "required: signal"
 }

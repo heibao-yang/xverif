@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -81,7 +82,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -211,7 +213,8 @@
             {
               "type": "string"
             }
-          ]
+          ],
+          "description": "列表中要删除的信号序号。"
         },
         "begin": {
           "type": "string"
@@ -298,5 +301,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "list.delete: 从信号列表删除信号或 index。",
+  "x-purpose": "从信号列表删除信号或 index。",
+  "x-how_it_works": "按 name 找 list，再用 signal 或 index 删除条目。",
+  "x-when_to_use": "维护已保存观察列表。",
+  "x-arg_contract_notes": "required: name; also one of: signal / index"
 }

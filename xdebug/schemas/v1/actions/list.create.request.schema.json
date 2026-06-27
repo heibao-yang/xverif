@@ -81,7 +81,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "list.create: 创建命名信号列表。",
+  "x-purpose": "创建命名信号列表。",
+  "x-how_it_works": "在 ListManager 存储中创建 list，并可追加初始 signals。",
+  "x-when_to_use": "为一组信号建立可复用集合。",
+  "x-arg_contract_notes": "required: name"
 }

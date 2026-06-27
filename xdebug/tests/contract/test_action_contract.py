@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict
@@ -32,6 +34,16 @@ def _request_schema_args_required(schema: Dict[str, Any]) -> list[str]:
 
 def _example_satisfies_groups(args: Dict[str, Any], groups: list[list[str]]) -> bool:
     return any(all(key in args for key in group) for group in groups)
+
+
+def _required_related_args(spec: Dict[str, Any]) -> set[str]:
+    keys = set(spec.get("required_args", []))
+    for group in spec.get("required_arg_groups", []):
+        keys.update(group)
+    for conditional in spec.get("conditional_required_args", []):
+        keys.update(conditional.get("when", {}).keys())
+        keys.update(conditional.get("required", []))
+    return keys
 
 
 @pytest.mark.contract
@@ -120,6 +132,52 @@ def test_action_required_args_match_runtime_schema_and_examples(
                             name,
                             key,
                         )
+
+
+@pytest.mark.contract
+def test_action_schema_hints_are_synced(xdebug_root: Path) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(xdebug_root / "tools" / "sync_action_schema_hints.py"),
+            "--check",
+        ],
+        cwd=xdebug_root.parent,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.contract
+def test_action_schemas_explain_purpose_and_required_args(xdebug_root: Path) -> None:
+    specs = _load_json(xdebug_root / "specs" / "actions" / "actions.yaml")[
+        "actions"
+    ]
+    for spec in specs:
+        if spec["status"] == "removed":
+            continue
+        name = spec["name"]
+        request_schema = _load_json(xdebug_root / spec["schemas"]["request"])
+        response_schema = _load_json(xdebug_root / spec["schemas"]["response"])
+
+        for key in ("description", "x-purpose", "x-how_it_works", "x-when_to_use"):
+            assert request_schema.get(key), "%s request schema missing %s" % (
+                name,
+                key,
+            )
+        assert response_schema.get("description"), "%s response schema missing description" % name
+
+        args_properties = (
+            request_schema.get("properties", {})
+            .get("args", {})
+            .get("properties", {})
+        )
+        for key in _required_related_args(spec):
+            assert args_properties.get(key, {}).get("description"), (
+                "%s request schema missing args.%s description" % (name, key)
+            )
 
 
 @pytest.mark.contract

@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "trace.graph: 生成 trace 图结构。",
+  "x-purpose": "生成 trace 图结构。",
+  "x-how_it_works": "基于 trace.expand 类似结果组织 graph payload。",
+  "x-when_to_use": "给可视化或图分析使用。",
+  "x-arg_contract_notes": "required: signal"
 }

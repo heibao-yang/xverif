@@ -32,7 +32,8 @@
       "type": "object",
       "properties": {
         "signal": {
-          "type": "string"
+          "type": "string",
+          "description": "目标信号路径。"
         },
         "signals": {
           "oneOf": [
@@ -81,7 +82,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -287,5 +289,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "list.add: 向信号列表追加一个信号。",
+  "x-purpose": "向信号列表追加一个信号。",
+  "x-how_it_works": "检查 signal 在 FSDB 中存在后写入 ListManager。",
+  "x-when_to_use": "逐步构建观察列表。",
+  "x-arg_contract_notes": "required: name, signal"
 }

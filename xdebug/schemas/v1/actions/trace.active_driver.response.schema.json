@@ -62,7 +62,10 @@
           ]
         },
         "evidence_source": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "static_candidate_count": {
           "type": "integer",
@@ -80,14 +83,28 @@
         },
         "root_driver": {
           "type": "object",
-          "required": ["kind", "file", "line"],
+          "required": [
+            "kind",
+            "file",
+            "line"
+          ],
           "properties": {
             "kind": {
               "type": "string",
-              "enum": ["assignment", "force", "constant", "primary_input", "unknown"]
+              "enum": [
+                "assignment",
+                "force",
+                "constant",
+                "primary_input",
+                "unknown"
+              ]
             },
-            "file": { "type": "string" },
-            "line": { "type": "integer" }
+            "file": {
+              "type": "string"
+            },
+            "line": {
+              "type": "integer"
+            }
           }
         }
       },
@@ -96,15 +113,29 @@
     "data": {
       "type": "object",
       "properties": {
-        "signal": { "type": "string" },
-        "requested_time": { "type": "string" },
-        "active_time": { "type": "string" },
+        "signal": {
+          "type": "string"
+        },
+        "requested_time": {
+          "type": "string"
+        },
+        "active_time": {
+          "type": "string"
+        },
         "driver_status": {
           "type": "string",
-          "enum": ["resolved", "control_only", "unresolved", "ambiguous"]
+          "enum": [
+            "resolved",
+            "control_only",
+            "unresolved",
+            "ambiguous"
+          ]
         },
         "evidence_source": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "static_candidate_count": {
           "type": "integer",
@@ -115,43 +146,81 @@
           "minimum": 0
         },
         "driver": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "properties": {
-            "kind": { "type": "string" },
-            "file": { "type": "string" },
-            "line": { "type": "integer" },
-            "text": { "type": "string" },
+            "kind": {
+              "type": "string"
+            },
+            "file": {
+              "type": "string"
+            },
+            "line": {
+              "type": "integer"
+            },
+            "text": {
+              "type": "string"
+            },
             "signals": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string"
+              }
             }
           }
         },
         "root_driver": {
-          "type": ["object", "null"],
-          "required": ["kind", "file", "line"],
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "kind",
+            "file",
+            "line"
+          ],
           "properties": {
             "kind": {
               "type": "string",
-              "enum": ["assignment", "force", "constant", "primary_input", "unknown"]
+              "enum": [
+                "assignment",
+                "force",
+                "constant",
+                "primary_input",
+                "unknown"
+              ]
             },
-            "file": { "type": "string" },
-            "line": { "type": "integer" }
+            "file": {
+              "type": "string"
+            },
+            "line": {
+              "type": "integer"
+            }
           }
         },
         "controls": {
           "type": "array",
-          "items": { "type": "object" }
+          "items": {
+            "type": "object"
+          }
         },
         "events": {
           "type": "array",
-          "items": { "type": "object" }
+          "items": {
+            "type": "object"
+          }
         },
         "values": {
           "type": "object",
           "properties": {
-            "requested": { "type": "object" },
-            "active": { "type": "object" }
+            "requested": {
+              "type": "object"
+            },
+            "active": {
+              "type": "object"
+            }
           }
         },
         "trace": {
@@ -161,22 +230,49 @@
               "type": "array",
               "items": {
                 "type": "object",
-                "required": ["id", "role", "kind", "signal"],
+                "required": [
+                  "id",
+                  "role",
+                  "kind",
+                  "signal"
+                ],
                 "properties": {
-                  "id": { "type": "string" },
-                  "role": { "type": "string" },
-                  "kind": { "type": "string" },
-                  "signal": { "type": "string" },
+                  "id": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "signal": {
+                    "type": "string"
+                  },
                   "signals": {
                     "type": "array",
-                    "items": { "type": "string" }
+                    "items": {
+                      "type": "string"
+                    }
                   },
-                  "file": { "type": "string" },
-                  "line": { "type": "integer" },
-                  "text": { "type": "string" },
-                  "active_time": { "type": "string" },
-                  "next_signal": { "type": "string" },
-                  "alias_kind": { "type": "string" }
+                  "file": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "active_time": {
+                    "type": "string"
+                  },
+                  "next_signal": {
+                    "type": "string"
+                  },
+                  "alias_kind": {
+                    "type": "string"
+                  }
                 }
               }
             },
@@ -184,18 +280,32 @@
               "type": "array",
               "items": {
                 "type": "object",
-                "required": ["from", "to", "relation"],
+                "required": [
+                  "from",
+                  "to",
+                  "relation"
+                ],
                 "properties": {
-                  "from": { "type": "string" },
-                  "to": { "type": "string" },
-                  "relation": { "type": "string" },
-                  "confidence": { "type": "string" }
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  },
+                  "relation": {
+                    "type": "string"
+                  },
+                  "confidence": {
+                    "type": "string"
+                  }
                 }
               }
             },
             "selected_path": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string"
+              }
             },
             "termination": {
               "type": "string",
@@ -213,13 +323,19 @@
         },
         "alias_candidates": {
           "type": "array",
-          "items": { "type": "object" }
+          "items": {
+            "type": "object"
+          }
         },
         "limitations": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "parity": { "type": "object" }
+        "parity": {
+          "type": "object"
+        }
       },
       "additionalProperties": true
     },
@@ -233,7 +349,10 @@
       "type": "array"
     },
     "error": {
-      "type": ["object", "null"]
+      "type": [
+        "object",
+        "null"
+      ]
     },
     "meta": {
       "type": "object",
@@ -244,5 +363,7 @@
       }
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "trace.active_driver response: 在指定时间找 active driver。",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
 }

@@ -81,7 +81,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "axi.request_response_pair: 实验性 AXI 请求响应配对。",
+  "x-purpose": "实验性 AXI 请求响应配对。",
+  "x-how_it_works": "用 ID/address/channel 信息把请求与响应关联。",
+  "x-when_to_use": "分析 latency 和缺失响应。",
+  "x-arg_contract_notes": "required: name"
 }

@@ -81,7 +81,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "cursor.use: 激活游标。",
+  "x-purpose": "激活游标。",
+  "x-how_it_works": "按 name 取游标并设为当前 active。",
+  "x-when_to_use": "让后续交互默认围绕该时间点。",
+  "x-arg_contract_notes": "required: name"
 }

@@ -80,7 +80,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -285,5 +286,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "cursor.get: 读取命名游标。",
+  "x-purpose": "读取命名游标。",
+  "x-how_it_works": "从 CursorManager 按 name 取出保存的时间和元信息。",
+  "x-when_to_use": "把自然语言中的“刚才那个点”变成确定时间。",
+  "x-arg_contract_notes": "required: name"
 }

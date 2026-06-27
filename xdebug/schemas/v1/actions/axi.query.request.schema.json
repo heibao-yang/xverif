@@ -81,7 +81,8 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
         },
         "op": {
           "type": "string"
@@ -286,5 +287,10 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "description": "axi.query: 查询 AXI channel/transaction。",
+  "x-purpose": "查询 AXI channel/transaction。",
+  "x-how_it_works": "按 AXI 配置扫描 valid/ready 和 channel 字段。",
+  "x-when_to_use": "抽取 AXI beat/transaction。",
+  "x-arg_contract_notes": "required: name"
 }
