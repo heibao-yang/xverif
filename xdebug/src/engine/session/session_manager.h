@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 
-namespace xdebug_design {
+namespace xdebug_engine {
 
 enum class SessionHealthStatus {
     Healthy,
@@ -57,7 +57,7 @@ struct WaitForServerResult {
 
 const char* session_health_status_name(SessionHealthStatus status);
 
-bool xdebug_design_debug_enabled();
+bool xdebug_engine_debug_enabled();
 
 // Session manager - high-level session lifecycle management
 class SessionManager {
@@ -134,4 +134,4 @@ private:
     bool wait_for_process_exit(pid_t pid, int timeout_ms) const;
 };
 
-} // namespace xdebug_design
+} // namespace xdebug_engine

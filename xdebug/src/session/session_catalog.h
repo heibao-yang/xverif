@@ -19,6 +19,9 @@ struct SessionRecord {
     std::string bind_host;
     int port = 0;
     std::string server_host;
+    int server_pid = 0;
+    long long created_at = 0;
+    long long last_active = 0;
     long dbdir_mtime = 0;
     long long dbdir_size = 0;
     unsigned long long dbdir_dev = 0;

@@ -1,6 +1,7 @@
 #include "ai/ai_response.h"
 #include "common/path_utils.h"
 #include "protocol/core_protocol.h"
+#include "session/session_timeout.h"
 #include "session/session_types.h"
 
 #include <cassert>
@@ -67,5 +68,30 @@ int main() {
     assert(xdebug_core::resource_identity_differs(10, 20, 10, 21));
     assert(!xdebug_core::resource_content_matches(100, 4096, 101, 4096));
     assert(!xdebug_core::resource_content_matches(100, 4096, 100, 8192));
+
+    unsetenv("XDEBUG_SESSION_IDLE_TIMEOUT_SEC");
+    unsetenv("XDEBUG_SESSION_START_TIMEOUT_SEC");
+    int timeout = 0;
+    std::string timeout_error;
+    assert(xdebug_core::session_idle_timeout_sec(timeout, timeout_error));
+    assert(timeout == 86400);
+    assert(xdebug_core::session_start_timeout_sec(timeout, timeout_error));
+    assert(timeout == 300);
+    assert(setenv("XDEBUG_SESSION_IDLE_TIMEOUT_SEC", "7", 1) == 0);
+    assert(xdebug_core::session_idle_timeout_sec(timeout, timeout_error));
+    assert(timeout == 7);
+    assert(setenv("XDEBUG_SESSION_START_TIMEOUT_SEC", "11", 1) == 0);
+    assert(xdebug_core::session_start_timeout_sec(timeout, timeout_error));
+    assert(timeout == 11);
+    assert(setenv("XDEBUG_SESSION_IDLE_TIMEOUT_SEC", "0", 1) == 0);
+    timeout_error.clear();
+    assert(!xdebug_core::session_idle_timeout_sec(timeout, timeout_error));
+    assert(timeout_error.find("XDEBUG_SESSION_IDLE_TIMEOUT_SEC") != std::string::npos);
+    assert(setenv("XDEBUG_SESSION_START_TIMEOUT_SEC", "abc", 1) == 0);
+    timeout_error.clear();
+    assert(!xdebug_core::session_start_timeout_sec(timeout, timeout_error));
+    assert(timeout_error.find("XDEBUG_SESSION_START_TIMEOUT_SEC") != std::string::npos);
+    unsetenv("XDEBUG_SESSION_IDLE_TIMEOUT_SEC");
+    unsetenv("XDEBUG_SESSION_START_TIMEOUT_SEC");
     return 0;
 }

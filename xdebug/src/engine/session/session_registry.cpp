@@ -1,5 +1,5 @@
 #include "session_registry.h"
-#include "../common/xdebug_design_paths.h"
+#include "../../design/common/xdebug_design_paths.h"
 #include "common/path_utils.h"
 #include "json.hpp"
 
@@ -12,9 +12,10 @@
 #include <sys/file.h>
 #include <sstream>
 
-namespace xdebug_design {
+namespace xdebug_engine {
 
 using json = nlohmann::json;
+using namespace xdebug_design;
 
 SessionRegistry::SessionRegistry() {
     xdebug_design_ensure_home();
@@ -347,4 +348,4 @@ bool SessionRegistry::clear_all() {
     return save_all(empty);
 }
 
-} // namespace xdebug_design
+} // namespace xdebug_engine

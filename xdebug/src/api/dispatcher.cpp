@@ -6,11 +6,13 @@
 #include "api/resource_resolver.h"
 #include "api/response.h"
 #include "common/path_utils.h"
+#include "core/session/session_timeout.h"
 #include "core/session/session_types.h"
 #include "logging/action_log.h"
 
 #include <cerrno>
 #include <chrono>
+#include <ctime>
 #include <limits.h>
 #include <string>
 #include <cstring>
@@ -66,6 +68,16 @@ bool session_resource_changed(const SessionRecord& record, std::string& message)
                             record.dbdir_dev, record.dbdir_inode, message) ||
            resource_changed(record.fsdb, record.fsdb_mtime, record.fsdb_size,
                             record.fsdb_dev, record.fsdb_inode, message);
+}
+
+bool session_idle_expired(const SessionRecord& record,
+                          int idle_timeout_sec,
+                          time_t now,
+                          long long& idle_sec) {
+    long long last_active = record.last_active > 0 ? record.last_active : record.created_at;
+    if (last_active <= 0) return false;
+    idle_sec = static_cast<long long>(now) - last_active;
+    return idle_sec >= idle_timeout_sec;
 }
 
 std::string requested_name(const Json& request) {
@@ -315,6 +327,46 @@ Json Dispatcher::resource_error(const Json& request, const ActionSpec& spec, con
     return make_error(request, spec.name, resolution.code, resolution.message);
 }
 
+Json Dispatcher::kill_session_record(const Json& request,
+                                     const SessionRecord& record,
+                                     const std::string& reason) {
+    Json kill_req = request;
+    kill_req["action"] = "session.kill";
+    kill_req["target"] = {{"session_id", record.id}};
+    kill_req["args"] = Json::object();
+    Json kill_result = forward_action(kill_req);
+    return {{"session_id", record.id},
+            {"mode", record.mode},
+            {"reason", reason},
+            {"kill_ok", backend_cleanup_ok(kill_result)},
+            {"result", kill_result}};
+}
+
+bool Dispatcher::cleanup_expired_sessions(const Json& request, Json& removed, Json& error_response) {
+    int idle_timeout_sec = 0;
+    std::string timeout_error;
+    if (!xdebug_core::session_idle_timeout_sec(idle_timeout_sec, timeout_error)) {
+        error_response = make_error(request,
+                                    request.value("action", std::string()),
+                                    "INVALID_CONFIG",
+                                    timeout_error,
+                                    false);
+        return false;
+    }
+
+    removed = Json::array();
+    const time_t now = time(nullptr);
+    for (const auto& record : sessions_.list()) {
+        long long idle_sec = 0;
+        if (!session_idle_expired(record, idle_timeout_sec, now, idle_sec)) continue;
+        Json removed_item = kill_session_record(request, record, "idle_timeout");
+        removed_item["idle_sec"] = idle_sec;
+        removed_item["idle_timeout_sec"] = idle_timeout_sec;
+        removed.push_back(removed_item);
+    }
+    return true;
+}
+
 Json Dispatcher::handle_engine_forward(const Json& request, const ActionSpec& spec) {
     Json target = resolve_target(request);
     Json err_resp = resource_error(request, spec, target);
@@ -329,6 +381,24 @@ Json Dispatcher::handle_engine_forward(const Json& request, const ActionSpec& sp
         SessionRecord record;
         if (!sessions_.get(sid, record)) {
             return make_error(request, spec.name, "SESSION_NOT_FOUND", "session not found: " + sid);
+        }
+        int idle_timeout_sec = 0;
+        std::string timeout_error;
+        if (!xdebug_core::session_idle_timeout_sec(idle_timeout_sec, timeout_error)) {
+            return make_error(request, spec.name, "INVALID_CONFIG", timeout_error, false);
+        }
+        long long idle_sec = 0;
+        if (session_idle_expired(record, idle_timeout_sec, time(nullptr), idle_sec)) {
+            Json removed = kill_session_record(request, record, "idle_timeout");
+            Json response = make_error(request, spec.name, "SESSION_EXPIRED",
+                                       "session idle timeout exceeded: " + sid, true);
+            response["summary"] = {{"session_id", sid},
+                                   {"mode", record.mode},
+                                   {"idle_sec", idle_sec},
+                                   {"idle_timeout_sec", idle_timeout_sec},
+                                   {"removed", removed.value("kill_ok", false)}};
+            response["data"] = {{"removed", removed}};
+            return response;
         }
         if (!record.transport.empty() && record.transport != "uds") {
             Json ctx = transport_context(routed, "fallback.invoke.begin", sid, "", request_timeout_ms(routed));
@@ -390,17 +460,24 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
     Json target = resolve_target(request);
     Json args = request.value("args", Json::object());
     if (action == "session.list") {
+        Json expired_removed;
+        Json cleanup_error;
+        if (!cleanup_expired_sessions(request, expired_removed, cleanup_error)) return cleanup_error;
         Json response = make_response(request, action);
         Json records = Json::array();
         for (const auto& record : sessions_.list()) records.push_back(session_record_json(record));
-        response["summary"] = {{"session_count", records.size()}};
+        response["summary"] = {{"session_count", records.size()},
+                               {"expired_removed_count", expired_removed.size()}};
         response["data"] = {{"sessions", records}};
+        if (!expired_removed.empty()) response["data"]["removed"] = expired_removed;
         return response;
     }
     if (action == "session.gc") {
         Json before = Json::array();
         for (const auto& record : sessions_.list()) before.push_back(session_record_json(record));
         Json removed = Json::array();
+        Json cleanup_error;
+        if (!cleanup_expired_sessions(request, removed, cleanup_error)) return cleanup_error;
         Json kept = Json::array();
         for (const auto& record : sessions_.list()) {
             Json doctor_req = request;
@@ -411,14 +488,9 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
             if (healthy) {
                 kept.push_back({{"session_id", record.id}, {"mode", record.mode}});
             } else {
-                Json kill_req = request;
-                kill_req["action"] = "session.kill";
-                kill_req["target"] = {{"session_id", record.id}};
-                kill_req["args"] = Json::object();
-                Json kill_result = handle_session(kill_req, "session.kill");
-                removed.push_back({{"session_id", record.id}, {"mode", record.mode},
-                                   {"reason", "unhealthy"}, {"health", health},
-                                   {"kill_ok", kill_result.value("ok", false)}});
+                Json removed_item = kill_session_record(request, record, "unhealthy");
+                removed_item["health"] = health;
+                removed.push_back(removed_item);
             }
         }
         Json response = make_response(request, action);
@@ -441,6 +513,9 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
                               "session.open does not accept args.reuse or args.reopen; close or gc existing sessions explicitly");
         }
         if (mode.empty()) return make_error(request, action, "RESOURCE_REQUIRED", "target.daidir or target.fsdb is required");
+        Json expired_removed;
+        Json cleanup_error;
+        if (!cleanup_expired_sessions(request, expired_removed, cleanup_error)) return cleanup_error;
         std::vector<SessionRecord> before_records = sessions_.list();
         SessionRecord existing;
         if (sessions_.get(name, existing)) {

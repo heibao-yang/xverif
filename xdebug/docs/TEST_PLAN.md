@@ -237,8 +237,7 @@ public runtime action 以 `xdebug/src/api/action_registry_init.cpp` 为准。
 
 已观察到以下漂移：
 
-- README、help 和 agent guide 仍有旧的
-  `.xdebug/design/sessions`、`.xdebug/waveform/sessions` 路径。
+- README、help 和 agent guide 应统一使用 `.xdebug/engine/sessions` 路径。
 - frontend 当前读取统一的 `.xdebug/engine/registry.json`。
 - action inventory 中 `session.list` 仍描述为旧 top-level session store。
 - `source.context` 和 `expr.normalize` 的 runtime resource requirement 与

@@ -7,7 +7,7 @@
 #include <ctime>
 #include <sys/types.h>
 
-namespace xdebug_design {
+namespace xdebug_engine {
 
 // Unified SessionInfo from core — design fields are dbdir_*.
 using SessionInfo = xdebug_core::SessionInfo;
@@ -61,4 +61,4 @@ private:
     bool write_session_file(const SessionInfo& session);
 };
 
-} // namespace xdebug_design
+} // namespace xdebug_engine

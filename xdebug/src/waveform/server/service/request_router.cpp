@@ -47,9 +47,6 @@ bool handle_client(int client_fd, bool& should_quit) {
         return true;
     }
 
-    SessionRegistry registry;
-    registry.touch(g_session_id, time(nullptr));
-
     // Parse command line into structured form for cleaner argument access
     CommandLine cl = parse_command_line(cmd);
 

@@ -1,7 +1,7 @@
 #include "session_transport.h"
-#include "../common/xdebug_design_paths.h"
+#include "../../design/common/xdebug_design_paths.h"
 #include "json.hpp"
-#include "../protocol/protocol.h"
+#include "../../design/protocol/protocol.h"
 #include "transport/file_exchange.h"
 #include "session/transport_timeout.h"
 #include "session/transport_common.h"
@@ -11,9 +11,10 @@
 #include <string>
 #include <unistd.h>
 
-namespace xdebug_design {
+namespace xdebug_engine {
 
 using Json = nlohmann::json;
+using namespace xdebug_design;
 
 // --- Re-exported shared utilities (called by session_manager, server, etc.) ---
 
@@ -161,4 +162,4 @@ bool send_quit_to_endpoint(const SessionInfo& session) {
     return request_simple(session, "server.quit", data);
 }
 
-} // namespace xdebug_design
+} // namespace xdebug_engine

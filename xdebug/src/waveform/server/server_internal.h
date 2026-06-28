@@ -14,8 +14,7 @@
 #include "../event/event_manager.h"
 #include "../cursor/cursor_manager.h"
 #include "../common/time_spec.h"
-#include "../session/session_registry.h"
-#include "../session/session_transport.h"
+#include "core/session/session_types.h"
 #include "json.hpp"
 
 #include <cstdio>
@@ -52,6 +51,7 @@
 namespace xdebug_waveform {
 
 using Json = nlohmann::ordered_json;
+using SessionInfo = xdebug_core::SessionInfo;
 
 extern std::string g_session_id;
 extern int g_srv_fd;

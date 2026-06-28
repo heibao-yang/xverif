@@ -20,6 +20,8 @@ private:
     Json handle_batch(const Json& request);
     Json forward_action(const Json& request);
     Json handle_engine_forward(const Json& request, const ActionSpec& spec);
+    Json kill_session_record(const Json& request, const SessionRecord& record, const std::string& reason);
+    bool cleanup_expired_sessions(const Json& request, Json& removed, Json& error_response);
     Json resource_error(const Json& request, const ActionSpec& spec, const Json& target) const;
     Json resolve_target(const Json& request) const;
     std::string mode_for_target(const Json& target) const;

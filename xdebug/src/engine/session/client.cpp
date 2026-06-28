@@ -1,15 +1,15 @@
 #include "client.h"
 
-#include "../protocol/protocol.h"
-#include "../session/session_manager.h"
-#include "../session/session_transport.h"
+#include "../../design/protocol/protocol.h"
+#include "session_manager.h"
+#include "session_transport.h"
 #include "logging/action_log.h"
 
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
 
-namespace xdebug_design {
+namespace xdebug_engine {
 
 int session_connect(const std::string& session_id) {
     SessionManager manager;
@@ -56,7 +56,7 @@ bool send_request_capture(const std::string& session_id,
     if (!manager.get_session(session_id, session)) {
         status = "session_not_found";
         message = "session not found";
-        xdebug_core::log_transport_event("design", session_id, "send_request.session_not_found", false);
+        xdebug_core::log_transport_event("engine", session_id, "send_request.session_not_found", false);
         return false;
     }
     Json rpc = request;
@@ -67,7 +67,7 @@ bool send_request_capture(const std::string& session_id,
             SessionHealth health = manager.diagnose_session(session_id);
             status = session_health_status_name(health.status);
             message = health.message.empty() ? "failed to exchange file transport request" : health.message;
-            xdebug_core::log_transport_event("design", session_id, "send_request.file_exchange_failed", false,
+            xdebug_core::log_transport_event("engine", session_id, "send_request.file_exchange_failed", false,
                                              {{"status", status}, {"message", message}, {"transport", session.transport},
                                               {"file_dir", session.file_dir}, {"pid", session.server_pid}});
             return false;
@@ -76,7 +76,7 @@ bool send_request_capture(const std::string& session_id,
             status = response.value("status", std::string("server_error"));
             message = response.value("error", Json::object()).value("message", std::string("server request failed"));
             engine_error = response.value("error", Json::object());
-            xdebug_core::log_transport_event("design", session_id, "send_request.server_error", false,
+            xdebug_core::log_transport_event("engine", session_id, "send_request.server_error", false,
                                              {{"action", request.value("action", std::string())},
                                               {"status", status}, {"message", message},
                                               {"response", xdebug_core::sanitize_for_log(response)}});
@@ -86,7 +86,7 @@ bool send_request_capture(const std::string& session_id,
         manager.touch_session(session_id);
         status = "ok";
         message.clear();
-        xdebug_core::log_transport_event("design", session_id, "send_request.ok", true,
+        xdebug_core::log_transport_event("engine", session_id, "send_request.ok", true,
                                          {{"action", request.value("action", std::string())},
                                           {"transport", session.transport}, {"file_dir", session.file_dir}});
         return true;
@@ -96,7 +96,7 @@ bool send_request_capture(const std::string& session_id,
         SessionHealth health = manager.diagnose_session(session_id);
         status = session_health_status_name(health.status);
         message = health.message;
-        xdebug_core::log_transport_event("design", session_id, "send_request.connect_failed", false,
+        xdebug_core::log_transport_event("engine", session_id, "send_request.connect_failed", false,
                                          {{"status", status}, {"message", message}, {"transport", session.transport},
                                           {"socket_path", session.socket_path}, {"host", session.host},
                                           {"port", session.port}, {"pid", session.server_pid}});
@@ -110,7 +110,7 @@ bool send_request_capture(const std::string& session_id,
     if (!received) {
         status = "transport_failed";
         message = "failed to exchange JSON request with session";
-        xdebug_core::log_transport_event("design", session_id, "send_request.exchange_failed", false,
+        xdebug_core::log_transport_event("engine", session_id, "send_request.exchange_failed", false,
                                          {{"action", request.value("action", std::string())},
                                           {"transport", session.transport}, {"socket_path", session.socket_path},
                                           {"host", session.host}, {"port", session.port}});
@@ -120,7 +120,7 @@ bool send_request_capture(const std::string& session_id,
         status = response.value("status", std::string("server_error"));
         message = response.value("error", Json::object()).value("message", std::string("server request failed"));
         engine_error = response.value("error", Json::object());
-        xdebug_core::log_transport_event("design", session_id, "send_request.server_error", false,
+        xdebug_core::log_transport_event("engine", session_id, "send_request.server_error", false,
                                          {{"action", request.value("action", std::string())},
                                           {"status", status}, {"message", message},
                                           {"response", xdebug_core::sanitize_for_log(response)}});
@@ -128,7 +128,7 @@ bool send_request_capture(const std::string& session_id,
     }
     data = response.value("data", Json::object());
     manager.touch_session(session_id);
-    xdebug_core::log_transport_event("design", session_id, "send_request.ok", true,
+    xdebug_core::log_transport_event("engine", session_id, "send_request.ok", true,
                                      {{"action", request.value("action", std::string())}});
     status = "ok";
     message.clear();
@@ -148,4 +148,4 @@ bool session_ping(const std::string& session_id) {
            data.value("pong", false);
 }
 
-}  // namespace xdebug_design
+}  // namespace xdebug_engine

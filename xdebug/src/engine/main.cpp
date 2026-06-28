@@ -11,7 +11,7 @@ using namespace xdebug_design;
 int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--debug") == 0) {
-            setenv("XDEBUG_DESIGN_DEBUG", "1", 1);
+            setenv("XDEBUG_DEBUG", "1", 1);
             break;
         }
     }

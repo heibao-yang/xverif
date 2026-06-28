@@ -3,7 +3,7 @@
 #include <string>
 #include "json.hpp"
 
-namespace xdebug_design {
+namespace xdebug_engine {
 
 using Json = nlohmann::json;
 
@@ -17,4 +17,4 @@ bool send_request_capture(const std::string& session_id,
                           Json& engine_error);
 bool session_ping(const std::string& session_id);
 
-} // namespace xdebug_design
+} // namespace xdebug_engine

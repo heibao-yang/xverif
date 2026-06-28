@@ -117,8 +117,7 @@ xdebug request.json
 当本机或登录机无法直接连接计算节点 TCP 端口时，不要尝试把 xdebug daemon 暴露给本机直连；使用原生 `transport:"file"`，让 xdebug daemon 通过共享文件系统交换 request/response。默认交换目录在 backend session 目录下：
 
 ```text
-~/.xdebug/design/sessions/<session_id>/transport/
-~/.xdebug/waveform/sessions/<session_id>/transport/
+~/.xdebug/engine/sessions/<session_id>/transport/
 ```
 
 启用方式：

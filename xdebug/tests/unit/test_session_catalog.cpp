@@ -25,7 +25,10 @@ int main() {
     {
       "session_id": "wave",
       "fsdb_file": "/tmp/waves.fsdb",
-      "socket_path": "/tmp/wave.sock"
+      "socket_path": "/tmp/wave.sock",
+      "server_pid": 123,
+      "created_at": 1000,
+      "last_active": 1200
     },
     {
       "session_id": "design",
@@ -55,6 +58,13 @@ int main() {
     assert(record.mode == "waveform");
     assert(record.fsdb == "/tmp/waves.fsdb");
     assert(record.socket_path == "/tmp/wave.sock");
+    assert(record.server_pid == 123);
+    assert(record.created_at == 1000);
+    assert(record.last_active == 1200);
+    xdebug::Json wave_json = xdebug::session_record_json(record);
+    assert(wave_json["server_pid"].get<int>() == 123);
+    assert(wave_json["created_at"].get<long long>() == 1000);
+    assert(wave_json["last_active"].get<long long>() == 1200);
 
     assert(catalog.get("design", record));
     assert(record.mode == "design");

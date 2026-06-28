@@ -1,10 +1,11 @@
 #include "server.h"
 #include "../design/common/xdebug_design_paths.h"
 #include "../design/protocol/protocol.h"
-#include "../design/session/session_registry.h"
-#include "../design/session/session_transport.h"
+#include "session/session_registry.h"
+#include "session/session_transport.h"
 #include "core/logging/action_log.h"
 #include "core/npi/time_contract.h"
+#include "core/session/session_timeout.h"
 #include "core/transport/file_exchange.h"
 #include "json.hpp"
 
@@ -18,6 +19,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -38,6 +40,8 @@ namespace xdebug_waveform { extern std::string g_session_id; extern npiFsdbFileH
 namespace xdebug_design {
 
 using Json = nlohmann::ordered_json;
+using xdebug_engine::SessionInfo;
+using xdebug_engine::current_host_name;
 
 // Global for cleanup — non-static: shared with handler registry.
 std::string g_session_id;
@@ -48,6 +52,7 @@ static std::string g_bind_host;
 static std::string g_host;
 static int g_port = 0;
 static std::string g_auth_token;
+static int g_idle_timeout_sec = 86400;
 static FILE* g_debug_log = nullptr;
 static int g_crash_fd = -1;
 static char g_crash_prefix[512] = {};
@@ -70,7 +75,7 @@ static void close_fsdb_file() {
 }
 
 static bool server_debug_enabled() {
-    const char* env = getenv("XDEBUG_DESIGN_DEBUG");
+    const char* env = getenv("XDEBUG_DEBUG");
     return env && env[0] != '\0' && strcmp(env, "0") != 0 &&
            strcasecmp(env, "false") != 0 && strcasecmp(env, "off") != 0;
 }
@@ -83,7 +88,7 @@ static void server_debug_open_log() {
     g_debug_log = fopen(log_path, "a");
     if (g_debug_log) {
         chmod(log_path, 0600);
-        fprintf(g_debug_log, "=== xdebug_design server debug session=%s ===\n", g_session_id.c_str());
+        fprintf(g_debug_log, "=== xdebug engine server debug session=%s ===\n", g_session_id.c_str());
         fflush(g_debug_log);
     }
 }
@@ -341,7 +346,7 @@ static int file_transport_loop(const std::string& file_dir) {
     endpoint.transport = "file";
     endpoint.file_dir = file_dir;
     endpoint.server_host = current_host_name();
-    bool endpoint_ok = write_endpoint_file(endpoint);
+    bool endpoint_ok = xdebug_engine::write_endpoint_file(endpoint);
     xdebug_core::log_lifecycle_event("engine", g_session_id,
                                      endpoint_ok ? "endpoint.write_ok" : "endpoint.write_failed",
                                      endpoint_ok,
@@ -349,9 +354,19 @@ static int file_transport_loop(const std::string& file_dir) {
     if (!endpoint_ok) return 1;
 
     const std::string agent_id = current_host_name() + "-" + std::to_string(getpid());
+    xdebug_engine::SessionRegistry registry;
+    time_t last_active = time(nullptr);
+    registry.touch(g_session_id, last_active);
     xdebug_core::log_lifecycle_event("engine", g_session_id, "transport.file_loop_begin", true,
-                                     {{"file_dir", file_dir}});
+                                     {{"file_dir", file_dir}, {"idle_timeout_sec", g_idle_timeout_sec}});
     while (true) {
+        time_t now = time(nullptr);
+        if (now > last_active && static_cast<long long>(now - last_active) >= g_idle_timeout_sec) {
+            xdebug_core::log_lifecycle_event("engine", g_session_id, "server.idle_timeout", true,
+                                             {{"idle_sec", static_cast<long long>(now - last_active)},
+                                              {"idle_timeout_sec", g_idle_timeout_sec}});
+            break;
+        }
         xdebug_core::Json worker = {{"agent_id", agent_id}, {"host", current_host_name()},
                                     {"pid", static_cast<int>(getpid())}};
         xdebug_core::atomic_write_json_file_ex(file_dir + "/heartbeat/" + agent_id + ".json",
@@ -368,6 +383,8 @@ static int file_transport_loop(const std::string& file_dir) {
             usleep(static_cast<useconds_t>(xdebug_core::file_exchange_poll_interval_ms()) * 1000);
             continue;
         }
+        last_active = time(nullptr);
+        registry.touch(g_session_id, last_active);
         Json response = error_response("INVALID_REQUEST", "invalid file transport request");
         bool quit = false;
         bool ok = claim.ready &&
@@ -503,6 +520,13 @@ int server_main(int argc, char** argv) {
     server_debug_log("server_main: parsed session_id=%s argc=%d", g_session_id.c_str(), argc);
     xdebug_core::log_lifecycle_event("engine", g_session_id, "server.start", true,
                                      {{"argc", argc}});
+    std::string timeout_error;
+    if (!xdebug_core::session_idle_timeout_sec(g_idle_timeout_sec, timeout_error)) {
+        fprintf(stderr, "%s\n", timeout_error.c_str());
+        xdebug_core::log_lifecycle_event("engine", g_session_id, "server.invalid_config", false,
+                                         {{"message", timeout_error}});
+        return 1;
+    }
     log_environment_snapshot(argc, argv);
     open_crash_marker();
     maybe_run_crash_marker_test_hook();
@@ -738,7 +762,7 @@ int server_main(int argc, char** argv) {
         endpoint.port = g_transport == "tcp" ? g_port : 0;
         endpoint.server_host = current_host_name();
         endpoint.auth_token = g_transport == "tcp" ? g_auth_token : "";
-        bool endpoint_ok = write_endpoint_file(endpoint);
+        bool endpoint_ok = xdebug_engine::write_endpoint_file(endpoint);
         xdebug_core::log_lifecycle_event("engine", g_session_id,
                                          endpoint_ok ? "endpoint.write_ok" : "endpoint.write_failed",
                                          endpoint_ok,
@@ -746,14 +770,42 @@ int server_main(int argc, char** argv) {
                                           {"host", endpoint.host}, {"port", endpoint.port}});
     }
 
+    xdebug_engine::SessionRegistry registry;
+    time_t last_active = time(nullptr);
+    registry.touch(g_session_id, last_active);
+
     // Accept loop
     while (true) {
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(g_srv_fd, &rfds);
+        struct timeval tv;
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+        int ready = select(g_srv_fd + 1, &rfds, nullptr, nullptr, &tv);
+        if (ready < 0) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        time_t now = time(nullptr);
+        if (ready == 0) {
+            if (now > last_active && static_cast<long long>(now - last_active) >= g_idle_timeout_sec) {
+                xdebug_core::log_lifecycle_event("engine", g_session_id, "server.idle_timeout", true,
+                                                 {{"idle_sec", static_cast<long long>(now - last_active)},
+                                                  {"idle_timeout_sec", g_idle_timeout_sec}});
+                break;
+            }
+            continue;
+        }
+
         int client_fd = accept(g_srv_fd, nullptr, nullptr);
         if (client_fd < 0) continue;
 
         bool quit = false;
         handle_client(client_fd, quit);
         close(client_fd);
+        last_active = time(nullptr);
+        registry.touch(g_session_id, last_active);
 
         if (quit) break;
     }

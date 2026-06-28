@@ -44,6 +44,9 @@ bool SessionCatalog::parse_record(const Json& item, SessionRecord& record) {
     record.bind_host = item.value("bind_host", std::string());
     record.port = item.value("port", 0);
     record.server_host = item.value("server_host", std::string());
+    record.server_pid = item.value("server_pid", 0);
+    record.created_at = item.value("created_at", 0LL);
+    record.last_active = item.value("last_active", 0LL);
     record.dbdir_mtime = item.value("dbdir_mtime", 0L);
     record.dbdir_size = item.value("dbdir_size", 0LL);
     record.dbdir_dev = item.value("dbdir_dev", 0ULL);
@@ -93,6 +96,9 @@ Json session_record_json(const SessionRecord& record) {
     if (!record.bind_host.empty()) item["bind_host"] = record.bind_host;
     if (record.port > 0) item["port"] = record.port;
     if (!record.server_host.empty()) item["server_host"] = record.server_host;
+    if (record.server_pid > 0) item["server_pid"] = record.server_pid;
+    if (record.created_at > 0) item["created_at"] = record.created_at;
+    if (record.last_active > 0) item["last_active"] = record.last_active;
     if (record.dbdir_mtime) item["dbdir_mtime"] = record.dbdir_mtime;
     if (record.dbdir_size) item["dbdir_size"] = record.dbdir_size;
     if (record.dbdir_dev) item["dbdir_dev"] = record.dbdir_dev;

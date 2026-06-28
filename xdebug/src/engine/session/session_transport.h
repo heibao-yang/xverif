@@ -5,7 +5,7 @@
 
 #include <string>
 
-namespace xdebug_waveform {
+namespace xdebug_engine {
 
 std::string current_host_name();
 std::string generate_auth_token();
@@ -17,12 +17,12 @@ bool write_endpoint_file(const SessionInfo& session);
 bool read_endpoint_file(const std::string& session_id, SessionInfo& endpoint);
 
 int connect_session_endpoint(const SessionInfo& session);
-bool send_file_command_to_endpoint(const SessionInfo& session,
-                                   const std::string& command,
-                                   std::string& payload,
-                                   bool& server_error,
+bool send_file_request_to_endpoint(const SessionInfo& session,
+                                   const nlohmann::json& request,
+                                   nlohmann::json& response,
                                    int timeout_ms = 0);
 bool ping_session_endpoint(const SessionInfo& session);
+bool protocol_version_matches_endpoint(const SessionInfo& session);
 bool send_quit_to_endpoint(const SessionInfo& session);
 
-} // namespace xdebug_waveform
+} // namespace xdebug_engine

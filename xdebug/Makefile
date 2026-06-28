@@ -63,6 +63,10 @@ APP_SRCS = src/main.cpp \
 ENGINE_SRCS = src/engine/main.cpp \
               src/engine/engine_query.cpp \
               src/engine/server.cpp \
+              src/engine/session/session_registry.cpp \
+              src/engine/session/session_manager.cpp \
+              src/engine/session/session_transport.cpp \
+              src/engine/session/client.cpp \
               src/engine/service/engine_action_registry.cpp \
               src/engine/service/engine_action_handler.cpp \
               src/engine/service/engine_waveform_handlers.cpp \
@@ -78,11 +82,7 @@ ENGINE_SRCS = src/engine/main.cpp \
               src/combined/active_trace_service.cpp \
               src/combined/active_trace_chain.cpp
 
-DESIGN_SRCS = src/design/session/session_registry.cpp \
-              src/design/session/session_manager.cpp \
-              src/design/session/session_transport.cpp \
-              src/design/client/client.cpp \
-              src/design/service/action_support.cpp \
+DESIGN_SRCS = src/design/service/action_support.cpp \
               src/design/service/trace_actions.cpp \
               src/design/common/xdebug_design_paths.cpp \
               src/design/ast/ast_extractor.cpp \
@@ -90,11 +90,7 @@ DESIGN_SRCS = src/design/session/session_registry.cpp \
               src/design/trace/trace_engine.cpp \
               src/design/signal/signal_finder.cpp
 
-WAVEFORM_SRCS = src/waveform/session/session_registry.cpp \
-                src/waveform/session/session_manager.cpp \
-                src/waveform/session/session_transport.cpp \
-                src/waveform/client/client.cpp \
-                src/waveform/service/action_support.cpp \
+WAVEFORM_SRCS = src/waveform/service/action_support.cpp \
                 src/waveform/service/value_support.cpp \
                 src/waveform/service/config_support.cpp \
                 src/waveform/service/rc_generator.cpp \

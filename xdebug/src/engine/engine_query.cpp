@@ -1,7 +1,7 @@
 #include "engine_query.h"
 
-#include "../design/client/client.h"
-#include "../design/session/session_manager.h"
+#include "session/client.h"
+#include "session/session_manager.h"
 #include "../design/protocol/protocol.h"
 #include "../design/service/action_support.h"
 #include "service/design_postprocess.h"
@@ -23,6 +23,15 @@ namespace xdebug_design {
 namespace {
 
 using OrderedJson = nlohmann::ordered_json;
+using Json = nlohmann::json;
+using xdebug_engine::SessionEnsureResult;
+using xdebug_engine::SessionHealth;
+using xdebug_engine::SessionHealthStatus;
+using xdebug_engine::SessionInfo;
+using xdebug_engine::SessionManager;
+using xdebug_engine::SessionTransportOptions;
+using xdebug_engine::send_request_capture;
+using xdebug_engine::session_health_status_name;
 
 std::string read_stream(std::istream& in) {
     std::ostringstream ss;
@@ -145,6 +154,7 @@ std::string ensure_error_code(const SessionEnsureResult& result) {
     if (result.status == "invalid_session_id") return "INVALID_SESSION_ID";
     if (result.status == "invalid_args") return "INVALID_REQUEST";
     if (result.status == "invalid_transport") return "INVALID_REQUEST";
+    if (result.message.find("invalid_config:") != std::string::npos) return "INVALID_CONFIG";
     return "SESSION_UNHEALTHY";
 }
 

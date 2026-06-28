@@ -3,6 +3,7 @@
 #include "../apb/apb_config.h"
 #include "../axi/axi_config.h"
 #include "../event/event_config.h"
+#include "core/session/session_types.h"
 #include "json.hpp"
 
 #include <istream>
@@ -11,6 +12,7 @@
 namespace xdebug_waveform {
 
 using Json = nlohmann::ordered_json;
+using SessionInfo = xdebug_core::SessionInfo;
 
 extern const char* kApiVersion;
 
