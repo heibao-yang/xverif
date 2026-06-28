@@ -517,27 +517,6 @@ debug/full 或 include：
 | `data.paths[]` | array | path 数组；每个 path 是 edge 数组 |
 | `data.graph` | object | `include_graph` 或 full/debug |
 
-### `control.explain`
-
-| 路径 | 类型 | 含义 |
-| --- | --- | --- |
-| `summary.signal` | string | 查询信号 |
-| `summary.control_dependency_count` | number | 控制依赖数 |
-| `data.control_dependencies[]` | array | 控制依赖 |
-
-`control_dependencies[]` item：
-
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `signal` | string | 条件信号 |
-| `file` | string | 源文件 |
-| `line` | number | 源行 |
-| `source` | string | 源码文本 |
-| `condition_text` | string | 提取后的条件文本 |
-| `condition` | object | 条件 AST |
-| `condition_signals[]` | array | 条件信号 |
-| `confidence` | string | 置信度 |
-
 ### `source.context`
 
 compact：
@@ -672,22 +651,6 @@ rule item：
 | `data.fsm.confidence_reason` | string | 说明 |
 
 transition item：`from`、`to`、`condition`、`kind`、`source`、`location`。
-
-### `counter.explain`
-
-| 路径 | 类型 | 含义 |
-| --- | --- | --- |
-| `summary.signal` | string | counter signal |
-| `summary.counter_like` | boolean | 是否识别到 increment/decrement |
-| `summary.rule_count` | number | rule 数 |
-| `summary.confidence` | string | 置信度 |
-| `data.counter.signal` | string | counter signal |
-| `data.counter.clock` | string/null | clock |
-| `data.counter.reset` | string/null | reset |
-| `data.counter.rules[]` | array | counter rules |
-| `data.counter.counter_like` | boolean | 是否像 counter |
-| `data.counter.confidence` | string | 置信度 |
-| `data.counter.confidence_reason` | string | 说明 |
 
 ## 6. Waveform 基础命令
 
@@ -1410,13 +1373,11 @@ trace.expand
 trace.graph
 trace.path
 trace.explain
-control.explain
 source.context
 expr.normalize
 procedural.assignment
 sequential.update
 fsm.explain
-counter.explain
 ```
 
 波形侧：

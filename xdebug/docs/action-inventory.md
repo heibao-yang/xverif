@@ -50,13 +50,11 @@ example 和 contract test 迁移使用。状态定义：
 | `trace.graph` | design | stable | design | design engine forward | regression |
 | `trace.path` | design | stable | design | design engine forward | partial |
 | `trace.explain` | design | stable | design | design engine forward | partial |
-| `control.explain` | design | stable | design | design engine forward | partial |
 | `source.context` | design | stable | none | design engine forward | regression |
 | `expr.normalize` | design | stable | none | design engine forward | partial |
 | `procedural.assignment` | design | stable | design | design engine forward | partial |
 | `sequential.update` | design | stable | design | design engine forward | partial |
 | `fsm.explain` | design | stable | design | design engine forward | partial |
-| `counter.explain` | design | stable | design | design engine forward | partial |
 
 ## Waveform Actions
 

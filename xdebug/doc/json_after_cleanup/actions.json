@@ -8,7 +8,7 @@
   },
   "session": null,
   "summary": {
-    "action_count": 80,
+    "action_count": 78,
     "removed_count": 1
   },
   "data": {
@@ -30,8 +30,6 @@
       "axi.query",
       "axi.request_response_pair",
       "batch",
-      "control.explain",
-      "counter.explain",
       "counter.statistics",
       "cursor.delete",
       "cursor.get",
@@ -441,42 +439,6 @@
         ]
       },
       {
-        "name": "control.explain",
-        "category": "design",
-        "status": "stable",
-        "requires": "design",
-        "request_schema": "schemas/v1/actions/control.explain.request.schema.json",
-        "response_schema": "schemas/v1/actions/control.explain.response.schema.json",
-        "handler_kind": "engine_forward",
-        "request_examples": [
-          "examples/requests/control.explain.basic.json"
-        ],
-        "response_examples": [
-          "examples/responses/control.explain.basic.json"
-        ],
-        "required_args": [
-          "signal"
-        ]
-      },
-      {
-        "name": "counter.explain",
-        "category": "design",
-        "status": "stable",
-        "requires": "design",
-        "request_schema": "schemas/v1/actions/counter.explain.request.schema.json",
-        "response_schema": "schemas/v1/actions/counter.explain.response.schema.json",
-        "handler_kind": "engine_forward",
-        "request_examples": [
-          "examples/requests/counter.explain.basic.json"
-        ],
-        "response_examples": [
-          "examples/responses/counter.explain.basic.json"
-        ],
-        "required_args": [
-          "signal"
-        ]
-      },
-      {
         "name": "counter.statistics",
         "category": "waveform",
         "status": "stable",
@@ -503,10 +465,7 @@
         ],
         "do_not_use_for": [
           "Design-side counter rule explanation"
-        ],
-        "preferred_alternative": {
-          "for_design_semantics": "counter.explain"
-        }
+        ]
       },
       {
         "name": "cursor.delete",
@@ -1630,8 +1589,6 @@
     ],
     "modes": {
       "design": [
-        "control.explain",
-        "counter.explain",
         "expr.normalize",
         "fsm.explain",
         "procedural.assignment",

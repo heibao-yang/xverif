@@ -642,65 +642,6 @@ Json ai_window_verify(const Json& args, std::string& error) {
     return data;
 }
 
-Json ai_signal_trend(const Json& args, std::string& error) {
-    std::string signal = args.value("signal", std::string());
-    std::string clock = args.value("clock", std::string());
-    if (signal.empty() || clock.empty()) {
-        error = "signal.trend requires args.signal and args.clock";
-        return Json();
-    }
-    npiFsdbTime begin = 0, end = 0;
-    if (!json_time_range(args, begin, end, error)) return Json();
-    Json signals = {{"sig", signal}};
-    std::vector<std::string> aliases, paths;
-    fsdbSigVec_t handles;
-    if (!build_signal_alias_handles(signals, aliases, paths, handles, error)) return Json();
-    bool posedge = args.value("sampling", std::string("posedge")) != "negedge";
-    int max_samples = args.value("max_samples", 1000000);
-    bool have = false, stable = true, inc = true, dec = true;
-    unsigned long long first = 0, last = 0, minv = 0, maxv = 0, prev = 0;
-    int unknown = 0, samples = 0;
-    bool truncated = false;
-    if (!sample_on_clock(clock, posedge, aliases, handles, begin, end, max_samples,
-        [&](npiFsdbTime, const std::map<std::string, std::string>& values) -> bool {
-            auto it = values.find("sig");
-            if (it == values.end() || contains_xz_value(it->second)) {
-                unknown++;
-                return true;
-            }
-            std::string bits = xdebug_waveform::expr_bits_only(it->second);
-            unsigned long long v = 0;
-            for (char c : bits) v = (v << 1) | (c == '1' ? 1ULL : 0ULL);
-            if (!have) {
-                first = last = minv = maxv = prev = v;
-                have = true;
-            } else {
-                if (v != prev) stable = false;
-                if (v < prev) inc = false;
-                if (v > prev) dec = false;
-                if (v < minv) minv = v;
-                if (v > maxv) maxv = v;
-                prev = v;
-                last = v;
-            }
-            return true;
-        }, error, samples, truncated)) return Json();
-    Json data;
-    data["signal"] = signal;
-    data["sample_count"] = samples;
-    data["unknown_count"] = unknown;
-    data["stable"] = stable;
-    data["truncated"] = truncated;
-    if (have) {
-        data["initial_value"] = first;
-        data["final_value"] = last;
-        data["min_value"] = minv;
-        data["max_value"] = maxv;
-        data["monotonic"] = stable ? "stable" : inc ? "increasing" : dec ? "decreasing" : "none";
-    }
-    return data;
-}
-
 Json ai_signal_statistics(const Json& args, std::string& error) {
     std::string signal = args.value("signal", std::string());
     std::string clock = args.value("clock", std::string());

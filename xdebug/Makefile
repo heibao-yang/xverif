@@ -86,7 +86,6 @@ DESIGN_SRCS = src/design/session/session_registry.cpp \
               src/design/service/trace_actions.cpp \
               src/design/common/xdebug_design_paths.cpp \
               src/design/ast/ast_extractor.cpp \
-              src/design/port/port_analyzer.cpp \
               src/design/control_dep/control_dep.cpp \
               src/design/trace/trace_engine.cpp \
               src/design/signal/signal_finder.cpp

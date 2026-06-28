@@ -23,8 +23,6 @@
 ## Design Actions
 | action | status | resource | purpose | how it works | objective | args contract |
 | --- | --- | --- | --- | --- | --- | --- |
-| `control.explain` | stable | design | 解释控制信号来源。 | 围绕 signal 的控制依赖和赋值条件做设计分析。 | 说明 enable/reset/select 类信号为什么变化。 | required: signal |
-| `counter.explain` | stable | design | 解释计数器设计逻辑。 | 分析 counter signal 的时序赋值和更新规则。 | 判断它是否像 counter 以及由什么控制。 | required: signal |
 | `expr.normalize` | stable | none | 规范化表达式。 | 无 design 时做字符串级规范化；有 design/signal 时可结合设计赋值信息。 | 把表达式转成 agent 更易处理的结构。 | required: expr |
 | `fsm.explain` | stable | design | 解释 FSM 状态。 | 围绕 state signal 分析状态更新和转移条件。 | 帮助理解状态机为什么跳转。 | required: signal |
 | `procedural.assignment` | stable | design | 分析过程赋值。 | 查找 always/procedural assignment 的分支、条件和 RHS。 | 解释寄存器或变量在哪些分支被赋值。 | required: signal |
@@ -100,11 +98,3 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | `trace.active_driver` | stable | combined | 在指定时间找 active driver。 | 结合 waveform 当前值和 design 依赖，定位 requested_time 的有效驱动证据。 | 回答“此刻是谁真正驱动了它”。 | required: signal, requested_time |
 | `trace.active_driver_chain` | stable | combined | 展开 active driver 链。 | 从 signal/requested_time 递归追溯 active driver。 | 给出跨级根因链。 | required: signal, requested_time |
-## Removed Or Deferred Actions
-| action | decision | note |
-| --- | --- | --- |
-| `port.trace` | marked for deletion | 已从 public registry/spec/schema/example/test inventory 移除；历史真实 xout 见 `XDEBUG_DESIGN_ACTION_DELETE_CANDIDATES_2026-06-27.md`。 |
-| `instance.map` | marked for deletion | 已从 public registry/spec/schema/example/test inventory 移除；历史真实 xout 见 `XDEBUG_DESIGN_ACTION_DELETE_CANDIDATES_2026-06-27.md`。 |
-| `interface.resolve` | marked for deletion | 已从 public registry/spec/schema/example/test inventory 移除；历史真实 xout 见 `XDEBUG_DESIGN_ACTION_DELETE_CANDIDATES_2026-06-27.md`。 |
-| `signal.trend` | marked for deletion | 已从 public registry/spec/schema/example/test inventory 移除；历史真实 xout 见 `XDEBUG_DESIGN_ACTION_DELETE_CANDIDATES_2026-06-27.md`。 |
-| `signal.search` | removed | 保留在 spec 的 removed 列表中，不是可调用 public action。 |

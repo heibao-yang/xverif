@@ -76,7 +76,6 @@ Json action_spec_descriptor(const ActionSpec& spec) {
     } else if (spec.name == "counter.statistics") {
         descriptor["use_for"] = Json::array({"Measure counter min/max/average under valid", "Count max/min occurrences in a clocked window", "Handle up to 64-bit sampled counters"});
         descriptor["do_not_use_for"] = Json::array({"Design-side counter rule explanation"});
-        descriptor["preferred_alternative"] = {{"for_design_semantics", "counter.explain"}};
     } else if (spec.name == "window.verify") {
         descriptor["use_for"] = Json::array({"Prove signal conditions across a sampled time window", "Check whether a signal stays 0 or 1"});
     } else if (spec.name == "event.find") {

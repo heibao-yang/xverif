@@ -6,7 +6,6 @@
 
 #include "../../design/trace/trace_engine.h"
 #include "../../design/signal/signal_finder.h"
-#include "../../design/port/port_analyzer.h"
 #include "../../design/service/action_support.h"
 
 #include "npi.h"
@@ -162,69 +161,6 @@ public:
         SignalFinder finder;
         SignalResolveResult result = finder.resolve(signal);
         return with_scalar_summary(Json::parse(finder.render_json(result)));
-    }
-
-private:
-    static Json err(const char* code, const std::string& msg) {
-        Json e; e["error"] = code; e["message"] = msg; return e;
-    }
-};
-
-class PortTraceHandler : public EngineActionHandler {
-public:
-    const char* action_name() const override { return "port.trace"; }
-    bool needs_design() const override { return true; }
-    bool needs_waveform() const override { return false; }
-
-    Json run(const Json& request, EngineActionContext& ctx) const override {
-        Json args = request.value("args", Json::object());
-        std::string path = args.value("path", std::string());
-        if (path.empty()) return err("MISSING_FIELD", "args.path is required");
-        Json limits = request.value("limits", Json::object());
-        int limit = args.value("limit",
-            limits.value("max_results", limits.value("max_rows", 0)));
-        PortAnalyzer analyzer;
-        return with_scalar_summary(Json::parse(analyzer.render_port_trace(path, limit)));
-    }
-
-private:
-    static Json err(const char* code, const std::string& msg) {
-        Json e; e["error"] = code; e["message"] = msg; return e;
-    }
-};
-
-class InstanceMapHandler : public EngineActionHandler {
-public:
-    const char* action_name() const override { return "instance.map"; }
-    bool needs_design() const override { return true; }
-    bool needs_waveform() const override { return false; }
-
-    Json run(const Json& request, EngineActionContext& ctx) const override {
-        Json args = request.value("args", Json::object());
-        std::string path = args.value("path", std::string());
-        if (path.empty()) return err("MISSING_FIELD", "args.path is required");
-        PortAnalyzer analyzer;
-        return with_scalar_summary(Json::parse(analyzer.render_instance_map(path)));
-    }
-
-private:
-    static Json err(const char* code, const std::string& msg) {
-        Json e; e["error"] = code; e["message"] = msg; return e;
-    }
-};
-
-class InterfaceResolveHandler : public EngineActionHandler {
-public:
-    const char* action_name() const override { return "interface.resolve"; }
-    bool needs_design() const override { return true; }
-    bool needs_waveform() const override { return false; }
-
-    Json run(const Json& request, EngineActionContext& ctx) const override {
-        Json args = request.value("args", Json::object());
-        std::string path = args.value("path", std::string());
-        if (path.empty()) return err("MISSING_FIELD", "args.path is required");
-        PortAnalyzer analyzer;
-        return with_scalar_summary(Json::parse(analyzer.render_interface_resolve(path)));
     }
 
 private:
@@ -469,42 +405,6 @@ public:
 
 // ── Single-trace design handlers ───────────────────────────────────────
 
-class ControlExplainHandler : public EngineActionHandler {
-public:
-    const char* action_name() const override { return "control.explain"; }
-    bool needs_design() const override { return true; }
-    bool needs_waveform() const override { return false; }
-    Json run(const Json& request, EngineActionContext& ctx) const override {
-        Json args = request.value("args", Json::object());
-        std::string signal = args.value("signal", "");
-        if (signal.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.signal"}});
-
-        TraceOptions opts = parse_trace_opts(args);
-        nlohmann::json trace = trace_one_signal(signal, TraceMode::Driver, opts);
-        nlohmann::json deps = trace.value("control_dependencies", nlohmann::json::array());
-        for (auto& dep : deps) {
-            std::string source = dep.value("source", "");
-            std::string cond = source;
-            size_t if_pos = cond.find("if");
-            size_t lp = cond.find('(', if_pos == std::string::npos ? 0 : if_pos);
-            size_t rp = cond.rfind(')');
-            if (lp != std::string::npos && rp != std::string::npos && rp > lp)
-                cond = cond.substr(lp + 1, rp - lp - 1);
-            dep["condition_text"] = trim(cond);
-            dep["condition"] = nlohmann::json::parse(parse_expr_ast(cond).dump());
-            nlohmann::json sigs = nlohmann::json::array();
-            sigs.push_back(dep.value("signal", ""));
-            dep["condition_signals"] = sigs;
-            dep["confidence"] = dep.value("source", "").empty() ? "low" : "medium";
-        }
-
-        Json out;
-        out["summary"] = {{"signal",signal},{"control_dependency_count",deps.size()}};
-        out["control_dependencies"] = Json::parse(deps.dump());
-        return out;
-    }
-};
-
 class ExprNormalizeHandler : public EngineActionHandler {
 public:
     const char* action_name() const override { return "expr.normalize"; }
@@ -682,46 +582,6 @@ public:
     }
 };
 
-class CounterExplainHandler : public EngineActionHandler {
-public:
-    const char* action_name() const override { return "counter.explain"; }
-    bool needs_design() const override { return true; }
-    bool needs_waveform() const override { return false; }
-    Json run(const Json& request, EngineActionContext& ctx) const override {
-        SequentialUpdateHandler seq_handler;
-        Json seq_resp = seq_handler.run(request, ctx);
-        if (seq_resp.contains("error")) return seq_resp;
-
-        Json args = request.value("args", Json::object());
-        std::string signal = args.value("signal", "");
-        nlohmann::json seq = nlohmann::json::parse(
-            seq_resp.value("sequential_update", Json::object()).dump());
-
-        nlohmann::json counter_rules = nlohmann::json::array();
-        bool is_counter_like = false;
-        for (const auto& rule : seq.value("rules", nlohmann::json::array())) {
-            std::string kind = rule.value("kind", "");
-            if (kind == "reset" || kind == "increment" || kind == "decrement" || kind == "hold" || kind == "update")
-                counter_rules.push_back(rule);
-            if (kind == "increment" || kind == "decrement") is_counter_like = true;
-        }
-
-        std::string conf = is_counter_like ? seq.value("confidence","medium") : "medium";
-        Json out;
-        out["summary"] = {{"signal",signal},{"counter_like",is_counter_like},
-            {"rule_count",counter_rules.size()},{"confidence",conf}};
-        out["counter"] = Json::parse(nlohmann::json{
-            {"signal",signal},{"clock",seq["clock"]},
-            {"reset",seq["reset"]},{"rules",counter_rules},
-            {"counter_like",is_counter_like},{"confidence",conf},
-            {"confidence_reason", is_counter_like
-                ? "increment/decrement rule was identified from next-value expression"
-                : "sequential rules were found but no increment/decrement pattern was proven"}
-        }.dump());
-        return out;
-    }
-};
-
 // ── Zero-dependency design handlers ────────────────────────────────────
 
 class SourceContextHandler : public EngineActionHandler {
@@ -833,22 +693,17 @@ void register_design_handlers(EngineActionRegistry& r) {
     r.add(std::unique_ptr<EngineActionHandler>(new TraceDriverHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new TraceLoadHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new SignalResolveHandler));
-    r.add(std::unique_ptr<EngineActionHandler>(new PortTraceHandler));
-    r.add(std::unique_ptr<EngineActionHandler>(new InstanceMapHandler));
-    r.add(std::unique_ptr<EngineActionHandler>(new InterfaceResolveHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new TraceQueryHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new TraceExpandHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new TraceGraphHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new TracePathHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new TraceExplainHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new SignalCanonicalizeHandler));
-    r.add(std::unique_ptr<EngineActionHandler>(new ControlExplainHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new SourceContextHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new ExprNormalizeHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new ProceduralAssignmentHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new SequentialUpdateHandler));
     r.add(std::unique_ptr<EngineActionHandler>(new FsmExplainHandler));
-    r.add(std::unique_ptr<EngineActionHandler>(new CounterExplainHandler));
 }
 
 }  // namespace xdebug_design

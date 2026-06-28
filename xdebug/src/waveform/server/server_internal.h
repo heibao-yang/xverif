@@ -134,7 +134,6 @@ bool sample_on_clock(const std::string& clock_path, bool posedge,
                      std::string& error, int& sample_count, bool& truncated);
 Json ai_expr_eval_at(const Json& args, std::string& error);
 Json ai_window_verify(const Json& args, std::string& error);
-Json ai_signal_trend(const Json& args, std::string& error);
 Json ai_signal_statistics(const Json& args, std::string& error);
 Json ai_counter_statistics(const Json& args, std::string& error);
 Json ai_sampled_pulse_inspect(const Json& args, std::string& error);

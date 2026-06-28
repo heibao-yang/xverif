@@ -449,7 +449,6 @@ Json ai_dispatch_query(const Json& req, std::string& error) {
     if (action == "window.verify") return ai_window_verify(args, error);
     if (action == "signal.changes") return ai_signal_changes(args, error);
     if (action == "signal.stability") return ai_signal_stability(args, error);
-    if (action == "signal.trend") return ai_signal_trend(args, error);
     if (action == "signal.statistics") return ai_signal_statistics(args, error);
     if (action == "counter.statistics") return ai_counter_statistics(args, error);
     if (action == "sampled_pulse.inspect") return ai_sampled_pulse_inspect(args, error);

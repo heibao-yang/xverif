@@ -384,50 +384,6 @@
       ]
     },
     {
-      "name": "control.explain",
-      "category": "design",
-      "status": "stable",
-      "requires": "design",
-      "handler_kind": "engine_forward",
-      "schemas": {
-        "request": "schemas/v1/actions/control.explain.request.schema.json",
-        "response": "schemas/v1/actions/control.explain.response.schema.json"
-      },
-      "examples": {
-        "request": [
-          "examples/requests/control.explain.basic.json"
-        ],
-        "response": [
-          "examples/responses/control.explain.basic.json"
-        ]
-      },
-      "required_args": [
-        "signal"
-      ]
-    },
-    {
-      "name": "counter.explain",
-      "category": "design",
-      "status": "stable",
-      "requires": "design",
-      "handler_kind": "engine_forward",
-      "schemas": {
-        "request": "schemas/v1/actions/counter.explain.request.schema.json",
-        "response": "schemas/v1/actions/counter.explain.response.schema.json"
-      },
-      "examples": {
-        "request": [
-          "examples/requests/counter.explain.basic.json"
-        ],
-        "response": [
-          "examples/responses/counter.explain.basic.json"
-        ]
-      },
-      "required_args": [
-        "signal"
-      ]
-    },
-    {
       "name": "counter.statistics",
       "category": "waveform",
       "status": "stable",

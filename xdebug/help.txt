@@ -164,12 +164,12 @@ Common actions
   Design:
       trace.driver, trace.load, trace.query, trace.graph, trace.path,
       trace.explain, source.context, expr.normalize, fsm.explain,
-      counter.explain, sequential.update
+      sequential.update
 
   Waveform:
       scope.list, rc.generate, value.at, value.batch_at, list.value_at,
       event.find, event.export, verify.conditions, expr.eval_at,
-      window.verify, signal.changes, signal.statistics, counter.statistics, signal.trend,
+      window.verify, signal.changes, signal.statistics, counter.statistics,
       signal.stability, handshake.inspect, detect_anomaly
 
   Protocol:

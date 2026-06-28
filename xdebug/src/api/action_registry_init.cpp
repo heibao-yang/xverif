@@ -84,8 +84,6 @@ void apply_arg_contract(ActionSpec& spec) {
         {"axi.query", {"name"}, 1},
         {"axi.request_response_pair", {"name"}, 1},
         {"batch", {"requests"}, 1},
-        {"control.explain", {"signal"}, 1},
-        {"counter.explain", {"signal"}, 1},
         {"counter.statistics", {"clock", "time_range", "vld", "cnt"}, 4},
         {"cursor.delete", {"name"}, 1},
         {"cursor.get", {"name"}, 1},
@@ -182,9 +180,8 @@ void register_design(ActionRegistry& r) {
         "trace.driver", "trace.load", "trace.query",
         "signal.resolve", "signal.canonicalize",
         "trace.expand", "trace.graph", "trace.path", "trace.explain",
-        "control.explain", "source.context", "expr.normalize",
+        "source.context", "expr.normalize",
         "procedural.assignment", "sequential.update", "fsm.explain",
-        "counter.explain"
     };
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
         ResourceRequirement resource = ResourceRequirement::Design;
