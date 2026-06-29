@@ -6,6 +6,55 @@ xdebug 是 xtrace 与 xwave 合并后的统一调试工具。公开入口使用 
 
 Action 协议由 `ActionSpec` / `ActionRegistry` 约束。`actions` 输出来自 runtime registry，并带有 `category`、`status`、`requires`、action-specific schema 和 example 信息；`xdebug/specs/actions/actions.yaml`、`xdebug/schemas/v1/actions` 与 `xdebug/examples` 由 contract test 校验一致。所有 non-removed action 都必须有自己的 request/response schema，不能退回通用 envelope schema。
 
+## Architecture
+
+```text
+                         +-------------------------------+
+                         |            callers            |
+                         |  shell / scripts / MCP / AI   |
+                         +---------------+---------------+
+                                         |
+                                         | JSON request
+                                         v
+                         +-------------------------------+
+                         |        xdebug frontend        |
+                         |  request parse / validation   |
+                         |  action registry / xout/json  |
+                         +---------------+---------------+
+                                         |
+                       session actions   | engine-forward actions
+                    session.open/list/gc | value/trace/source/...
+                                         v
+        +--------------------------------+--------------------------------+
+        |                         session catalog                         |
+        |       ~/.xdebug/engine/registry.json + session manifests        |
+        +----------------+--------------------------------+---------------+
+                         |                                |
+                         | spawn / reuse                  | direct request
+                         v                                v
+        +-------------------------------+   +-----------------------------+
+        |       xdebug-engine process   |<->|  UDS / TCP / file transport |
+        |  one process per session      |   |  request/response exchange  |
+        +---------------+---------------+   +-----------------------------+
+                        |
+         +--------------+---------------+
+         |                              |
+         v                              v
++--------------------+        +-------------------------+
+| design action code |        | waveform action code    |
+| daidir / NPI DB    |        | FSDB / NPI FSDB handle  |
++--------------------+        +-------------------------+
+         |                              |
+         +--------------+---------------+
+                        |
+                        v
+        +-----------------------------------------------+
+        | unified engine session lifecycle              |
+        | start timeout: XDEBUG_SESSION_START_TIMEOUT_SEC|
+        | idle timeout : XDEBUG_SESSION_IDLE_TIMEOUT_SEC |
+        +-----------------------------------------------+
+```
+
 ## Quick Start
 
 `-h` 和 `-help` 是 xdebug 唯一的非 JSON 命令，用于查看详尽的人类可读帮助：

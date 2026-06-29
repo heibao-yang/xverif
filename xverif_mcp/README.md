@@ -13,6 +13,52 @@ MCP 层保持轻量：它只负责启动/终止 `tools/xdebug --stdio-loop` 或
 处理 direct/LSF transport cleanup。设计/波形 session 状态由 xdebug 管理；
 coverage database session、VDB/NPI handle、scope/cache/query 状态由 xcov 管理。
 
+## Architecture
+
+```text
+                         +------------------------------+
+                         |          MCP clients         |
+                         | Claude Code / IDE / agents   |
+                         +---------------+--------------+
+                                         |
+                                         | MCP stdio
+                                         v
+                         +------------------------------+
+                         |       xverif_mcp server      |
+                         | FastMCP tools / schemas      |
+                         | output file handling         |
+                         +---------------+--------------+
+                                         |
+             +---------------------------+---------------------------+
+             |                           |                           |
+             v                           v                           v
++-------------------------+  +-------------------------+  +-------------------------+
+| xdebug tool adapter     |  | xcov tool adapter       |  | stateless adapters      |
+| debug session/query     |  | cov session/query       |  | xbit/xentry/xloc/...    |
++------------+------------+  +------------+------------+  +------------+------------+
+             |                            |                           |
+             | stateful stdio-loop        | stateful stdio-loop       | in-process
+             v                            v                           v
++-------------------------+  +-------------------------+  +-------------------------+
+| McpSessionManager       |  | McpSessionManager       |  | Python APIs / CLIs      |
+| alias/default mapping   |  | alias/default mapping   |  | no persistent session   |
+| request_lock per sess   |  | request_lock per sess   |  +-------------------------+
++------------+------------+  +------------+------------+
+             |                            |
+             | direct or LSF launcher     | direct or LSF launcher
+             v                            v
++-------------------------+  +-------------------------+
+| tools/xdebug            |  | tools/xcov              |
+| --stdio-loop frontend   |  | --stdio-loop frontend   |
++------------+------------+  +------------+------------+
+             |                            |
+             v                            v
++-------------------------+  +-------------------------+
+| xdebug unified engine   |  | xcov backend            |
+| daidir / FSDB sessions  |  | VDB coverage sessions   |
++-------------------------+  +-------------------------+
+```
+
 ## 环境要求
 
 | 组件 | 要求 |
