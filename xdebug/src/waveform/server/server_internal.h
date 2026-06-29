@@ -152,6 +152,5 @@ void handle_event_query(int client_fd, const char* name, npiFsdbTime begin_time,
                         const char* expr, const char* axi_context_name = nullptr,
                         const char* apb_context_name = nullptr,
                         npiFsdbTime context_window = 0);
-bool handle_client(int client_fd, bool& should_quit);
 
 }  // namespace xdebug_waveform
