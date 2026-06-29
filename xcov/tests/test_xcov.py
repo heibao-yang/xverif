@@ -105,14 +105,45 @@ def test_schema_required_fields_are_action_specific():
         "action": "schema", "args": {"action": "session.open"},
         "output": {"response_format": "json"},
     })["data"]["schema"]
-    object_get = dispatcher.dispatch({
-        "api_version": "xcov.v1", "request_id": "schema-object",
-        "action": "schema", "args": {"action": "cov.object.get"},
+    code_export = dispatcher.dispatch({
+        "api_version": "xcov.v1", "request_id": "schema-export",
+        "action": "schema", "args": {"action": "export.code_coverage"},
         "output": {"response_format": "json"},
     })["data"]["schema"]
     assert set(source["properties"]["args"]["required"]) == {"file", "line"}
     assert session_open["properties"]["target"]["required"] == ["vdb"]
-    assert object_get["properties"]["args"]["required"] == ["name"]
+    assert "threshold_pct" in code_export["properties"]["args"]["properties"]
+
+
+def test_new_urg_alignment_actions_are_in_schema_and_actions():
+    dispatcher = Dispatcher()
+    actions = dispatcher.dispatch({
+        "api_version": "xcov.v1", "request_id": "actions",
+        "action": "actions", "output": {"response_format": "json"},
+    })
+    names = {row["name"] for row in actions["data"]["items"]}
+    for action in ("code_coverage.summary", "code_coverage.holes", "source.annotate",
+                   "assert.report", "export.code_coverage", "export.function_coverage",
+                   "export.assert"):
+        assert action in names
+        schema = dispatcher.dispatch({
+            "api_version": "xcov.v1", "request_id": f"schema-{action}",
+            "action": "schema", "args": {"action": action},
+            "output": {"response_format": "json"},
+        })
+        assert schema["ok"] is True
+        assert schema["data"]["schema"]["properties"]["action"]["const"] == action
+    removed = {"cov.summary", "cov.holes", "cov.object.get", "cov.object.search",
+               "toggle.details", "export.summary", "export.holes",
+               "export.scope_tree", "export.functional"}
+    assert not (names & removed)
+    for action in removed:
+        rsp = dispatcher.dispatch({
+            "api_version": "xcov.v1", "request_id": f"schema-removed-{action}",
+            "action": "schema", "args": {"action": action},
+            "output": {"response_format": "json"},
+        })
+        assert rsp["ok"] is False
 
 
 def test_logging_sanitize_omits_heavy_fields():
@@ -129,7 +160,7 @@ def test_stdio_loop_fake_holes():
          "action": "session.open", "target": {"vdb": "fake"},
          "args": {"name": "cov0", "fake": True}},
         {"api_version": "xcov.v1", "request_id": "holes",
-         "action": "cov.holes", "target": {"session_id": "cov0"},
+         "action": "code_coverage.holes", "target": {"session_id": "cov0"},
          "args": {"metrics": ["toggle", "branch"]}},
     ]
     proc = subprocess.run([str(XCOV), "--stdio-loop"],
@@ -141,8 +172,20 @@ def test_stdio_loop_fake_holes():
     assert out[0]["protocol"] == "xcov-stdio-loop"
     assert out[2]["id"] == "holes"
     assert out[2]["ok"] is True
-    assert "@xcov.v1 ok action=cov.holes" in out[2]["xout"]
-    assert out[2]["json"]["summary"]["matched_count"] == 3
+    assert "@xcov.v1 ok action=code_coverage.holes" in out[2]["xout"]
+    assert out[2]["json"]["summary"]["matched_count"] == 1
+
+
+def test_tests_list_defaults_to_name_filter():
+    dispatcher = _dispatch_opened()
+    rsp = dispatcher.dispatch({
+        "api_version": "xcov.v1", "request_id": "tests",
+        "action": "tests.list", "target": {"session_id": "cov0"},
+        "output": {"format": "json"},
+    })
+    assert rsp["ok"] is True
+    assert rsp["summary"]["matched_count"] == 1
+    assert rsp["data"]["items"][0]["name"] == "fake/test"
 
 
 def test_logging_writes_action_manifest_lifecycle_and_transport(tmp_path):
@@ -152,7 +195,7 @@ def test_logging_writes_action_manifest_lifecycle_and_transport(tmp_path):
          "action": "session.open", "target": {"vdb": "fake"},
          "args": {"name": "cov0", "fake": True}},
         {"api_version": "xcov.v1", "request_id": "holes",
-         "action": "cov.holes", "target": {"session_id": "cov0"},
+         "action": "code_coverage.holes", "target": {"session_id": "cov0"},
          "args": {"metrics": ["toggle"]}},
         {"api_version": "xcov.v1", "request_id": "close",
          "action": "session.close", "target": {"session_id": "cov0"}},
@@ -194,7 +237,7 @@ def test_regex_rejected():
          "action": "session.open", "target": {"vdb": "fake"},
          "args": {"name": "cov0", "fake": True}},
         {"api_version": "xcov.v1", "request_id": "bad",
-         "action": "cov.holes", "target": {"session_id": "cov0"},
+         "action": "code_coverage.holes", "target": {"session_id": "cov0"},
          "args": {"query": {"include_patterns": ["^top.*"]}}},
     ]
     proc = subprocess.run([str(XCOV), "--stdio-loop"],
@@ -207,15 +250,14 @@ def test_regex_rejected():
 
 
 def test_export_writes_file(tmp_path):
-    path = tmp_path / "holes.ndjson"
+    path = tmp_path / "holes.md"
     reqs = [
         {"api_version": "xcov.v1", "request_id": "open",
          "action": "session.open", "target": {"vdb": "fake"},
          "args": {"name": "cov0", "fake": True}},
         {"api_version": "xcov.v1", "request_id": "export",
-         "action": "export.holes", "target": {"session_id": "cov0"},
-         "args": {"output": {"mode": "file", "artifact_format": "ndjson",
-                              "path": str(path), "allow_absolute_path": True}}},
+         "action": "export.code_coverage", "target": {"session_id": "cov0"},
+         "args": {"output": {"path": str(path), "allow_absolute_path": True}}},
     ]
     proc = subprocess.run([str(XCOV), "--stdio-loop"],
                           input="\n".join(json.dumps(x) for x in reqs) + "\n",
@@ -223,7 +265,9 @@ def test_export_writes_file(tmp_path):
                           cwd=str(ROOT))
     assert proc.returncode == 0
     assert path.exists()
-    assert "npiCovToggleBin" in path.read_text()
+    text = path.read_text()
+    assert "# Code Coverage Holes" in text
+    assert "0->1 covered" in text
 
 
 def _dispatch_opened() -> Dispatcher:
@@ -242,8 +286,8 @@ def test_top_level_limits_output_are_merged_for_mcp_queries():
     dispatcher = _dispatch_opened()
     rsp = dispatcher.dispatch({
         "api_version": "xcov.v1", "request_id": "holes",
-        "action": "cov.holes", "target": {"session_id": "cov0"},
-        "args": {"metrics": ["toggle", "branch"]},
+        "action": "code_coverage.holes", "target": {"session_id": "cov0"},
+        "args": {"scope": "top.u_dut", "metrics": ["toggle", "branch"]},
         "limits": {"max_items": 1},
         "output": {"format": "json"},
     })
@@ -256,8 +300,9 @@ def test_args_limits_take_precedence_over_top_level_limits():
     dispatcher = _dispatch_opened()
     rsp = dispatcher.dispatch({
         "api_version": "xcov.v1", "request_id": "holes",
-        "action": "cov.holes", "target": {"session_id": "cov0"},
-        "args": {"metrics": ["toggle", "branch"], "limits": {"max_items": 2}},
+        "action": "code_coverage.holes", "target": {"session_id": "cov0"},
+        "args": {"scope": "top.u_dut", "metrics": ["toggle", "branch"],
+                 "limits": {"max_items": 2}},
         "limits": {"max_items": 1},
         "output": {"format": "json"},
     })
@@ -277,7 +322,10 @@ def test_scope_summary_returns_one_requested_scope():
     assert rsp["summary"]["matched_count"] == 1
     item = rsp["data"]["items"][0]
     assert item["full_name"] == "top.u_dut"
-    assert item["coverable"] == 6
+    assert item["coverable"] == 9
+    assert "metrics" not in item
+    assert item["toggle_pct"] == 0.0
+    assert item["branch_pct"] == 0.0
 
 
 def test_scope_children_direct_vs_recursive():
@@ -313,21 +361,22 @@ def test_scope_search_does_not_enrich_coverage():
     assert "coverage_pct" not in rsp["data"]["items"][0]
 
 
-def test_export_scope_tree_contains_coverage_tree(tmp_path, monkeypatch):
+def test_export_code_coverage_writes_markdown_only(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     dispatcher = _dispatch_opened()
     rsp = dispatcher.dispatch({
-        "api_version": "xcov.v1", "request_id": "tree",
-        "action": "export.scope_tree", "target": {"session_id": "cov0"},
-        "args": {"scope": "top.u_dut", "output": {"mode": "both", "path": "tree.json"}},
+        "api_version": "xcov.v1", "request_id": "code-export",
+        "action": "export.code_coverage", "target": {"session_id": "cov0"},
+        "args": {"scope": "top.u_dut", "output": {"path": "code.md"}},
         "output": {"format": "json"},
     })
     assert rsp["ok"] is True
-    assert rsp["summary"]["output_path"] == ".xverif/xcov_exports/tree.json"
-    item = next(i for i in rsp["data"]["items"] if i["full_name"] == "top.u_dut")
-    assert item["coverable"] == 6
-    assert item["metrics"]
-    assert (tmp_path / ".xverif/xcov_exports/tree.json").exists()
+    assert rsp["summary"]["output_path"] == ".xverif/xcov_exports/code.md"
+    assert rsp["summary"]["artifact_format"] == "md"
+    assert "x-npi" in rsp["summary"]["note"]
+    text = (tmp_path / ".xverif/xcov_exports/code.md").read_text(encoding="utf-8")
+    assert "# Code Coverage Holes" in text
+    assert "| scope | signal | bit | 0->1 covered | 1->0 covered | coverage_pct | file:line |" in text
 
 
 def test_functional_levels_filter():
@@ -360,6 +409,45 @@ def test_functional_summary_uses_requested_level_only():
     assert rsp["data"]["items"][0]["coverable"] == 1
 
 
+def test_code_summary_uses_urg_score_rows_only():
+    from xcov.actions import _coverage_score_rows, _summary_from_items
+
+    rows = [
+        {"metric": "line", "type": "npiCovBlock", "covered": 1, "coverable": 2},
+        {"metric": "line", "type": "npiCovStmtBin", "covered": 1, "coverable": 1},
+        {"metric": "toggle", "type": "npiCovSignal", "covered": 1, "coverable": 4},
+        {"metric": "toggle", "type": "npiCovToggleBin", "covered": 2, "coverable": 4},
+        {"metric": "assert", "type": "npiCovSuccessBin", "covered": -1, "coverable": -1},
+        {"metric": "assert", "type": "npiCovAssert", "covered": 1, "coverable": 1},
+    ]
+    summary = {row["metric"]: row for row in _summary_from_items(_coverage_score_rows(rows), "metric")}
+    assert summary["line"]["covered"] == 1
+    assert summary["line"]["coverable"] == 1
+    assert summary["toggle"]["covered"] == 2
+    assert summary["toggle"]["coverable"] == 4
+    assert summary["assert"]["covered"] == 1
+    assert summary["assert"]["coverable"] == 1
+
+
+def test_functional_covergroup_summary_uses_urg_score_average():
+    from xcov.actions import _functional_summary_rows
+
+    rows = [
+        {"metric": "functional", "type": "npiCovCovergroup", "covergroup": "cg",
+         "covered": 5, "coverable": 8, "missing": 3, "coverage_pct": 62.5},
+        {"metric": "functional", "type": "npiCovCoverpoint", "covergroup": "cg",
+         "coverpoint": "cp_a", "covered": 2, "coverable": 2, "coverage_pct": 100.0},
+        {"metric": "functional", "type": "npiCovCoverpoint", "covergroup": "cg",
+         "coverpoint": "cp_b", "covered": 1, "coverable": 2, "coverage_pct": 50.0},
+        {"metric": "functional", "type": "npiCovCross", "covergroup": "cg",
+         "cross": "cx", "covered": 2, "coverable": 4, "coverage_pct": 50.0},
+    ]
+    summary = _functional_summary_rows(rows, "covergroup")
+    assert summary[0]["coverage_pct"] == 66.6667
+    assert summary[0]["raw_coverage_pct"] == 62.5
+    assert summary[0]["score_basis"] == "average_direct_coverpoint_cross_pct"
+
+
 def test_functional_bin_evidence_is_inherited_from_parent():
     dispatcher = _dispatch_opened()
     rsp = dispatcher.dispatch({
@@ -375,28 +463,83 @@ def test_functional_bin_evidence_is_inherited_from_parent():
     assert item["evidence_source"]["type"] == "npiCovCoverpoint"
 
 
-def test_code_coverage_holes_include_detail_fields():
+def test_code_coverage_holes_reports_hierarchy_coverage_only():
     dispatcher = _dispatch_opened()
     rsp = dispatcher.dispatch({
         "api_version": "xcov.v1", "request_id": "code-details",
-        "action": "cov.holes", "target": {"session_id": "cov0"},
-        "args": {"metrics": ["toggle", "branch", "condition"]},
+        "action": "code_coverage.holes", "target": {"session_id": "cov0"},
+        "args": {"scope": "top.u_dut", "metrics": ["toggle", "branch", "condition"]},
         "output": {"format": "json"},
     })
     assert rsp["ok"] is True
     rows = rsp["data"]["items"]
-    toggle = next(row for row in rows if row["metric"] == "toggle")
-    branch = next(row for row in rows if row["metric"] == "branch")
-    condition = next(row for row in rows if row["metric"] == "condition")
-    assert toggle["toggle_signal"] == "top.u_dut.u_fifo.credit"
-    assert toggle["toggle_bit"] == "top.u_dut.u_fifo.credit[0]"
-    assert toggle["toggle_transition"] == "0 -> 1"
-    assert branch["branch"] == "if (enable)"
-    assert branch["branch_bin"] == "else"
-    assert condition["condition"] == "(enable && ready)"
-    assert condition["condition_bin"] == "10"
-    assert condition["condition_terms"] == "enable;ready"
-    assert condition["evidence_source"]["type"] == "npiCovCondition"
+    assert {row["full_name"] for row in rows} == {
+        "top.u_dut", "top.u_dut.u_ctrl", "top.u_dut.u_fifo"
+    }
+    item = next(row for row in rows if row["full_name"] == "top.u_dut.u_ctrl")
+    assert item["branch_pct"] == 0.0
+    assert item["condition_pct"] == 0.0
+    assert "branch_bin" not in item
+    assert "toggle_signal" not in item
+    assert "note" in rsp["summary"]
+
+
+def test_source_annotate_returns_source_window_and_annotations(tmp_path):
+    src = tmp_path / "ctrl.sv"
+    src.write_text("\n".join([
+        "module ctrl;",
+        "  logic enable;",
+        "  assert property (p_ready);",
+        "endmodule",
+    ]) + "\n", encoding="utf-8")
+    dispatcher = _dispatch_opened()
+    rsp = dispatcher.dispatch({
+        "api_version": "xcov.v1", "request_id": "annotate",
+        "action": "source.annotate", "target": {"session_id": "cov0"},
+        "args": {"file": "rtl/ctrl.sv", "line": 120, "window": 0,
+                 "include_source_text": False},
+        "output": {"format": "json"},
+    })
+    assert rsp["ok"] is True
+    assert rsp["summary"]["matched_count"] == 1
+    row = rsp["data"]["items"][0]
+    assert row["line"] == 120
+    assert row["annotation_count"] == 1
+    assert row["annotations"][0]["metric"] == "assert"
+
+
+def test_function_coverage_export_groups_bins_by_covergroup(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    dispatcher = _dispatch_opened()
+    rsp = dispatcher.dispatch({
+        "api_version": "xcov.v1", "request_id": "func-export",
+        "action": "export.function_coverage", "target": {"session_id": "cov0"},
+        "args": {"covergroup": "cg_credit", "output": {"path": "func.md"}},
+        "output": {"format": "json"},
+    })
+    assert rsp["ok"] is True
+    text = (tmp_path / ".xverif/xcov_exports/func.md").read_text(encoding="utf-8")
+    assert "## cg_credit (verif/env/uart_coverage.sv:21)" in text
+    assert "### cp_level" in text
+    assert "zero_credit" in text
+    assert "verif/env/uart_coverage.sv:22" not in text
+
+
+def test_assert_report_summarizes_bins_and_sections():
+    dispatcher = _dispatch_opened()
+    rsp = dispatcher.dispatch({
+        "api_version": "xcov.v1", "request_id": "assert-report",
+        "action": "assert.report", "target": {"session_id": "cov0"},
+        "output": {"format": "json"},
+    })
+    assert rsp["ok"] is True
+    item = next(row for row in rsp["data"]["items"] if row["kind"] == "assertion")
+    assert item["attempts"] == 10
+    assert item["real_successes"] == 8
+    assert item["failures"] == 1
+    assert item["incomplete"] == 1
+    assert rsp["data"]["sections"]["assert_summary"]["failure"] == 1
+    assert rsp["data"]["sections"]["cover_sequence_summary"]["first_match"] == 3
 
 
 def test_xout_flattens_evidence_source():
@@ -412,18 +555,31 @@ def test_xout_flattens_evidence_source():
     assert "evidence_source.type=npiCovCoverpoint" in xout
 
 
-def test_xout_contains_code_coverage_detail_fields():
+def test_xout_contains_code_coverage_hierarchy_fields_without_metrics_json():
     dispatcher = _dispatch_opened()
     rsp = dispatcher.dispatch({
         "api_version": "xcov.v1", "request_id": "code-detail-xout",
-        "action": "cov.holes", "target": {"session_id": "cov0"},
-        "args": {"metrics": ["condition"], "limits": {"max_items": 1}},
+        "action": "code_coverage.holes", "target": {"session_id": "cov0"},
+        "args": {"scope": "top.u_dut", "metrics": ["condition"], "limits": {"max_items": 1}},
     })
     xout = render_xout(rsp)
-    assert "condition=(enable && ready)" in xout
-    assert "condition_bin=10" in xout
-    assert "condition_terms=enable;ready" in xout
-    assert "evidence_source.type=npiCovCondition" in xout
+    assert "metrics={" not in xout
+    assert "condition_pct=0.0" in xout
+    assert "condition_bin=" not in xout
+    assert "summary:" in xout
+    assert "note:" in xout
+
+
+def test_xout_contains_sections_and_nested_counts_for_new_actions():
+    dispatcher = _dispatch_opened()
+    assert_rsp = dispatcher.dispatch({
+        "api_version": "xcov.v1", "request_id": "assert-xout",
+        "action": "assert.report", "target": {"session_id": "cov0"},
+    })
+    assert_xout = render_xout(assert_rsp)
+    assert "sections:" in assert_xout
+    assert "assert_summary:" in assert_xout
+    assert "failures=1" in assert_xout
 
 
 def test_branch_mask_hint_decoding():
@@ -467,8 +623,8 @@ def test_branch_mask_in_response():
     dispatcher = _dispatch_opened()
     rsp = dispatcher.dispatch({
         "api_version": "xcov.v1", "request_id": "branch-mask",
-        "action": "cov.holes", "target": {"session_id": "cov0"},
-        "args": {"metrics": ["branch"]},
+        "action": "source.map", "target": {"session_id": "cov0"},
+        "args": {"file": "rtl/ctrl.sv", "line": 95, "window": 10, "metrics": ["branch"]},
         "output": {"format": "json"},
     })
     assert rsp["ok"] is True
@@ -489,8 +645,8 @@ def test_branch_mask_in_xout():
     dispatcher = _dispatch_opened()
     rsp = dispatcher.dispatch({
         "api_version": "xcov.v1", "request_id": "branch-mask-xout",
-        "action": "cov.holes", "target": {"session_id": "cov0"},
-        "args": {"metrics": ["branch"]},
+        "action": "source.map", "target": {"session_id": "cov0"},
+        "args": {"file": "rtl/ctrl.sv", "line": 95, "window": 10, "metrics": ["branch"]},
     })
     xout = render_xout(rsp)
     assert "branch_mask={" not in xout
@@ -502,7 +658,7 @@ def test_test_each_is_explicitly_unsupported():
     dispatcher = _dispatch_opened()
     rsp = dispatcher.dispatch({
         "api_version": "xcov.v1", "request_id": "each",
-        "action": "cov.holes", "target": {"session_id": "cov0"},
+        "action": "code_coverage.holes", "target": {"session_id": "cov0"},
         "args": {"test": "each"},
         "output": {"format": "json"},
     })
@@ -515,26 +671,26 @@ def test_export_path_safety(tmp_path, monkeypatch):
     dispatcher = _dispatch_opened()
     bad_parent = dispatcher.dispatch({
         "api_version": "xcov.v1", "request_id": "bad-parent",
-        "action": "export.holes", "target": {"session_id": "cov0"},
-        "args": {"output": {"mode": "file", "path": "../holes.json"}},
+        "action": "export.code_coverage", "target": {"session_id": "cov0"},
+        "args": {"output": {"path": "../holes.md"}},
         "output": {"format": "json"},
     })
     bad_abs = dispatcher.dispatch({
         "api_version": "xcov.v1", "request_id": "bad-abs",
-        "action": "export.holes", "target": {"session_id": "cov0"},
-        "args": {"output": {"mode": "file", "path": str(tmp_path / "holes.json")}},
+        "action": "export.code_coverage", "target": {"session_id": "cov0"},
+        "args": {"output": {"path": str(tmp_path / "holes.md")}},
         "output": {"format": "json"},
     })
     ok = dispatcher.dispatch({
         "api_version": "xcov.v1", "request_id": "ok-rel",
-        "action": "export.holes", "target": {"session_id": "cov0"},
-        "args": {"output": {"mode": "file", "path": "holes.json"}},
+        "action": "export.code_coverage", "target": {"session_id": "cov0"},
+        "args": {"output": {"path": "holes.md"}},
         "output": {"format": "json"},
     })
     assert bad_parent["error"]["code"] == "OUTPUT_PATH_UNSAFE"
     assert bad_abs["error"]["code"] == "OUTPUT_PATH_UNSAFE"
     assert ok["ok"] is True
-    assert (tmp_path / ".xverif/xcov_exports/holes.json").exists()
+    assert (tmp_path / ".xverif/xcov_exports/holes.md").exists()
 
 
 class CountingBackend(CoverageBackend):

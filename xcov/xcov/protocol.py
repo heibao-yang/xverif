@@ -92,6 +92,20 @@ def _keyvals(item: Json) -> str:
             for mk, mv in value.items():
                 flat.append(f"branch_mask.{mk}={_scalar(mv)}")
             continue
+        if key in ("toggle_0_to_1", "toggle_1_to_0") and isinstance(value, dict):
+            for tk, tv in value.items():
+                flat.append(f"{key}.{tk}={_scalar(tv)}")
+            continue
+        if key in ("annotations", "bits") and isinstance(value, list):
+            flat.append(f"{key}_count={len(value)}")
+            for idx, child in enumerate(value[:3]):
+                if isinstance(child, dict):
+                    flat.append(f"{key}[{idx}]={{{_keyvals(child)}}}")
+                else:
+                    flat.append(f"{key}[{idx}]={_scalar(child)}")
+            if len(value) > 3:
+                flat.append(f"{key}_truncated=true")
+            continue
         flat.append(f"{key}={_scalar(value)}")
     return " ".join(flat)
 
@@ -115,6 +129,21 @@ def render_xout(rsp: Json) -> str:
             lines.extend(["", "filters:"])
             for key, value in filters.items():
                 lines.append(f"  {key}: {_scalar(value)}")
+        sections = data.get("sections") if isinstance(data, dict) else None
+        if isinstance(sections, dict):
+            lines.extend(["", "sections:"])
+            for key, value in sections.items():
+                if isinstance(value, list):
+                    lines.append(f"  {key}:")
+                    for item in value:
+                        if isinstance(item, dict):
+                            lines.append(f"    - {_keyvals(item)}")
+                        else:
+                            lines.append(f"    - {_scalar(item)}")
+                elif isinstance(value, dict):
+                    lines.append(f"  {key}: {_keyvals(value)}")
+                else:
+                    lines.append(f"  {key}: {_scalar(value)}")
         items = data.get("items") if isinstance(data, dict) else None
         if isinstance(items, list):
             lines.extend(["", "items:"])

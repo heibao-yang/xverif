@@ -16,6 +16,15 @@ METRIC_METHODS = {
     "assert": "assert_metric_handle",
 }
 
+CODE_SCORE_TYPES = {
+    "line": {"npiCovStmtBin"},
+    "toggle": {"npiCovToggleBin"},
+    "condition": {"npiCovConditionBin"},
+    "branch": {"npiCovBranchBin"},
+    "fsm": {"npiCovTransBin"},
+    "assert": {"npiCovAssert", "npiCovCoverProperty", "npiCovCoverSequence"},
+}
+
 
 def _cov():
     from pynpi import cov  # type: ignore
@@ -71,15 +80,69 @@ def coverage_items(
 
 def coverage_summary(rows: Iterable[Json]) -> Json:
     totals: Dict[str, Json] = {}
-    for row in rows:
+    all_rows = list(rows)
+    for row in score_rows(all_rows):
         metric = str(row.get("metric") or "unknown")
+        if metric == "functional":
+            continue
         bucket = totals.setdefault(metric, {"metric": metric, "covered": 0, "coverable": 0, "missing": 0})
         bucket["covered"] += int(row.get("covered") or 0)
         bucket["coverable"] += int(row.get("coverable") or 0)
         bucket["missing"] += int(row.get("missing") or 0)
     for bucket in totals.values():
         bucket["coverage_pct"] = coverage_pct(bucket["covered"], bucket["coverable"])
-    return {"metrics": [totals[name] for name in sorted(totals)]}
+    functional = functional_group_scores(all_rows)
+    return {
+        "metrics": [totals[name] for name in sorted(totals)],
+        "functional_groups": functional,
+    }
+
+
+def score_rows(rows: Iterable[Json]) -> List[Json]:
+    out = []
+    for row in rows:
+        metric = str(row.get("metric") or "")
+        if metric == "functional":
+            out.append(row)
+            continue
+        wanted = CODE_SCORE_TYPES.get(metric)
+        if wanted is None:
+            out.append(row)
+            continue
+        if str(row.get("type") or "") not in wanted:
+            continue
+        if not _has_nonnegative_ratio(row):
+            continue
+        out.append(row)
+    return out
+
+
+def functional_group_scores(rows: Iterable[Json]) -> List[Json]:
+    groups: Dict[str, List[Json]] = {}
+    for row in rows:
+        if row.get("metric") != "functional" or not row.get("covergroup"):
+            continue
+        groups.setdefault(str(row["covergroup"]), []).append(row)
+    out = []
+    for covergroup, subset in sorted(groups.items()):
+        direct = [row for row in subset if _functional_level(row) in {"coverpoint", "cross"}]
+        raw = next((row for row in subset if _functional_level(row) == "covergroup"), None)
+        score_basis = direct or ([raw] if raw else [])
+        pct_values = [
+            float(row["coverage_pct"]) for row in score_basis
+            if row and row.get("coverage_pct") is not None
+        ]
+        score_pct = round(sum(pct_values) / len(pct_values), 4) if pct_values else None
+        out.append({
+            "covergroup": covergroup,
+            "coverage_pct": score_pct,
+            "score_basis": "average_direct_coverpoint_cross_pct" if direct else "covergroup_raw_pct",
+            "score_item_count": len(score_basis),
+            "raw_covered": raw.get("covered") if raw else None,
+            "raw_coverable": raw.get("coverable") if raw else None,
+            "raw_coverage_pct": raw.get("coverage_pct") if raw else None,
+        })
+    return out
 
 
 def coverage_pct(covered: Any, coverable: Any) -> float | None:
@@ -90,6 +153,13 @@ def coverage_pct(covered: Any, coverable: Any) -> float | None:
         return round(100.0 * int(covered or 0) / denom, 4)
     except Exception:
         return None
+
+
+def _has_nonnegative_ratio(row: Json) -> bool:
+    try:
+        return int(row.get("covered")) >= 0 and int(row.get("coverable")) >= 0
+    except Exception:
+        return False
 
 
 def _walk_instance(
@@ -289,6 +359,23 @@ def _safe_call(obj: Any, name: str, *args: Any) -> Any:
 
 def _safe_list(obj: Any, name: str) -> List[Any]:
     return list(_safe_call(obj, name) or [])
+
+
+def _functional_level(row: Json) -> str:
+    typ = str(row.get("type") or "")
+    if typ == "npiCovCovergroup":
+        return "covergroup"
+    if typ == "npiCovCoverpoint":
+        return "coverpoint"
+    if typ == "npiCovCross":
+        return "cross"
+    if typ == "npiCovCoverBin" or row.get("bin") is not None:
+        return "bin"
+    if row.get("cross") is not None:
+        return "cross"
+    if row.get("coverpoint") is not None:
+        return "coverpoint"
+    return "covergroup"
 
 
 def _release(hdl: Any) -> None:

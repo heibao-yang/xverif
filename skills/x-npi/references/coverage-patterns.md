@@ -2,6 +2,21 @@
 
 使用 Verdi Python coverage wrapper 查询 VCS/Verdi coverage database，例如 `simv.vdb` 或 `merged.vdb`。这类脚本适合离线批量导出 coverage summary、holes、scope metrics 和 functional coverage bins。
 
+## When To Switch From xcov
+
+优先用 xcov 做交互式查询：
+
+- `scope.summary`、`scope.children`、`code_coverage.summary`、`code_coverage.holes` 看层次覆盖率。
+- `export.code_coverage`、`export.function_coverage`、`export.assert` 导出 Markdown 给 AI/人审阅。
+
+切到 x-npi/pynpi 的场景：
+
+- 需要 JSON/CSV/数据库等非 Markdown 自定义输出。
+- 需要跨多个 VDB 或多个 report 做二次统计。
+- 需要自定义 hierarchy pruning、bin 聚合、排序或阈值策略。
+- 需要把 coverage 与 FSDB、RTL 静态结构或项目自定义映射表关联。
+- xcov 明确说明某个 URG 字段没有稳定 NPI API，不提供接口；不要从 URG HTML 反解析。
+
 ## Runtime
 
 coverage API 入口：
@@ -67,6 +82,38 @@ with pynpi_lifecycle([sys.argv[0]]):
         close_covdb(db)
 ```
 
+直接使用 pynpi API 时，基本遍历形态如下。真实脚本应把 `VERDI_HOME`、`npisys.init/end`
+放进 `pynpi_lifecycle`，并在 finally 中释放 handle/关闭 db。
+
+```python
+from pynpi import cov
+
+db = cov.open("merged.vdb")
+test = None
+for th in db.test_handles():
+    test = th if test is None else cov.merge_test(test, th)
+
+for inst in db.instance_handles():
+    metric = inst.toggle_metric_handle()
+    if not metric:
+        continue
+    stack = list(metric.child_handles() or [])
+    while stack:
+        hdl = stack.pop()
+        row = {
+            "type": hdl.type(),
+            "name": hdl.name(),
+            "full_name": hdl.full_name(),
+            "covered": hdl.covered(test),
+            "coverable": hdl.coverable(test),
+            "count": hdl.count(test),
+            "file_name": hdl.file_name(),
+            "line_no": hdl.line_no(test),
+        }
+        children = hdl.child_handles() or []
+        stack.extend(children)
+```
+
 每行推荐输出：
 
 ```json
@@ -94,6 +141,10 @@ functional coverage 从 test 的 `testbench_metric_handle()` 进入：
 rows = coverage_items(db, test=test, metrics=["functional"])
 ```
 
+自定义导出时，按 covergroup 分块，再按 coverpoint/cross 下的 bin 输出。bin 自身没有
+file/line 时，使用最近父 covergroup/coverpoint/cross 的 evidence；不要编造 bin 的
+源码位置。
+
 Functional hierarchy 通常是：
 
 - covergroup
@@ -102,9 +153,13 @@ Functional hierarchy 通常是：
 
 cross bin 表示一个组合，不要拆成多个独立 bin。
 
-## Semantics
+## URG-Aligned Summary Semantics
 
-- coverage pct 必须用 `covered / coverable`；`count` 是 hit/sample count，不是覆盖率百分比。
+- code coverage summary 要按 URG dashboard 的计分对象聚合，不能把中间层 object 和 leaf bin 同时相加。
+- Line 使用 `npiCovStmtBin`，Cond 使用 `npiCovConditionBin`，Toggle 使用 `npiCovToggleBin`，Branch 使用 `npiCovBranchBin`，FSM 使用 `npiCovTransBin`，Assert 使用 `npiCovAssert`、`npiCovCoverProperty`、`npiCovCoverSequence`。
+- 排除 `coverable < 0` 或 `covered < 0` 的统计辅助 bin，例如 assertion 的 Attempt/Success/Failure/Incomplete bins。
+- code coverage pct 必须用 `covered / coverable`；`count` 是 hit/sample count，不是覆盖率百分比。
+- functional Group 分数不是简单的 covergroup raw `covered / coverable`。URG group score 按 direct coverpoint/cross 的 coverage percentage 做平均；`x_npi.coverage.coverage_summary()` 的 `functional_groups[*].coverage_pct` 使用这个规则，raw ratio 保留在 `raw_covered/raw_coverable/raw_coverage_pct`。
 - hole 一般是 `covered < coverable` 或 `missing > 0`。
 - 保留 `excluded`、`unreachable`、`illegal`、`attempted` 等 status flags；这些状态会改变 hole 的解释。
 - bin 没有 file/line 时，继承最近父 coverage object 的 source evidence，并在输出中记录 `evidence_source.inherited=true`。

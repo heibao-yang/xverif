@@ -17,13 +17,13 @@ DEFAULT_LIMITS = {
     "scope.children": 100,
     "scope.search": 100,
     "scope.summary": 100,
-    "cov.summary": 100,
-    "cov.holes": 100,
-    "cov.object.search": 100,
-    "cov.object.get": 50,
+    "code_coverage.summary": 100,
+    "code_coverage.holes": 100,
     "functional.summary": 100,
     "functional.holes": 100,
     "source.map": 100,
+    "source.annotate": 100,
+    "assert.report": 100,
 }
 
 REGEX_HINT_CHARS = ("[", "]", "{", "}", "^", "$", "(", ")", "|", "+")
@@ -211,6 +211,7 @@ def apply_output(action: str, args: Json, items: List[Json],
     overflow = limits.get("overflow")
     mode = output.get("mode")
     warnings: List[str] = []
+    note = None
     output_path = output.get("path")
     should_write = mode == "file" or mode == "both" or overflow == "to_file"
     truncated = bool(max_items is not None and matched > max_items)
@@ -222,7 +223,7 @@ def apply_output(action: str, args: Json, items: List[Json],
             raise XcovError("OUTPUT_PATH_REQUIRED", "output.path is required")
         output_path = write_artifact(str(output_path), str(output["artifact_format"]), items,
                                      allow_absolute_path=bool(output.get("allow_absolute_path")))
-        warnings.append(f"full result written to {output_path}")
+        note = f"full result written to {output_path}"
     if mode in ("file", "summary_only") or overflow == "summary_only":
         inline: List[Json] = []
     elif max_items is None:
@@ -237,6 +238,8 @@ def apply_output(action: str, args: Json, items: List[Json],
         "output_path": output_path,
         "artifact_format": output.get("artifact_format"),
     }
+    if note:
+        summary["note"] = note
     return summary, inline, warnings
 
 

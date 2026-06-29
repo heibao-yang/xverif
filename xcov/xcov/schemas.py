@@ -28,6 +28,13 @@ def _integer(minimum: int | None = None) -> Json:
     return out
 
 
+def _number(minimum: float | None = None) -> Json:
+    out: Json = {"type": "number"}
+    if minimum is not None:
+        out["minimum"] = minimum
+    return out
+
+
 def _string_array(values: List[str] | None = None) -> Json:
     items: Json = {"type": "string"}
     if values:
@@ -79,6 +86,18 @@ def _output() -> Json:
             "response_format": {"enum": RESPONSE_FORMATS},
             "mode": {"enum": OUTPUT_MODES},
             "artifact_format": {"enum": ARTIFACT_FORMATS},
+            "path": {"anyOf": [_string(), {"type": "null"}]},
+            "allow_absolute_path": _bool(),
+        },
+        "additionalProperties": True,
+    }
+
+
+def _markdown_export_output() -> Json:
+    return {
+        "type": "object",
+        "properties": {
+            "response_format": {"enum": RESPONSE_FORMATS},
             "path": {"anyOf": [_string(), {"type": "null"}]},
             "allow_absolute_path": _bool(),
         },
@@ -171,14 +190,12 @@ SCHEMAS: Dict[str, Json] = {
     "scope.summary": _schema_entry("scope.summary", target=_target(["session_id"])),
     "scope.children": _schema_entry("scope.children", target=_target(["session_id"]), args=_args(None, {"recursive": _bool()})),
     "scope.search": _schema_entry("scope.search", target=_target(["session_id"])),
-    "cov.summary": _schema_entry("cov.summary", target=_target(["session_id"]), args=_args(None, {"group_by": _string()})),
-    "cov.holes": _schema_entry("cov.holes", target=_target(["session_id"])),
-    "cov.object.get": _schema_entry(
-        "cov.object.get",
+    "code_coverage.summary": _schema_entry(
+        "code_coverage.summary",
         target=_target(["session_id"]),
-        args=_args(["name"], {"name": _string(), "include_children": _bool(), "max_children": _integer(0)}),
+        args=_args(None, {"group_by": _string()}),
     ),
-    "cov.object.search": _schema_entry("cov.object.search", target=_target(["session_id"])),
+    "code_coverage.holes": _schema_entry("code_coverage.holes", target=_target(["session_id"])),
     "functional.summary": _schema_entry(
         "functional.summary",
         target=_target(["session_id"]),
@@ -194,13 +211,43 @@ SCHEMAS: Dict[str, Json] = {
         target=_target(["session_id"]),
         args=_args(["file", "line"], {"file": _string(), "line": _integer(0), "window": _integer(0)}),
     ),
-    "export.summary": _schema_entry("export.summary", target=_target(["session_id"]), args=_args(None, {"group_by": _string()})),
-    "export.holes": _schema_entry("export.holes", target=_target(["session_id"])),
-    "export.scope_tree": _schema_entry("export.scope_tree", target=_target(["session_id"]), args=_args(None, {"recursive": _bool()})),
-    "export.functional": _schema_entry(
-        "export.functional",
+    "source.annotate": _schema_entry(
+        "source.annotate",
         target=_target(["session_id"]),
-        args=_args(None, {"mode": {"enum": ["summary", "holes"]}, "levels": _string_array(FUNCTIONAL_LEVELS)}),
+        args=_args(
+            ["file", "line"],
+            {
+                "file": _string(),
+                "line": _integer(0),
+                "window": _integer(0),
+                "include_source_text": _bool(),
+                "include_covered": _bool(),
+            },
+        ),
+    ),
+    "assert.report": _schema_entry(
+        "assert.report",
+        target=_target(["session_id"]),
+        args=_args(None, {"include_instances": _bool(), "include_source": _bool()}),
+    ),
+    "export.code_coverage": _schema_entry(
+        "export.code_coverage",
+        target=_target(["session_id"]),
+        args=_args(None, {"threshold_pct": _number(0.0), "output": _markdown_export_output()}),
+    ),
+    "export.function_coverage": _schema_entry(
+        "export.function_coverage",
+        target=_target(["session_id"]),
+        args=_args(None, {
+            "covergroup": _string(),
+            "threshold_pct": _number(0.0),
+            "output": _markdown_export_output(),
+        }),
+    ),
+    "export.assert": _schema_entry(
+        "export.assert",
+        target=_target(["session_id"]),
+        args=_args(None, {"threshold_pct": _number(0.0), "output": _markdown_export_output()}),
     ),
 }
 

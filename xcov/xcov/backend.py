@@ -74,9 +74,19 @@ class FakeCoverageBackend(CoverageBackend):
              "toggle_signal": "top.u_dut.u_fifo.credit",
              "toggle_bit": "top.u_dut.u_fifo.credit[0]",
              "toggle_transition": "0 -> 1",
+             "toggle_is_port": False,
              "covered": 0, "coverable": 1, "missing": 1, "count": 0,
              "coverage_pct": 0.0, "status": ["not_covered"],
              "evidence": {"file": "rtl/fifo.sv", "line": 44}},
+            {"metric": "toggle", "type": "npiCovToggleBin", "scope": "top.u_dut",
+             "name": "1 -> 0", "full_name": "top.u_dut.PRESETn.1 -> 0",
+             "toggle_signal": "top.u_dut.PRESETn",
+             "toggle_bit": "top.u_dut.PRESETn",
+             "toggle_transition": "1 -> 0",
+             "toggle_is_port": True,
+             "covered": 0, "coverable": 1, "missing": 1, "count": 0,
+             "coverage_pct": 0.0, "status": ["not_covered"],
+             "evidence": {"file": "rtl/uart_top.sv", "line": 5}},
             {"metric": "branch", "type": "npiCovBranchBin", "scope": "top.u_dut.u_ctrl",
              "name": "else", "full_name": "top.u_dut.u_ctrl.branch_8.else",
              "branch": "if (enable)",
@@ -103,6 +113,50 @@ class FakeCoverageBackend(CoverageBackend):
              "evidence_source": {"inherited": True, "type": "npiCovCondition",
                                  "name": "(enable && ready)",
                                  "full_name": "top.u_dut.u_ctrl.cond_9"}},
+            {"metric": "assert", "type": "npiCovAssert", "scope": "top.u_dut.u_ctrl",
+             "name": "p_ready", "full_name": "top.u_dut.u_ctrl.p_ready",
+             "assert_kind": "assertion", "assert_object": "top.u_dut.u_ctrl.p_ready",
+             "severity": 0, "category": 0,
+             "covered": 0, "coverable": 1, "missing": 1, "count": -1,
+             "coverage_pct": 0.0, "status": ["not_covered"],
+             "evidence": {"file": "rtl/ctrl.sv", "line": 120}},
+            {"metric": "assert", "type": "npiCovAttemptBin", "scope": "top.u_dut.u_ctrl",
+             "name": "Attempt", "full_name": "top.u_dut.u_ctrl.p_ready.Attempt",
+             "assert_kind": "assertion", "assert_object": "top.u_dut.u_ctrl.p_ready",
+             "covered": -1, "coverable": -1, "missing": 0, "count": 10,
+             "coverage_pct": None, "status": ["attempted"],
+             "evidence": {"file": "rtl/ctrl.sv", "line": 120}},
+            {"metric": "assert", "type": "npiCovSuccessBin", "scope": "top.u_dut.u_ctrl",
+             "name": "Success", "full_name": "top.u_dut.u_ctrl.p_ready.Success",
+             "assert_kind": "assertion", "assert_object": "top.u_dut.u_ctrl.p_ready",
+             "covered": -1, "coverable": -1, "missing": 0, "count": 8,
+             "coverage_pct": None, "status": ["covered"],
+             "evidence": {"file": "rtl/ctrl.sv", "line": 120}},
+            {"metric": "assert", "type": "npiCovFailureBin", "scope": "top.u_dut.u_ctrl",
+             "name": "Failure", "full_name": "top.u_dut.u_ctrl.p_ready.Failure",
+             "assert_kind": "assertion", "assert_object": "top.u_dut.u_ctrl.p_ready",
+             "covered": -1, "coverable": -1, "missing": 0, "count": 1,
+             "coverage_pct": None, "status": ["not_covered"],
+             "evidence": {"file": "rtl/ctrl.sv", "line": 120}},
+            {"metric": "assert", "type": "npiCovIncompleteBin", "scope": "top.u_dut.u_ctrl",
+             "name": "Incomplete", "full_name": "top.u_dut.u_ctrl.p_ready.Incomplete",
+             "assert_kind": "assertion", "assert_object": "top.u_dut.u_ctrl.p_ready",
+             "covered": -1, "coverable": -1, "missing": 0, "count": 1,
+             "coverage_pct": None, "status": ["not_covered"],
+             "evidence": {"file": "rtl/ctrl.sv", "line": 120}},
+            {"metric": "assert", "type": "npiCovCoverSequence", "scope": "top.u_dut.u_ctrl",
+             "name": "seq_ready", "full_name": "top.u_dut.u_ctrl.seq_ready",
+             "assert_kind": "cover_sequence", "assert_object": "top.u_dut.u_ctrl.seq_ready",
+             "severity": 0, "category": 0,
+             "covered": 1, "coverable": 1, "missing": 0, "count": -1,
+             "coverage_pct": 100.0, "status": ["covered"],
+             "evidence": {"file": "rtl/ctrl.sv", "line": 130}},
+            {"metric": "assert", "type": "npiCovFirstmatchBin", "scope": "top.u_dut.u_ctrl",
+             "name": "Firstmatch", "full_name": "top.u_dut.u_ctrl.seq_ready.Firstmatch",
+             "assert_kind": "cover_sequence", "assert_object": "top.u_dut.u_ctrl.seq_ready",
+             "covered": -1, "coverable": -1, "missing": 0, "count": 3,
+             "coverage_pct": None, "status": ["covered"],
+             "evidence": {"file": "rtl/ctrl.sv", "line": 130}},
             {"metric": "functional", "type": "npiCovCovergroup", "scope": "top.u_dut",
              "name": "cg_credit", "full_name": "top.u_dut.cg_credit",
              "covergroup": "cg_credit", "covered": 0, "coverable": 1, "missing": 1,
@@ -487,11 +541,31 @@ def _code_coverage_path(metric: str, typ: Any, hdl: Any, test_hdl: Any,
     if metric == "toggle":
         if typ == "npiCovSignal":
             path["toggle_signal"] = label
+            is_port = _safe_call(hdl, "is_port", test_hdl)
+            if is_port not in (None, -1, "-1"):
+                path["toggle_is_port"] = bool(is_port)
         elif typ == "npiCovSignalBit":
             path["toggle_bit"] = label
-            path.setdefault("toggle_signal", _parent_from_bit(label))
+            parent = _parent_from_bit(label)
+            path.setdefault("toggle_signal", parent or label)
+            is_port = _safe_call(hdl, "is_port", test_hdl)
+            if is_port not in (None, -1, "-1"):
+                path["toggle_is_port"] = bool(is_port)
         elif typ == "npiCovToggleBin":
             path.setdefault("toggle_transition", _toggle_transition(hdl, test_hdl, short))
+    elif metric == "assert":
+        kind = _assert_kind(typ)
+        if kind:
+            path["assert_kind"] = kind
+            path["assert_object"] = label or short
+            severity = _safe_call(hdl, "severity", test_hdl)
+            category = _safe_call(hdl, "category", test_hdl)
+            if severity not in (None, -1, "-1"):
+                path["severity"] = severity
+            if category not in (None, -1, "-1"):
+                path["category"] = category
+        elif typ in ASSERT_BIN_TYPES:
+            path.setdefault("assert_bin", short)
     elif metric == "condition":
         if typ == "npiCovCondition":
             path["condition"] = label or short
@@ -509,6 +583,25 @@ def _code_coverage_path(metric: str, typ: Any, hdl: Any, test_hdl: Any,
         elif typ == "npiCovBranchBin":
             path["branch_bin"] = _coverage_value(hdl, test_hdl) or short
     return {k: v for k, v in path.items() if v not in (None, "")}
+
+
+ASSERT_OBJECT_KINDS = {
+    "npiCovAssert": "assertion",
+    "npiCovCoverProperty": "cover_property",
+    "npiCovCoverSequence": "cover_sequence",
+}
+
+ASSERT_BIN_TYPES = {
+    "npiCovAttemptBin",
+    "npiCovSuccessBin",
+    "npiCovFailureBin",
+    "npiCovIncompleteBin",
+    "npiCovFirstmatchBin",
+}
+
+
+def _assert_kind(typ: Any) -> str | None:
+    return ASSERT_OBJECT_KINDS.get(str(typ or ""))
 
 
 def _parent_from_bit(label: str) -> str | None:
