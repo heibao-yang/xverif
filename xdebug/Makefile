@@ -36,6 +36,7 @@ CORE_SRCS = src/core/common/tool_config.cpp \
             src/core/logging/action_log.cpp \
             src/core/session/session_types.cpp \
             src/core/process/process_runner.cpp \
+            src/core/ai/common_blocks.cpp \
             src/core/ai/ai_response.cpp
 
 API_SUPPORT_SRCS = src/api/action_spec.cpp \
@@ -174,6 +175,8 @@ unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)
 	$(BUILD)/tests/test_request_contract
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_text_response_builder tests/unit/test_text_response_builder.cpp $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o
 	$(BUILD)/tests/test_text_response_builder
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_common_blocks tests/unit/test_common_blocks.cpp $(CORE_OBJS) $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o $(LDFLAGS)
+	$(BUILD)/tests/test_common_blocks
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_logic_value tests/unit/test_logic_value.cpp $(BUILD)/src/waveform/value/logic_value.o
 	$(BUILD)/tests/test_logic_value
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_rc_generator tests/unit/test_rc_generator.cpp $(BUILD)/src/waveform/service/rc_generator.o

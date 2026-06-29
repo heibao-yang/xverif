@@ -11,6 +11,7 @@
 3. `ok=true` 时优先读取 `summary` 和 compact `data`。
 4. `meta.truncated=true` 时，不要把结果当作完整全集。
 5. compact 成功响应可能省略空 `session`、空 `warnings`、空 `findings`、空 `suggested_next_actions`、`tool` 和 elapsed 细节。
+6. 如果设置了 `XDEBUG_COMMON_BLOCKS` 且 trace 相关 action 的返回 payload 中有 `file` 精确命中配置，响应会在原有 `data` 末尾追加 `data.common_blocks`；未命中时不新增字段，原输出不变。
 
 ## 1. 顶层 Envelope
 
@@ -33,6 +34,45 @@
 | `error` | object/null | 失败时 object | 结构化错误 |
 | `meta.truncated` | boolean | 总是或截断时 | 当前 payload 是否被限制截断 |
 | `meta.elapsed_ms` | number | full/debug 或内部响应 | action 耗时 |
+
+### `data.common_blocks`
+
+`trace.driver`、`trace.load`、`trace.query`、`trace.expand`、`trace.graph`、`trace.explain`、`trace.path`、`trace.active_driver` 和 `trace.active_driver_chain` 支持可选 common block 提示。通过环境变量指定配置：
+
+```text
+XDEBUG_COMMON_BLOCKS=/path/to/common_blocks.json
+```
+
+配置文件示例：
+
+```json
+{
+  "schema_version": "xdebug.common_blocks.v1",
+  "common_blocks": [
+    {
+      "file": "rtl/common/fifo_async.sv",
+      "card": "docs/common_blocks/fifo_async.md"
+    }
+  ]
+}
+```
+
+匹配只使用响应 payload 中已有 `file` 字段做精确字符串匹配；没有 `file` 字段时不推断。命中时只在原有 `data` 的最后追加：
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| `message` | string | 提示 AI 这是已验证 common block，除非必要不要继续追内部逻辑 |
+| `file` | string | 命中的代码文件路径 |
+| `card` | string | 对应摘要卡 Markdown 路径 |
+
+xout 中该信息追加在所有原有内容之后：
+
+```text
+common_blocks:
+  This is a verified common block. Unless necessary, do not chase internal logic; use the summary card to continue reasoning.
+  file: rtl/common/fifo_async.sv
+  card: docs/common_blocks/fifo_async.md
+```
 
 ### `error` 对象
 

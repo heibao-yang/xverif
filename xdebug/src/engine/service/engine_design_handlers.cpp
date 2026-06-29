@@ -4,6 +4,8 @@
 #include "design_postprocess.h"
 #include "trace_bfs_engine.h"
 
+#include "core/ai/common_blocks.h"
+
 #include "../../design/trace/trace_engine.h"
 #include "../../design/signal/signal_finder.h"
 #include "../../design/service/action_support.h"
@@ -118,6 +120,7 @@ public:
             {"confidence", out.value("confidence", "unknown")},
             {"resolution", out.value("resolution", Json::object())}
         };
+        xdebug::append_common_blocks_to_payload(out);
         return out;
     }
 
@@ -139,7 +142,9 @@ public:
         if (signal.empty()) return err("MISSING_FIELD", "args.signal is required");
         TraceEngine engine;
         TraceResult result = engine.trace(signal, TraceMode::Load, parse_trace_opts(args));
-        return Json::parse(engine.render_ai_json(result));
+        Json out = Json::parse(engine.render_ai_json(result));
+        xdebug::append_common_blocks_to_payload(out);
+        return out;
     }
 
 private:
@@ -181,7 +186,9 @@ public:
         std::string mode_str = args.value("mode", "driver");
         TraceMode mode = trace_mode_from_direction(mode_str);
         TraceOptions opts = parse_trace_opts(args);
-        return Json::parse(trace_one_signal(signal, mode, opts).dump());
+        Json out = Json::parse(trace_one_signal(signal, mode, opts).dump());
+        xdebug::append_common_blocks_to_payload(out);
+        return out;
     }
 };
 
@@ -241,7 +248,9 @@ public:
             out["expanded_queries"] = Json::parse(bfs.expanded_queries.dump());
         append_bfs_warnings(out, bfs);
         if (!bfs.root_error.empty()) out["error"] = Json::parse(bfs.root_error.dump());
-        return with_scalar_summary(out);
+        out = with_scalar_summary(out);
+        xdebug::append_common_blocks_to_payload(out);
+        return out;
     }
 };
 
@@ -316,7 +325,9 @@ public:
             out["expanded_queries"] = Json::parse(bfs.expanded_queries.dump());
         append_bfs_warnings(out, bfs);
         if (!bfs.root_error.empty()) out["error"] = Json::parse(bfs.root_error.dump());
-        return with_scalar_summary(out);
+        out = with_scalar_summary(out);
+        xdebug::append_common_blocks_to_payload(out);
+        return out;
     }
 };
 
@@ -399,6 +410,7 @@ public:
             {"truncated", bfs.truncated}
         };
         out["paths"] = Json::parse(paths.dump());
+        xdebug::append_common_blocks_to_payload(out);
         return out;
     }
 };

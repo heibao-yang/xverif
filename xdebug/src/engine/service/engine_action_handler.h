@@ -31,4 +31,6 @@ public:
     virtual std::string render_xout(const Json& response) const;
 };
 
+std::string append_common_blocks_xout(std::string text, const Json& response);
+
 } // namespace xdebug_design

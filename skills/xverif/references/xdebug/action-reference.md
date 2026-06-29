@@ -5,6 +5,7 @@
 - `also one of` 表示实现除了基础 required 之外还需要满足一组替代参数，例如 inline config 或保存的 name。
 - `when ...` 表示条件 required，例如某种导出 kind 才需要输出路径。
 - design action 读取 daidir/NPI 设计事实；waveform action 读取 FSDB；combined action 同时使用两者。
+- `trace.*` 和 `trace.active_driver*` 可通过 `XDEBUG_COMMON_BLOCKS` 追加 common block 提示；只在返回 payload 的 `file` 精确命中配置时追加 `data.common_blocks`，原有输出不改写。
 ## Builtin Actions
 | action | status | resource | purpose | how it works | objective | args contract |
 | --- | --- | --- | --- | --- | --- | --- |

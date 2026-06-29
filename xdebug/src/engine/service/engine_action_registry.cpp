@@ -49,21 +49,24 @@ public:
     }
 
     std::string render_xout(const Json& response) const override {
-        std::string text = EngineActionHandler::render_xout(response);
+        Json base_response = response;
+        if (base_response.contains("data") && base_response["data"].is_object())
+            base_response["data"].erase("common_blocks");
+        std::string text = EngineActionHandler::render_xout(base_response);
         const Json data = response.value("data", Json::object());
         const Json root = data.value("root_driver", Json());
-        if (!root.is_object() || root.empty()) return text;
+        if (!root.is_object() || root.empty()) return append_common_blocks_xout(text, response);
 
         std::string cause = scalar_text(root, "kind");
         std::string signal = scalar_text(root, "signal");
         std::string location = file_line_text(root);
         if (!signal.empty()) cause += cause.empty() ? signal : " " + signal;
         if (!location.empty()) cause += cause.empty() ? location : " @ " + location;
-        if (cause.empty()) return text;
+        if (cause.empty()) return append_common_blocks_xout(text, response);
 
         if (!text.empty() && text.back() != '\n') text.push_back('\n');
         text += "root_cause:\n  " + cause + "\n";
-        return text;
+        return append_common_blocks_xout(text, response);
     }
 };
 
@@ -77,18 +80,21 @@ public:
     }
 
     std::string render_xout(const Json& response) const override {
-        std::string text = EngineActionHandler::render_xout(response);
+        Json base_response = response;
+        if (base_response.contains("data") && base_response["data"].is_object())
+            base_response["data"].erase("common_blocks");
+        std::string text = EngineActionHandler::render_xout(base_response);
         const Json data = response.value("data", Json::object());
         const Json chain_data = data.value("chain", Json::object());
         const Json chain = chain_data.value("chain", Json::array());
-        if (!chain.is_array() || chain.empty()) return text;
+        if (!chain.is_array() || chain.empty()) return append_common_blocks_xout(text, response);
 
         std::vector<std::string> signals;
         for (const auto& node : chain) {
             std::string signal = scalar_text(node, "signal");
             if (!signal.empty()) signals.push_back(signal);
         }
-        if (signals.empty()) return text;
+        if (signals.empty()) return append_common_blocks_xout(text, response);
 
         std::ostringstream path;
         for (size_t i = 0; i < signals.size(); ++i) {
@@ -97,7 +103,7 @@ public:
         }
         if (!text.empty() && text.back() != '\n') text.push_back('\n');
         text += "chain_path:\n  " + path.str() + "\n";
-        return text;
+        return append_common_blocks_xout(text, response);
     }
 };
 

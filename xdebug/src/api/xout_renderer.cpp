@@ -63,6 +63,24 @@ void emit_suggestions(TextResponseBuilder& out, const Json& response) {
     }
 }
 
+void emit_common_blocks(TextResponseBuilder& out, const Json& response) {
+    const Json data = response.value("data", Json::object());
+    if (!data.is_object() || !data.contains("common_blocks") ||
+        !data["common_blocks"].is_array() || data["common_blocks"].empty()) {
+        return;
+    }
+    out.emit_section("common_blocks");
+    for (const auto& item : data["common_blocks"]) {
+        if (!item.is_object()) continue;
+        std::string message = scalar_text(item, "message");
+        std::string file = scalar_text(item, "file");
+        std::string card = scalar_text(item, "card");
+        if (!message.empty()) out.emit_row({message});
+        if (!file.empty()) out.emit_kv("file", file);
+        if (!card.empty()) out.emit_kv("card", card);
+    }
+}
+
 void render_data_value(TextResponseBuilder& out, const std::string& key,
                        const Json& value) {
     if (should_emit_scalar_key(key, value)) {
@@ -116,6 +134,7 @@ void render_generic(TextResponseBuilder& out, const Json& response) {
     if (data.is_object() && !data.empty()) {
         out.emit_section("data");
         for (auto it = data.begin(); it != data.end(); ++it) {
+            if (it.key() == "common_blocks") continue;
             render_data_value(out, it.key(), it.value());
         }
     }
@@ -164,6 +183,7 @@ std::string render_xout_response(const Json& response) {
     render_generic(out, response);
     emit_warnings(out, response);
     emit_suggestions(out, response);
+    emit_common_blocks(out, response);
     return out.str();
 }
 

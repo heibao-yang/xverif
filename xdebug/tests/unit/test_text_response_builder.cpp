@@ -83,6 +83,28 @@ int main() {
     assert(text.find("bits:") == std::string::npos);
     assert(text.find("known: true") == std::string::npos);
 
+    Json common_block_response = {
+        {"api_version", "xdebug.v1"},
+        {"ok", true},
+        {"action", "trace.load"},
+        {"data", {
+            {"rows", Json::array({Json{{"file", "rtl/top.sv"}, {"line", 7}}})},
+            {"common_blocks", Json::array({
+                Json{{"message", "This is a verified common block."},
+                     {"file", "rtl/common/fifo.sv"},
+                     {"card", "docs/common/fifo.md"}}
+            })}
+        }}
+    };
+    text = render_xout_response(common_block_response);
+    size_t rows_pos = text.find("rows:");
+    size_t common_pos = text.find("common_blocks:");
+    assert(rows_pos != std::string::npos);
+    assert(common_pos != std::string::npos);
+    assert(common_pos > rows_pos);
+    assert(text.find("message file card") == std::string::npos);
+    assert(text.find("This is a verified common block.\n  file: rtl/common/fifo.sv\n  card: docs/common/fifo.md") != std::string::npos);
+
     Json handler_text = {
         {"ok", true},
         {"action", "any.action"},

@@ -1,6 +1,7 @@
 #include "combined/active_trace_chain.h"
 #include "combined/active_trace_common.h"
 #include "api/response.h"
+#include "core/ai/common_blocks.h"
 #include "core/npi/time_contract.h"
 #include "runtime/work_dir.h"
 
@@ -418,6 +419,7 @@ nlohmann::ordered_json build_active_driver_chain_payload(const Json& request,
     };
     resp["chain"] = chain_to_json(result);
     resp["truncated"] = result.truncated;
+    append_common_blocks_to_payload(resp);
     return resp;
 }
 

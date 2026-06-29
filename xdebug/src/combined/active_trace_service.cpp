@@ -1,6 +1,7 @@
 #include "combined/active_trace_service.h"
 #include "combined/active_trace_common.h"
 #include "api/response.h"
+#include "core/ai/common_blocks.h"
 #include "core/npi/time_contract.h"
 #include "runtime/work_dir.h"
 
@@ -1265,6 +1266,7 @@ nlohmann::ordered_json build_active_driver_payload(const Json& request,
                          {"termination", trace_result.termination}};
     }
     resp["truncated"] = trace_result.truncated;
+    append_common_blocks_to_payload(resp);
     return resp;
 }
 
