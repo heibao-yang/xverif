@@ -70,10 +70,81 @@ ENGINE_SRCS = src/engine/main.cpp \
               src/engine/session/client.cpp \
               src/engine/service/engine_action_registry.cpp \
               src/engine/service/engine_action_handler.cpp \
-              src/engine/service/engine_waveform_handlers.cpp \
-              src/engine/service/engine_protocol_handlers.cpp \
-              src/engine/service/engine_design_handlers.cpp \
-              src/engine/service/engine_stream_handlers.cpp \
+              src/engine/service/actions/combined/register_combined_handlers.cpp \
+              src/engine/service/actions/combined/trace_active_driver.cpp \
+              src/engine/service/actions/combined/trace_active_driver_chain.cpp \
+              src/engine/service/actions/design/design_action_support.cpp \
+              src/engine/service/actions/design/expr_normalize.cpp \
+              src/engine/service/actions/design/fsm_explain.cpp \
+              src/engine/service/actions/design/procedural_assignment.cpp \
+              src/engine/service/actions/design/register_design_handlers.cpp \
+              src/engine/service/actions/design/sequential_update.cpp \
+              src/engine/service/actions/design/signal_canonicalize.cpp \
+              src/engine/service/actions/design/signal_resolve.cpp \
+              src/engine/service/actions/design/source_context.cpp \
+              src/engine/service/actions/design/trace_driver.cpp \
+              src/engine/service/actions/design/trace_expand.cpp \
+              src/engine/service/actions/design/trace_explain.cpp \
+              src/engine/service/actions/design/trace_graph.cpp \
+              src/engine/service/actions/design/trace_load.cpp \
+              src/engine/service/actions/design/trace_path.cpp \
+              src/engine/service/actions/design/trace_query.cpp \
+              src/engine/service/actions/protocol/apb_config_list.cpp \
+              src/engine/service/actions/protocol/apb_config_load.cpp \
+              src/engine/service/actions/protocol/apb_cursor.cpp \
+              src/engine/service/actions/protocol/apb_query.cpp \
+              src/engine/service/actions/protocol/axi_analysis.cpp \
+              src/engine/service/actions/protocol/axi_config_list.cpp \
+              src/engine/service/actions/protocol/axi_config_load.cpp \
+              src/engine/service/actions/protocol/axi_cursor.cpp \
+              src/engine/service/actions/protocol/axi_export.cpp \
+              src/engine/service/actions/protocol/axi_query.cpp \
+              src/engine/service/actions/protocol/register_protocol_handlers.cpp \
+              src/engine/service/actions/stream/register_stream_handlers.cpp \
+              src/engine/service/actions/stream/stream_config_list.cpp \
+              src/engine/service/actions/stream/stream_config_load.cpp \
+              src/engine/service/actions/stream/stream_export.cpp \
+              src/engine/service/actions/stream/stream_query.cpp \
+              src/engine/service/actions/stream/stream_show.cpp \
+              src/engine/service/actions/stream/stream_validate.cpp \
+              src/engine/service/actions/waveform/apb_transfer_window.cpp \
+              src/engine/service/actions/waveform/axi_channel_stall.cpp \
+              src/engine/service/actions/waveform/axi_latency_outlier.cpp \
+              src/engine/service/actions/waveform/axi_outstanding_timeline.cpp \
+              src/engine/service/actions/waveform/axi_request_response_pair.cpp \
+              src/engine/service/actions/waveform/counter_statistics.cpp \
+              src/engine/service/actions/waveform/cursor_delete.cpp \
+              src/engine/service/actions/waveform/cursor_get.cpp \
+              src/engine/service/actions/waveform/cursor_list.cpp \
+              src/engine/service/actions/waveform/cursor_set.cpp \
+              src/engine/service/actions/waveform/cursor_use.cpp \
+              src/engine/service/actions/waveform/detect_anomaly.cpp \
+              src/engine/service/actions/waveform/event_config_list.cpp \
+              src/engine/service/actions/waveform/event_config_load.cpp \
+              src/engine/service/actions/waveform/event_export.cpp \
+              src/engine/service/actions/waveform/event_find.cpp \
+              src/engine/service/actions/waveform/expr_eval_at.cpp \
+              src/engine/service/actions/waveform/handshake_inspect.cpp \
+              src/engine/service/actions/waveform/list_add.cpp \
+              src/engine/service/actions/waveform/list_create.cpp \
+              src/engine/service/actions/waveform/list_delete.cpp \
+              src/engine/service/actions/waveform/list_diff.cpp \
+              src/engine/service/actions/waveform/list_export.cpp \
+              src/engine/service/actions/waveform/list_show.cpp \
+              src/engine/service/actions/waveform/list_validate.cpp \
+              src/engine/service/actions/waveform/list_value_at.cpp \
+              src/engine/service/actions/waveform/rc_generate.cpp \
+              src/engine/service/actions/waveform/register_waveform_handlers.cpp \
+              src/engine/service/actions/waveform/sampled_pulse_inspect.cpp \
+              src/engine/service/actions/waveform/scope_list.cpp \
+              src/engine/service/actions/waveform/scope_roots.cpp \
+              src/engine/service/actions/waveform/signal_changes.cpp \
+              src/engine/service/actions/waveform/signal_stability.cpp \
+              src/engine/service/actions/waveform/signal_statistics.cpp \
+              src/engine/service/actions/waveform/value_at.cpp \
+              src/engine/service/actions/waveform/value_batch_at.cpp \
+              src/engine/service/actions/waveform/verify_conditions.cpp \
+              src/engine/service/actions/waveform/window_verify.cpp \
               src/engine/service/design_postprocess.cpp \
               src/engine/service/trace_bfs_engine.cpp \
               src/api/response.cpp \
@@ -82,6 +153,7 @@ ENGINE_SRCS = src/engine/main.cpp \
               src/runtime/work_dir.cpp \
               src/combined/active_trace_service.cpp \
               src/combined/active_trace_chain.cpp
+
 
 DESIGN_SRCS = src/design/service/action_support.cpp \
               src/design/service/trace_actions.cpp \
