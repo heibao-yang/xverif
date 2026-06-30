@@ -77,7 +77,7 @@ location:
   port_count: 5
 
 ports:
-  direction highconn.full_name highconn.name highconn.npi_type highconn.text highconn.type lowconn.full_name lowconn.name lowconn.npi_type lowconn.text lowconn.type port.full_name port.name port.npi_type port.text port.type trace.confidence trace.confidence_reason trace.has_statement_only trace.mode trace.ok trace.query trace.resolution trace.result_count trace.truncated
+  direction highconn.full_name highconn.name highconn.npi_type highconn.text highconn.type lowconn.full_name lowconn.name lowconn.npi_type lowconn.text lowconn.type port.full_name port.name port.npi_type port.text port.type trace.confidence trace.confidence_reason trace.has_statement_only trace.mode trace.ok trace query field trace.resolution trace.result_count trace.truncated
   input if_root_tb.rst_n rst_n 48 if_root_tb.rst_n reg if_root_tb.u_src.rst_n rst_n 36 if_root_tb.u_src.rst_n net rst_n 44 rst_n port low trace contains statement_only fallback records true driver true if_root_tb.rst_n statement_only 2 false
   input if_root_tb.sel sel 48 if_root_tb.sel reg if_root_tb.u_src.sel sel 36 if_root_tb.u_src.sel net sel 44 sel port low trace contains statement_only fallback records true driver true if_root_tb.sel statement_only 3 false
   input if_root_tb.a a 48 if_root_tb.a reg if_root_tb.u_src.a a 36 if_root_tb.u_src.a net a 44 a port low trace contains statement_only fallback records true driver true if_root_tb.a statement_only 1 false

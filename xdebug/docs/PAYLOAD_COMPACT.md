@@ -55,7 +55,7 @@ compact 默认不应出现下面这些大字段，除非请求里显式传入对
 
 ## 设计侧动作
 
-### trace.driver / trace.load / trace.query
+### trace.driver / trace.load
 
 compact 默认回答四件事：谁驱动或加载信号、关键依赖是谁、证据在哪里、置信度如何。
 
@@ -94,58 +94,6 @@ compact 默认回答四件事：谁驱动或加载信号、关键依赖是谁、
 - 低置信候选全集
 
 需要时用 `include_source`、`include_ast`、`include_candidates` 恢复。
-
-### trace.expand
-
-compact 默认只保留图结构：
-
-```json
-{
-  "summary": {
-    "root_signal": "top.u.ready",
-    "node_count": 12,
-    "edge_count": 18,
-    "truncated": false
-  },
-  "data": {
-    "graph": {
-      "nodes": [],
-      "edges": []
-    }
-  }
-}
-```
-
-默认隐藏：
-
-- `trace`
-- `expanded_queries`
-- `raw_edges`
-- dedup/relation/aggregate 详细统计
-
-需要时用 `include_trace`、`include_expanded_queries`、`include_raw_edges`、`include_debug`。
-
-### trace.path
-
-compact 默认只返回路径答案：
-
-```json
-{
-  "data": {
-    "found": true,
-    "paths": [
-      {
-        "signals": ["a", "b", "c"],
-        "edges": [
-          {"from": "a", "to": "b", "file": "rtl/foo.sv", "line": 10}
-        ]
-      }
-    ]
-  }
-}
-```
-
-完整 graph 只在 `include_graph=true` 返回。
 
 ### source.context
 

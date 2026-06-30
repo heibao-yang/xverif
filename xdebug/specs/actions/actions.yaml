@@ -688,28 +688,6 @@
       ]
     },
     {
-      "name": "fsm.explain",
-      "category": "design",
-      "status": "stable",
-      "requires": "design",
-      "handler_kind": "engine_forward",
-      "schemas": {
-        "request": "schemas/v1/actions/fsm.explain.request.schema.json",
-        "response": "schemas/v1/actions/fsm.explain.response.schema.json"
-      },
-      "examples": {
-        "request": [
-          "examples/requests/fsm.explain.basic.json"
-        ],
-        "response": [
-          "examples/responses/fsm.explain.basic.json"
-        ]
-      },
-      "required_args": [
-        "signal"
-      ]
-    },
-    {
       "name": "handshake.inspect",
       "category": "waveform",
       "status": "stable",
@@ -1320,28 +1298,6 @@
       ]
     },
     {
-      "name": "trace.expand",
-      "category": "design",
-      "status": "stable",
-      "requires": "design",
-      "handler_kind": "engine_forward",
-      "schemas": {
-        "request": "schemas/v1/actions/trace.expand.request.schema.json",
-        "response": "schemas/v1/actions/trace.expand.response.schema.json"
-      },
-      "examples": {
-        "request": [
-          "examples/requests/trace.expand.basic.json"
-        ],
-        "response": [
-          "examples/responses/trace.expand.basic.json"
-        ]
-      },
-      "required_args": [
-        "signal"
-      ]
-    },
-    {
       "name": "trace.load",
       "category": "design",
       "status": "stable",
@@ -1357,51 +1313,6 @@
         ],
         "response": [
           "examples/responses/trace.load.basic.json"
-        ]
-      },
-      "required_args": [
-        "signal"
-      ]
-    },
-    {
-      "name": "trace.path",
-      "category": "design",
-      "status": "stable",
-      "requires": "design",
-      "handler_kind": "engine_forward",
-      "schemas": {
-        "request": "schemas/v1/actions/trace.path.request.schema.json",
-        "response": "schemas/v1/actions/trace.path.response.schema.json"
-      },
-      "examples": {
-        "request": [
-          "examples/requests/trace.path.basic.json"
-        ],
-        "response": [
-          "examples/responses/trace.path.basic.json"
-        ]
-      },
-      "required_args": [
-        "from_signal",
-        "to_signal"
-      ]
-    },
-    {
-      "name": "trace.query",
-      "category": "design",
-      "status": "stable",
-      "requires": "design",
-      "handler_kind": "engine_forward",
-      "schemas": {
-        "request": "schemas/v1/actions/trace.query.request.schema.json",
-        "response": "schemas/v1/actions/trace.query.response.schema.json"
-      },
-      "examples": {
-        "request": [
-          "examples/requests/trace.query.basic.json"
-        ],
-        "response": [
-          "examples/responses/trace.query.basic.json"
         ]
       },
       "required_args": [

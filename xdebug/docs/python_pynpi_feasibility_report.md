@@ -39,7 +39,7 @@
 | 类别 | 代表 action | Python 重写判断 |
 | --- | --- | --- |
 | builtin/session | `schema`、`actions`、`batch`、`session.*` | 可纯 Python 实现，主要是 JSON/schema/session 管理。 |
-| design | `trace.driver`、`trace.load`、`trace.expand`、`source.context`、`interface.resolve` 等 | 底层大多可用 `pynpi.lang` 重写，但要重建 xdebug 的图展开、source/context、interface alias 规则。 |
+| design | `trace.driver`、`trace.load`、`trace expansion view`、`source.context`、`interface.resolve` 等 | 底层大多可用 `pynpi.lang` 重写，但要重建 xdebug 的图展开、source/context、interface alias 规则。 |
 | waveform | `value.at`、`event.find`、`signal.statistics`、`apb.query`、`axi.analysis`、`stream.query` 等 | 基础 FSDB API 可用；协议/窗口/统计逻辑要移植；edge cursor 语义需验证。 |
 | combined | `trace.active_driver`、`trace.active_driver_chain` | 当前 Python `pynpi` 缺关键 API，不能无损重写。 |
 
@@ -196,7 +196,7 @@ C++ NPI headers 暴露 `npi_fsdb_trans.h`、C++ L1 FSDB helper、force tag、rea
 | `schema/actions/batch` | 高 | 不依赖 NPI 特殊能力 | 需要保持 JSON/schema contract。 |
 | `session.*` | 高 | `npisys.init/load_design/end`、`waveform.open/close` 可用 | 长生命周期、stderr/stdout 隔离、license failure handling 需重建。 |
 | `trace.driver/load` | 高 | `pynpi.lang.trace_driver*_2/trace_load*_2` 可用 | 输出字段和 C++ handle lifetime 要 A/B。 |
-| `trace.expand/graph/path/explain/control explanation view` | 中高 | 基础 trace API 可用 | xdebug 图算法和控制依赖逻辑要完整移植。 |
+| `trace expansion view/graph/path/explain/control explanation view` | 中高 | 基础 trace API 可用 | xdebug 图算法和控制依赖逻辑要完整移植。 |
 | `source.context/expr.normalize/procedural assignment view/sequential update view/fsm/counter` | 中 | `pynpi.lang` 有 AST/handle/get_hdl_info 能力 | 需要逐个确认当前 C++ 用到的 property/relationship 在 Python wrapper 中可访问。 |
 | `signal.resolve/canonicalize/interface.resolve/port.trace/instance.map` | 中 | `handle_by_name`、`handle/iterate/scan/get/get_str` 可用 | interface/modport 规则复杂，必须 fixture 回归。 |
 | `value.at/value.batch_at` | 高 | `waveform.sig_value_at/sig_vec_value_at` 可用 | 四态/X/Z 格式要对齐 xdebug `LogicValue` contract。 |

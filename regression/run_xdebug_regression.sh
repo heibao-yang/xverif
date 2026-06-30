@@ -92,19 +92,17 @@ expect_ok design_open
 query design_only "{\"api_version\":\"xdebug.v1\",\"action\":\"trace.driver\",\"target\":{\"session_id\":\"design_case\"},\"args\":{\"signal\":\"active_driver_tb.u_dut.q\"},\"limits\":{\"max_results\":4}}"
 expect_ok design_only
 
-query compact_expand '{"api_version":"xdebug.v1","action":"trace.expand","target":{"session_id":"design_case"},"args":{"signal":"active_driver_tb.u_dut.q","direction":"driver"},"limits":{"max_depth":1,"max_edges":8}}'
 query compact_verify '{"api_version":"xdebug.v1","action":"verify.conditions","target":{"session_id":"wave_case"},"args":{"signal":"active_driver_tb.u_dut.q","time":"26ns","conditions":[{"signal":"active_driver_tb.u_dut.q","op":"==","value":"'\''hb2"},{"signal":"active_driver_tb.u_dut.q","op":"==","value":"'\''h00"}]}}'
-python3 - "$TMP_HOME/wave_only.json" "$TMP_HOME/design_only.json" "$TMP_HOME/compact_expand.json" "$TMP_HOME/compact_verify.json" <<'PY'
+python3 - "$TMP_HOME/wave_only.json" "$TMP_HOME/design_only.json" "$TMP_HOME/compact_verify.json" <<'PY'
 import json
 import sys
 
-wave, design, expand, verify = (json.load(open(path)) for path in sys.argv[1:])
+wave, design, verify = (json.load(open(path)) for path in sys.argv[1:])
 assert isinstance(wave["data"]["value"], dict), wave
 assert wave["data"]["value"]["value"] == "8'hb2", wave
 assert "resolved_time" not in wave["data"], wave
 assert "assignments" in design["data"], design
 assert design["data"]["assignments"], design
-assert "graph" in expand["data"], expand
 assert verify["summary"]["verdict"] == "fail", verify
 assert any(item["status"] == "pass" for item in verify["data"]["checks"]), verify
 assert any(item["status"] == "fail" for item in verify["data"]["checks"]), verify

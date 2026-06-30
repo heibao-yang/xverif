@@ -216,22 +216,6 @@ file transport directory:
 }
 ```
 
-### 展开 trace 并取回内部过程
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.expand",
-  "target": {"daidir": "simv.daidir"},
-  "args": {
-    "signal": "top.u.ready",
-    "include_trace": true,
-    "include_expanded_queries": true
-  },
-  "output": {"verbosity": "compact"}
-}
-```
-
 ### 查询波形值
 
 ```json

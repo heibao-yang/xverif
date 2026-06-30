@@ -162,8 +162,7 @@ Common actions
       session.kill, session.close, session.gc
 
   Design:
-      trace.driver, trace.load, trace.query, trace.expand, trace.path,
-      source.context, expr.normalize, fsm.explain
+      trace.driver, trace.load, source.context, expr.normalize
 
   Waveform:
       scope.list, rc.generate, value.at, value.batch_at, list.value_at,

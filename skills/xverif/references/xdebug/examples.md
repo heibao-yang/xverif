@@ -211,7 +211,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
 思路：
 
 1. 用 `value.batch_at` 同时取最终总线信号和候选上游路径，先确认错误来自哪条路径。
-2. 对异常路径用 `trace.driver` 或 `trace.expand` 找赋值来源。
+2. 对异常路径用 `trace.driver` 找赋值来源。
 3. 用 `source.context` 读取赋值上下文。
 4. 回到波形，用 `value.batch_at` 验证 driver 条件信号在异常时间的取值。
 

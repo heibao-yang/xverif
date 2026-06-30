@@ -410,7 +410,7 @@ Json allowlisted_args_for_log(const std::string& action, const Json& args) {
         for (const char* k : {"signals", "time", "radix", "format", "limit"}) copy_arg_if_present(out, args, k);
     } else if (action == "event.find") {
         for (const char* k : {"signal", "start", "end", "edge", "limit"}) copy_arg_if_present(out, args, k);
-    } else if (action == "trace.active_driver" || action == "trace.expand") {
+    } else if (action == "trace.active_driver") {
         for (const char* k : {"signal", "time", "max_depth", "max_nodes", "direction"}) copy_arg_if_present(out, args, k);
     } else if (action_prefix_match(action, "axi.")) {
         for (const char* k : {"interface", "start", "end", "id", "addr", "channel", "limit"}) copy_arg_if_present(out, args, k);

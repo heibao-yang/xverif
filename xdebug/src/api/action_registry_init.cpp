@@ -95,7 +95,6 @@ void apply_arg_contract(ActionSpec& spec) {
         {"event.find", {"expr"}, 1},
         {"expr.eval_at", {"expr", "time", "signals"}, 3},
         {"expr.normalize", {"expr"}, 1},
-        {"fsm.explain", {"signal"}, 1},
         {"handshake.inspect", {"clock", "valid", "ready"}, 3},
         {"list.add", {"name", "signal"}, 2},
         {"list.create", {"name"}, 1},
@@ -122,10 +121,7 @@ void apply_arg_contract(ActionSpec& spec) {
         {"trace.active_driver", {"signal", "requested_time"}, 2},
         {"trace.active_driver_chain", {"signal", "requested_time"}, 2},
         {"trace.driver", {"signal"}, 1},
-        {"trace.expand", {"signal"}, 1},
         {"trace.load", {"signal"}, 1},
-        {"trace.path", {"from_signal", "to_signal"}, 2},
-        {"trace.query", {"signal"}, 1},
         {"value.at", {"signal", "time"}, 2},
         {"value.batch_at", {"signals", "time"}, 2},
         {"verify.conditions", {"conditions", "time"}, 2},
@@ -173,11 +169,9 @@ void register_session(ActionRegistry& r) {
 
 void register_design(ActionRegistry& r) {
     const char* names[] = {
-        "trace.driver", "trace.load", "trace.query",
+        "trace.driver", "trace.load",
         "signal.resolve", "signal.canonicalize",
-        "trace.expand", "trace.path",
         "source.context", "expr.normalize",
-        "fsm.explain",
     };
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
         ResourceRequirement resource = ResourceRequirement::Design;

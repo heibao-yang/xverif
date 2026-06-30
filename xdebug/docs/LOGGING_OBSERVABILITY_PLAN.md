@@ -105,7 +105,7 @@ MCP tool call
 | `value.batch_at` | `signals`, `time`, `radix`, `format`, `limit` |
 | `event.find` | `signal`, `start`, `end`, `edge`, `limit` |
 | `trace.active_driver` | `signal`, `time`, `max_depth`, `max_nodes`, `direction` |
-| `trace.expand` | `signal`, `time`, `max_depth`, `max_nodes`, `direction` |
+| `trace expansion view` | `signal`, `time`, `max_depth`, `max_nodes`, `direction` |
 | `axi.*` | `interface`, `start`, `end`, `id`, `addr`, `channel`, `limit` |
 | `apb.*` | `interface`, `start`, `end`, `addr`, `kind`, `limit` |
 | `scope.*` | `scope`, `pattern`, `depth`, `limit` |

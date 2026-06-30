@@ -80,7 +80,6 @@ printf '%s\n' '{"api_version":"xdebug.v1","action":"actions"}' | "$XDEBUG" --jso
 import json,sys
 d=json.load(sys.stdin)["data"]
 assert "trace.driver" in d["implemented"]
-assert "fsm.explain" in d["implemented"]
 '
 
 printf '%s\n' '{"api_version":"xdebug.v1","action":"schema"}' | "$XDEBUG" --json - | python3 -c 'import json,sys; assert json.load(sys.stdin)["ok"]'
@@ -94,21 +93,6 @@ query '{"api_version":"xdebug.v1","action":"trace.driver","target":{"session_id"
 query '{"api_version":"xdebug.v1","action":"trace.driver","target":{"session_id":"uart_ai"},"args":{"signal":"uart_16550.RXDin","include_statement_only":false},"limits":{"max_results":10},"output":{"verbosity":"full"}}' \
   | check_json 'd["ok"] and not any(e.get("type") == "statement_only" or e.get("resolution") == "statement_only" for e in d["data"]["dependency_edges"])'
 
-query '{"api_version":"xdebug.v1","action":"trace.expand","target":{"session_id":"uart_ai"},"args":{"signal":"uart_16550.RXDin","direction":"driver"},"limits":{"max_depth":2,"max_nodes":20,"max_edges":50},"output":{"verbosity":"full"}}' \
-  | check_json 'd["ok"] and d["summary"]["node_count"] >= 2 and d["summary"]["edge_count"] >= 1 and d["meta"]["truncated"] is False and "traces" not in d["data"] and "expanded_queries" in d["data"] and len(d["data"]["graph"]["edges"]) == len(d["data"]["trace"]["dependency_edges"]) and len({(e.get("from_signal"), e.get("to_signal"), e.get("type"), e.get("assignment_type")) for e in d["data"]["graph"]["edges"]}) == len(d["data"]["graph"]["edges"]) and all(e.get("evidence_count", 1) >= 1 and 0 <= len(e.get("evidence", [])) <= 3 and (e.get("evidence_count", 1) == 1 or len(e.get("evidence", [])) >= 1) for e in d["data"]["graph"]["edges"]) and d["summary"]["raw_edge_count"] >= d["summary"]["deduped_edge_count"] and d["summary"]["duplicate_edge_count"] == d["summary"]["raw_edge_count"] - d["summary"]["deduped_edge_count"] and d["summary"]["relation_group_count"] == d["summary"]["edge_count"] and d["summary"]["aggregated_edge_count"] == d["summary"]["deduped_edge_count"] - d["summary"]["relation_group_count"]'
-
-query '{"api_version":"xdebug.v1","action":"trace.expand","target":{"session_id":"uart_ai"},"args":{"signal":"uart_16550.RXDin","direction":"driver"},"limits":{"max_depth":2,"max_nodes":20,"max_edges":50,"max_evidence_per_edge":1},"output":{"verbosity":"full"}}' \
-  | check_json 'd["ok"] and d["summary"]["edge_count"] >= 1 and all(len(e.get("evidence", [])) <= 1 for e in d["data"]["graph"]["edges"])'
-
-query '{"api_version":"xdebug.v1","action":"trace.expand","target":{"session_id":"uart_ai"},"args":{"signal":"uart_16550.RXDin","direction":"driver"},"limits":{"max_depth":2,"max_nodes":20,"max_results":1},"output":{"verbosity":"full"}}' \
-  | check_json 'd["ok"] and d["summary"]["edge_count"] == 1 and d["summary"]["deduped_edge_count"] == 1 and d["summary"]["truncated"] is True'
-
-query_any '{"api_version":"xdebug.v1","action":"trace.expand","target":{"session_id":"uart_ai"},"args":{"signal":"uart_16550.DOES_NOT_EXIST","direction":"driver"},"limits":{"max_depth":2,"max_nodes":20,"max_edges":50}}' \
-  | check_json 'not d["ok"] and d["summary"]["failed_query_count"] == 1 and d["summary"]["edge_count"] == 0 and d["warnings"] and d["error"]["code"] == "SIGNAL_NOT_FOUND"'
-
-query '{"api_version":"xdebug.v1","action":"trace.path","target":{"session_id":"uart_ai"},"args":{"from_signal":"uart_16550.loopback","to_signal":"uart_16550.RXDin","direction":"driver"},"limits":{"max_depth":2}}' \
-  | check_json 'd["ok"] and d["summary"]["found"] is True and d["summary"]["path_count"] >= 1'
-
 query '{"api_version":"xdebug.v1","action":"signal.canonicalize","target":{"session_id":"uart_ai"},"args":{"signal":"uart_16550.RXDin"}}' \
   | check_json 'd["ok"] and d["data"]["canonical"].endswith("RXDin")'
 
@@ -120,9 +104,6 @@ query '{"api_version":"xdebug.v1","action":"expr.normalize","args":{"expr":"vali
 
 query "{\"api_version\":\"xdebug.v1\",\"action\":\"session.open\",\"target\":{\"daidir\":\"$P3_DB\"},\"args\":{\"name\":\"p3_ai\"}}" \
   | check_json 'd["ok"] and d["summary"]["session_id"] == "p3_ai"'
-
-query '{"api_version":"xdebug.v1","action":"fsm.explain","target":{"session_id":"p3_ai"},"args":{"signal":"p3_sem_top.u_mid.u_leaf.state_q"},"limits":{"max_results":30}}' \
-  | check_json 'd["ok"] and d["summary"]["transition_count"] >= 1 and d["data"]["fsm"]["transitions"]'
 
 query '{"api_version":"xdebug.v1","action":"batch","args":{"mode":"continue_on_error","requests":[{"api_version":"xdebug.v1","action":"trace.driver","target":{"session_id":"uart_ai"},"args":{"signal":"uart_16550.TXD"}},{"api_version":"xdebug.v1","action":"signal.resolve","target":{"session_id":"uart_ai"},"args":{"signal":"uart_16550.RXDin"}}]}}' \
   | check_json 'd["ok"] and d["summary"]["count"] == 2'

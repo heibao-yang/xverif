@@ -256,24 +256,6 @@ file transport directory:
 }
 ```
 
-### trace.path
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.path",
-  "target": {"daidir": "simv.daidir"},
-  "args": {
-    "from_signal": "top.u.full",
-    "to_signal": "top.u.ready"
-  },
-  "limits": {
-    "max_depth": 5,
-    "max_paths": 10
-  }
-}
-```
-
 ### source.context
 
 ```json

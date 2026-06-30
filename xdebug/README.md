@@ -538,7 +538,7 @@ compact 默认不返回大字段，例如 `expanded_queries`、`raw_edges`、`al
 
 ## Main Workflows
 
-### 设计因果：driver / graph / path
+### 设计因果：driver / load
 
 先用外部 `rg` 或源码索引找候选信号名，再把精确 RTL path 交给 xdebug 查询。
 
@@ -553,39 +553,14 @@ compact 默认不返回大字段，例如 `expanded_queries`、`raw_edges`、`al
 }
 ```
 
-展开依赖图：
+查询 load：
 
 ```json
 {
   "api_version": "xdebug.v1",
-  "action": "trace.expand",
+  "action": "trace.load",
   "target": {"daidir": "simv.daidir"},
-  "args": {
-    "signal": "top.u.ready",
-    "direction": "driver"
-  },
-  "limits": {
-    "max_depth": 3,
-    "max_results": 80
-  }
-}
-```
-
-查询路径：
-
-```json
-{
-  "api_version": "xdebug.v1",
-  "action": "trace.path",
-  "target": {"daidir": "simv.daidir"},
-  "args": {
-    "from_signal": "top.u.full",
-    "to_signal": "top.u.ready"
-  },
-  "limits": {
-    "max_depth": 5,
-    "max_paths": 10
-  }
+  "args": {"signal": "top.u.ready"}
 }
 ```
 
@@ -851,7 +826,7 @@ APB 配置的基础字段为 `paddr/pwdata/prdata/pwrite/penable/psel/clk/rst_n`
 
 1. 用 `value.at` 或 `event.export` 找到异常时间。
 2. 用 `value.batch_at` 取相关握手、状态、数据寄存器。
-3. 用 `trace.driver` 或 `trace.expand` 查设计依赖。
+3. 用 `trace.driver` 或 `trace.load` 查设计依赖。
 4. 如果两类资源都有，用 `trace.active_driver` 给出当前时间点的生效驱动。
 5. 只有当 compact 证据不足时，再打开 `include_source`、`include_trace`、`include_rows` 等细节。
 

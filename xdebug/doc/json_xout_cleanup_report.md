@@ -69,7 +69,7 @@ APB/AXI 补充验证：
 | Action | 当前定位 | 保留建议 | 主要问题 | 建议改进 |
 | --- | --- | --- | --- | --- |
 | `sequential update view` | 从 RTL 静态 trace 推断寄存器/时序信号的 clock/reset/update rule | 保留 | `rule_count` 很多但缺少一句结论；`confidence low` 不解释影响 | handler 追加 `diagnosis`：clock、reset、更新规则类型、最关键 source line |
-| `fsm.explain` | 基于 sequential rules 抽取状态跳转 | 保留但应标 experimental 或输出更清楚 | 现在只是把 `rules/transitions` 展开，不能说明“这是 FSM 还是普通寄存器” | summary 增加 `fsm_like`、`state_count/transition_count`、`dominant_conditions` |
+| `FSM explanation view` | 基于 sequential rules 抽取状态跳转 | 保留但应标 experimental 或输出更清楚 | 现在只是把 `rules/transitions` 展开，不能说明“这是 FSM 还是普通寄存器” | summary 增加 `fsm_like`、`state_count/transition_count`、`dominant_conditions` |
 | `counter explanation view` | 静态判断某个 RTL 信号是否像计数器 | 保留 | `counter_like=true` 有价值，但 xout 没突出 increment/decrement/hold/reset | 追加 `counter_summary`，列出 reset、increment 条件、hold 条件 |
 | `procedural assignment view` | 展开 always/assign 里的分支赋值和控制依赖 | 保留 | 信息量大，但容易和 `trace.driver` 重叠；缺少“为何需要单独调用” | 明确定位为 branch-level assignment view，突出 `branch_count/default_count` 和前几条 branch source |
 | `control explanation view` | 只看控制条件，不看 data RHS | 保留 | 价值明确但输出太像 `trace.driver` 子集 | summary 增加 `top_conditions`；xout 追加 condition -> source line |
@@ -90,14 +90,14 @@ APB/AXI 补充验证：
 
 - `expr.normalize` 是内部/AI 辅助价值更强，不适合作为普通用户主入口。
 - `port.trace` 和 `instance.map` 有重叠，但 `port.trace` 多了 trace 信息，不应直接删除。
-- `fsm.explain`、`counter explanation view`、`sequential update view` 共享底层 sequential 推断，当前最大问题是输出没有告诉用户“该信不信”和“下一步看哪里”，不是功能完全无效。
+- `FSM explanation view`、`counter explanation view`、`sequential update view` 共享底层 sequential 推断，当前最大问题是输出没有告诉用户“该信不信”和“下一步看哪里”，不是功能完全无效。
 - `sampled_pulse.inspect` 需要更好的正例，否则用户很难理解它和 `signal.changes`、`signal.statistics` 的区别。
 
 ## 五、后续 P0/P1 建议
 
 P0：
 
-- 给 `sequential update view`、`fsm.explain`、`counter explanation view`、`procedural assignment view` 添加各自 handler 的 xout 追加信息，重点输出诊断结论，不在通用 renderer 做 action 特判。
+- 给 `sequential update view`、`FSM explanation view`、`counter explanation view`、`procedural assignment view` 添加各自 handler 的 xout 追加信息，重点输出诊断结论，不在通用 renderer 做 action 特判。
 - 给上述 action 的 JSON summary 增加必要的结论字段，例如 `fsm_like`、`counter_like`、`primary_clock`、`primary_reset`、`top_condition_count`。
 - 修正 `sampled_pulse.inspect` 的 schema/spec required_args，目前实现要求 `clock` 和 `valid`，spec 中却写 `signal`。
 
