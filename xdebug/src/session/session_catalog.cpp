@@ -1,6 +1,7 @@
 #include "session/session_catalog.h"
 
-#include <cstdlib>
+#include "common/env_config.h"
+
 #include <fstream>
 
 namespace xdebug {
@@ -8,8 +9,8 @@ namespace xdebug {
 namespace {
 
 std::string canonical_registry_path() {
-    const char* home = std::getenv("HOME");
-    return std::string(home ? home : "/tmp") + "/.xdebug/engine/registry.json";
+    std::string home = xdebug_core::env_raw_string("HOME");
+    return (home.empty() ? std::string("/tmp") : home) + "/.xdebug/engine/registry.json";
 }
 
 } // namespace

@@ -208,6 +208,8 @@ request 先写到 `tmp/`，再 atomic publish 到 `requests/`；daemon 用 `rena
 
 普通 file transport 请求默认等待 300 秒，可用 `XDEBUG_FILE_TRANSPORT_TIMEOUT_MS` 调整；ping/quit 默认等待 2 秒，可用 `XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS` 调整。大窗口 `axi.analysis`、`signal.changes` 或深层 trace 展开如果确实需要更久，优先调普通请求 timeout，不要改 ping timeout。`XDEBUG_FILE_KEEP_HISTORY=1` 默认保留证据链；`XDEBUG_FILE_CLAIM_TIMEOUT_MS`、`XDEBUG_FILE_POLL_INTERVAL_MS`、`XDEBUG_FILE_MAX_JSON_BYTES`、`XDEBUG_FILE_DONE_TTL_SEC`、`XDEBUG_FILE_FAILED_TTL_SEC` 可用于高级排障和清理。
 
+trace 类 XOUT 源码窗口默认显示有效行上下 3 行，可用 `XDEBUG_TRACE_SOURCE_CONTEXT_LINES` 调整；同文件有效行号差值小于 10 时默认合并显示，可用 `XDEBUG_TRACE_SOURCE_MERGE_THRESHOLD_LINES` 调整。
+
 ### MCP wrapper
 
 `tools/xverif-mcp` 是基于 FastMCP SDK 的统一 MCP server。xdebug 作为设计/波形 stateful backend，通过 stdio-loop session 提供查询能力；xcov 作为 coverage stateful backend；其他 xverif 工具（xbit/xentry/xloc/xsva）以 stateless CLI adapter 方式接入。

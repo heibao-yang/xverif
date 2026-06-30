@@ -120,6 +120,30 @@ int main() {
     assert(text.find("message file card") == std::string::npos);
     assert(text.find("This is a verified common block.\n  file: rtl/common/fifo.sv\n  card: docs/common/fifo.md") != std::string::npos);
 
+    Json schema_response = {
+        {"api_version", "xdebug.v1"},
+        {"ok", true},
+        {"action", "schema"},
+        {"summary", Json{{"action", "trace.driver"}, {"kind", "response"}}},
+        {"data", Json{
+            {"schema_path", "schemas/v1/actions/trace.driver.response.schema.json"},
+            {"schema", Json{
+                {"title", "trace.driver response"},
+                {"required", Json::array({"api_version", "ok", "action", "summary", "data"})},
+                {"properties", Json{{"data", Json{{"type", "object"}}}}}
+            }}
+        }}
+    };
+    text = render_xout_response(schema_response);
+    assert(text.find("@xdebug.schema.v1") == 0);
+    assert(text.find("summary:\n") != std::string::npos);
+    assert(text.find("schema_path: schemas/v1/actions/trace.driver.response.schema.json") != std::string::npos);
+    assert(text.find("ai_hint") != std::string::npos);
+    assert(text.find("Read schema_path JSON file or use --json for full schema.") != std::string::npos);
+    assert(text.find("\nschema:\n") == std::string::npos);
+    assert(text.find("\nrequired:\n") == std::string::npos);
+    assert(text.find("\nproperties:\n") == std::string::npos);
+
     Json handler_text = {
         {"ok", true},
         {"action", "any.action"},

@@ -1,6 +1,7 @@
 #include "core/ai/common_blocks.h"
 
-#include <cstdlib>
+#include "common/env_config.h"
+
 #include <fstream>
 #include <map>
 #include <set>
@@ -10,7 +11,6 @@ namespace xdebug {
 
 namespace {
 
-const char* kEnvName = "XDEBUG_COMMON_BLOCKS";
 const char* kSchemaVersion = "xdebug.common_blocks.v1";
 const char* kMessage =
     "This is a verified common block. Unless necessary, do not chase internal logic; "
@@ -22,10 +22,10 @@ struct Registry {
 
 Registry load_registry() {
     Registry registry;
-    const char* path = std::getenv(kEnvName);
-    if (path == nullptr || path[0] == '\0') return registry;
+    std::string path = xdebug_core::xdebug_common_blocks_path();
+    if (path.empty()) return registry;
 
-    std::ifstream in(path);
+    std::ifstream in(path.c_str());
     if (!in) return registry;
 
     Json config;

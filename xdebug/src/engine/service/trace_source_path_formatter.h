@@ -11,15 +11,15 @@ namespace xdebug_design {
 
 using Json = nlohmann::ordered_json;
 
-Json source_window_from_location(const std::string& file, int line, int context_lines = 3);
-Json source_window_from_npi_handle(npiHandle handle, int context_lines = 3);
+Json source_window_from_location(const std::string& file, int line, int context_lines = -1);
+Json source_window_from_npi_handle(npiHandle handle, int context_lines = -1);
 Json make_source_path_item_from_location(const std::string& file,
                                          int line,
                                          const std::vector<std::string>& signal_path,
-                                         int context_lines = 3);
+                                         int context_lines = -1);
 Json make_source_path_item_from_npi_handle(npiHandle handle,
                                            const std::vector<std::string>& signal_path,
-                                           int context_lines = 3);
+                                           int context_lines = -1);
 
 Json simplify_trace_driver_load_payload(const Json& raw,
                                         const std::string& action,

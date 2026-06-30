@@ -2,13 +2,13 @@
 #include "session_transport.h"
 #include "../../design/common/xdebug_design_paths.h"
 #include "../../design/protocol/protocol.h"
+#include "common/env_config.h"
 #include "logging/action_log.h"
 #include "session/session_timeout.h"
 #include "session/session_types.h"
 #include "transport/file_exchange.h"
 
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <strings.h>
 #include <cstdarg>
@@ -29,9 +29,7 @@ using namespace xdebug_design;
 namespace {
 
 std::string default_transport_from_env() {
-    const char* env = getenv("XDEBUG_TRANSPORT");
-    if (env && *env) return std::string(env);
-    return "uds";
+    return xdebug_core::xdebug_transport();
 }
 
 bool valid_transport(const std::string& transport) {
@@ -41,9 +39,7 @@ bool valid_transport(const std::string& transport) {
 }  // namespace
 
 bool xdebug_engine_debug_enabled() {
-    const char* env = getenv("XDEBUG_DEBUG");
-    return env && env[0] != '\0' && strcmp(env, "0") != 0 &&
-           strcasecmp(env, "false") != 0 && strcasecmp(env, "off") != 0;
+    return xdebug_core::xdebug_debug_enabled();
 }
 
 void SessionManager::debug_log(const char* fmt, ...) const {

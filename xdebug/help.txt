@@ -152,6 +152,13 @@ Session transport
   default; set XDEBUG_FILE_KEEP_HISTORY=0 to discard successful response
   archives.
 
+Output control
+--------------
+  output.verbosity=compact/full/debug; use include_* switches and limits when
+  details are needed. Trace XOUT source windows use
+  XDEBUG_TRACE_SOURCE_CONTEXT_LINES (default 3) and merge same-file nearby
+  source hits with XDEBUG_TRACE_SOURCE_MERGE_THRESHOLD_LINES (default 10).
+
 Common actions
 --------------
   Catalog:

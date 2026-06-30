@@ -3,6 +3,7 @@
 #include "../design/protocol/protocol.h"
 #include "session/session_registry.h"
 #include "session/session_transport.h"
+#include "core/common/env_config.h"
 #include "core/logging/action_log.h"
 #include "core/npi/time_contract.h"
 #include "core/session/session_timeout.h"
@@ -75,9 +76,7 @@ static void close_fsdb_file() {
 }
 
 static bool server_debug_enabled() {
-    const char* env = getenv("XDEBUG_DEBUG");
-    return env && env[0] != '\0' && strcmp(env, "0") != 0 &&
-           strcasecmp(env, "false") != 0 && strcasecmp(env, "off") != 0;
+    return xdebug_core::xdebug_debug_enabled();
 }
 
 static void server_debug_open_log() {
@@ -177,8 +176,7 @@ static void update_current_request_marker(const Json& request) {
 }
 
 static std::string getenv_string(const char* name) {
-    const char* value = getenv(name);
-    return value ? std::string(value) : std::string();
+    return xdebug_core::env_raw_string(name);
 }
 
 static std::string hash_string_hex(const std::string& value) {
@@ -221,16 +219,15 @@ static void log_environment_snapshot(int argc, char** argv) {
 }
 
 static void maybe_run_crash_marker_test_hook() {
-    const char* enabled = getenv("XDEBUG_ENGINE_TEST_CRASH_MARKER");
-    if (!enabled || enabled[0] == '\0' || strcmp(enabled, "0") == 0) return;
+    if (!xdebug_core::xdebug_engine_test_crash_marker_enabled()) return;
 
-    const char* action = getenv("XDEBUG_ENGINE_TEST_CRASH_ACTION");
-    const char* request_id = getenv("XDEBUG_ENGINE_TEST_CRASH_REQUEST_ID");
-    if (action && action[0] != '\0') {
-        snprintf(g_current_action, sizeof(g_current_action), "%s", action);
+    std::string action = xdebug_core::xdebug_engine_test_crash_action();
+    std::string request_id = xdebug_core::xdebug_engine_test_crash_request_id();
+    if (!action.empty()) {
+        snprintf(g_current_action, sizeof(g_current_action), "%s", action.c_str());
     }
-    if (request_id && request_id[0] != '\0') {
-        snprintf(g_current_request_id, sizeof(g_current_request_id), "%s", request_id);
+    if (!request_id.empty()) {
+        snprintf(g_current_request_id, sizeof(g_current_request_id), "%s", request_id.c_str());
     }
     install_crash_signal_handlers();
     raise(SIGABRT);

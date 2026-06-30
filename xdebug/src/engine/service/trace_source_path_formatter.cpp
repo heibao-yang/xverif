@@ -1,12 +1,14 @@
 #include "service/trace_source_path_formatter.h"
 
 #include "api/text_response_builder.h"
+#include "common/env_config.h"
 
 #include "npi.h"
 #include "npi_hdl.h"
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <set>
@@ -74,6 +76,16 @@ int scalar_int(const Json& object, const char* key) {
     return 0;
 }
 
+int resolved_context_lines(int context_lines) {
+    return context_lines >= 0 ? context_lines : xdebug_core::xdebug_trace_source_context_lines();
+}
+
+Json source_lines_from_file_range(const std::string& file,
+                                  int first_line,
+                                  int last_line,
+                                  const std::set<int>& active_lines,
+                                  int context_lines);
+
 void append_unique(std::vector<std::string>& out, const std::string& value) {
     if (value.empty()) return;
     if (std::find(out.begin(), out.end(), value) == out.end()) out.push_back(value);
@@ -137,36 +149,107 @@ void add_path_if_valid(Json& paths,
 }
 
 Json source_lines_from_file(const std::string& file, int line, int context_lines) {
+    std::set<int> active_lines;
+    active_lines.insert(line);
+    return source_lines_from_file_range(file, line, line, active_lines, context_lines);
+}
+
+Json source_lines_from_file_range(const std::string& file,
+                                  int first_line,
+                                  int last_line,
+                                  const std::set<int>& active_lines,
+                                  int context_lines) {
     Json context = Json::array();
-    if (file.empty() || line <= 0) return context;
+    if (file.empty() || first_line <= 0 || last_line <= 0) return context;
+    if (first_line > last_line) std::swap(first_line, last_line);
     std::ifstream in(file);
     if (!in) return context;
     std::vector<std::string> lines;
     std::string text;
     while (std::getline(in, text)) lines.push_back(text);
-    if (line > static_cast<int>(lines.size())) return context;
-    int begin = std::max(1, line - context_lines);
-    int end = std::min(static_cast<int>(lines.size()), line + context_lines);
+    if (first_line > static_cast<int>(lines.size())) return context;
+    int begin = std::max(1, first_line - context_lines);
+    int end = std::min(static_cast<int>(lines.size()), last_line + context_lines);
     for (int i = begin; i <= end; ++i) {
-        context.push_back({{"line", i}, {"text", lines[i - 1]}, {"active", i == line}});
+        context.push_back({{"line", i}, {"text", lines[i - 1]}, {"active", active_lines.count(i) > 0}});
     }
     return context;
 }
 
-void emit_source_item_xout(std::string& text,
-                           const Json& item,
-                           const std::string& heading,
-                           bool include_heading) {
-    if (!item.is_object()) return;
-    if (include_heading) {
-        text += heading + ":\n";
+std::string signal_path_text(const Json& item) {
+    const Json signal_path = item.value("signal_path", Json::array());
+    std::ostringstream path;
+    if (!signal_path.is_array()) return std::string();
+    for (size_t i = 0; i < signal_path.size(); ++i) {
+        if (!signal_path[i].is_string()) continue;
+        if (path.tellp() > 0) path << " -> ";
+        path << signal_path[i].get<std::string>();
     }
-    const std::string file = scalar_text(item, "file");
-    const int line = scalar_int(item, "line");
-    if (!file.empty() && line > 0) {
-        text += "source: " + file + ":" + std::to_string(line) + "\n";
+    return path.str();
+}
+
+struct SourceRenderItem {
+    std::string file;
+    int line = 0;
+    int hop = 0;
+    bool has_hop = false;
+    std::string signal_path;
+};
+
+struct SourceRenderGroup {
+    std::string file;
+    int first_line = 0;
+    int last_line = 0;
+    int last_seen_line = 0;
+    std::vector<SourceRenderItem> items;
+};
+
+std::vector<SourceRenderItem> collect_source_items(const Json& items, bool chain) {
+    std::vector<SourceRenderItem> out;
+    if (!items.is_array()) return out;
+    for (const auto& item : items) {
+        if (!item.is_object()) continue;
+        SourceRenderItem render_item;
+        render_item.file = scalar_text(item, "file");
+        render_item.line = scalar_int(item, "line");
+        render_item.signal_path = signal_path_text(item);
+        render_item.has_hop = chain;
+        render_item.hop = item.value("index", static_cast<int>(out.size()));
+        if (render_item.file.empty() || render_item.line <= 0 || render_item.signal_path.empty()) continue;
+        out.push_back(render_item);
     }
-    const Json context = item.value("source_context", Json::array());
+    return out;
+}
+
+std::vector<SourceRenderGroup> group_source_items(const std::vector<SourceRenderItem>& items,
+                                                  int merge_threshold_lines) {
+    std::vector<SourceRenderGroup> groups;
+    for (const auto& item : items) {
+        bool merged = false;
+        if (!groups.empty()) {
+            SourceRenderGroup& last = groups.back();
+            if (last.file == item.file && std::abs(item.line - last.last_seen_line) < merge_threshold_lines) {
+                last.first_line = std::min(last.first_line, item.line);
+                last.last_line = std::max(last.last_line, item.line);
+                last.last_seen_line = item.line;
+                last.items.push_back(item);
+                merged = true;
+            }
+        }
+        if (!merged) {
+            SourceRenderGroup group;
+            group.file = item.file;
+            group.first_line = item.line;
+            group.last_line = item.line;
+            group.last_seen_line = item.line;
+            group.items.push_back(item);
+            groups.push_back(group);
+        }
+    }
+    return groups;
+}
+
+void append_source_context_text(std::string& text, const Json& context) {
     if (context.is_array()) {
         for (const auto& row : context) {
             if (!row.is_object()) continue;
@@ -177,22 +260,61 @@ void emit_source_item_xout(std::string& text,
             text += prefix.str() + row.value("text", std::string()) + "\n";
         }
     }
-    const Json signal_path = item.value("signal_path", Json::array());
-    std::ostringstream path;
-    if (signal_path.is_array()) {
-        for (size_t i = 0; i < signal_path.size(); ++i) {
-            if (!signal_path[i].is_string()) continue;
-            if (path.tellp() > 0) path << " -> ";
-            path << signal_path[i].get<std::string>();
+}
+
+std::string active_signals_table(const SourceRenderGroup& group) {
+    xdebug::TextResponseBuilder out("xdebug");
+    out.emit_section("active_signals");
+    std::vector<std::vector<std::string>> rows;
+    std::set<std::string> seen;
+    for (const auto& item : group.items) {
+        std::ostringstream key;
+        if (item.has_hop) key << item.hop << "|";
+        key << item.line << "|" << item.signal_path;
+        if (!seen.insert(key.str()).second) continue;
+        if (item.has_hop) {
+            rows.push_back({std::to_string(item.hop), std::to_string(item.line), item.signal_path});
+        } else {
+            rows.push_back({std::to_string(item.line), item.signal_path});
         }
     }
-    if (path.tellp() > 0) text += "signal_path: " + path.str() + "\n";
+    if (rows.empty()) return std::string();
+    if (group.items.empty() || !group.items.front().has_hop) {
+        out.emit_table({"line", "signal_path"}, rows);
+    } else {
+        out.emit_table({"hop", "line", "signal_path"}, rows);
+    }
+    return out.str();
+}
+
+void emit_source_group_xout(std::string& text, const SourceRenderGroup& group, int context_lines) {
+    if (group.file.empty() || group.items.empty()) return;
+    std::set<int> active_lines;
+    for (const auto& item : group.items) active_lines.insert(item.line);
+    Json context = source_lines_from_file_range(group.file,
+                                                group.first_line,
+                                                group.last_line,
+                                                active_lines,
+                                                context_lines);
+    if (context.empty()) return;
+    if (!text.empty() && text.back() != '\n') text.push_back('\n');
+    if (!text.empty()) text.push_back('\n');
+    text += "source: " + group.file + ":" + std::to_string(group.first_line);
+    if (group.last_line != group.first_line) text += "-" + std::to_string(group.last_line);
+    text += "\n";
+    append_source_context_text(text, context);
+    std::string table = active_signals_table(group);
+    if (!table.empty()) {
+        if (!text.empty() && text.back() != '\n') text.push_back('\n');
+        text.push_back('\n');
+        text += table;
+    }
 }
 
 } // namespace
 
 Json source_window_from_location(const std::string& file, int line, int context_lines) {
-    return source_lines_from_file(file, line, std::max(0, context_lines));
+    return source_lines_from_file(file, line, std::max(0, resolved_context_lines(context_lines)));
 }
 
 Json source_window_from_npi_handle(npiHandle handle, int context_lines) {
@@ -365,21 +487,18 @@ std::string render_source_path_xout(const std::string& action, const Json& respo
     std::string text = out.str();
     const Json data = response.value("data", Json::object());
     const Json paths = data.value("paths", Json::array());
+    int context_lines = xdebug_core::xdebug_trace_source_context_lines();
+    int merge_threshold_lines = xdebug_core::xdebug_trace_source_merge_threshold_lines();
     if (paths.is_array()) {
-        for (const auto& item : paths) {
-            if (!text.empty() && text.back() != '\n') text.push_back('\n');
-            if (!text.empty()) text.push_back('\n');
-            emit_source_item_xout(text, item, "", false);
-        }
+        std::vector<SourceRenderGroup> groups =
+            group_source_items(collect_source_items(paths, false), merge_threshold_lines);
+        for (const auto& group : groups) emit_source_group_xout(text, group, context_lines);
     }
     const Json hops = data.value("hops", Json::array());
     if (hops.is_array()) {
-        for (const auto& item : hops) {
-            if (!text.empty() && text.back() != '\n') text.push_back('\n');
-            if (!text.empty()) text.push_back('\n');
-            int index = item.value("index", 0);
-            emit_source_item_xout(text, item, "hop " + std::to_string(index), true);
-        }
+        std::vector<SourceRenderGroup> groups =
+            group_source_items(collect_source_items(hops, true), merge_threshold_lines);
+        for (const auto& group : groups) emit_source_group_xout(text, group, context_lines);
     }
     while (!text.empty() && text.back() == '\n') text.pop_back();
     text.push_back('\n');

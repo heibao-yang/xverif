@@ -327,7 +327,8 @@ def test_active_trace_semantic_branches_and_gates(
         assert active_xout.startswith("@xdebug.trace.active_driver.v1")
         assert "\nsummary:\n" in active_xout
         assert "\nsource: " in active_xout
-        assert "\nsignal_path: " in active_xout
+        assert "\nactive_signals:\n" in active_xout
+        assert "line  signal_path" in active_xout
         assert "\n>" in active_xout
         for removed_section in ("\ndriver:\n", "\ncontrols:\n", "\nevents:\n", "\nroot_cause:\n"):
             assert removed_section not in active_xout
@@ -338,9 +339,9 @@ def test_active_trace_semantic_branches_and_gates(
         )
         assert chain_xout.startswith("@xdebug.trace.active_driver_chain.v1")
         assert "\nsummary:\n" in chain_xout
-        assert "\nhop 0:\n" in chain_xout
         assert "\nsource: " in chain_xout
-        assert "\nsignal_path: " in chain_xout
+        assert "\nactive_signals:\n" in chain_xout
+        assert "hop  line  signal_path" in chain_xout
         assert "\n>" in chain_xout
         for removed_section in ("\nchain:\n", "\nstats:\n", "\nchain_path:\n"):
             assert removed_section not in chain_xout

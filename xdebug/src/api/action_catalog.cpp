@@ -1,8 +1,8 @@
 #include "api/action_catalog.h"
 #include "api/action_registry_init.h"
 #include "api/response.h"
+#include "common/env_config.h"
 
-#include <cstdlib>
 #include <fstream>
 #include <sstream>
 
@@ -37,8 +37,8 @@ Json action_name_array(bool include_removed) {
 }
 
 std::string schema_root() {
-    const char* home = std::getenv("XVERIF_HOME");
-    if (home && *home) return std::string(home) + "/xdebug/schemas/v1/actions/";
+    std::string home = xdebug_core::env_raw_string("XVERIF_HOME");
+    if (!home.empty()) return home + "/xdebug/schemas/v1/actions/";
     return "xdebug/schemas/v1/actions/";
 }
 

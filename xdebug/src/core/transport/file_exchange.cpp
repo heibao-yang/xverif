@@ -1,5 +1,7 @@
 #include "transport/file_exchange.h"
 
+#include "common/env_config.h"
+
 #include <algorithm>
 #include <atomic>
 #include <cerrno>
@@ -95,14 +97,6 @@ std::vector<std::string> list_json_files(const std::string& dir) {
     closedir(dp);
     std::sort(out.begin(), out.end());
     return out;
-}
-
-long long env_ll(const char* name, long long fallback) {
-    const char* env = getenv(name);
-    if (!env || !*env) return fallback;
-    char* end = nullptr;
-    long long value = strtoll(env, &end, 10);
-    return end && *end == '\0' && value >= 0 ? value : fallback;
 }
 
 Json client_info() {
@@ -279,37 +273,19 @@ long long file_exchange_now_us() {
 }
 
 int file_exchange_poll_interval_ms() {
-    long long value = env_ll("XDEBUG_FILE_POLL_INTERVAL_MS", 20);
-    if (value <= 0) value = 20;
-    if (value > 10000) value = 10000;
-    return static_cast<int>(value);
+    return xdebug_file_poll_interval_ms();
 }
 
 int file_exchange_max_json_bytes() {
-    long long value = env_ll("XDEBUG_FILE_MAX_JSON_BYTES", 67108864LL);
-    if (value <= 0) value = 67108864LL;
-    if (value > 1024LL * 1024LL * 1024LL) value = 1024LL * 1024LL * 1024LL;
-    return static_cast<int>(value);
+    return xdebug_file_max_json_bytes();
 }
 
 int file_exchange_claim_timeout_ms(int request_timeout_ms) {
-    if (request_timeout_ms <= 0) {
-        request_timeout_ms = static_cast<int>(env_ll("XDEBUG_FILE_TRANSPORT_TIMEOUT_MS", 300000));
-        if (request_timeout_ms <= 0) request_timeout_ms = 300000;
-    }
-    long long fallback = std::max<long long>(2LL * request_timeout_ms, 600000LL);
-    long long value = env_ll("XDEBUG_FILE_CLAIM_TIMEOUT_MS", fallback);
-    if (value <= 0) value = fallback;
-    if (value > 24LL * 60LL * 60LL * 1000LL) value = 24LL * 60LL * 60LL * 1000LL;
-    return static_cast<int>(value);
+    return xdebug_file_claim_timeout_ms(request_timeout_ms);
 }
 
 bool file_exchange_keep_history() {
-    const char* env = getenv("XDEBUG_FILE_KEEP_HISTORY");
-    if (!env || !*env) return true;
-    return !(std::strcmp(env, "0") == 0 ||
-             strcasecmp(env, "false") == 0 ||
-             strcasecmp(env, "off") == 0);
+    return xdebug_file_keep_history();
 }
 
 std::string file_transport_dir(const std::string& session_dir) {
@@ -586,8 +562,8 @@ int file_exchange_scan_stale_claims(const std::string& dir,
 
 int file_exchange_gc(const std::string& dir) {
     if (!ensure_file_transport_layout(dir)) return 0;
-    long long done_ttl = env_ll("XDEBUG_FILE_DONE_TTL_SEC", 7LL * 24LL * 60LL * 60LL);
-    long long failed_ttl = env_ll("XDEBUG_FILE_FAILED_TTL_SEC", 30LL * 24LL * 60LL * 60LL);
+    long long done_ttl = xdebug_file_done_ttl_sec();
+    long long failed_ttl = xdebug_file_failed_ttl_sec();
     cleanup_ttl_dir(join_path(dir, "done"), done_ttl);
     cleanup_ttl_dir(join_path(dir, "failed"), failed_ttl);
     return 0;

@@ -30,6 +30,7 @@ SVT_VIP_INCDIR ?= /home/yian/axi_test/test/include/sverilog
 SVT_VIP_SRCDIR ?= /home/yian/axi_test/test/src/sverilog/vcs
 
 CORE_SRCS = src/core/common/tool_config.cpp \
+            src/core/common/env_config.cpp \
             src/core/common/path_utils.cpp \
             src/core/npi/time_contract.cpp \
             src/core/transport/file_exchange.cpp \
@@ -223,6 +224,8 @@ unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)
 	mkdir -p $(BUILD)/tests
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_core_types tests/unit/test_core_types.cpp $(CORE_OBJS) $(LDFLAGS)
 	$(BUILD)/tests/test_core_types
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_env_config tests/unit/test_env_config.cpp $(CORE_OBJS) $(LDFLAGS)
+	$(BUILD)/tests/test_env_config
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_unique_resource tests/unit/test_unique_resource.cpp
 	$(BUILD)/tests/test_unique_resource
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_action_log tests/unit/test_action_log.cpp $(CORE_OBJS) $(LDFLAGS)
@@ -231,7 +234,7 @@ unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)
 	$(BUILD)/tests/test_file_exchange
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_process_runner tests/unit/test_process_runner.cpp $(CORE_OBJS) $(LDFLAGS)
 	$(BUILD)/tests/test_process_runner
-	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_session_catalog tests/unit/test_session_catalog.cpp $(BUILD)/src/session/session_catalog.o
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_session_catalog tests/unit/test_session_catalog.cpp $(BUILD)/src/session/session_catalog.o $(BUILD)/src/core/common/env_config.o
 	$(BUILD)/tests/test_session_catalog
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_action_registry tests/unit/test_action_registry.cpp $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(LDFLAGS)
 	$(BUILD)/tests/test_action_registry
@@ -239,6 +242,8 @@ unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)
 	$(BUILD)/tests/test_request_contract
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_text_response_builder tests/unit/test_text_response_builder.cpp $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o
 	$(BUILD)/tests/test_text_response_builder
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_trace_source_path_formatter tests/unit/test_trace_source_path_formatter.cpp $(BUILD)/src/engine/service/trace_source_path_formatter.o $(BUILD)/src/api/text_response_builder.o $(CORE_OBJS) $(LDFLAGS)
+	$(BUILD)/tests/test_trace_source_path_formatter
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_common_blocks tests/unit/test_common_blocks.cpp $(CORE_OBJS) $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o $(LDFLAGS)
 	$(BUILD)/tests/test_common_blocks
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_logic_value tests/unit/test_logic_value.cpp $(BUILD)/src/waveform/value/logic_value.o

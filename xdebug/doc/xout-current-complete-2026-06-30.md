@@ -3,7 +3,7 @@
 > 参考: `/home/yian/xring/dv/doc/feedback/2026-06-27-v29-xdebug-full-xout-complete.md`
 > daidir=`/home/yian/xring/dv/run/out/sanity/build/simv.daidir`
 > fsdb=`/home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb`
-> 已跳过参考文件中的已删除 action。
+> 已跳过参考文件中的已删除 action；本文件由当前 xdebug 二进制重放生成。
 
 ## actions
 
@@ -136,139 +136,10 @@ xout rc=0:
 ```text
 @xdebug.schema.v1
 summary:
-  action: trace.driver
-  kind  : response
-
-schema:
-  _schema: https://json-schema.org/draft/2020-12/schema
-  _id    : xdebug.trace.driver.response.v1
-  title  : trace.driver response
-  type   : object
-
-required:
-  api_version
-  ok
-  action
-  summary
-  data
-
-api_version:
-  type: string
-
-enum:
-  xdebug.v1
-
-request_id:
-  type: string
-
-ok:
-  type: boolean
-
-action:
-  type: string
-
-enum:
-  trace.driver
-
-summary:
-  type: object
-
-required:
-  signal
-  mode
-  path_count
-  truncated
-
-signal:
-  type: string
-
-mode:
-  type: string
-
-enum:
-  driver
-
-path_count:
-  type   : integer
-  minimum: 0
-
-truncated:
-  type                : boolean
-  additionalProperties: false
-
-data:
-  type: object
-
-required:
-  paths
-
-summary:
-  type: object
-
-paths:
-  type: array
-
-items:
-  _ref: #/$defs/source_path
-
-truncated:
-  type: boolean
-
-common_blocks:
-  type                : array
-  additionalProperties: false
-
-meta:
-  type: object
-
-source_path:
-  type: object
-
-required:
-  file
-  line
-  source_context
-  signal_path
-
-file:
-  type: string
-
-line:
-  type   : integer
-  minimum: 1
-
-source_context:
-  type: array
-
-items:
-  type: object
-
-required:
-  line
-  text
-  active
-
-line:
-  type   : integer
-  minimum: 1
-
-text:
-  type: string
-
-active:
-  type                : boolean
-  additionalProperties: false
-
-signal_path:
-  type: array
-
-items:
-  type                : string
-  additionalProperties: false
-  additionalProperties: true
-  description         : trace.driver response: 查找信号直接 driver。
-  x-output_notes      : 返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。
-  schema_path         : schemas/v1/actions/trace.driver.response.schema.json
+  action     : trace.driver
+  kind       : response
+  schema_path: schemas/v1/actions/trace.driver.response.schema.json
+  ai_hint    : Read schema_path JSON file or use --json for full schema.
 ```
 
 ## session.open
@@ -283,7 +154,7 @@ request:
     "fsdb": "/home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb"
   },
   "args": {
-    "name": "xout_current_20260630_c"
+    "name": "xout_current_20260630_envtrace"
   }
 }
 ```
@@ -292,18 +163,18 @@ xout rc=0:
 ```text
 @xdebug.session.open.v1
 summary:
-  session_id: xout_current_20260630_c
+  session_id: xout_current_20260630_envtrace
   mode      : combined
 
 session:
-  id         : xout_current_20260630_c
-  session_id : xout_current_20260630_c
+  id         : xout_current_20260630_envtrace
+  session_id : xout_current_20260630_envtrace
   mode       : combined
   daidir     : /home/yian/xring/dv/run/out/sanity/build/simv.daidir
   fsdb       : /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb
-  socket_path: /home/yian/.xdebug/engine/sessions/xout_current_202_09750bb00d7361c3/socket
+  socket_path: /home/yian/.xdebug/engine/sessions/xout_current_202_d4611ca55364fffe/socket
   transport  : uds
-  file_dir   : /home/yian/.xdebug/engine/sessions/xout_current_202_09750bb00d7361c3/transport
+  file_dir   : /home/yian/.xdebug/engine/sessions/xout_current_202_d4611ca55364fffe/transport
   server_host: localhost.localdomain
 ```
 
@@ -321,14 +192,17 @@ xout rc=0:
 ```text
 @xdebug.session.list.v1
 summary:
-  session_count        : 3
+  session_count        : 6
   expired_removed_count: 0
 
 sessions:
-  id                       session_id               mode      daidir                                                fsdb                                                                    socket_path                                                                  transport  file_dir                                                                        server_host            server_pid  created_at  last_active  dbdir_mtime  dbdir_size  dbdir_dev  dbdir_inode  fsdb_mtime  fsdb_size  fsdb_dev  fsdb_inode
-  xout_current_20260630    xout_current_20260630    combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir  /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb  /home/yian/.xdebug/engine/sessions/xout_current_202_f68723fc1c2acbb9/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_f68723fc1c2acbb9/transport  localhost.localdomain  2879498     1782790678  1782790924   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
-  xout_current_20260630_b  xout_current_20260630_b  combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir  /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb  /home/yian/.xdebug/engine/sessions/xout_current_202_09750ab00d736010/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_09750ab00d736010/transport  localhost.localdomain  2881701     1782790854  1782790924   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
-  xout_current_20260630_c  xout_current_20260630_c  combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir  /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb  /home/yian/.xdebug/engine/sessions/xout_current_202_09750bb00d7361c3/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_09750bb00d7361c3/transport  localhost.localdomain  2883339     1782790963  1782790963   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
+  id                              session_id                      mode      daidir                                                                          fsdb                                                                           socket_path                                                                  transport  file_dir                                                                        server_host            server_pid  created_at  last_active  dbdir_mtime  dbdir_size  dbdir_dev  dbdir_inode  fsdb_mtime  fsdb_size  fsdb_dev  fsdb_inode
+  xout_current_20260630           xout_current_20260630           combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir                            /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb         /home/yian/.xdebug/engine/sessions/xout_current_202_f68723fc1c2acbb9/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_f68723fc1c2acbb9/transport  localhost.localdomain  2879498     1782790678  1782790967   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
+  xout_current_20260630_b         xout_current_20260630_b         combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir                            /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb         /home/yian/.xdebug/engine/sessions/xout_current_202_09750ab00d736010/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_09750ab00d736010/transport  localhost.localdomain  2881701     1782790854  1782790967   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
+  xout_current_20260630_c         xout_current_20260630_c         combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir                            /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb         /home/yian/.xdebug/engine/sessions/xout_current_202_09750bb00d7361c3/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_09750bb00d7361c3/transport  localhost.localdomain  2883339     1782790963  1782790967   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
+  active_driver_py_2918664        active_driver_py_2918664        combined  /home/yian/xverif/xdebug/testdata/combined/active_driver/out/simv.daidir        /home/yian/xverif/xdebug/testdata/combined/active_driver/out/waves.fsdb        /home/yian/.xdebug/engine/sessions/active_driver_py_02e879d9c249d84d/socket  uds        /home/yian/.xdebug/engine/sessions/active_driver_py_02e879d9c249d84d/transport  localhost.localdomain  2918683     1782796007  1782796007   1782715423   4096        66307      554070230    1782715423  9821       66307     1611510105
+  if_port_root_py_2918664         if_port_root_py_2918664         combined  /home/yian/xverif/xdebug/testdata/combined/interface_port_root/out/simv.daidir  /home/yian/xverif/xdebug/testdata/combined/interface_port_root/out/waves.fsdb  /home/yian/.xdebug/engine/sessions/if_port_root_py__1634e14c3170c8f0/socket  uds        /home/yian/.xdebug/engine/sessions/if_port_root_py__1634e14c3170c8f0/transport  localhost.localdomain  2918741     1782796007  1782796007   1781511675   4096        66307      541233024    1781579586  9741       66307     1087379363
+  xout_current_20260630_envtrace  xout_current_20260630_envtrace  combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir                            /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb         /home/yian/.xdebug/engine/sessions/xout_current_202_d4611ca55364fffe/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_d4611ca55364fffe/transport  localhost.localdomain  2921617     1782796126  1782796126   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
 ```
 
 ## session.doctor
@@ -339,7 +213,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "session.doctor",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {}
 }
@@ -349,7 +223,7 @@ xout rc=0:
 ```text
 @xdebug.session.doctor.v1
 summary:
-  session_id: xout_current_20260630_c
+  session_id: xout_current_20260630_envtrace
   mode      : combined
   healthy   : true
 
@@ -363,21 +237,21 @@ tool:
   version: 0.1.0
 
 session:
-  id         : xout_current_20260630_c
-  session_id : xout_current_20260630_c
+  id         : xout_current_20260630_envtrace
+  session_id : xout_current_20260630_envtrace
   dbdir      : /home/yian/xring/dv/run/out/sanity/build/simv.daidir
   dbdir_path : /home/yian/xring/dv/run/out/sanity/build/simv.daidir
   design_file: /home/yian/xring/dv/run/out/sanity/build/simv.daidir
   fsdb       : /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb
   fsdb_file  : /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb
-  pid        : 2883339
+  pid        : 2921617
   transport  : uds
-  socket_path: /home/yian/.xdebug/engine/sessions/xout_current_202_09750bb00d7361c3/socket
-  file_dir   : /home/yian/.xdebug/engine/sessions/xout_current_202_09750bb00d7361c3/transport
+  socket_path: /home/yian/.xdebug/engine/sessions/xout_current_202_d4611ca55364fffe/socket
+  file_dir   : /home/yian/.xdebug/engine/sessions/xout_current_202_d4611ca55364fffe/transport
   port       : 0
   server_host: localhost.localdomain
-  created_at : 1782790963
-  last_active: 1782790963
+  created_at : 1782796126
+  last_active: 1782796126
   dbdir_mtime: 1781509284
   dbdir_size : 4096
   dbdir_dev  : 66307
@@ -388,15 +262,15 @@ session:
   fsdb_inode : 3558781
 
 summary:
-  id        : xout_current_20260630_c
-  session_id: xout_current_20260630_c
+  id        : xout_current_20260630_envtrace
+  session_id: xout_current_20260630_envtrace
   healthy   : true
   status    : healthy
   message   : Session is healthy
 
 health:
-  id        : xout_current_20260630_c
-  session_id: xout_current_20260630_c
+  id        : xout_current_20260630_envtrace
+  session_id: xout_current_20260630_envtrace
   healthy   : true
   status    : healthy
   message   : Session is healthy
@@ -410,7 +284,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "scope.roots",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "source": "auto"
@@ -442,7 +316,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "scope.list",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "path": "xring_tb_top.u_dut",
@@ -492,7 +366,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "value.at",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.u_dut.ds_vld",
@@ -522,7 +396,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "value.batch_at",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signals": [
@@ -558,7 +432,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "signal.statistics",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.u_dut.ds_bp",
@@ -613,7 +487,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "signal.changes",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.u_dut.ds_bp",
@@ -655,7 +529,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "signal.stability",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.u_dut.ds_bp",
@@ -696,7 +570,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "signal.resolve",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.u_dut.ds_vld"
@@ -734,7 +608,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "signal.canonicalize",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.u_dut.ds_vld"
@@ -766,7 +640,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "event.config.load",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "ev0",
@@ -798,7 +672,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "event.config.list",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {}
 }
@@ -820,7 +694,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "event.find",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "ev0",
@@ -851,7 +725,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "event.export",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "ev0",
@@ -885,7 +759,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "handshake.inspect",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "clock": "xring_tb_top.clk",
@@ -929,7 +803,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "detect_anomaly",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signals": [
@@ -965,7 +839,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "verify.conditions",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.u_dut.ds_vld",
@@ -1012,7 +886,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "window.verify",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.u_dut.ds_vld",
@@ -1043,7 +917,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "expr.eval_at",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "expr": "xring_tb_top.u_dut.ds_vld && !xring_tb_top.u_dut.ds_bp",
@@ -1070,7 +944,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "counter.statistics",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.u_dut.ds_bp",
@@ -1102,7 +976,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "sampled_pulse.inspect",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.u_dut.ds_vld",
@@ -1133,7 +1007,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "trace.driver",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.rst_n"
@@ -1156,25 +1030,21 @@ summary:
   path_count: 2
   truncated : false
 
-source: /home/yian/xring/dv/tb/xring_tb_top.sv:21
+source: /home/yian/xring/dv/tb/xring_tb_top.sv:21-23
    18 |     end
    19 | 
    20 |     initial begin
 >  21 |         rst_n = 1'b0;
    22 |         repeat (20) @(posedge clk);
-   23 |         rst_n = 1'b1;
-   24 |     end
-signal_path: xring_tb_top.rst_n
-
-source: /home/yian/xring/dv/tb/xring_tb_top.sv:23
-   20 |     initial begin
-   21 |         rst_n = 1'b0;
-   22 |         repeat (20) @(posedge clk);
 >  23 |         rst_n = 1'b1;
    24 |     end
    25 | 
    26 |     initial begin
-signal_path: xring_tb_top.rst_n
+
+active_signals:
+  line  signal_path
+  21    xring_tb_top.rst_n
+  23    xring_tb_top.rst_n
 ```
 
 ## trace.load
@@ -1185,7 +1055,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "trace.load",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.rst_n"
@@ -1216,87 +1086,18 @@ source: /home/yian/xif_agent/src/xif_if.sv:372
   373 |         if ($isunknown(pd_bits)) begin
   374 |           uvm_report_error("XIF_PD_X", $sformatf("pd contains X/Z while vld is asserted at %0t", $time), UVM_NONE);
   375 |         end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.pd_bits
 
-source: /home/yian/xif_agent/src/xif_if.sv:372
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-> 372 |         pd_bits = mon_cb.pd;
-  373 |         if ($isunknown(pd_bits)) begin
-  374 |           uvm_report_error("XIF_PD_X", $sformatf("pd contains X/Z while vld is asserted at %0t", $time), UVM_NONE);
-  375 |         end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.pd_bits
-
-source: /home/yian/xif_agent/src/xif_if.sv:372
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-> 372 |         pd_bits = mon_cb.pd;
-  373 |         if ($isunknown(pd_bits)) begin
-  374 |           uvm_report_error("XIF_PD_X", $sformatf("pd contains X/Z while vld is asserted at %0t", $time), UVM_NONE);
-  375 |         end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.pd_bits
-
-source: /home/yian/xif_agent/src/xif_if.sv:372
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-> 372 |         pd_bits = mon_cb.pd;
-  373 |         if ($isunknown(pd_bits)) begin
-  374 |           uvm_report_error("XIF_PD_X", $sformatf("pd contains X/Z while vld is asserted at %0t", $time), UVM_NONE);
-  375 |         end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.pd_bits
-
-source: /home/yian/xif_agent/src/xif_if.sv:372
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-> 372 |         pd_bits = mon_cb.pd;
-  373 |         if ($isunknown(pd_bits)) begin
-  374 |           uvm_report_error("XIF_PD_X", $sformatf("pd contains X/Z while vld is asserted at %0t", $time), UVM_NONE);
-  375 |         end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.pd_bits
-
-source: /home/yian/xif_agent/src/xif_if.sv:372
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-> 372 |         pd_bits = mon_cb.pd;
-  373 |         if ($isunknown(pd_bits)) begin
-  374 |           uvm_report_error("XIF_PD_X", $sformatf("pd contains X/Z while vld is asserted at %0t", $time), UVM_NONE);
-  375 |         end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.pd_bits
-
-source: /home/yian/xif_agent/src/xif_if.sv:372
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-> 372 |         pd_bits = mon_cb.pd;
-  373 |         if ($isunknown(pd_bits)) begin
-  374 |           uvm_report_error("XIF_PD_X", $sformatf("pd contains X/Z while vld is asserted at %0t", $time), UVM_NONE);
-  375 |         end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.pd_bits
-
-source: /home/yian/xif_agent/src/xif_if.sv:372
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-> 372 |         pd_bits = mon_cb.pd;
-  373 |         if ($isunknown(pd_bits)) begin
-  374 |           uvm_report_error("XIF_PD_X", $sformatf("pd contains X/Z while vld is asserted at %0t", $time), UVM_NONE);
-  375 |         end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.pd_bits
-
-source: /home/yian/xif_agent/src/xif_if.sv:372
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-> 372 |         pd_bits = mon_cb.pd;
-  373 |         if ($isunknown(pd_bits)) begin
-  374 |           uvm_report_error("XIF_PD_X", $sformatf("pd contains X/Z while vld is asserted at %0t", $time), UVM_NONE);
-  375 |         end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.pd_bits
+active_signals:
+  line  signal_path
+  372   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.pd_bits
+  372   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.pd_bits
+  372   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.pd_bits
+  372   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.pd_bits
+  372   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.pd_bits
+  372   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.pd_bits
+  372   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.pd_bits
+  372   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.pd_bits
+  372   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.pd_bits
 
 source: /home/yian/xring/rtl/xring_top.v:11
     8 | module xring_top (
@@ -1306,7 +1107,10 @@ source: /home/yian/xring/rtl/xring_top.v:11
    12 | 
    13 |     // ---- APB4 Slave Interface ----
    14 |     input  wire [11:0]  paddr,
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_dut.rst_n
+
+active_signals:
+  line  signal_path
+  11    xring_tb_top.rst_n -> xring_tb_top.u_dut.rst_n
 
 source: /home/yian/xring/dv/tb/xring_hvp_top.sv:13
    10 | // Bound to tb_top via bind statement.
@@ -1316,67 +1120,34 @@ source: /home/yian/xring/dv/tb/xring_hvp_top.sv:13
    14 | 
    15 |     import uvm_pkg::*;
    16 |     `include "uvm_macros.svh"
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.rst_n
 
-source: /home/yian/xring/rtl/xring_top.v:119
+active_signals:
+  line  signal_path
+  13    xring_tb_top.rst_n -> xring_tb_top.u_hvp.rst_n
+
+source: /home/yian/xring/rtl/xring_top.v:119-125
   116 | // =========================================================================
   117 | reg rst_n_meta, rst_n_sync;
   118 | 
 > 119 | always @(posedge clk or negedge rst_n) begin
-  120 |     if (!rst_n) begin
-  121 |         rst_n_meta <= 1'b0;
-  122 |         rst_n_sync <= 1'b0;
-signal_path: xring_tb_top.rst_n
-
-source: /home/yian/xring/rtl/xring_top.v:120
-  117 | reg rst_n_meta, rst_n_sync;
-  118 | 
-  119 | always @(posedge clk or negedge rst_n) begin
 > 120 |     if (!rst_n) begin
-  121 |         rst_n_meta <= 1'b0;
-  122 |         rst_n_sync <= 1'b0;
-  123 |     end else begin
-signal_path: xring_tb_top.rst_n
-
-source: /home/yian/xring/rtl/xring_top.v:121
-  118 | 
-  119 | always @(posedge clk or negedge rst_n) begin
-  120 |     if (!rst_n) begin
 > 121 |         rst_n_meta <= 1'b0;
-  122 |         rst_n_sync <= 1'b0;
-  123 |     end else begin
-  124 |         rst_n_meta <= 1'b1;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_dut.rst_n_meta
-
-source: /home/yian/xring/rtl/xring_top.v:122
-  119 | always @(posedge clk or negedge rst_n) begin
-  120 |     if (!rst_n) begin
-  121 |         rst_n_meta <= 1'b0;
 > 122 |         rst_n_sync <= 1'b0;
   123 |     end else begin
-  124 |         rst_n_meta <= 1'b1;
-  125 |         rst_n_sync <= rst_n_meta;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_dut.rst_n_sync
-
-source: /home/yian/xring/rtl/xring_top.v:124
-  121 |         rst_n_meta <= 1'b0;
-  122 |         rst_n_sync <= 1'b0;
-  123 |     end else begin
 > 124 |         rst_n_meta <= 1'b1;
-  125 |         rst_n_sync <= rst_n_meta;
-  126 |     end
-  127 | end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_dut.rst_n_meta
-
-source: /home/yian/xring/rtl/xring_top.v:125
-  122 |         rst_n_sync <= 1'b0;
-  123 |     end else begin
-  124 |         rst_n_meta <= 1'b1;
 > 125 |         rst_n_sync <= rst_n_meta;
   126 |     end
   127 | end
   128 | 
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_dut.rst_n_sync
+
+active_signals:
+  line  signal_path
+  119   xring_tb_top.rst_n
+  120   xring_tb_top.rst_n
+  121   xring_tb_top.rst_n -> xring_tb_top.u_dut.rst_n_meta
+  122   xring_tb_top.rst_n -> xring_tb_top.u_dut.rst_n_sync
+  124   xring_tb_top.rst_n -> xring_tb_top.u_dut.rst_n_meta
+  125   xring_tb_top.rst_n -> xring_tb_top.u_dut.rst_n_sync
 
 source: /home/yian/xring/dv/env/xring_global_if.sv:12
     9 | // Section B: RM expected values — updated by RM, used by apb_reg_seq for DFX compare
@@ -1386,7 +1157,10 @@ source: /home/yian/xring/dv/env/xring_global_if.sv:12
    13 | 
    14 |     // =========================================================================
    15 |     // Section A: DUT probes (RM observation)
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.global_if.rst_n
+
+active_signals:
+  line  signal_path
+  12    xring_tb_top.rst_n -> xring_tb_top.u_hvp.global_if.rst_n
 
 source: /home/yian/xring/dv/tb/xring_top_if.sv:10
     7 | // Contains: APB master interface, xif interfaces, AXI slave interfaces (for DUT's AXI master).
@@ -1396,7 +1170,10 @@ source: /home/yian/xring/dv/tb/xring_top_if.sv:10
    11 | 
    12 |     import xring_dec::*;
    13 |     import xif_types_pkg::*;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.rst_n
+
+active_signals:
+  line  signal_path
+  10    xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.rst_n
 
 source: /home/yian/xring/dv/env/xring_global_if.sv:267
   264 |         clear_pending_credit_unlocked();
@@ -1406,7 +1183,10 @@ source: /home/yian/xring/dv/env/xring_global_if.sv:267
   268 |         reset_pending_credit();
   269 |     end
   270 | 
-signal_path: xring_tb_top.rst_n
+
+active_signals:
+  line  signal_path
+  267   xring_tb_top.rst_n
 
 source: /home/yian/xif_agent/src/xif_if.sv:10
     7 |   parameter real hold_time  = 0.01  // ns
@@ -1416,87 +1196,18 @@ source: /home/yian/xif_agent/src/xif_if.sv:10
    11 | );
    12 |   import uvm_pkg::*;
    13 |   import xif_pkg::*;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.rst_n
 
-source: /home/yian/xif_agent/src/xif_if.sv:10
-    7 |   parameter real hold_time  = 0.01  // ns
-    8 | ) (
-    9 |   input logic clk,
->  10 |   input logic rst_n
-   11 | );
-   12 |   import uvm_pkg::*;
-   13 |   import xif_pkg::*;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.rst_n
-
-source: /home/yian/xif_agent/src/xif_if.sv:10
-    7 |   parameter real hold_time  = 0.01  // ns
-    8 | ) (
-    9 |   input logic clk,
->  10 |   input logic rst_n
-   11 | );
-   12 |   import uvm_pkg::*;
-   13 |   import xif_pkg::*;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.rst_n
-
-source: /home/yian/xif_agent/src/xif_if.sv:10
-    7 |   parameter real hold_time  = 0.01  // ns
-    8 | ) (
-    9 |   input logic clk,
->  10 |   input logic rst_n
-   11 | );
-   12 |   import uvm_pkg::*;
-   13 |   import xif_pkg::*;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.rst_n
-
-source: /home/yian/xif_agent/src/xif_if.sv:10
-    7 |   parameter real hold_time  = 0.01  // ns
-    8 | ) (
-    9 |   input logic clk,
->  10 |   input logic rst_n
-   11 | );
-   12 |   import uvm_pkg::*;
-   13 |   import xif_pkg::*;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.rst_n
-
-source: /home/yian/xif_agent/src/xif_if.sv:10
-    7 |   parameter real hold_time  = 0.01  // ns
-    8 | ) (
-    9 |   input logic clk,
->  10 |   input logic rst_n
-   11 | );
-   12 |   import uvm_pkg::*;
-   13 |   import xif_pkg::*;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.rst_n
-
-source: /home/yian/xif_agent/src/xif_if.sv:10
-    7 |   parameter real hold_time  = 0.01  // ns
-    8 | ) (
-    9 |   input logic clk,
->  10 |   input logic rst_n
-   11 | );
-   12 |   import uvm_pkg::*;
-   13 |   import xif_pkg::*;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.rst_n
-
-source: /home/yian/xif_agent/src/xif_if.sv:10
-    7 |   parameter real hold_time  = 0.01  // ns
-    8 | ) (
-    9 |   input logic clk,
->  10 |   input logic rst_n
-   11 | );
-   12 |   import uvm_pkg::*;
-   13 |   import xif_pkg::*;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.rst_n
-
-source: /home/yian/xif_agent/src/xif_if.sv:10
-    7 |   parameter real hold_time  = 0.01  // ns
-    8 | ) (
-    9 |   input logic clk,
->  10 |   input logic rst_n
-   11 | );
-   12 |   import uvm_pkg::*;
-   13 |   import xif_pkg::*;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.rst_n
+active_signals:
+  line  signal_path
+  10    xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.rst_n
+  10    xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.rst_n
+  10    xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.rst_n
+  10    xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.rst_n
+  10    xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.rst_n
+  10    xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.rst_n
+  10    xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.rst_n
+  10    xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.rst_n
+  10    xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.rst_n
 
 source: /home/yian/xring/dv/tb/xring_top_if.sv:24
    21 |     svt_apb_if  reg_bus_if();
@@ -1506,7 +1217,10 @@ source: /home/yian/xring/dv/tb/xring_top_if.sv:24
    25 | 
    26 |     // =========================================================================
    27 |     // AXI4 slave interfaces — respond to DUT's AXI master (read + write)
-signal_path: xring_tb_top.rst_n
+
+active_signals:
+  line  signal_path
+  24    xring_tb_top.rst_n
 
 source: /home/yian/xring/dv/tb/xring_top_if.sv:40
    37 | 
@@ -1516,7 +1230,10 @@ source: /home/yian/xring/dv/tb/xring_top_if.sv:40
    41 | 
    42 |     // =========================================================================
    43 |     // XIF interfaces
-signal_path: xring_tb_top.rst_n
+
+active_signals:
+  line  signal_path
+  40    xring_tb_top.rst_n
 
 source: /home/yian/xif_agent/src/xif_if.sv:312
   309 | 
@@ -1526,187 +1243,99 @@ source: /home/yian/xif_agent/src/xif_if.sv:312
   313 |       drive_blocking_flow();
   314 |       reset_responder_state();
   315 |     end else if (forced_state != XIF_FORCE_RLS) begin
-signal_path: xring_tb_top.rst_n
 
-source: /home/yian/xif_agent/src/xif_if.sv:365
+active_signals:
+  line  signal_path
+  312   xring_tb_top.rst_n
+
+source: /home/yian/xif_agent/src/xif_if.sv:365-369
   362 |     handshake = handshake_sampled();
   363 |     dbg_handshake = handshake;
   364 | 
 > 365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-signal_path: xring_tb_top.rst_n
-
-source: /home/yian/xif_agent/src/xif_if.sv:366
-  363 |     dbg_handshake = handshake;
-  364 | 
-  365 |     if (!rst_n) begin
 > 366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:367
-  364 | 
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
 > 367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:368
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
 > 368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:369
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
 > 369 |       dbg_success_streak = 0;
   370 |     end else begin
   371 |       if (mon_cb.vld === 1'b1) begin
   372 |         pd_bits = mon_cb.pd;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.dbg_success_streak
 
-source: /home/yian/xif_agent/src/xif_if.sv:394
+active_signals:
+  line  signal_path
+  365   xring_tb_top.rst_n
+  366   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.timeout_counter
+  367   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.success_streak
+  368   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.dbg_wait_count
+  369   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.dbg_success_streak
+
+source: /home/yian/xif_agent/src/xif_if.sv:394-395
   391 |       end
   392 | 
   393 |       if ((flow_ctrl_mode() != XIF_FLOW_CTRL_NONE) && (mon_cb.vld === 1'b1) && !handshake) begin
 > 394 |         timeout_counter++;
-  395 |         dbg_wait_count = timeout_counter;
-  396 |         if ((cfg != null) && (timeout_counter == cfg.timeout_cycles)) begin
-  397 |           uvm_report_error(
-signal_path: xring_tb_top.rst_n
-
-source: /home/yian/xif_agent/src/xif_if.sv:395
-  392 | 
-  393 |       if ((flow_ctrl_mode() != XIF_FLOW_CTRL_NONE) && (mon_cb.vld === 1'b1) && !handshake) begin
-  394 |         timeout_counter++;
 > 395 |         dbg_wait_count = timeout_counter;
   396 |         if ((cfg != null) && (timeout_counter == cfg.timeout_cycles)) begin
   397 |           uvm_report_error(
   398 |             "XIF_TIMEOUT",
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.dbg_wait_count
 
-source: /home/yian/xif_agent/src/xif_if.sv:409
+active_signals:
+  line  signal_path
+  394   xring_tb_top.rst_n
+  395   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.dbg_wait_count
+
+source: /home/yian/xif_agent/src/xif_if.sv:409-424
   406 |           );
   407 |         end
   408 |       end else begin
 > 409 |         timeout_counter = 0;
-  410 |         dbg_wait_count = 0;
-  411 |       end
-  412 | 
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:410
-  407 |         end
-  408 |       end else begin
-  409 |         timeout_counter = 0;
 > 410 |         dbg_wait_count = 0;
-  411 |       end
-  412 | 
-  413 |       if (handshake) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:414
   411 |       end
   412 | 
   413 |       if (handshake) begin
 > 414 |         success_streak++;
-  415 |         dbg_handshake_count++;
-  416 |         dbg_success_streak = success_streak;
-  417 | `ifdef FCOV_ON
-signal_path: xring_tb_top.rst_n
-
-source: /home/yian/xif_agent/src/xif_if.sv:415
-  412 | 
-  413 |       if (handshake) begin
-  414 |         success_streak++;
 > 415 |         dbg_handshake_count++;
-  416 |         dbg_success_streak = success_streak;
-  417 | `ifdef FCOV_ON
-  418 |         cg_wait_cycles = timeout_counter;
-signal_path: xring_tb_top.rst_n
-
-source: /home/yian/xif_agent/src/xif_if.sv:416
-  413 |       if (handshake) begin
-  414 |         success_streak++;
-  415 |         dbg_handshake_count++;
 > 416 |         dbg_success_streak = success_streak;
   417 | `ifdef FCOV_ON
   418 |         cg_wait_cycles = timeout_counter;
   419 |         cg_success_cycles = success_streak;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.dbg_success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:423
   420 |         hs_cg.sample(cg_wait_cycles, cg_success_cycles);
   421 | `endif
   422 |       end else begin
 > 423 |         success_streak = 0;
-  424 |         dbg_success_streak = 0;
-  425 |       end
-  426 |     end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:424
-  421 | `endif
-  422 |       end else begin
-  423 |         success_streak = 0;
 > 424 |         dbg_success_streak = 0;
   425 |       end
   426 |     end
   427 |   end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.dbg_success_streak
 
-source: /home/yian/xif_agent/src/xif_if.sv:366
+active_signals:
+  line  signal_path
+  409   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.timeout_counter
+  410   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.dbg_wait_count
+  414   xring_tb_top.rst_n
+  415   xring_tb_top.rst_n
+  416   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.dbg_success_streak
+  423   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.success_streak
+  424   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.ds_monitor_if.unnamed$$_1.dbg_success_streak
+
+source: /home/yian/xif_agent/src/xif_if.sv:366-369
   363 |     dbg_handshake = handshake;
   364 | 
   365 |     if (!rst_n) begin
 > 366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:367
-  364 | 
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
 > 367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:368
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
 > 368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:369
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
 > 369 |       dbg_success_streak = 0;
   370 |     end else begin
   371 |       if (mon_cb.vld === 1'b1) begin
   372 |         pd_bits = mon_cb.pd;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.dbg_success_streak
+
+active_signals:
+  line  signal_path
+  366   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.timeout_counter
+  367   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.success_streak
+  368   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.dbg_wait_count
+  369   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.dbg_success_streak
 
 source: /home/yian/xif_agent/src/xif_if.sv:395
   392 | 
@@ -1716,29 +1345,19 @@ source: /home/yian/xif_agent/src/xif_if.sv:395
   396 |         if ((cfg != null) && (timeout_counter == cfg.timeout_cycles)) begin
   397 |           uvm_report_error(
   398 |             "XIF_TIMEOUT",
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.dbg_wait_count
 
-source: /home/yian/xif_agent/src/xif_if.sv:409
+active_signals:
+  line  signal_path
+  395   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.dbg_wait_count
+
+source: /home/yian/xif_agent/src/xif_if.sv:409-424
   406 |           );
   407 |         end
   408 |       end else begin
 > 409 |         timeout_counter = 0;
-  410 |         dbg_wait_count = 0;
-  411 |       end
-  412 | 
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:410
-  407 |         end
-  408 |       end else begin
-  409 |         timeout_counter = 0;
 > 410 |         dbg_wait_count = 0;
   411 |       end
   412 | 
-  413 |       if (handshake) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:416
   413 |       if (handshake) begin
   414 |         success_streak++;
   415 |         dbg_handshake_count++;
@@ -1746,67 +1365,41 @@ source: /home/yian/xif_agent/src/xif_if.sv:416
   417 | `ifdef FCOV_ON
   418 |         cg_wait_cycles = timeout_counter;
   419 |         cg_success_cycles = success_streak;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.dbg_success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:423
   420 |         hs_cg.sample(cg_wait_cycles, cg_success_cycles);
   421 | `endif
   422 |       end else begin
 > 423 |         success_streak = 0;
-  424 |         dbg_success_streak = 0;
-  425 |       end
-  426 |     end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:424
-  421 | `endif
-  422 |       end else begin
-  423 |         success_streak = 0;
 > 424 |         dbg_success_streak = 0;
   425 |       end
   426 |     end
   427 |   end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.dbg_success_streak
 
-source: /home/yian/xif_agent/src/xif_if.sv:366
+active_signals:
+  line  signal_path
+  409   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.timeout_counter
+  410   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.dbg_wait_count
+  416   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.dbg_success_streak
+  423   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.success_streak
+  424   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.credit_drv_if.unnamed$$_1.dbg_success_streak
+
+source: /home/yian/xif_agent/src/xif_if.sv:366-369
   363 |     dbg_handshake = handshake;
   364 | 
   365 |     if (!rst_n) begin
 > 366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:367
-  364 | 
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
 > 367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:368
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
 > 368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:369
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
 > 369 |       dbg_success_streak = 0;
   370 |     end else begin
   371 |       if (mon_cb.vld === 1'b1) begin
   372 |         pd_bits = mon_cb.pd;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.dbg_success_streak
+
+active_signals:
+  line  signal_path
+  366   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.timeout_counter
+  367   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.success_streak
+  368   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.dbg_wait_count
+  369   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.dbg_success_streak
 
 source: /home/yian/xif_agent/src/xif_if.sv:395
   392 | 
@@ -1816,29 +1409,19 @@ source: /home/yian/xif_agent/src/xif_if.sv:395
   396 |         if ((cfg != null) && (timeout_counter == cfg.timeout_cycles)) begin
   397 |           uvm_report_error(
   398 |             "XIF_TIMEOUT",
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.dbg_wait_count
 
-source: /home/yian/xif_agent/src/xif_if.sv:409
+active_signals:
+  line  signal_path
+  395   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.dbg_wait_count
+
+source: /home/yian/xif_agent/src/xif_if.sv:409-424
   406 |           );
   407 |         end
   408 |       end else begin
 > 409 |         timeout_counter = 0;
-  410 |         dbg_wait_count = 0;
-  411 |       end
-  412 | 
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:410
-  407 |         end
-  408 |       end else begin
-  409 |         timeout_counter = 0;
 > 410 |         dbg_wait_count = 0;
   411 |       end
   412 | 
-  413 |       if (handshake) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:416
   413 |       if (handshake) begin
   414 |         success_streak++;
   415 |         dbg_handshake_count++;
@@ -1846,67 +1429,41 @@ source: /home/yian/xif_agent/src/xif_if.sv:416
   417 | `ifdef FCOV_ON
   418 |         cg_wait_cycles = timeout_counter;
   419 |         cg_success_cycles = success_streak;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.dbg_success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:423
   420 |         hs_cg.sample(cg_wait_cycles, cg_success_cycles);
   421 | `endif
   422 |       end else begin
 > 423 |         success_streak = 0;
-  424 |         dbg_success_streak = 0;
-  425 |       end
-  426 |     end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:424
-  421 | `endif
-  422 |       end else begin
-  423 |         success_streak = 0;
 > 424 |         dbg_success_streak = 0;
   425 |       end
   426 |     end
   427 |   end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.dbg_success_streak
 
-source: /home/yian/xif_agent/src/xif_if.sv:366
+active_signals:
+  line  signal_path
+  409   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.timeout_counter
+  410   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.dbg_wait_count
+  416   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.dbg_success_streak
+  423   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.success_streak
+  424   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.grp_credit_drv_if.unnamed$$_1.dbg_success_streak
+
+source: /home/yian/xif_agent/src/xif_if.sv:366-369
   363 |     dbg_handshake = handshake;
   364 | 
   365 |     if (!rst_n) begin
 > 366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:367
-  364 | 
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
 > 367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:368
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
 > 368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:369
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
 > 369 |       dbg_success_streak = 0;
   370 |     end else begin
   371 |       if (mon_cb.vld === 1'b1) begin
   372 |         pd_bits = mon_cb.pd;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.dbg_success_streak
+
+active_signals:
+  line  signal_path
+  366   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.timeout_counter
+  367   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.success_streak
+  368   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.dbg_wait_count
+  369   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.dbg_success_streak
 
 source: /home/yian/xif_agent/src/xif_if.sv:395
   392 | 
@@ -1916,29 +1473,19 @@ source: /home/yian/xif_agent/src/xif_if.sv:395
   396 |         if ((cfg != null) && (timeout_counter == cfg.timeout_cycles)) begin
   397 |           uvm_report_error(
   398 |             "XIF_TIMEOUT",
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.dbg_wait_count
 
-source: /home/yian/xif_agent/src/xif_if.sv:409
+active_signals:
+  line  signal_path
+  395   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.dbg_wait_count
+
+source: /home/yian/xif_agent/src/xif_if.sv:409-424
   406 |           );
   407 |         end
   408 |       end else begin
 > 409 |         timeout_counter = 0;
-  410 |         dbg_wait_count = 0;
-  411 |       end
-  412 | 
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:410
-  407 |         end
-  408 |       end else begin
-  409 |         timeout_counter = 0;
 > 410 |         dbg_wait_count = 0;
   411 |       end
   412 | 
-  413 |       if (handshake) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:416
   413 |       if (handshake) begin
   414 |         success_streak++;
   415 |         dbg_handshake_count++;
@@ -1946,67 +1493,41 @@ source: /home/yian/xif_agent/src/xif_if.sv:416
   417 | `ifdef FCOV_ON
   418 |         cg_wait_cycles = timeout_counter;
   419 |         cg_success_cycles = success_streak;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.dbg_success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:423
   420 |         hs_cg.sample(cg_wait_cycles, cg_success_cycles);
   421 | `endif
   422 |       end else begin
 > 423 |         success_streak = 0;
-  424 |         dbg_success_streak = 0;
-  425 |       end
-  426 |     end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:424
-  421 | `endif
-  422 |       end else begin
-  423 |         success_streak = 0;
 > 424 |         dbg_success_streak = 0;
   425 |       end
   426 |     end
   427 |   end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.dbg_success_streak
 
-source: /home/yian/xif_agent/src/xif_if.sv:366
+active_signals:
+  line  signal_path
+  409   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.timeout_counter
+  410   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.dbg_wait_count
+  416   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.dbg_success_streak
+  423   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.success_streak
+  424   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_wr_monitor_if.unnamed$$_1.dbg_success_streak
+
+source: /home/yian/xif_agent/src/xif_if.sv:366-369
   363 |     dbg_handshake = handshake;
   364 | 
   365 |     if (!rst_n) begin
 > 366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:367
-  364 | 
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
 > 367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:368
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
 > 368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:369
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
 > 369 |       dbg_success_streak = 0;
   370 |     end else begin
   371 |       if (mon_cb.vld === 1'b1) begin
   372 |         pd_bits = mon_cb.pd;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.dbg_success_streak
+
+active_signals:
+  line  signal_path
+  366   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.timeout_counter
+  367   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.success_streak
+  368   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.dbg_wait_count
+  369   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.dbg_success_streak
 
 source: /home/yian/xif_agent/src/xif_if.sv:395
   392 | 
@@ -2016,29 +1537,19 @@ source: /home/yian/xif_agent/src/xif_if.sv:395
   396 |         if ((cfg != null) && (timeout_counter == cfg.timeout_cycles)) begin
   397 |           uvm_report_error(
   398 |             "XIF_TIMEOUT",
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.dbg_wait_count
 
-source: /home/yian/xif_agent/src/xif_if.sv:409
+active_signals:
+  line  signal_path
+  395   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.dbg_wait_count
+
+source: /home/yian/xif_agent/src/xif_if.sv:409-424
   406 |           );
   407 |         end
   408 |       end else begin
 > 409 |         timeout_counter = 0;
-  410 |         dbg_wait_count = 0;
-  411 |       end
-  412 | 
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:410
-  407 |         end
-  408 |       end else begin
-  409 |         timeout_counter = 0;
 > 410 |         dbg_wait_count = 0;
   411 |       end
   412 | 
-  413 |       if (handshake) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:416
   413 |       if (handshake) begin
   414 |         success_streak++;
   415 |         dbg_handshake_count++;
@@ -2046,67 +1557,41 @@ source: /home/yian/xif_agent/src/xif_if.sv:416
   417 | `ifdef FCOV_ON
   418 |         cg_wait_cycles = timeout_counter;
   419 |         cg_success_cycles = success_streak;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.dbg_success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:423
   420 |         hs_cg.sample(cg_wait_cycles, cg_success_cycles);
   421 | `endif
   422 |       end else begin
 > 423 |         success_streak = 0;
-  424 |         dbg_success_streak = 0;
-  425 |       end
-  426 |     end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:424
-  421 | `endif
-  422 |       end else begin
-  423 |         success_streak = 0;
 > 424 |         dbg_success_streak = 0;
   425 |       end
   426 |     end
   427 |   end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.dbg_success_streak
 
-source: /home/yian/xif_agent/src/xif_if.sv:366
+active_signals:
+  line  signal_path
+  409   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.timeout_counter
+  410   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.dbg_wait_count
+  416   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.dbg_success_streak
+  423   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.success_streak
+  424   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_monitor_if.unnamed$$_1.dbg_success_streak
+
+source: /home/yian/xif_agent/src/xif_if.sv:366-369
   363 |     dbg_handshake = handshake;
   364 | 
   365 |     if (!rst_n) begin
 > 366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:367
-  364 | 
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
 > 367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:368
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
 > 368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:369
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
 > 369 |       dbg_success_streak = 0;
   370 |     end else begin
   371 |       if (mon_cb.vld === 1'b1) begin
   372 |         pd_bits = mon_cb.pd;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.dbg_success_streak
+
+active_signals:
+  line  signal_path
+  366   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.timeout_counter
+  367   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.success_streak
+  368   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.dbg_wait_count
+  369   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.dbg_success_streak
 
 source: /home/yian/xif_agent/src/xif_if.sv:395
   392 | 
@@ -2116,29 +1601,19 @@ source: /home/yian/xif_agent/src/xif_if.sv:395
   396 |         if ((cfg != null) && (timeout_counter == cfg.timeout_cycles)) begin
   397 |           uvm_report_error(
   398 |             "XIF_TIMEOUT",
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.dbg_wait_count
 
-source: /home/yian/xif_agent/src/xif_if.sv:409
+active_signals:
+  line  signal_path
+  395   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.dbg_wait_count
+
+source: /home/yian/xif_agent/src/xif_if.sv:409-424
   406 |           );
   407 |         end
   408 |       end else begin
 > 409 |         timeout_counter = 0;
-  410 |         dbg_wait_count = 0;
-  411 |       end
-  412 | 
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:410
-  407 |         end
-  408 |       end else begin
-  409 |         timeout_counter = 0;
 > 410 |         dbg_wait_count = 0;
   411 |       end
   412 | 
-  413 |       if (handshake) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:416
   413 |       if (handshake) begin
   414 |         success_streak++;
   415 |         dbg_handshake_count++;
@@ -2146,67 +1621,41 @@ source: /home/yian/xif_agent/src/xif_if.sv:416
   417 | `ifdef FCOV_ON
   418 |         cg_wait_cycles = timeout_counter;
   419 |         cg_success_cycles = success_streak;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.dbg_success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:423
   420 |         hs_cg.sample(cg_wait_cycles, cg_success_cycles);
   421 | `endif
   422 |       end else begin
 > 423 |         success_streak = 0;
-  424 |         dbg_success_streak = 0;
-  425 |       end
-  426 |     end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:424
-  421 | `endif
-  422 |       end else begin
-  423 |         success_streak = 0;
 > 424 |         dbg_success_streak = 0;
   425 |       end
   426 |     end
   427 |   end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.dbg_success_streak
 
-source: /home/yian/xif_agent/src/xif_if.sv:366
+active_signals:
+  line  signal_path
+  409   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.timeout_counter
+  410   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.dbg_wait_count
+  416   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.dbg_success_streak
+  423   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.success_streak
+  424   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.sram_rd_responder_if.unnamed$$_1.dbg_success_streak
+
+source: /home/yian/xif_agent/src/xif_if.sv:366-369
   363 |     dbg_handshake = handshake;
   364 | 
   365 |     if (!rst_n) begin
 > 366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:367
-  364 | 
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
 > 367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:368
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
 > 368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:369
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
 > 369 |       dbg_success_streak = 0;
   370 |     end else begin
   371 |       if (mon_cb.vld === 1'b1) begin
   372 |         pd_bits = mon_cb.pd;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.dbg_success_streak
+
+active_signals:
+  line  signal_path
+  366   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.timeout_counter
+  367   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.success_streak
+  368   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.dbg_wait_count
+  369   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.dbg_success_streak
 
 source: /home/yian/xif_agent/src/xif_if.sv:395
   392 | 
@@ -2216,29 +1665,19 @@ source: /home/yian/xif_agent/src/xif_if.sv:395
   396 |         if ((cfg != null) && (timeout_counter == cfg.timeout_cycles)) begin
   397 |           uvm_report_error(
   398 |             "XIF_TIMEOUT",
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.dbg_wait_count
 
-source: /home/yian/xif_agent/src/xif_if.sv:409
+active_signals:
+  line  signal_path
+  395   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.dbg_wait_count
+
+source: /home/yian/xif_agent/src/xif_if.sv:409-424
   406 |           );
   407 |         end
   408 |       end else begin
 > 409 |         timeout_counter = 0;
-  410 |         dbg_wait_count = 0;
-  411 |       end
-  412 | 
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:410
-  407 |         end
-  408 |       end else begin
-  409 |         timeout_counter = 0;
 > 410 |         dbg_wait_count = 0;
   411 |       end
   412 | 
-  413 |       if (handshake) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:416
   413 |       if (handshake) begin
   414 |         success_streak++;
   415 |         dbg_handshake_count++;
@@ -2246,67 +1685,41 @@ source: /home/yian/xif_agent/src/xif_if.sv:416
   417 | `ifdef FCOV_ON
   418 |         cg_wait_cycles = timeout_counter;
   419 |         cg_success_cycles = success_streak;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.dbg_success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:423
   420 |         hs_cg.sample(cg_wait_cycles, cg_success_cycles);
   421 | `endif
   422 |       end else begin
 > 423 |         success_streak = 0;
-  424 |         dbg_success_streak = 0;
-  425 |       end
-  426 |     end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:424
-  421 | `endif
-  422 |       end else begin
-  423 |         success_streak = 0;
 > 424 |         dbg_success_streak = 0;
   425 |       end
   426 |     end
   427 |   end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.dbg_success_streak
 
-source: /home/yian/xif_agent/src/xif_if.sv:366
+active_signals:
+  line  signal_path
+  409   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.timeout_counter
+  410   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.dbg_wait_count
+  416   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.dbg_success_streak
+  423   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.success_streak
+  424   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_a_monitor_if.unnamed$$_1.dbg_success_streak
+
+source: /home/yian/xif_agent/src/xif_if.sv:366-369
   363 |     dbg_handshake = handshake;
   364 | 
   365 |     if (!rst_n) begin
 > 366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:367
-  364 | 
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
 > 367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:368
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
 > 368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:369
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
 > 369 |       dbg_success_streak = 0;
   370 |     end else begin
   371 |       if (mon_cb.vld === 1'b1) begin
   372 |         pd_bits = mon_cb.pd;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.dbg_success_streak
+
+active_signals:
+  line  signal_path
+  366   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.timeout_counter
+  367   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.success_streak
+  368   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.dbg_wait_count
+  369   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.dbg_success_streak
 
 source: /home/yian/xif_agent/src/xif_if.sv:395
   392 | 
@@ -2316,29 +1729,19 @@ source: /home/yian/xif_agent/src/xif_if.sv:395
   396 |         if ((cfg != null) && (timeout_counter == cfg.timeout_cycles)) begin
   397 |           uvm_report_error(
   398 |             "XIF_TIMEOUT",
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.dbg_wait_count
 
-source: /home/yian/xif_agent/src/xif_if.sv:409
+active_signals:
+  line  signal_path
+  395   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.dbg_wait_count
+
+source: /home/yian/xif_agent/src/xif_if.sv:409-424
   406 |           );
   407 |         end
   408 |       end else begin
 > 409 |         timeout_counter = 0;
-  410 |         dbg_wait_count = 0;
-  411 |       end
-  412 | 
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:410
-  407 |         end
-  408 |       end else begin
-  409 |         timeout_counter = 0;
 > 410 |         dbg_wait_count = 0;
   411 |       end
   412 | 
-  413 |       if (handshake) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:416
   413 |       if (handshake) begin
   414 |         success_streak++;
   415 |         dbg_handshake_count++;
@@ -2346,67 +1749,41 @@ source: /home/yian/xif_agent/src/xif_if.sv:416
   417 | `ifdef FCOV_ON
   418 |         cg_wait_cycles = timeout_counter;
   419 |         cg_success_cycles = success_streak;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.dbg_success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:423
   420 |         hs_cg.sample(cg_wait_cycles, cg_success_cycles);
   421 | `endif
   422 |       end else begin
 > 423 |         success_streak = 0;
-  424 |         dbg_success_streak = 0;
-  425 |       end
-  426 |     end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:424
-  421 | `endif
-  422 |       end else begin
-  423 |         success_streak = 0;
 > 424 |         dbg_success_streak = 0;
   425 |       end
   426 |     end
   427 |   end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.dbg_success_streak
 
-source: /home/yian/xif_agent/src/xif_if.sv:366
+active_signals:
+  line  signal_path
+  409   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.timeout_counter
+  410   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.dbg_wait_count
+  416   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.dbg_success_streak
+  423   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.success_streak
+  424   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_b_monitor_if.unnamed$$_1.dbg_success_streak
+
+source: /home/yian/xif_agent/src/xif_if.sv:366-369
   363 |     dbg_handshake = handshake;
   364 | 
   365 |     if (!rst_n) begin
 > 366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:367
-  364 | 
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
 > 367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:368
-  365 |     if (!rst_n) begin
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
 > 368 |       dbg_wait_count = 0;
-  369 |       dbg_success_streak = 0;
-  370 |     end else begin
-  371 |       if (mon_cb.vld === 1'b1) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:369
-  366 |       timeout_counter = 0;
-  367 |       success_streak = 0;
-  368 |       dbg_wait_count = 0;
 > 369 |       dbg_success_streak = 0;
   370 |     end else begin
   371 |       if (mon_cb.vld === 1'b1) begin
   372 |         pd_bits = mon_cb.pd;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.dbg_success_streak
+
+active_signals:
+  line  signal_path
+  366   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.timeout_counter
+  367   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.success_streak
+  368   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.dbg_wait_count
+  369   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.dbg_success_streak
 
 source: /home/yian/xif_agent/src/xif_if.sv:395
   392 | 
@@ -2416,29 +1793,19 @@ source: /home/yian/xif_agent/src/xif_if.sv:395
   396 |         if ((cfg != null) && (timeout_counter == cfg.timeout_cycles)) begin
   397 |           uvm_report_error(
   398 |             "XIF_TIMEOUT",
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.dbg_wait_count
 
-source: /home/yian/xif_agent/src/xif_if.sv:409
+active_signals:
+  line  signal_path
+  395   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.dbg_wait_count
+
+source: /home/yian/xif_agent/src/xif_if.sv:409-424
   406 |           );
   407 |         end
   408 |       end else begin
 > 409 |         timeout_counter = 0;
-  410 |         dbg_wait_count = 0;
-  411 |       end
-  412 | 
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.timeout_counter
-
-source: /home/yian/xif_agent/src/xif_if.sv:410
-  407 |         end
-  408 |       end else begin
-  409 |         timeout_counter = 0;
 > 410 |         dbg_wait_count = 0;
   411 |       end
   412 | 
-  413 |       if (handshake) begin
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.dbg_wait_count
-
-source: /home/yian/xif_agent/src/xif_if.sv:416
   413 |       if (handshake) begin
   414 |         success_streak++;
   415 |         dbg_handshake_count++;
@@ -2446,27 +1813,22 @@ source: /home/yian/xif_agent/src/xif_if.sv:416
   417 | `ifdef FCOV_ON
   418 |         cg_wait_cycles = timeout_counter;
   419 |         cg_success_cycles = success_streak;
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.dbg_success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:423
   420 |         hs_cg.sample(cg_wait_cycles, cg_success_cycles);
   421 | `endif
   422 |       end else begin
 > 423 |         success_streak = 0;
-  424 |         dbg_success_streak = 0;
-  425 |       end
-  426 |     end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.success_streak
-
-source: /home/yian/xif_agent/src/xif_if.sv:424
-  421 | `endif
-  422 |       end else begin
-  423 |         success_streak = 0;
 > 424 |         dbg_success_streak = 0;
   425 |       end
   426 |     end
   427 |   end
-signal_path: xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.dbg_success_streak
+
+active_signals:
+  line  signal_path
+  409   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.timeout_counter
+  410   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.dbg_wait_count
+  416   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.dbg_success_streak
+  423   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.success_streak
+  424   xring_tb_top.rst_n -> xring_tb_top.u_hvp.top_if.psram_rd_responder_if.unnamed$$_1.dbg_success_streak
 ```
 
 ## source.context
@@ -2548,7 +1910,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "trace.active_driver",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.u_dut.ds_vld",
@@ -2578,27 +1940,25 @@ source: /home/yian/xring/rtl/scheduler.v:61
    62 |     input  wire                         ds_bp,
    63 |     output reg  [DATA_W-1:0]           ds_data,
    64 |     output reg  [QID_W-1:0]            ds_qid,
-signal_path: xring_tb_top.u_dut.u_scheduler.ds_vld -> xring_tb_top.u_dut.ds_vld
 
-source: /home/yian/xring/rtl/scheduler.v:819
-  816 | end
-  817 | 
-  818 | always @(*) begin
-> 819 |     ds_vld         = (ob_state == OB_OUTPUT) && ob_valid && !ds_bp;
-  820 |     ds_data        = shifted_data & byte_mask;
-  821 |     ds_qid         = ob_qid;
-  822 |     ds_grp_id      = ob_grp_id;
-signal_path: xring_tb_top.u_dut.u_scheduler.ob_valid -> xring_tb_top.u_dut.u_scheduler.ob_state -> xring_tb_top.u_dut.u_scheduler.OB_OUTPUT -> xring_tb_top.u_dut.u_scheduler.ds_bp -> xring_tb_top.u_dut.ds_vld
+active_signals:
+  line  signal_path
+  61    xring_tb_top.u_dut.u_scheduler.ds_vld -> xring_tb_top.u_dut.ds_vld
 
-source: /home/yian/xring/rtl/scheduler.v:818
+source: /home/yian/xring/rtl/scheduler.v:818-819
   815 |                     {{(DATA_W-1){1'b0}}, 1'b1};
   816 | end
   817 | 
 > 818 | always @(*) begin
-  819 |     ds_vld         = (ob_state == OB_OUTPUT) && ob_valid && !ds_bp;
+> 819 |     ds_vld         = (ob_state == OB_OUTPUT) && ob_valid && !ds_bp;
   820 |     ds_data        = shifted_data & byte_mask;
   821 |     ds_qid         = ob_qid;
-signal_path: xring_tb_top.u_dut.ds_vld
+  822 |     ds_grp_id      = ob_grp_id;
+
+active_signals:
+  line  signal_path
+  819   xring_tb_top.u_dut.u_scheduler.ob_valid -> xring_tb_top.u_dut.u_scheduler.ob_state -> xring_tb_top.u_dut.u_scheduler.OB_OUTPUT -> xring_tb_top.u_dut.u_scheduler.ds_bp -> xring_tb_top.u_dut.ds_vld
+  818   xring_tb_top.u_dut.ds_vld
 
 source: /home/yian/xring/rtl/xring_top.v:68
    65 |     output wire         bready,
@@ -2608,7 +1968,10 @@ source: /home/yian/xring/rtl/xring_top.v:68
    69 |     input  wire         ds_bp,
    70 |     output wire [511:0] ds_data,
    71 |     output wire [3:0]   ds_qid,
-signal_path: xring_tb_top.u_dut.ds_vld -> xring_tb_top.ds_vld
+
+active_signals:
+  line  signal_path
+  68    xring_tb_top.u_dut.ds_vld -> xring_tb_top.ds_vld
 
 source: /home/yian/xring/rtl/scheduler.v:61
    58 |     input  wire                         comp_wr_err,
@@ -2618,27 +1981,25 @@ source: /home/yian/xring/rtl/scheduler.v:61
    62 |     input  wire                         ds_bp,
    63 |     output reg  [DATA_W-1:0]           ds_data,
    64 |     output reg  [QID_W-1:0]            ds_qid,
-signal_path: xring_tb_top.u_dut.u_scheduler.ds_vld -> xring_tb_top.ds_vld
 
-source: /home/yian/xring/rtl/scheduler.v:819
-  816 | end
-  817 | 
-  818 | always @(*) begin
-> 819 |     ds_vld         = (ob_state == OB_OUTPUT) && ob_valid && !ds_bp;
-  820 |     ds_data        = shifted_data & byte_mask;
-  821 |     ds_qid         = ob_qid;
-  822 |     ds_grp_id      = ob_grp_id;
-signal_path: xring_tb_top.u_dut.u_scheduler.ob_valid -> xring_tb_top.u_dut.u_scheduler.ob_state -> xring_tb_top.u_dut.u_scheduler.OB_OUTPUT -> xring_tb_top.u_dut.u_scheduler.ds_bp -> xring_tb_top.ds_vld
+active_signals:
+  line  signal_path
+  61    xring_tb_top.u_dut.u_scheduler.ds_vld -> xring_tb_top.ds_vld
 
-source: /home/yian/xring/rtl/scheduler.v:818
+source: /home/yian/xring/rtl/scheduler.v:818-819
   815 |                     {{(DATA_W-1){1'b0}}, 1'b1};
   816 | end
   817 | 
 > 818 | always @(*) begin
-  819 |     ds_vld         = (ob_state == OB_OUTPUT) && ob_valid && !ds_bp;
+> 819 |     ds_vld         = (ob_state == OB_OUTPUT) && ob_valid && !ds_bp;
   820 |     ds_data        = shifted_data & byte_mask;
   821 |     ds_qid         = ob_qid;
-signal_path: xring_tb_top.ds_vld
+  822 |     ds_grp_id      = ob_grp_id;
+
+active_signals:
+  line  signal_path
+  819   xring_tb_top.u_dut.u_scheduler.ob_valid -> xring_tb_top.u_dut.u_scheduler.ob_state -> xring_tb_top.u_dut.u_scheduler.OB_OUTPUT -> xring_tb_top.u_dut.u_scheduler.ds_bp -> xring_tb_top.ds_vld
+  818   xring_tb_top.ds_vld
 ```
 
 ## trace.active_driver_chain
@@ -2649,7 +2010,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "trace.active_driver_chain",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signal": "xring_tb_top.u_dut.ds_vld",
@@ -2675,7 +2036,6 @@ summary:
   termination: ambiguous
   truncated  : false
 
-hop 0:
 source: /home/yian/xring/rtl/scheduler.v:819
   816 | end
   817 | 
@@ -2684,7 +2044,10 @@ source: /home/yian/xring/rtl/scheduler.v:819
   820 |     ds_data        = shifted_data & byte_mask;
   821 |     ds_qid         = ob_qid;
   822 |     ds_grp_id      = ob_grp_id;
-signal_path: xring_tb_top.u_dut.ds_vld
+
+active_signals:
+  hop  line  signal_path
+  0    819   xring_tb_top.u_dut.ds_vld
 ```
 
 ## cursor.set
@@ -2695,7 +2058,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "cursor.set",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "c0",
@@ -2711,8 +2074,8 @@ cursor:
   name      : c0
   time      : 50000ns
   origin    : manual
-  created_at: 1782790966
-  updated_at: 1782790966
+  created_at: 1782796129
+  updated_at: 1782796129
 
 resolved_time:
   source: 50000ns
@@ -2728,7 +2091,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "cursor.get",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "c0"
@@ -2743,8 +2106,8 @@ cursor:
   name      : c0
   time      : 50000ns
   origin    : manual
-  created_at: 1782790966
-  updated_at: 1782790966
+  created_at: 1782796129
+  updated_at: 1782796129
 ```
 
 ## cursor.list
@@ -2755,7 +2118,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "cursor.list",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {}
 }
@@ -2766,7 +2129,7 @@ xout rc=0:
 @xdebug.cursor.list.v1
 cursors:
   name  time     note  origin  clock  created_at  updated_at
-  c0    50000ns        manual         1782790966  1782790966
+  c0    50000ns        manual         1782796129  1782796129
   active_cursor: c0
   cursor_count : 1
 ```
@@ -2779,7 +2142,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "cursor.use",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "c0"
@@ -2798,8 +2161,8 @@ cursor:
   name      : c0
   time      : 50000ns
   origin    : manual
-  created_at: 1782790966
-  updated_at: 1782790966
+  created_at: 1782796129
+  updated_at: 1782796129
 ```
 
 ## cursor.delete
@@ -2810,7 +2173,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "cursor.delete",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "c0"
@@ -2834,7 +2197,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "list.create",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "l0",
@@ -2863,7 +2226,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "list.show",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "l0"
@@ -2892,7 +2255,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "list.value_at",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "l0",
@@ -2922,7 +2285,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "list.add",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "l0",
@@ -2951,7 +2314,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "list.diff",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "l0",
@@ -2979,7 +2342,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "list.validate",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "l0"
@@ -3008,7 +2371,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "list.export",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "l0",
@@ -3035,7 +2398,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "list.delete",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "l0"
@@ -3061,7 +2424,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "apb.config.load",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "apb0",
@@ -3095,7 +2458,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "apb.config.list",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {}
 }
@@ -3119,7 +2482,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "apb.query",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "apb0",
@@ -3152,7 +2515,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "apb.cursor",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "apb0",
@@ -3179,7 +2542,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "apb.transfer_window",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "apb0",
@@ -3212,7 +2575,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "axi.config.load",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "axi0",
@@ -3241,7 +2604,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "axi.config.list",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {}
 }
@@ -3265,7 +2628,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "axi.query",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "axi0",
@@ -3298,7 +2661,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "axi.analysis",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "axi0",
@@ -3328,7 +2691,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "axi.channel_stall",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "axi0",
@@ -3359,7 +2722,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "axi.latency_outlier",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "axi0",
@@ -3389,7 +2752,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "axi.outstanding_timeline",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "axi0",
@@ -3419,7 +2782,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "axi.request_response_pair",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "axi0",
@@ -3449,7 +2812,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "stream.config.load",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "s0",
@@ -3479,7 +2842,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "stream.config.list",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {}
 }
@@ -3503,7 +2866,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "stream.query",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "s0",
@@ -3536,7 +2899,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "stream.show",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "s0"
@@ -3562,7 +2925,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "stream.validate",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "name": "s0",
@@ -3592,7 +2955,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "rc.generate",
   "target": {
-    "session_id": "xout_current_20260630_c"
+    "session_id": "xout_current_20260630_envtrace"
   },
   "args": {
     "signals": [
@@ -3628,7 +2991,7 @@ request:
         "api_version": "xdebug.v1",
         "action": "value.at",
         "target": {
-          "session_id": "xout_current_20260630_c"
+          "session_id": "xout_current_20260630_envtrace"
         },
         "args": {
           "signal": "xring_tb_top.u_dut.ds_vld",
@@ -3639,7 +3002,7 @@ request:
         "api_version": "xdebug.v1",
         "action": "signal.resolve",
         "target": {
-          "session_id": "xout_current_20260630_c"
+          "session_id": "xout_current_20260630_envtrace"
         },
         "args": {
           "signal": "xring_tb_top.u_dut.ds_vld"
@@ -3663,18 +3026,6 @@ results:
   xdebug.v1    true  signal.resolve  xdebug     0.1.0                                                                 ok              {"count":1,"matches":[{"file":"/home/yian/xring/rtl/xring_top.v","line":68,"signal":"xring_tb_top.u_dut.ds_vld","type":"net"}],"message":"","ok":true,"query":"xring_tb_top.u_dut.ds_vld","status":"ok"}  @xdebug.signal.resolve.v1\nsummary:\n count : 1\n ok : true\n query : xring_tb_top.u_dut.ds_vld\n status : ok\n truncated: false\n\ndata:\n count: 1\n\nmatches:\n file line signal type\n /home/yian/xring/rtl/xring_top.v 68 xring_tb_top.u_dut.ds_vld net\n ok : true\n query : xring_tb_top.u_dut.ds_vld\n status : ok\n truncated: false\n  1                               true        xring_tb_top.u_dut.ds_vld  false              1                         true     xring_tb_top.u_dut.ds_vld  ok           false
 ```
 
-## axi.cursor
-
-_未生成: 当前脚本没有从参考文件反推出稳定输入。_
-
-## axi.export
-
-_未生成: 当前脚本没有从参考文件反推出稳定输入。_
-
-## stream.export
-
-_未生成: 当前脚本没有从参考文件反推出稳定输入。_
-
 ## session.gc
 
 request:
@@ -3691,21 +3042,27 @@ xout rc=0:
 @xdebug.session.gc.v1
 summary:
   status       : completed
-  before_count : 3
-  kept_count   : 3
+  before_count : 6
+  kept_count   : 6
   removed_count: 0
 
 before:
-  id                       session_id               mode      daidir                                                fsdb                                                                    socket_path                                                                  transport  file_dir                                                                        server_host            server_pid  created_at  last_active  dbdir_mtime  dbdir_size  dbdir_dev  dbdir_inode  fsdb_mtime  fsdb_size  fsdb_dev  fsdb_inode
-  xout_current_20260630    xout_current_20260630    combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir  /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb  /home/yian/.xdebug/engine/sessions/xout_current_202_f68723fc1c2acbb9/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_f68723fc1c2acbb9/transport  localhost.localdomain  2879498     1782790678  1782790924   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
-  xout_current_20260630_b  xout_current_20260630_b  combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir  /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb  /home/yian/.xdebug/engine/sessions/xout_current_202_09750ab00d736010/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_09750ab00d736010/transport  localhost.localdomain  2881701     1782790854  1782790924   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
-  xout_current_20260630_c  xout_current_20260630_c  combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir  /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb  /home/yian/.xdebug/engine/sessions/xout_current_202_09750bb00d7361c3/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_09750bb00d7361c3/transport  localhost.localdomain  2883339     1782790963  1782790967   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
+  id                              session_id                      mode      daidir                                                                          fsdb                                                                           socket_path                                                                  transport  file_dir                                                                        server_host            server_pid  created_at  last_active  dbdir_mtime  dbdir_size  dbdir_dev  dbdir_inode  fsdb_mtime  fsdb_size  fsdb_dev  fsdb_inode
+  xout_current_20260630           xout_current_20260630           combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir                            /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb         /home/yian/.xdebug/engine/sessions/xout_current_202_f68723fc1c2acbb9/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_f68723fc1c2acbb9/transport  localhost.localdomain  2879498     1782790678  1782790967   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
+  xout_current_20260630_b         xout_current_20260630_b         combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir                            /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb         /home/yian/.xdebug/engine/sessions/xout_current_202_09750ab00d736010/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_09750ab00d736010/transport  localhost.localdomain  2881701     1782790854  1782790967   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
+  xout_current_20260630_c         xout_current_20260630_c         combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir                            /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb         /home/yian/.xdebug/engine/sessions/xout_current_202_09750bb00d7361c3/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_09750bb00d7361c3/transport  localhost.localdomain  2883339     1782790963  1782790967   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
+  active_driver_py_2918664        active_driver_py_2918664        combined  /home/yian/xverif/xdebug/testdata/combined/active_driver/out/simv.daidir        /home/yian/xverif/xdebug/testdata/combined/active_driver/out/waves.fsdb        /home/yian/.xdebug/engine/sessions/active_driver_py_02e879d9c249d84d/socket  uds        /home/yian/.xdebug/engine/sessions/active_driver_py_02e879d9c249d84d/transport  localhost.localdomain  2918683     1782796007  1782796007   1782715423   4096        66307      554070230    1782715423  9821       66307     1611510105
+  if_port_root_py_2918664         if_port_root_py_2918664         combined  /home/yian/xverif/xdebug/testdata/combined/interface_port_root/out/simv.daidir  /home/yian/xverif/xdebug/testdata/combined/interface_port_root/out/waves.fsdb  /home/yian/.xdebug/engine/sessions/if_port_root_py__1634e14c3170c8f0/socket  uds        /home/yian/.xdebug/engine/sessions/if_port_root_py__1634e14c3170c8f0/transport  localhost.localdomain  2918741     1782796007  1782796007   1781511675   4096        66307      541233024    1781579586  9741       66307     1087379363
+  xout_current_20260630_envtrace  xout_current_20260630_envtrace  combined  /home/yian/xring/dv/run/out/sanity/build/simv.daidir                            /home/yian/xring/dv/run/out/sanity/test/tc_sanity_10q_100db/waves.fsdb         /home/yian/.xdebug/engine/sessions/xout_current_202_d4611ca55364fffe/socket  uds        /home/yian/.xdebug/engine/sessions/xout_current_202_d4611ca55364fffe/transport  localhost.localdomain  2921617     1782796126  1782796130   1781509284   4096        66307      3553032      1780650771  497468     66307     3558781
 
 kept:
-  session_id               mode
-  xout_current_20260630    combined
-  xout_current_20260630_b  combined
-  xout_current_20260630_c  combined
+  session_id                      mode
+  xout_current_20260630           combined
+  xout_current_20260630_b         combined
+  xout_current_20260630_c         combined
+  active_driver_py_2918664        combined
+  if_port_root_py_2918664         combined
+  xout_current_20260630_envtrace  combined
   removed: [empty]
 ```
 
@@ -3717,7 +3074,7 @@ request:
   "api_version": "xdebug.v1",
   "action": "session.close",
   "args": {
-    "id": "xout_current_20260630_c"
+    "id": "xout_current_20260630_envtrace"
   }
 }
 ```

@@ -1,6 +1,7 @@
 #include "runtime/work_dir.h"
 
-#include <cstdlib>
+#include "common/env_config.h"
+
 #include <limits.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -18,8 +19,8 @@ bool ensure_dir(const std::string& path) {
 } // namespace
 
 std::string runtime_work_dir(const std::string& component) {
-    const char* home = std::getenv("HOME");
-    return std::string(home ? home : "/tmp") + "/.xdebug/work/" + component;
+    std::string home = xdebug_core::env_raw_string("HOME");
+    return (home.empty() ? std::string("/tmp") : home) + "/.xdebug/work/" + component;
 }
 
 bool ensure_runtime_work_dir(const std::string& path) {

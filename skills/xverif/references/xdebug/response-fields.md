@@ -43,6 +43,8 @@
 XDEBUG_COMMON_BLOCKS=/path/to/common_blocks.json
 ```
 
+这些 trace action 的 XOUT 源码窗口默认显示有效行上下 3 行，可用 `XDEBUG_TRACE_SOURCE_CONTEXT_LINES` 调整；同文件有效行号差值小于 10 时默认合并显示，可用 `XDEBUG_TRACE_SOURCE_MERGE_THRESHOLD_LINES` 调整。JSON 字段仍以 `source_context[]` 和 `signal_path[]` 为机器合同。
+
 配置文件示例：
 
 ```json

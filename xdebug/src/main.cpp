@@ -4,6 +4,7 @@
 #include "api/response.h"
 #include "api/stdio_loop.h"
 #include "api/xout_renderer.h"
+#include "common/env_config.h"
 #include "logging/action_log.h"
 #include "process/process_runner.h"
 
@@ -34,8 +35,7 @@ struct CliOptions {
 };
 
 bool env_wants_json() {
-    const char* value = std::getenv("XVERIF_OUTPUT");
-    return value != nullptr && std::string(value) == "json";
+    return xdebug_core::env_raw_string("XVERIF_OUTPUT") == "json";
 }
 
 bool request_wants_json(const xdebug::Json& request) {
@@ -222,7 +222,7 @@ bool write_redacted_log_copy(const std::string& source, const std::string& dest)
 }
 
 int run_redacted_log_bundle(const std::string& session_id, const std::string& out_path) {
-    std::string old_mode = std::getenv("XDEBUG_LOG_PATH_MODE") ? std::getenv("XDEBUG_LOG_PATH_MODE") : "";
+    std::string old_mode = xdebug_core::xdebug_log_path_mode();
     setenv("XDEBUG_LOG_PATH_MODE", "hash", 1);
     std::string tmp = "/tmp/xdebug-log-bundle-" + std::to_string(getpid());
     ensure_dir_recursive(tmp);

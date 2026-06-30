@@ -1,6 +1,7 @@
 #include "common/path_utils.h"
 
-#include <cstdlib>
+#include "common/env_config.h"
+
 #include <iomanip>
 #include <sstream>
 #include <unistd.h>
@@ -40,8 +41,8 @@ std::string safe_dir_prefix(const std::string& session_id) {
 }  // namespace
 
 std::string home_dir() {
-    const char* home = std::getenv("HOME");
-    return home ? std::string(home) : std::string("/tmp");
+    std::string home = env_raw_string("HOME");
+    return home.empty() ? std::string("/tmp") : home;
 }
 
 std::string tool_home_dir(const ToolConfig& config) {

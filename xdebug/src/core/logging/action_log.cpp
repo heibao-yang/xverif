@@ -1,5 +1,6 @@
 #include "logging/action_log.h"
 
+#include "common/env_config.h"
 #include "common/path_utils.h"
 
 #include <chrono>
@@ -80,17 +81,8 @@ std::string event_id() {
 }
 
 std::string xdebug_home() {
-    const char* home = std::getenv("HOME");
-    return std::string(home ? home : "/tmp") + "/.xdebug";
-}
-
-long long env_long(const char* name, long long fallback) {
-    const char* value = std::getenv(name);
-    if (!value || value[0] == '\0') return fallback;
-    char* end = nullptr;
-    long long parsed = std::strtoll(value, &end, 10);
-    if (!end || *end != '\0' || parsed < 0) return fallback;
-    return parsed;
+    std::string home = env_raw_string("HOME");
+    return (home.empty() ? std::string("/tmp") : home) + "/.xdebug";
 }
 
 std::string dirname_of(const std::string& path) {
@@ -220,9 +212,9 @@ void spill_large_context_to_sidecars(const std::string& path, Json& event) {
 }
 
 void rotate_if_needed(const std::string& path, size_t incoming_bytes) {
-    long long max_bytes = env_long("XDEBUG_LOG_MAX_BYTES", 0);
+    long long max_bytes = xdebug_log_max_bytes();
     if (max_bytes <= 0) return;
-    long long max_files = env_long("XDEBUG_LOG_MAX_FILES", 3);
+    long long max_files = xdebug_log_max_files();
     if (max_files <= 0) max_files = 1;
     struct stat st;
     if (stat(path.c_str(), &st) != 0) return;
@@ -255,10 +247,9 @@ bool path_key(const std::string& key) {
 }
 
 std::string path_log_mode() {
-    const char* mode = std::getenv("XDEBUG_LOG_PATH_MODE");
-    if (mode && mode[0] != '\0') return std::string(mode);
-    const char* redact = std::getenv("XDEBUG_LOG_REDACT");
-    if (redact && redact[0] != '\0' && std::string(redact) != "0") return "hash";
+    std::string mode = xdebug_log_path_mode();
+    if (!mode.empty()) return mode;
+    if (xdebug_log_redact_enabled()) return "hash";
     return "full";
 }
 

@@ -123,6 +123,8 @@ file transport directory:
 
 普通请求默认等待 300 秒，可用 `XDEBUG_FILE_TRANSPORT_TIMEOUT_MS` 调整；ping/quit 默认等待 2 秒，可用 `XDEBUG_FILE_TRANSPORT_PING_TIMEOUT_MS` 调整。`XDEBUG_FILE_KEEP_HISTORY=1` 默认保留 `done/failed` 证据链。`XDEBUG_FILE_MAX_JSON_BYTES` 限制单个 request/response JSON 文件大小，`XDEBUG_FILE_CLAIM_TIMEOUT_MS` 控制 stale claim 判定。
 
+trace XOUT 源码窗口可用 `XDEBUG_TRACE_SOURCE_CONTEXT_LINES` 控制上下文行数（默认 3），并用 `XDEBUG_TRACE_SOURCE_MERGE_THRESHOLD_LINES` 控制同文件近距离源码块合并阈值（默认 10）。
+
 `session.open` TCP 模板：
 
 ```json
