@@ -326,6 +326,7 @@ def test_scope_summary_returns_one_requested_scope():
     assert item["full_name"] == "top.u_dut"
     assert item["coverable"] == 9
     assert "metrics" not in item
+    assert not (set(item) & {"parent", "depth", "type", "def_name"})
     assert item["toggle_pct"] == 0.0
     assert item["branch_pct"] == 0.0
 
@@ -366,6 +367,8 @@ def test_scope_summary_xout_uses_compact_items_and_coverage_table():
     assert "line        100.0" in xout
     assert "toggle      0.0" in xout
     assert "parent" not in xout.split("items:", 1)[1].split("coverage:", 1)[0]
+    assert "depth" not in xout.split("items:", 1)[1].split("coverage:", 1)[0]
+    assert "def_name" not in xout.split("items:", 1)[1].split("coverage:", 1)[0]
     assert "line_pct" not in xout
 
 
@@ -475,9 +478,22 @@ def test_functional_summary_uses_requested_level_only():
     assert rsp["data"]["items"][0]["coverable"] == 1
     forbidden = {
         "metric", "name", "full_name", "score_basis", "score_item_count",
-        "raw_covered", "raw_coverable", "raw_missing",
+        "raw_covered", "raw_coverable", "raw_missing", "raw_coverage_pct",
     }
     assert not (set(rsp["data"]["items"][0]) & forbidden)
+
+
+def test_code_coverage_summary_omits_display_only_fields():
+    dispatcher = _dispatch_opened()
+    rsp = dispatcher.dispatch({
+        "api_version": "xcov.v1", "request_id": "code-summary",
+        "action": "code_coverage.summary", "target": {"session_id": "cov0"},
+        "output": {"format": "json"},
+    })
+    assert rsp["ok"] is True
+    item = rsp["data"]["items"][0]
+    assert "metric" in item
+    assert not (set(item) & {"name", "full_name", "functional_pct"})
 
 
 def test_code_summary_uses_urg_score_rows_only():

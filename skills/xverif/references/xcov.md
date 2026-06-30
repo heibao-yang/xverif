@@ -104,8 +104,10 @@ assert export：
 - 保留 `excluded/unreachable/illegal` 状态，不要误判为普通 hole。
 - 交互查询优先用 `scope.summary`、`scope.children`、`scope.search`、
   `code_coverage.summary`、`code_coverage.holes` 看层次覆盖率。
-- `scope.summary` 返回扁平覆盖率字段；不要期待 `metrics={...}`。
+- `scope.summary` 返回扁平覆盖率字段；不要期待 `metrics={...}`，也不要期待
+  parent/depth/type/def_name。
 - `scope.children` 和 `scope.search` 每项只返回 `name/full_name/coverage_pct`。
+- `code_coverage.summary` 不输出 `name/full_name/functional_pct`。
 - `code_coverage.holes` 只输出当前 hierarchy 与子模块覆盖率概览，只保留
   `name/full_name/coverage_pct/*_pct`，不展开具体未覆盖 signal、branch、condition 或
   bin，也不输出 parent/depth/type/def_name/covered/coverable/missing/file/line。
@@ -114,7 +116,8 @@ assert export：
 - `function_coverage.holes` 默认按 `full_name` 过滤，可用 `match_field` 切到
   `covergroup`、`coverpoint`、`cross`、`bin` 或 `name`。
 - `function_coverage.summary` 和 `function_coverage.holes` 不输出
-  `metric/name/full_name/score_basis/score_item_count/raw_covered/raw_coverable/raw_missing`。
+  `metric/name/full_name/score_basis/score_item_count/raw_covered/raw_coverable/raw_missing`；
+  `function_coverage.summary` 也不输出 `raw_coverage_pct`。
 - xout 的 `items:` 是对齐纯文本表格，不是 Markdown 表格；JSON 响应结构不变。
 - 详细未覆盖项必须用 `export.code_coverage`、`export.function_coverage`、
   `export.assert` 导出 Markdown 查看。

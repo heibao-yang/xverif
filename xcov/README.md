@@ -154,16 +154,18 @@ coverpoint/cross coverage 百分比的平均值；交互输出不暴露 score_ba
 - `scope.summary`：返回当前层次的扁平覆盖率字段，例如
   `coverage_pct`、`line_pct`、`toggle_pct`、`branch_pct`、`condition_pct`、
   `fsm_pct`、`assert_pct`、`functional_pct`，并带 module 对应的 `file/line`
-  evidence（若 NPI 暴露）。
+  evidence（若 NPI 暴露）；不输出 parent/depth/type/def_name。
 - `scope.children` / `scope.search`：只返回 `name/full_name/coverage_pct`，用于定位
   hierarchy 名称和快速查看当前覆盖率。
-- `code_coverage.summary`：按 metric、scope 或 source file 汇总代码覆盖率。
+- `code_coverage.summary`：按 metric、scope 或 source file 汇总代码覆盖率；不输出
+  name/full_name/functional_pct。
 - `code_coverage.holes`：按输入 hierarchy 输出当前层次和子模块的覆盖率概览，只保留
   `name/full_name/coverage_pct/*_pct`，不展开具体 signal、branch、condition 或 bin，
   也不输出 parent/depth/type/def_name/covered/coverable/missing/file/line。具体未覆盖项请使用
   `export.code_coverage`。
 - `function_coverage.summary`：按 covergroup、coverpoint、cross 或 bin 汇总功能覆盖率，
-  不输出 metric/name/full_name/score_basis/score_item_count/raw_* 字段。
+  不输出 metric/name/full_name/score_basis/score_item_count/raw_* 字段，包括
+  raw_coverage_pct。
 - `function_coverage.holes`：输出未覆盖的 function coverage 项，支持 `levels` 和
   `query` glob 过滤；不输出 metric/name/full_name/score_basis/score_item_count/raw_* 字段。
 - `source.map`：按源码 file/line/window 反查 coverage item。

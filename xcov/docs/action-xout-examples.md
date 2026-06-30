@@ -341,13 +341,13 @@ filters:
   match_field: full_name
 
 items:
-  metric     covered  coverable  missing  coverage_pct  name       full_name
-  line       427      839        412      50.8939       line       line
-  toggle     866      1652       786      52.4213       toggle     toggle
-  branch     230      430        200      53.4884       branch     branch
-  condition  488      598        110      81.6054       condition  condition
-  fsm        45       66         21       68.1818       fsm        fsm
-  assert     32       38         6        84.2105       assert     assert
+  metric     covered  coverable  missing  coverage_pct
+  line       427      839        412      50.8939
+  toggle     866      1652       786      52.4213
+  branch     230      430        200      53.4884
+  condition  488      598        110      81.6054
+  fsm        45       66         21       68.1818
+  assert     32       38         6        84.2105
 
 XOUT_END request_id=code-summary
 ```
@@ -424,12 +424,12 @@ filters:
   match_field: full_name
 
 items:
-  covergroup                                                            covered  coverable  missing  coverage_pct  raw_coverage_pct
-  uart_tb.APB_PROTOCOL_MONITOR::APB_accesses_cg                         5        8          3        66.6667       62.5
-  modem_agent_pkg::modem_coverage_monitor::modem_lines_cg               272      272        0        100.0         100.0
-  uart_env_pkg::uart_interrupt_coverage_monitor::tx_word_format_int_cg  51       51         0        100.0         100.0
-  uart_env_pkg::uart_rx_coverage_monitor::rx_word_format_cg             51       51         0        100.0         100.0
-  uart_env_pkg::uart_reg_access_coverage_monitor::reg_access_cg         27       27         0        100.0         100.0
+  covergroup                                                            covered  coverable  missing  coverage_pct
+  uart_tb.APB_PROTOCOL_MONITOR::APB_accesses_cg                         5        8          3        66.6667
+  modem_agent_pkg::modem_coverage_monitor::modem_lines_cg               272      272        0        100.0
+  uart_env_pkg::uart_interrupt_coverage_monitor::tx_word_format_int_cg  51       51         0        100.0
+  uart_env_pkg::uart_rx_coverage_monitor::rx_word_format_cg             51       51         0        100.0
+  uart_env_pkg::uart_reg_access_coverage_monitor::reg_access_cg         27       27         0        100.0
 
 XOUT_END request_id=function-summary
 ```

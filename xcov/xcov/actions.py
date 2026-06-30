@@ -181,6 +181,7 @@ class Dispatcher:
         coverage = _scope_coverage(items, metrics)
         if action == "scope.summary":
             rows = _scope_summary_rows(scopes, coverage, args)
+            rows = _project_scope_summary_rows(rows)
         elif action == "scope.children":
             rows = _scope_children_rows(scopes, coverage, args)
             rows = _project_scope_brief_rows(rows)
@@ -199,6 +200,7 @@ class Dispatcher:
         args = merged_action_args(req)
         query = query_args(args)
         metrics = args.get("metrics") or _code_metrics()
+        already_filtered = False
         if action == "code_coverage.holes":
             scopes = _indexed_scopes(sess.backend.scopes())
             items = sess.backend.items(metrics=metrics, scope=args.get("scope"),
@@ -210,7 +212,11 @@ class Dispatcher:
                                       test=str(args.get("test", "merged")))
             rows = _coverage_score_rows(rows)
             rows = _summary_from_items(rows, str(args.get("group_by", "metric")))
-        rows = filter_items(rows, query)
+            rows = filter_items(rows, query)
+            rows = _project_code_coverage_summary_rows(rows)
+            already_filtered = True
+        if not already_filtered:
+            rows = filter_items(rows, query)
         rows = sort_items(rows, args.get("sort"))
         summary, inline, warnings = apply_output(action, args, rows)
         summary.update({"session_id": sess.session_id, "scope": args.get("scope"),
@@ -581,6 +587,21 @@ def _project_scope_brief_rows(rows: List[Json]) -> List[Json]:
     return [_project_columns(row, ["name", "full_name", "coverage_pct"]) for row in rows]
 
 
+def _project_scope_summary_rows(rows: List[Json]) -> List[Json]:
+    columns = [
+        "name", "full_name", "covered", "coverable", "missing", "coverage_pct",
+        "line_pct", "toggle_pct", "branch_pct", "condition_pct",
+        "fsm_pct", "assert_pct", "functional_pct", "file", "line",
+    ]
+    return [_project_columns(row, columns) for row in rows]
+
+
+def _project_code_coverage_summary_rows(rows: List[Json]) -> List[Json]:
+    forbidden = {"name", "full_name", "functional_pct"}
+    return [{key: value for key, value in row.items() if key not in forbidden}
+            for row in rows]
+
+
 def _project_code_coverage_hole_rows(rows: List[Json]) -> List[Json]:
     columns = [
         "name", "full_name", "coverage_pct",
@@ -593,7 +614,7 @@ def _project_code_coverage_hole_rows(rows: List[Json]) -> List[Json]:
 def _project_function_coverage_summary_rows(rows: List[Json], group_by: str) -> List[Json]:
     columns = [
         group_by, "covered", "coverable", "missing",
-        "coverage_pct", "raw_coverage_pct",
+        "coverage_pct",
     ]
     return [_project_columns(row, columns) for row in rows]
 
