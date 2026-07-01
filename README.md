@@ -238,6 +238,21 @@ xeda-runner run --action sim --target compile --option TEST=smoke_test
 
 所有工具入口统一放在 `tools/` 目录下。
 
+## 同步 Agent 环境变量
+
+Claude Code、Codex 等 AI agent 通常由 IDE、插件或独立进程启动，不一定继承当前交互 shell 里已经 `source` 过的 Verdi、license、LSF、Python、`PATH` 等环境。这样会出现命令行里 `xdebug`/`xcov`/MCP 能跑，但 agent 里找不到工具、license 或动态库的问题。
+
+根目录脚本 [`sync_agent_env.py`](sync_agent_env.py) 用来把当前 `env` 增量写入项目级 agent 配置。脚本零第三方依赖，兼容 Python 3.8+：
+
+```bash
+./sync_agent_env.py --target claude       # 写入 .claude/settings.json 的 env
+./sync_agent_env.py --target claude-local # 写入 .claude/settings.local.json 的 env
+./sync_agent_env.py --target codex        # 写入 .codex/config.toml 的 shell_environment_policy.set
+./sync_agent_env.py --target codex --dry-run
+```
+
+同步规则是“当前环境中存在的变量覆盖配置里的同名变量；当前环境中没有的旧变量保持不变”。脚本不做敏感变量过滤，运行前请确认当前 shell 里允许落盘的 token、key、password 等变量。
+
 ## 环境要求
 
 | 组件 | 要求 |
