@@ -4,12 +4,60 @@ xwiki wiki 是芯片验证项目的持久 LLM 记忆。根目录来自 `XWIKI_DI
 
 ## Required Structure
 
-- `index.md`：正向总索引，按验证主题列出页面，必须有 YAML frontmatter，默认 `object_type: dv`。
-- `log.md`：时间顺序记录 ingest/query/lint/update/deprecate，必须有 YAML frontmatter，默认 `object_type: dv_issue`。
-- `wiki/` 或根级 topic 页面：DUT、接口、workflow、testbench、sequence、checker、coverage、debug 等 concept。
+- `index.md`：根正向总索引，按描述对象目录列出入口页面，必须有 YAML frontmatter，默认 `object_type: dv`。
+- `de/index.md` 和 `de/log.md`：设计实现、RTL、接口、微架构、协议行为、设计参数和数据路径的索引与局部日志。
+- `dv/index.md` 和 `dv/log.md`：验证环境、sequence、checker、scoreboard、coverage、test、debug workflow 和仿真入口的索引与局部日志。
+- `de_issue/index.md` 和 `de_issue/log.md`：设计/spec/RTL 风险与问题的总索引和局部日志。
+- `de_issue/spec/index.md` 和 `de_issue/spec/log.md`：spec、协议定义、性能需求、文档合同问题。
+- `de_issue/rtl/index.md` 和 `de_issue/rtl/log.md`：RTL 实现、微架构、时序、状态机、接口行为问题。
+- `dv_issue/index.md` 和 `dv_issue/log.md`：testbench、UVM env、RM、checker、scoreboard、sequence、配置、脚本、仿真参数或 DV 假设问题。
 - `archive/` 或 `deprecated/`：废弃页面存放区。
 - `_index/backlinks.md`：可选反向索引，也必须有 YAML frontmatter。
 - `_index/tags.md`：可选 tag 索引，也必须有 YAML frontmatter。
+
+根目录不要求 `log.md`，时间追溯写入对应对象目录的 `log.md`。wiki 允许多层子目录；除 `_index/`、`archive/`、`deprecated/` 以外，任何包含 Markdown 页面或子目录的目录都必须同时包含 `index.md` 和 `log.md`。例如 `de/interfaces/axi/` 如果存在，则必须有 `de/interfaces/axi/index.md` 和 `de/interfaces/axi/log.md`。
+
+推荐布局：
+
+```text
+$XWIKI_DIR/
+├── index.md
+├── de/
+│   ├── index.md
+│   └── log.md
+├── dv/
+│   ├── index.md
+│   └── log.md
+├── de_issue/
+│   ├── index.md
+│   ├── log.md
+│   ├── spec/
+│   │   ├── index.md
+│   │   └── log.md
+│   └── rtl/
+│       ├── index.md
+│       └── log.md
+├── dv_issue/
+│   ├── index.md
+│   └── log.md
+└── _index/
+    ├── backlinks.md
+    └── tags.md
+```
+
+可用 `scripts/init_xwiki.py` 初始化该骨架：
+
+```bash
+python scripts/init_xwiki.py --wiki-dir "$XWIKI_DIR" --validate
+```
+
+脚本行为：
+
+- 默认只创建缺失的目录和 scaffold Markdown，保留已有文件。
+- `--dry-run` 只输出计划，不写文件。
+- `--force` 覆盖脚本管理的 `index.md`、`log.md`、`_index/backlinks.md`、`_index/tags.md`。
+- `--root` 用于解析相对 `--wiki-dir`。
+- `--validate` 在写入后运行 `validate_xwiki.py`。
 
 ## Markdown Frontmatter
 
@@ -59,12 +107,14 @@ updated_at: 2026-06-29
 
 ## Log
 
-`log.md` 的二级标题必须使用：
+各目录 `log.md` 的二级标题必须使用：
 
 - `## YYYY-MM-DD`
 - `## [YYYY-MM-DD] ingest | Title`
 
 条目应说明 action、来源、更新页面、unknowns。
+
+更新页面时必须追加最接近该页面的目录级 `log.md`。跨 `de`、`dv`、`de_issue`、`dv_issue` 多类对象的 ingest/update，应分别追加各相关目录的 `log.md`，不要只写根级日志。
 
 ## Deprecated Pages
 

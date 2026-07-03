@@ -21,6 +21,9 @@ REQUIRED_FRONTMATTER = ("type", "title", "description", "object_type")
 OBJECT_TYPES = {"de", "dv", "de_issue", "dv_issue"}
 RESERVED_NAMES = {"index.md", "log.md"}
 INDEX_DIR = "_index"
+REQUIRED_TOP_LEVEL_DIRS = ("de", "dv", "de_issue", "dv_issue")
+REQUIRED_DE_ISSUE_DIRS = ("spec", "rtl")
+SPECIAL_DIRS = {INDEX_DIR, "archive", "deprecated"}
 LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)\s]+(?:\s+\"[^\"]*\")?)\)")
 LOG_HEADING_RE = re.compile(r"^##\s+(?:\[\d{4}-\d{2}-\d{2}\]|\d{4}-\d{2}-\d{2})(?:\s|$)")
 LOCAL_ABSOLUTE_RE = re.compile(r"^(?:/|~[/\\]|[A-Za-z]:[/\\])")
@@ -194,14 +197,85 @@ def _validate_markdown_frontmatter(root: Path, path: Path, text: str, findings: 
         findings.append(Finding("DEPRECATED_REASON_MISSING", rel_path, "deprecated pages require deprecated_reason"))
 
 
+def _directory_requires_local_index(directory: Path, root: Path) -> bool:
+    if directory == root:
+        return False
+    rel = directory.relative_to(root)
+    first = rel.parts[0] if rel.parts else ""
+    return first not in SPECIAL_DIRS
+
+
+def _directory_has_wiki_content(directory: Path) -> bool:
+    for child in directory.iterdir():
+        if child.name.startswith("."):
+            continue
+        if child.is_dir():
+            return True
+        if child.is_file() and child.suffix == ".md":
+            return True
+    return False
+
+
+def _validate_required_structure(root: Path, findings: list[Finding]) -> None:
+    index = root / "index.md"
+    if not index.exists():
+        findings.append(Finding("INDEX_MISSING", "index.md", "root index.md is required"))
+
+    for dirname in REQUIRED_TOP_LEVEL_DIRS:
+        directory = root / dirname
+        if not directory.is_dir():
+            findings.append(Finding("REQUIRED_DIR_MISSING", dirname, f"{dirname}/ directory is required"))
+            continue
+        for filename in RESERVED_NAMES:
+            path = directory / filename
+            if not path.exists():
+                findings.append(
+                    Finding(
+                        "DIR_INDEX_LOG_MISSING",
+                        f"{dirname}/{filename}",
+                        f"{dirname}/ must contain {filename}",
+                    )
+                )
+
+    de_issue = root / "de_issue"
+    if de_issue.is_dir():
+        for dirname in REQUIRED_DE_ISSUE_DIRS:
+            directory = de_issue / dirname
+            rel_dir = f"de_issue/{dirname}"
+            if not directory.is_dir():
+                findings.append(Finding("REQUIRED_DIR_MISSING", rel_dir, f"{rel_dir}/ directory is required"))
+                continue
+            for filename in RESERVED_NAMES:
+                path = directory / filename
+                if not path.exists():
+                    findings.append(
+                        Finding(
+                            "DIR_INDEX_LOG_MISSING",
+                            f"{rel_dir}/{filename}",
+                            f"{rel_dir}/ must contain {filename}",
+                        )
+                    )
+
+    for directory in sorted(path for path in root.rglob("*") if path.is_dir()):
+        if not _directory_requires_local_index(directory, root):
+            continue
+        if not _directory_has_wiki_content(directory):
+            continue
+        for filename in RESERVED_NAMES:
+            path = directory / filename
+            if not path.exists():
+                findings.append(
+                    Finding(
+                        "DIR_INDEX_LOG_MISSING",
+                        _rel(path, root),
+                        "every non-special wiki directory with content must contain index.md and log.md",
+                    )
+                )
+
+
 def validate_wiki(root: Path) -> list[Finding]:
     findings: list[Finding] = []
-    index = root / "index.md"
-    log = root / "log.md"
-    if not index.exists():
-        findings.append(Finding("INDEX_MISSING", "index.md", "index.md is required"))
-    if not log.exists():
-        findings.append(Finding("LOG_MISSING", "log.md", "log.md is required"))
+    _validate_required_structure(root, findings)
 
     for path in sorted(root.rglob("*.md")):
         try:
@@ -210,7 +284,7 @@ def validate_wiki(root: Path) -> list[Finding]:
             findings.append(Finding("UTF8_INVALID", _rel(path, root), "markdown file must be UTF-8"))
             continue
         _validate_markdown_frontmatter(root, path, text, findings)
-        if path.name == "log.md" and path.parent == root:
+        if path.name == "log.md":
             _validate_log(root, path, text, findings)
         _validate_links(root, path, text, findings)
     return findings
