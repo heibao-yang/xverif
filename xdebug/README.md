@@ -315,6 +315,8 @@ tools/xverif-loop-client --socket /tmp/xverif-loop.sock --json \
 
 同名 `session.open` 永远不会复用或替换旧 session。已有 live session 时返回 `SESSION_ID_EXISTS`；已有 stale session 时返回 `SESSION_STALE`，需要显式 `session.close` 或 `session.gc` 后再重新 open。session name 必须以英文字母开头，只能包含英文、数字和下划线，最大 64 个字符。
 
+`session.close` 推荐使用 `target.session_id`；为兼容脚本也接受 `args.session_id` 和 `args.id`。三者都缺失时返回 `MISSING_FIELD`。
+
 ## Test Entry Points
 
 xdebug 测试入口以 Makefile 聚合 target 和 pytest marker 为主，Python 解释器可通过
@@ -463,7 +465,7 @@ compact 默认不返回大字段，例如 `expanded_queries`、`raw_edges`、`al
 | 统计 counter min/max/average | `counter.statistics` | 传 `clock`、`time_range`、`vld`、`cnt`，按周期采样最多 64 bit counter；`cnt` 可用 `{hi,lo}` 拼接。 |
 | 看跳变时间线 | `signal.changes` | compact 默认只返回 summary；需要行时设置 `include_rows:true`，用 `mode:"head"` 或 `"tail"` 控制方向。 |
 | 判断窗口内保持 0/1 | `window.verify` 或 `signal.statistics` | 不要用 `signal.changes` 的 row count 当周期数。 |
-| 找 first/last occurrence | `event.find`，或 `signal.changes` + `mode:"head"/"tail"` | `signal.changes aggregate_only:true` 适合先看首末值和跳变总数。 |
+| 找 first/last occurrence | `event.find`，或 `signal.changes` + `mode:"head"/"tail"` | `event.find` 支持布尔组合、相等比较和大小比较；`signal.changes aggregate_only:true` 适合先看首末值和跳变总数。 |
 
 `signal.changes.summary.transition_count` 为兼容保留；新代码同时返回 `returned_change_rows`、`includes_initial_value`、`actual_transition_count` 和 `semantic_note`，优先读这些字段判断语义。
 
@@ -725,7 +727,7 @@ unpacked/聚合数组可显式请求结构化显示：
 
 ### 协议与事件：event / APB / AXI
 
-`event.find` 查 first/last/all occurrence。已有 event config 时传 `name`；临时查询可直接传 `expr` + `clk` + `signals`，不会留下持久 event config：
+`event.find` 查 first/last/all occurrence。已有 event config 时传 `name`；临时查询可直接传 `expr` + `clk` + `signals`，不会留下持久 event config。表达式支持布尔组合和数值比较，可直接写 counter 阈值，例如 `wait_count >= 512`：
 
 ```json
 {
@@ -733,11 +735,12 @@ unpacked/聚合数组可显式请求结构化显示：
   "action": "event.find",
   "target": {"session_id": "case_a"},
   "args": {
-    "expr": "valid && !ready",
+    "expr": "valid && !ready && wait_count >= 512",
     "clk": "top.clk",
     "signals": {
       "valid": "top.u.valid",
-      "ready": "top.u.ready"
+      "ready": "top.u.ready",
+      "wait_count": "top.u.dbg_wait_count"
     },
     "time_range": {
       "begin": "0ns",
@@ -749,6 +752,8 @@ unpacked/聚合数组可显式请求结构化显示：
 ```
 
 `mode` 可为 `first`、`last` 或 `all`。`last` 会按 `scan_limit` 或 `limits.max_rows` 扫描后返回最后一个匹配点。
+
+对 valid/ready 类协议，合法 idle 或 backpressure 窗口不等价于 bug。优先用 valid-qualified `event.find`、`signal.changes` 和 `window.verify` 证明超时路径；`detect_abnormal` 只适合作为粗粒度 smoke。payload knownness 建议检查 leaf field，不要直接把 packed struct aggregate 的 unknown finding 当作最终结论。
 
 导出事件默认只返回聚合信息和少量 examples。完整 rows 必须显式请求：
 

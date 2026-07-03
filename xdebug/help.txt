@@ -98,6 +98,8 @@ Target modes
 
   target.session_id
       Required for all stateful debug queries after session.open.
+      session.close also accepts args.session_id and args.id for script
+      compatibility; target.session_id remains the recommended form.
 
 Session transport
 -----------------
@@ -175,7 +177,7 @@ Common actions
       scope.list, rc.generate, value.at, value.batch_at, list.value_at,
       event.find, event.export, verify.conditions, expr.eval_at,
       window.verify, signal.changes, signal.statistics, counter.statistics,
-      signal.stability, handshake.inspect, detect_anomaly
+      signal.stability, handshake.inspect, detect_abnormal
 
   Protocol:
       apb.query, axi.query, axi.analysis
@@ -205,6 +207,10 @@ Action choice guidance
 
   first/last occurrence:
       Use event.find, or signal.changes with mode:"head"/"tail".
+      event.find expressions support !, &&, ||, ==, !=, <, <=, > and >=.
+      For valid/ready protocols, legal idle/backpressure is not automatically
+      a stuck bug; prefer valid-qualified event.find, signal.changes and
+      window.verify before using detect_abnormal as a smoke scan.
 
 Output control
 --------------

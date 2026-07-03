@@ -6,6 +6,16 @@
 - `when ...` 表示条件 required，例如某种导出 kind 才需要输出路径。
 - design action 读取 daidir/NPI 设计事实；waveform action 读取 FSDB；combined action 同时使用两者。
 - `trace.*` 和 `trace.active_driver*` 可通过 `XDEBUG_COMMON_BLOCKS` 追加 common block 提示；只在返回 payload 的 `file` 精确命中配置时追加 `data.common_blocks`，原有输出不改写。
+
+## Waveform Action Boundaries
+
+- `detect_abnormal`：raw waveform smoke scan。用于找 `unknown_xz`、周期内异常短脉冲/毛刺 `glitch`、长时间不变 `stuck`。可传多个信号，也可以直接传 interface struct leaf path，例如 `top.xif.pd.opcode`。它不单独证明 valid/ready 协议 bug，`stuck` 命中后还要结合协议上下文解释。
+- `event.find` / `event.export`：clock-edge sampled event query。用于按 `clk` 和 alias 表达式查 `valid && !ready`、`opcode >= 8'h10`、`data != 0` 这类采样点条件。interface struct 字段优先作为 direct leaf signal alias 传入，例如 `"opcode": "top.xif.pd.opcode"`，不要只依赖 aggregate `pd`。
+- `sampled_pulse.inspect`：valid sampling explanation。用于回答“raw valid 脉冲存在，但没有被采样边沿看到”以及 payload 在未采样窗口附近是否变化；它不是通用 glitch/stuck/XZ 扫描入口。
+- `handshake.inspect`：valid/ready protocol inspection。用于统计 transfer、stall、ready-without-valid、stalled data stability violation；适合协议层风险，不替代 raw glitch 检测。
+- `window.verify`：sampled proof。用于证明某个 clock window 内条件 always/eventually/never 是否成立；适合最终证明，不适合枚举原始 value-change timeline。
+- `signal.changes`：raw timeline。用于列出某个信号的精确变化时间；需要按表达式关联多信号时改用 `event.find/export`。
+
 ## Builtin Actions
 | action | status | resource | purpose | how it works | objective | args contract |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -15,7 +25,7 @@
 ## Session Actions
 | action | status | resource | purpose | how it works | objective | args contract |
 | --- | --- | --- | --- | --- | --- | --- |
-| `session.close` | stable | session | 关闭指定 session。 | 释放该 session 的 runtime 资源并从管理器移除。 | 结束不再使用的调试上下文。 | required: session_id |
+| `session.close` | stable | session | 关闭指定 session。 | 释放该 session 的 runtime 资源并从管理器移除。 | 结束不再使用的调试上下文。 | required: target.session_id or args.session_id or args.id |
 | `session.doctor` | stable | session | 诊断当前 session。 | 检查 session 资源、路径和可访问状态。 | 定位 daidir/fsdb/session 绑定问题。 | none |
 | `session.gc` | stable | none | 清理过期 session。 | 扫描 session 管理状态并回收可释放项。 | 避免长期运行时积累无用资源。 | none |
 | `session.kill` | stable | session | 强制移除指定 session。 | 按 session_id 清理记录和关联资源。 | 处理异常残留 session。 | required: session_id |
@@ -54,11 +64,11 @@
 | `cursor.list` | stable | waveform | 列出游标。 | 读取当前 session 的 cursor 存储。 | 查看可复用的命名时间点。 | none |
 | `cursor.set` | stable | waveform | 保存命名时间游标。 | 解析 time/at 为 FSDB 时间，写入 CursorManager，可设 active。 | 给后续窗口、比较和人工定位复用时间点。 | required: name, time |
 | `cursor.use` | stable | waveform | 激活游标。 | 按 name 取游标并设为当前 active。 | 让后续交互默认围绕该时间点。 | required: name |
-| `detect_anomaly` | stable | waveform | 扫描常见波形异常。 | 对 signals 执行 glitch/stuck/unknown 等检查并返回 findings。 | 快速发现值得展开的异常窗口。 | required: signals |
+| `detect_abnormal` | stable | waveform | 扫描常见波形异常。 | 对 signals 执行 glitch/stuck/unknown 等检查并返回 findings；valid/ready 协议里的合法 idle/backpressure 不应只凭 stuck finding 判为 bug。 | 快速发现值得展开的异常窗口。 | required: signals |
 | `event.config.list` | stable | waveform | 列出事件配置。 | 读取 EventManager 中保存的配置名和摘要。 | 查看可用事件查询模板。 | none |
 | `event.config.load` | stable | waveform | 保存事件查询配置。 | 将 name/clk/signals/reset 等配置写入 EventManager。 | 复用常见事件查询上下文。 | required: name |
-| `event.export` | stable | waveform | 导出满足表达式的事件。 | 与 event.find 同样分析，但按 export 模式返回/写出更多命中数据。 | 把事件列表交给后处理或报告。 | required: expr<br>also one of: name / clk + signals |
-| `event.find` | stable | waveform | 查找满足表达式的事件样例。 | 用 name 配置或 inline clk/signals 构建 EventQuery，按 clock 扫描表达式命中。 | 快速找到协议条件发生的时间。 | required: expr<br>also one of: name / clk + signals |
+| `event.export` | stable | waveform | 导出满足表达式的事件。 | 与 event.find 同样分析，但按 export 模式返回/写出更多命中数据；表达式支持布尔组合、相等比较和大小比较。 | 把事件列表交给后处理或报告。 | required: expr<br>also one of: name / clk + signals |
+| `event.find` | stable | waveform | 查找满足表达式的事件样例。 | 用 name 配置或 inline clk/signals 构建 EventQuery，按 clock 扫描表达式命中；表达式支持布尔组合、相等比较和大小比较。 | 快速找到协议条件发生的时间。 | required: expr<br>also one of: name / clk + signals |
 | `expr.eval_at` | stable | waveform | 在指定时间求布尔/表达式值。 | 把 signals alias 映射到 FSDB 信号，读取 time 值后交给表达式求值器。 | 用自然表达式检查组合条件。 | required: expr, time, signals |
 | `handshake.inspect` | stable | waveform | 检查 valid/ready 握手。 | 按 clock 采样 valid/ready/data，统计 stall、transfer 和数据稳定性违规。 | 定位握手停顿和协议风险。 | required: clock, valid, ready |
 | `list.add` | stable | waveform | 向信号列表追加一个信号。 | 检查 signal 在 FSDB 中存在后写入 ListManager。 | 逐步构建观察列表。 | required: name, signal |

@@ -412,6 +412,12 @@ def run_nonaxi(xdebug, fsdb):
         found = r.query("event.find", args={"name": "evt0", "expr": "vld && !rdy && payload_lo != 0", "time_range": {"begin": "0ns", "end": "200ns"}})
         require(len(found["data"]["events"]) == 1, "event.find did not return one event")
         require("examples" not in found["data"], "event.find generated redundant data.examples")
+        ge_threshold = r.query("event.find", args={"name": "evt0", "expr": "vld && !rdy && payload_lo >= 10", "time_range": {"begin": "0ns", "end": "200ns"}})
+        require(len(ge_threshold["data"]["events"]) == 1, "event.find >= threshold failed")
+        gt_literal = r.query("event.find", args={"name": "evt0", "expr": "vld && !rdy && payload_lo > 4'h9", "time_range": {"begin": "0ns", "end": "200ns"}})
+        require(len(gt_literal["data"]["events"]) == 1, "event.find > SV literal failed")
+        lt_threshold = r.query("event.find", args={"name": "evt0", "expr": "vld && !rdy && payload_lo < 10", "time_range": {"begin": "0ns", "end": "200ns"}})
+        require(len(lt_threshold["data"]["events"]) == 0, "event.find < threshold matched unexpectedly")
         inline = r.query("event.find", args={
             "expr": "vld && !rdy",
             "clk": "ai_complex_top.clk",
@@ -435,6 +441,8 @@ def run_nonaxi(xdebug, fsdb):
         require(agg["data"]["aggregate"]["group_count"] >= 1, "event aggregate group failed")
         no_xz = r.query("event.export", args={"name": "evt0", "expr": "xz != 0", "time_range": {"begin": "0ns", "end": "200ns"}, "limit": 5})
         require(len(no_xz["data"]["events"]) == 0, "x/z event comparison matched unexpectedly")
+        no_xz_order = r.query("event.export", args={"name": "evt0", "expr": "xz >= 1", "time_range": {"begin": "0ns", "end": "200ns"}, "limit": 5})
+        require(len(no_xz_order["data"]["events"]) == 0, "x/z event ordering comparison matched unexpectedly")
         r.query("event.find", args={"name": "evt0", "expr": "bad_alias", "time_range": {"begin": "0ns", "end": "200ns"}}, expect_ok=False)
 
         checks = r.query("verify.conditions", args={
@@ -477,13 +485,13 @@ def run_nonaxi(xdebug, fsdb):
         stats = r.query("signal.statistics", args={"signal": "ai_complex_top.hs_valid", "clock": "ai_complex_top.clk", "time_range": {"begin": "120ns", "end": "210ns"}, "max_samples": 1000})
         require(stats["data"]["sample_count"] > 0 and stats["data"]["known_count"] > 0, "signal.statistics did not sample")
         require("high_cycles" in stats["data"] and "low_cycles" in stats["data"], "signal.statistics missing cycle counts")
-        anomaly = r.query("detect_anomaly", args={
+        anomaly = r.query("detect_abnormal", args={
             "signals": ["ai_complex_top.glitch_sig", "ai_complex_top.stuck_sig", "ai_complex_top.xz_bus"],
             "time_range": {"begin": "0ns", "end": "200ns"},
             "checks": [{"type": "glitch", "min_pulse_width": "1ns"}, {"type": "stuck", "min_duration": "100ns"}, {"type": "unknown_xz"}],
             "max_findings": 10,
         })
-        require(anomaly["summary"]["finding_count"] >= 3, "detect_anomaly missing findings")
+        require(anomaly["summary"]["finding_count"] >= 3, "detect_abnormal missing findings")
         require(any(f.get("type") == "glitch" for f in anomaly["data"].get("findings", [])), "glitch not detected")
         hs = r.query("handshake.inspect", args={
             "clock": "ai_complex_top.clk",

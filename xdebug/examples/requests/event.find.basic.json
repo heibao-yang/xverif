@@ -8,9 +8,10 @@
     "clk": "top.u.clk",
     "signals": {
       "valid": "top.u.valid",
-      "ready": "top.u.ready"
+      "ready": "top.u.ready",
+      "wait_count": "top.u.dbg_wait_count"
     },
-    "expr": "valid && !ready",
+    "expr": "valid && !ready && wait_count >= 512",
     "max_examples": 5
   }
 }

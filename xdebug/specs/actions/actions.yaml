@@ -517,21 +517,21 @@
       ]
     },
     {
-      "name": "detect_anomaly",
+      "name": "detect_abnormal",
       "category": "waveform",
       "status": "stable",
       "requires": "waveform",
       "handler_kind": "engine_forward",
       "schemas": {
-        "request": "schemas/v1/actions/detect_anomaly.request.schema.json",
-        "response": "schemas/v1/actions/detect_anomaly.response.schema.json"
+        "request": "schemas/v1/actions/detect_abnormal.request.schema.json",
+        "response": "schemas/v1/actions/detect_abnormal.response.schema.json"
       },
       "examples": {
         "request": [
-          "examples/requests/detect_anomaly.basic.json"
+          "examples/requests/detect_abnormal.basic.json"
         ],
         "response": [
-          "examples/responses/detect_anomaly.basic.json"
+          "examples/responses/detect_abnormal.basic.json"
         ]
       },
       "required_args": [

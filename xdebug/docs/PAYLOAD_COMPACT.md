@@ -163,6 +163,6 @@ compact 默认返回 error/slow access findings。完整 access rows 需要 `inc
 
 compact 默认返回 verdict 与 failed/unknown 条目。全部通过时应尽量极简。
 
-### handshake.inspect / detect_anomaly
+### handshake.inspect / detect_abnormal
 
 compact 默认只返回 findings/anomalies。timeline、cycle rows、正常扫描数据和 raw samples 需要显式 include 或 debug 输出。

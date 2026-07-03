@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "xdebug.detect_anomaly.request.v1",
-  "title": "detect_anomaly request",
+  "$id": "xdebug.detect_abnormal.request.v1",
+  "title": "detect_abnormal request",
   "type": "object",
   "required": [
     "api_version",
@@ -22,7 +22,7 @@
     "action": {
       "type": "string",
       "enum": [
-        "detect_anomaly"
+        "detect_abnormal"
       ]
     },
     "target": {
@@ -288,9 +288,9 @@
     }
   },
   "additionalProperties": true,
-  "description": "detect_anomaly: 扫描常见波形异常。",
+  "description": "detect_abnormal: 扫描常见波形异常。",
   "x-purpose": "扫描常见波形异常。",
   "x-how_it_works": "对 signals 执行 glitch/stuck/unknown 等检查并返回 findings。",
-  "x-when_to_use": "快速发现值得展开的异常窗口。",
+  "x-when_to_use": "快速发现值得展开的异常窗口；valid/ready 协议中的合法 idle/backpressure 不应只凭 stuck finding 判为 bug。",
   "x-arg_contract_notes": "required: signals"
 }

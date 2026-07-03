@@ -3,8 +3,5 @@
   "action": "session.close",
   "target": {
     "session_id": "case_a"
-  },
-  "args": {
-    "session_id": "case_a"
   }
 }

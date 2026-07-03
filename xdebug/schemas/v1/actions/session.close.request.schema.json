@@ -5,9 +5,7 @@
   "type": "object",
   "required": [
     "api_version",
-    "action",
-    "target",
-    "args"
+    "action"
   ],
   "properties": {
     "api_version": {
@@ -26,7 +24,14 @@
       ]
     },
     "target": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "description": "目标 xdebug session 标识。"
+        }
+      },
+      "additionalProperties": true
     },
     "args": {
       "type": "object",
@@ -104,6 +109,10 @@
         "session_id": {
           "type": "string",
           "description": "目标 xdebug session 标识。"
+        },
+        "id": {
+          "type": "string",
+          "description": "目标 xdebug session 标识；session_id 的兼容别名。"
         },
         "valid": {
           "type": "string"
@@ -275,10 +284,7 @@
           "type": "string"
         }
       },
-      "additionalProperties": true,
-      "required": [
-        "session_id"
-      ]
+      "additionalProperties": true
     },
     "limits": {
       "type": "object"
@@ -287,10 +293,48 @@
       "type": "object"
     }
   },
+  "anyOf": [
+    {
+      "required": [
+        "target"
+      ],
+      "properties": {
+        "target": {
+          "required": [
+            "session_id"
+          ]
+        }
+      }
+    },
+    {
+      "required": [
+        "args"
+      ],
+      "properties": {
+        "args": {
+          "required": [
+            "session_id"
+          ]
+        }
+      }
+    },
+    {
+      "required": [
+        "args"
+      ],
+      "properties": {
+        "args": {
+          "required": [
+            "id"
+          ]
+        }
+      }
+    }
+  ],
   "additionalProperties": true,
   "description": "session.close: 关闭指定 session。",
   "x-purpose": "关闭指定 session。",
   "x-how_it_works": "释放该 session 的 runtime 资源并从管理器移除。",
   "x-when_to_use": "结束不再使用的调试上下文。",
-  "x-arg_contract_notes": "required: session_id"
+  "x-arg_contract_notes": "required: target.session_id or args.session_id or args.id"
 }

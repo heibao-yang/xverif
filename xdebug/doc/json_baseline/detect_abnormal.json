@@ -1,7 +1,7 @@
 {
   "request": {
     "api_version": "xdebug.v1",
-    "action": "detect_anomaly",
+    "action": "detect_abnormal",
     "target": {
       "session_id": "sample_wave"
     },
@@ -21,7 +21,7 @@
   "response": {
     "api_version": "xdebug.v1",
     "ok": true,
-    "action": "detect_anomaly",
+    "action": "detect_abnormal",
     "tool": {
       "name": "xdebug",
       "version": "0.1.0"
@@ -32,9 +32,17 @@
       "truncated": false
     },
     "data": {
-      "findings": []
+      "finding_count": 0,
+      "findings": [],
+      "truncated": false
     },
-    "error": null
+    "findings": [],
+    "suggested_next_actions": [],
+    "warnings": [],
+    "error": null,
+    "meta": {
+      "truncated": false
+    }
   },
   "stderr": ""
 }

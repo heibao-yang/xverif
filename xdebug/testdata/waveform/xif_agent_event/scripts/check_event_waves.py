@@ -44,6 +44,30 @@ def query(binary, home, action, args=None, target=None, expect_ok=True):
     return result
 
 
+def value_text(value):
+    if isinstance(value, dict):
+        value = value.get("value", "")
+    text = str(value).lower()
+    tick = text.find("'")
+    if tick > 0 and text[:tick].isdigit():
+        return text[tick:]
+    return text
+
+
+def require(condition, message):
+    if not condition:
+        raise AssertionError(message)
+
+
+def require_event_with_signals(events, expected):
+    for event in events:
+        signals = event.get("signals", {})
+        if all(value_text(signals.get(name)) == value.lower()
+               for name, value in expected.items()):
+            return
+    raise AssertionError("missing event with signals {} in {}".format(expected, events[:3]))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--xdebug", default=str(REPO_ROOT / "tools" / "xdebug"))
@@ -76,18 +100,62 @@ def main():
                          {"name": name, "expr": expr},
                          {"session_id": session})["data"]["events"]
 
-        rdy = export("rdy", "vld && rdy")
-        bp = export("bp", "vld && !bp")
-        none = export("none", "vld")
-        pair_master = export("pair_master", "vld && rdy")
-        pair_slave = export("pair_slave", "vld && rdy")
-        assert rdy and bp and none and pair_master and pair_slave
-        assert not export("xz", "vld && data != 0")
+        matrix = [
+            ("rdy", "vld && rdy", {"opcode": "'h5a", "channel": "'h3", "id": "'h2", "data": "'ha55a"}),
+            ("rdy", "vld && rdy", {"opcode": "'h10", "channel": "'h1", "id": "'h1", "data": "'h1000"}),
+            ("bp", "vld && !bp", {"opcode": "'hb2", "channel": "'h2", "id": "'h2", "data": "'h2002"}),
+            ("bp", "vld && !bp", {"opcode": "'hb3", "channel": "'h3", "id": "'h3", "data": "'h2003"}),
+            ("none", "vld", {"opcode": "'hc0", "channel": "'h0", "id": "'h1", "data": "'h3000"}),
+            ("none", "vld", {"opcode": "'hc2", "channel": "'h2", "id": "'h3", "data": "'h3002"}),
+            ("pair_master", "vld && rdy", {"opcode": "'hd0", "channel": "'h0", "id": "'h0", "data": "'h4000"}),
+            ("pair_master", "vld && rdy", {"opcode": "'hd2", "channel": "'h2", "id": "'h2", "data": "'h4002"}),
+            ("pair_slave", "vld && rdy", {"opcode": "'hd0", "channel": "'h0", "id": "'h0", "data": "'h4000"}),
+            ("pair_slave", "vld && rdy", {"opcode": "'hd2", "channel": "'h2", "id": "'h2", "data": "'h4002"}),
+        ]
+        counts = {}
+        for name, prefix, expected in matrix:
+            expr = "{} && opcode == {} && channel == {} && id == {} && data == {}".format(
+                prefix,
+                expected["opcode"],
+                expected["channel"],
+                expected["id"],
+                expected["data"],
+            )
+            events = export(name, expr)
+            require(events, "{} direct pd field expression produced no events: {}".format(name, expr))
+            require_event_with_signals(events, expected)
+            counts[name] = counts.get(name, 0) + len(events)
+
+        rdy_ge = export("rdy", "vld && rdy && opcode >= 8'h10 && data <= 16'h1002")
+        require(rdy_ge, "direct pd field comparison expression failed")
+        xz_events = export("xz", "vld && data != 0")
+        require(not xz_events, "X/Z data expression should not become a known match")
+
+        abnormal = query(args.xdebug, home, "detect_abnormal", {
+            "signals": [
+                "xif_event_top.if_rdy.pd.opcode",
+                "xif_event_top.if_rdy.pd.data",
+                "xif_event_top.if_pair_master.pd.opcode",
+                "xif_event_top.xz_data",
+            ],
+            "time_range": {"begin": "0ns", "end": "200ns"},
+            "checks": [
+                {"type": "unknown_xz"},
+                {"type": "stuck", "min_duration": "20ns"},
+            ],
+            "max_findings": 20,
+        }, {"session_id": session})
+        findings = abnormal["data"].get("findings", [])
+        require(any(f.get("type") == "unknown_xz" and f.get("signal") == "xif_event_top.xz_data"
+                    for f in findings), "detect_abnormal did not find xz_data unknown_xz")
+        require(any(f.get("type") == "stuck" and f.get("signal") == "xif_event_top.if_rdy.pd.opcode"
+                    for f in findings), "detect_abnormal did not scan direct struct member path")
+
         query(args.xdebug, home, "event.find",
               {"name": "rdy", "expr": "vld && missing_alias"},
               {"session_id": session}, expect_ok=False)
-        print("PASS: xdebug event checks rdy={} bp={} none={} pair_master={} pair_slave={}".format(
-            len(rdy), len(bp), len(none), len(pair_master), len(pair_slave)))
+        print("PASS: xdebug event direct struct checks {} abnormal_findings={}".format(
+            counts, len(findings)))
     finally:
         try:
             query(args.xdebug, home, "session.kill", {"id": "all"})

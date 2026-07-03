@@ -35,7 +35,7 @@ changes:
 - `signal.statistics`
 - `expr.eval_at`
 - `sampled_pulse.inspect`
-- `detect_anomaly`
+- `detect_abnormal`
 - `stream.query`
 - `trace.active_driver`
 
@@ -255,10 +255,10 @@ first_risk:
   sampled_valid: 1'h0
 ```
 
-### detect_anomaly
+### detect_abnormal
 
 ```text
-@xdebug.detect_anomaly.v1
+@xdebug.detect_abnormal.v1
 summary:
   finding_count: 2
 

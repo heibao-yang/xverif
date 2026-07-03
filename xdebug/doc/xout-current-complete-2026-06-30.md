@@ -800,13 +800,13 @@ data:
   findings                  : [empty]
 ```
 
-## detect_anomaly
+## detect_abnormal
 
 request:
 ```json
 {
   "api_version": "xdebug.v1",
-  "action": "detect_anomaly",
+  "action": "detect_abnormal",
   "target": {
     "session_id": "xout_current_20260630_regen"
   },
@@ -825,7 +825,7 @@ request:
 
 xout rc=0:
 ```text
-@xdebug.detect_anomaly.v1
+@xdebug.detect_abnormal.v1
 summary:
   finding_count: 0
   truncated    : false

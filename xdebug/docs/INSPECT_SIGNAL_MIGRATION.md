@@ -7,6 +7,6 @@ Use these stable actions instead:
 - Point value lookup: `value.at`
 - Value-change timeline: `signal.changes`
 - Sampled activity and cycle counts: `signal.statistics`
-- Glitch, stuck, and unknown-value checks: `detect_anomaly`
+- Glitch, stuck, and unknown-value checks: `detect_abnormal`
 
 Calls to `inspect_signal` should be migrated instead of routed through a compatibility alias.

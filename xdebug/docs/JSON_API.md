@@ -142,7 +142,7 @@ file transport directory:
 | 跳变时间线 | `signal.changes` |
 | 窗口保持 0/1 | `window.verify` 或 `signal.statistics` |
 | first/last occurrence | `event.find` 或 `signal.changes` 的 head/tail |
-| 临时事件表达式 | `event.find` with `expr` + `clk` + `signals` |
+| 临时事件表达式 | `event.find` with `expr` + `clk` + `signals`；支持布尔组合、相等比较和大小比较 |
 | packed value 切字段 | `value.at`/`value.batch_at` with `slice_hint`，再调用 `tools/xbit` |
 
 ## 输出档位
@@ -276,11 +276,12 @@ slice 信号会先校验完整路径；若 FSDB signal lookup 不接受 slice，
   "action": "event.find",
   "target": {"fsdb": "waves.fsdb"},
   "args": {
-    "expr": "valid && !ready",
+    "expr": "valid && !ready && wait_count >= 512",
     "clk": "top.clk",
     "signals": {
       "valid": "top.u.valid",
-      "ready": "top.u.ready"
+      "ready": "top.u.ready",
+      "wait_count": "top.u.dbg_wait_count"
     },
     "begin": "0ns",
     "end": "max",

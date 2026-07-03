@@ -111,7 +111,7 @@ ENGINE_SRCS = src/engine/main.cpp \
               src/engine/service/actions/waveform/cursor_list.cpp \
               src/engine/service/actions/waveform/cursor_set.cpp \
               src/engine/service/actions/waveform/cursor_use.cpp \
-              src/engine/service/actions/waveform/detect_anomaly.cpp \
+              src/engine/service/actions/waveform/detect_abnormal.cpp \
               src/engine/service/actions/waveform/event_config_list.cpp \
               src/engine/service/actions/waveform/event_config_load.cpp \
               src/engine/service/actions/waveform/event_export.cpp \
@@ -220,7 +220,7 @@ $(BUILD)/%.o: %.cpp
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -DXDEBUG_INTERNAL_ENGINE -c -o $@ $<
 
-unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o $(BUILD)/src/waveform/service/rc_generator.o $(BUILD)/src/waveform/value/logic_value.o $(BUILD)/src/session/session_catalog.o
+unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o $(BUILD)/src/waveform/service/rc_generator.o $(BUILD)/src/waveform/value/logic_value.o $(BUILD)/src/waveform/event/event_expr.o $(BUILD)/src/session/session_catalog.o
 	mkdir -p $(BUILD)/tests
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_core_types tests/unit/test_core_types.cpp $(CORE_OBJS) $(LDFLAGS)
 	$(BUILD)/tests/test_core_types
@@ -248,6 +248,8 @@ unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)
 	$(BUILD)/tests/test_common_blocks
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_logic_value tests/unit/test_logic_value.cpp $(BUILD)/src/waveform/value/logic_value.o
 	$(BUILD)/tests/test_logic_value
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_event_expr tests/unit/test_event_expr.cpp $(BUILD)/src/waveform/event/event_expr.o
+	$(BUILD)/tests/test_event_expr
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_rc_generator tests/unit/test_rc_generator.cpp $(BUILD)/src/waveform/service/rc_generator.o
 	$(BUILD)/tests/test_rc_generator
 

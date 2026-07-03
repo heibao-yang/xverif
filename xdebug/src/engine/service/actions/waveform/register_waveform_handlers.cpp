@@ -30,7 +30,7 @@ std::unique_ptr<EngineActionHandler> make_counter_statistics_handler();
 std::unique_ptr<EngineActionHandler> make_expr_eval_at_handler();
 std::unique_ptr<EngineActionHandler> make_window_verify_handler();
 std::unique_ptr<EngineActionHandler> make_sampled_pulse_inspect_handler();
-std::unique_ptr<EngineActionHandler> make_detect_anomaly_handler();
+std::unique_ptr<EngineActionHandler> make_detect_abnormal_handler();
 std::unique_ptr<EngineActionHandler> make_handshake_inspect_handler();
 std::unique_ptr<EngineActionHandler> make_apb_transfer_window_handler();
 std::unique_ptr<EngineActionHandler> make_axi_channel_stall_handler();
@@ -69,7 +69,7 @@ void register_waveform_handlers(EngineActionRegistry& r) {
     r.add(make_expr_eval_at_handler());
     r.add(make_window_verify_handler());
     r.add(make_sampled_pulse_inspect_handler());
-    r.add(make_detect_anomaly_handler());
+    r.add(make_detect_abnormal_handler());
     r.add(make_handshake_inspect_handler());
     r.add(make_apb_transfer_window_handler());
     r.add(make_axi_channel_stall_handler());

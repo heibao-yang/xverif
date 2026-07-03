@@ -40,7 +40,7 @@ Reason:
 
 ## Test Enhancement Candidates
 
-### `detect_anomaly`
+### `detect_abnormal`
 
 Decision: mark as test enhancement candidate.
 
@@ -388,14 +388,14 @@ Reason:
 - The reviewed real output does not provide a useful counter explanation.
 - For counter-oriented workflows, `counter.statistics` gives concrete waveform facts and should be preferred over this design-only explanation action.
 
-### `detect_anomaly`
+### `detect_abnormal`
 
 Request intent:
 
 ```json
 {
   "api_version": "xdebug.v1",
-  "action": "detect_anomaly",
+  "action": "detect_abnormal",
   "target": {"session_id": "<opened APB/complex waveform session>"},
   "args": {
     "signals": [
@@ -418,7 +418,7 @@ Request intent:
 XOUT:
 
 ```text
-@xdebug.detect_anomaly.v1
+@xdebug.detect_abnormal.v1
 summary:
   finding_count: 3
   truncated: false
@@ -436,7 +436,7 @@ findings:
 
 Review decision:
 
-Mark `detect_anomaly` as a test enhancement candidate.
+Mark `detect_abnormal` as a test enhancement candidate.
 
 Reason:
 

@@ -221,6 +221,26 @@ private:
             if (eq == ExprTri::Unknown) return ExprTri::Unknown;
             return eq == ExprTri::True ? ExprTri::False : ExprTri::True;
         }
+        if (consume(">=")) {
+            std::string rhs = parse_atom(error);
+            if (!error.empty()) return ExprTri::False;
+            return compare_order(lhs, rhs, ">=");
+        }
+        if (consume("<=")) {
+            std::string rhs = parse_atom(error);
+            if (!error.empty()) return ExprTri::False;
+            return compare_order(lhs, rhs, "<=");
+        }
+        if (consume(">")) {
+            std::string rhs = parse_atom(error);
+            if (!error.empty()) return ExprTri::False;
+            return compare_order(lhs, rhs, ">");
+        }
+        if (consume("<")) {
+            std::string rhs = parse_atom(error);
+            if (!error.empty()) return ExprTri::False;
+            return compare_order(lhs, rhs, "<");
+        }
         return expr_truth_value(lhs);
     }
 
@@ -230,6 +250,22 @@ private:
         std::string rhs_norm = expr_normalize_for_compare(rhs, width);
         if (expr_value_has_unknown(lhs_norm) || expr_value_has_unknown(rhs_norm)) return ExprTri::Unknown;
         return lhs_norm == rhs_norm ? ExprTri::True : ExprTri::False;
+    }
+
+    ExprTri compare_order(const std::string& lhs, const std::string& rhs, const char* op) {
+        std::string lhs_norm = expr_normalize_for_compare(lhs, 0);
+        std::string rhs_norm = expr_normalize_for_compare(rhs, 0);
+        size_t width = std::max(lhs_norm.size(), rhs_norm.size());
+        lhs_norm = expr_normalize_for_compare(lhs, width);
+        rhs_norm = expr_normalize_for_compare(rhs, width);
+        if (expr_value_has_unknown(lhs_norm) || expr_value_has_unknown(rhs_norm)) return ExprTri::Unknown;
+        int cmp = lhs_norm.compare(rhs_norm);
+        bool result = false;
+        if (std::strcmp(op, ">=") == 0) result = cmp >= 0;
+        else if (std::strcmp(op, "<=") == 0) result = cmp <= 0;
+        else if (std::strcmp(op, ">") == 0) result = cmp > 0;
+        else if (std::strcmp(op, "<") == 0) result = cmp < 0;
+        return result ? ExprTri::True : ExprTri::False;
     }
 
     std::string parse_atom(std::string& error) {

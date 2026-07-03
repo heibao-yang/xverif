@@ -187,9 +187,9 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
 ```json
 {
   "session_id": "case_a",
-  "action": "detect_anomaly",
+  "action": "detect_abnormal",
   "args": {
-    "signals": ["top.u_if.data", "top.u_if.valid", "top.u_if.ready"],
+    "signals": ["top.u_if.data_leaf0", "top.u_if.data_leaf1", "top.u_if.valid", "top.u_if.ready"],
     "time_range": {"begin": "0ns", "end": "100us"},
     "types": ["unknown_xz"],
     "max_findings": 20
@@ -201,6 +201,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
 证据读取：
 
 - `known:false` 只是未知值证据，不是 root cause。
+- packed struct payload 优先展开到 leaf field 检查；不要直接把 aggregate `pd` 的 unknown finding 当作最终协议结论。
 - 找到第一处 unknown 后，用 `signal.changes` 缩小出现时间。
 - combined session 下对同一时间调用 `trace.active_driver`。
 

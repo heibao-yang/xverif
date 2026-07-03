@@ -314,9 +314,9 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
     return data;
 }
 
-Json ai_detect_anomaly(const Json& args, std::string& error) {
+Json ai_detect_abnormal(const Json& args, std::string& error) {
     if (!args.contains("signals") || !args["signals"].is_array()) {
-        error = "detect_anomaly requires args.signals[]";
+        error = "detect_abnormal requires args.signals[]";
         return Json();
     }
     npiFsdbTime begin = 0, end = 0;
