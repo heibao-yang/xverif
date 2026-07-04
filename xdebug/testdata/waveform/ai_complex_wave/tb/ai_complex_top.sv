@@ -19,6 +19,7 @@ module ai_complex_top;
 
   reg event_vld;
   reg event_rdy;
+  reg event_race;
   reg [7:0] event_payload;
 
   reg [15:0] paddr;
@@ -87,6 +88,7 @@ module ai_complex_top;
     hs_data = 8'h00;
     event_vld = 1'b0;
     event_rdy = 1'b0;
+    event_race = 1'b0;
     event_payload = 8'h00;
     paddr = 16'h0;
     pwdata = 32'h0;
@@ -129,6 +131,7 @@ module ai_complex_top;
     @(posedge clk);
     event_vld <= 1'b1;
     event_rdy <= 1'b0;
+    event_race <= 1'b1;
     event_payload <= 8'h5a;
 
     @(posedge clk);

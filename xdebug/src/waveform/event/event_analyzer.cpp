@@ -492,15 +492,18 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
         return false;
     }
 
-    auto process_edge = [&](npiFsdbTime t, std::string& process_error) -> bool {
+    auto process_edge = [&](npiFsdbTime t,
+                            const std::string& sampled_rst_value,
+                            const std::vector<std::string>& sampled_values,
+                            std::string& process_error) -> bool {
         if (t < query.begin || t > query.end) return true;
 
         if (!config.rst_n.empty()) {
-            if (!is_true_value(rst_value)) return true;
+            if (!is_true_value(sampled_rst_value)) return true;
         }
 
         std::map<std::string, std::string> value_map;
-        for (size_t i = 0; i < aliases.size(); ++i) value_map[aliases[i]] = values[i];
+        for (size_t i = 0; i < aliases.size(); ++i) value_map[aliases[i]] = sampled_values[i];
 
         std::map<std::string, std::string> field_map;
         for (const auto& kv : config.fields) {
@@ -529,18 +532,63 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
         return true;
     };
 
-    auto sample_edge_and_process = [&](npiFsdbTime t, std::string& process_error) -> bool {
-        fsdbValVec_t sampled;
-        if (!npi_fsdb_sig_hdl_vec_value_at(all_handles, t, sampled, npiFsdbBinStrVal) ||
-            sampled.size() != all_handles.size()) {
-            process_error = "Failed to sample event signals at clock edge";
-            return false;
+    bool sample_before_edge = clock_sample.edge != ClockEdgeKind::Negedge &&
+        clock_sample.sample_point == ClockSamplePointKind::Before;
+
+    auto sample_handles_at = [&](npiFsdbTime t,
+                                 bool before_edge,
+                                 std::string& sampled_rst_value,
+                                 std::vector<std::string>& sampled_values,
+                                 std::string& process_error) -> bool {
+        sampled_values.assign(aliases.size(), "'b0");
+        sampled_rst_value = "'b1";
+        if (!before_edge) {
+            fsdbValVec_t sampled;
+            if (!npi_fsdb_sig_hdl_vec_value_at(all_handles, t, sampled, npiFsdbBinStrVal) ||
+                sampled.size() != all_handles.size()) {
+                process_error = "Failed to sample event signals at clock edge";
+                return false;
+            }
+            size_t idx = 0;
+            prev_clk_value = with_binary_prefix(sampled[idx++]);
+            if (rst) sampled_rst_value = with_binary_prefix(sampled[idx++]);
+            for (size_t i = 0; i < aliases.size(); ++i) sampled_values[i] = with_binary_prefix(sampled[idx++]);
+            return true;
         }
+
         size_t idx = 0;
-        prev_clk_value = with_binary_prefix(sampled[idx++]);
-        if (rst) rst_value = with_binary_prefix(sampled[idx++]);
-        for (size_t i = 0; i < aliases.size(); ++i) values[i] = with_binary_prefix(sampled[idx++]);
-        return process_edge(t, process_error);
+        for (auto handle : all_handles) {
+            SignalChangeCursor cursor(handle, npiFsdbBinStrVal);
+            if (!cursor.valid()) {
+                process_error = "Failed to create event signal cursor for before-edge sampling";
+                return false;
+            }
+            npiFsdbTime value_time = 0;
+            std::string raw;
+            if (!cursor.prev_before(t, value_time, raw)) {
+                process_error = "Failed to sample event signal before clock edge";
+                return false;
+            }
+            std::string value = with_binary_prefix(raw);
+            if (idx == 0) {
+                prev_clk_value = value;
+            } else if (rst && idx == 1) {
+                sampled_rst_value = value;
+            } else {
+                size_t signal_idx = idx - 1 - (rst ? 1 : 0);
+                if (signal_idx < sampled_values.size()) sampled_values[signal_idx] = value;
+            }
+            ++idx;
+        }
+        return true;
+    };
+
+    auto sample_edge_and_process = [&](npiFsdbTime t, std::string& process_error) -> bool {
+        std::string sampled_rst_value;
+        std::vector<std::string> sampled_values;
+        if (!sample_handles_at(t, sample_before_edge, sampled_rst_value, sampled_values, process_error))
+            return false;
+        return process_edge(t, sampled_rst_value, sampled_values, process_error);
     };
 
     if (query.fast_find && query.limit == 1) {
@@ -609,10 +657,14 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
     bool clk_changed = false;
     bool target_edge = false;
     npiFsdbTime group_time = 0;
+    std::string group_before_rst_value = rst_value;
+    std::vector<std::string> group_before_values = values;
 
     auto finish_group = [&]() -> bool {
         if (!have_group || !clk_changed || !target_edge) return true;
-        if (!process_edge(group_time, error)) return false;
+        const std::string& sampled_rst_value = sample_before_edge ? group_before_rst_value : rst_value;
+        const std::vector<std::string>& sampled_values = sample_before_edge ? group_before_values : values;
+        if (!process_edge(group_time, sampled_rst_value, sampled_values, error)) return false;
         return query.limit <= 0 || static_cast<int>(records.size()) < query.limit;
     };
 
@@ -623,12 +675,16 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
         if (!have_group) {
             have_group = true;
             group_time = curr_time;
+            group_before_rst_value = rst_value;
+            group_before_values = values;
         } else if (curr_time != group_time) {
             keep_scanning = finish_group();
             if (!keep_scanning) break;
             group_time = curr_time;
             clk_changed = false;
             target_edge = false;
+            group_before_rst_value = rst_value;
+            group_before_values = values;
         }
 
         npiFsdbValue val;

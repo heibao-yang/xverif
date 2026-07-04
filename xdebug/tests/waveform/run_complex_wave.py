@@ -605,6 +605,36 @@ def run_nonaxi(xdebug, fsdb):
         require(inline["summary"]["inline"] is True and len(inline["data"]["events"]) == 1, "inline event.find failed")
         require_clock_summary(inline, "posedge")
         require("examples" not in inline["data"], "inline event.find generated redundant data.examples")
+        race_before = r.query("event.find", args={
+            "expr": "!vld && !race",
+            "clock": "ai_complex_top.clk",
+            "edge": "posedge",
+            "sample_point": "before",
+            "rst_n": "ai_complex_top.rst_n",
+            "signals": {
+                "vld": "ai_complex_top.event_vld",
+                "race": "ai_complex_top.event_race"
+            },
+            "time_range": {"begin": "100ns", "end": "110ns"},
+            "mode": "first"
+        })
+        require(len(race_before["data"]["events"]) == 1, "event.find posedge before did not observe old values")
+        require_clock_summary(race_before, "posedge", "before")
+        race_after = r.query("event.find", args={
+            "expr": "vld && race",
+            "clock": "ai_complex_top.clk",
+            "edge": "posedge",
+            "sample_point": "after",
+            "rst_n": "ai_complex_top.rst_n",
+            "signals": {
+                "vld": "ai_complex_top.event_vld",
+                "race": "ai_complex_top.event_race"
+            },
+            "time_range": {"begin": "100ns", "end": "110ns"},
+            "mode": "first"
+        })
+        require(len(race_after["data"]["events"]) == 1, "event.find posedge after did not observe new values")
+        require_clock_summary(race_after, "posedge", "after")
         exported = r.query("event.export", args={"name": "evt0", "expr": "vld && !rdy", "time_range": {"begin": "0ns", "end": "200ns"}, "limit": 1})
         require(len(exported["data"]["events"]) == 1, "event.export limit failed")
         require_clock_summary(exported, "posedge")
