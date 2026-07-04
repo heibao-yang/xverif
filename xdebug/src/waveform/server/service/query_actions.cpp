@@ -228,8 +228,6 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
 
     ClockSampleSpec clock_sample = cfg.clock_sample;
     if (!normalize_clock_sample_spec(g_fsdb_file, clock_sample, error)) return Json();
-    ClockSampleTimeResolver sample_resolver(g_fsdb_file, clock_sample);
-    if (!sample_resolver.valid(error)) return Json();
     npiFsdbSigHandle valid_h = npi_fsdb_sig_by_name(g_fsdb_file, valid.c_str(), NULL);
     npiFsdbSigHandle ready_h = npi_fsdb_sig_by_name(g_fsdb_file, ready.c_str(), NULL);
     if (!valid_h || !ready_h) {
@@ -243,94 +241,47 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
     int sample_count = 0, transfers = 0, ready_only = 0, max_stall = 0;
     bool truncated = false;
     Json findings = Json::array();
-
-    fsdbSigVec_t state_handles;
-    state_handles.push_back(valid_h);
-    state_handles.push_back(ready_h);
-    fsdbValVec_t init_values;
-    if (!npi_fsdb_sig_hdl_vec_value_at(state_handles, begin, init_values, npiFsdbBinStrVal) ||
-        init_values.size() != state_handles.size()) {
-        error = "Failed to read AXI channel initial values";
-        return Json();
-    }
-    std::string valid_value = with_value_prefix(init_values[0], 'b');
-    std::string ready_value = with_value_prefix(init_values[1], 'b');
-
-    auto visit_interval = [&](npiFsdbTime start, npiFsdbTime stop) -> bool {
-        if (stop < start) return true;
-        ExprTri v = xdebug_waveform::expr_truth_value(valid_value);
-        ExprTri r = xdebug_waveform::expr_truth_value(ready_value);
-        bool interesting = (v == ExprTri::True || r == ExprTri::True);
-        if (!interesting) return true;
-        ClockSamplePoint point;
-        if (!sample_resolver.find_next_sample(start, point, error)) return true;
-        int stall_cycles = 0;
-        npiFsdbTime stall_begin = 0;
-        while (point.sample_time <= stop) {
-            if (max_samples >= 0 && sample_count >= max_samples) {
-                truncated = true;
-                return false;
-            }
-            ++sample_count;
+    int stall_cycles = 0;
+    npiFsdbTime stall_begin = 0;
+    std::vector<ClockSampleSignal> sample_signals = {
+        {"valid", valid, valid_h},
+        {"ready", ready, ready_h}
+    };
+    ClockSampleScanner scanner(g_fsdb_file, clock_sample);
+    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', max_samples,
+        [&](const ClockSample& sample) -> bool {
+            if (sample.values.size() < 2) return true;
+            ExprTri v = xdebug_waveform::expr_truth_value(sample.values[0]);
+            ExprTri r = xdebug_waveform::expr_truth_value(sample.values[1]);
             if (v == ExprTri::True && r == ExprTri::True) {
                 ++transfers;
                 if (stall_cycles > 0) {
                     if (stall_cycles > max_stall) max_stall = stall_cycles;
                     if (stall_cycles > max_wait) {
                         findings.push_back({{"type", "long_stall"}, {"severity", "warning"},
-                                            {"begin", format_time(stall_begin)}, {"end", format_time(point.sample_time)},
+                                            {"begin", format_time(stall_begin)}, {"end", format_time(sample.time)},
                                             {"cycles", stall_cycles}});
                     }
                     stall_cycles = 0;
                 }
             } else if (v == ExprTri::True && r == ExprTri::False) {
-                if (stall_cycles == 0) stall_begin = point.sample_time;
+                if (stall_cycles == 0) stall_begin = sample.time;
                 ++stall_cycles;
             } else if (r == ExprTri::True && v == ExprTri::False) {
                 ++ready_only;
             }
-            if (point.edge_time == std::numeric_limits<npiFsdbTime>::max() ||
-                point.sample_time == std::numeric_limits<npiFsdbTime>::max()) {
-                break;
-            }
-            npiFsdbTime next_anchor = std::max(point.edge_time + 1, point.sample_time + 1);
-            if (!sample_resolver.find_next_sample(next_anchor, point, error)) break;
-        }
-        if (stall_cycles > 0) {
-            if (stall_cycles > max_stall) max_stall = stall_cycles;
-            if (stall_cycles > max_wait) {
-                findings.push_back({{"type", "long_stall"}, {"severity", "warning"},
-                                    {"begin", format_time(stall_begin)}, {"end", format_time(stop)},
-                                    {"cycles", stall_cycles}});
-            }
-        }
-        return true;
-    };
-
-    TimeBasedVcIterGuard guard;
-    npiFsdbTimeBasedVcIter& iter = guard.iter();
-    iter.add(valid_h);
-    iter.add(ready_h);
-    guard.start(begin, end);
-    npiFsdbTime interval_begin = begin;
-    npiFsdbTime curr_time = 0;
-    npiFsdbSigHandle changed_sig = nullptr;
-    bool keep = true;
-    while (keep && iter.iter_next(curr_time, changed_sig) > 0) {
-        if (curr_time > end) break;
-        if (curr_time > interval_begin) {
-            keep = visit_interval(interval_begin, curr_time - 1);
-            if (!keep) break;
-            interval_begin = curr_time;
-        }
-        npiFsdbValue val;
-        val.format = npiFsdbBinStrVal;
-        if (iter.get_value(val) && val.value.str) {
-            if (changed_sig == valid_h) valid_value = with_value_prefix(val.value.str, 'b');
-            else if (changed_sig == ready_h) ready_value = with_value_prefix(val.value.str, 'b');
+            return true;
+        }, error, sample_count, truncated)) {
+        return Json();
+    }
+    if (stall_cycles > 0) {
+        if (stall_cycles > max_stall) max_stall = stall_cycles;
+        if (stall_cycles > max_wait) {
+            findings.push_back({{"type", "long_stall"}, {"severity", "warning"},
+                                {"begin", format_time(stall_begin)}, {"end", format_time(end)},
+                                {"cycles", stall_cycles}});
         }
     }
-    if (keep && interval_begin <= end) visit_interval(interval_begin, end);
 
     Json data;
     data["summary"] = {

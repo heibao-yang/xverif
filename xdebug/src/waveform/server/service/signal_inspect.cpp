@@ -123,6 +123,10 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
     std::vector<std::string> aliases, paths;
     fsdbSigVec_t handles;
     if (!build_signal_alias_handles(signals, aliases, paths, handles, error)) return Json();
+    std::vector<ClockSampleSignal> sample_signals;
+    for (size_t i = 0; i < aliases.size(); ++i) {
+        sample_signals.push_back({aliases[i], paths[i], handles[i]});
+    }
 
     int max_samples = args.value("max_samples", 1000000);
     int max_events = args.value("max_events", 100000);
@@ -135,8 +139,11 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
     bool sample_truncated = false;
     int sampled_high = 0, sampled_low = 0, sampled_unknown = 0;
     npiFsdbTime first_high = 0, last_high = 0;
-    if (!sample_on_clock(clock_sample, aliases, handles, begin, end, max_samples,
-        [&](npiFsdbTime t, const std::map<std::string, std::string>& values) -> bool {
+    ClockSampleScanner scanner(g_fsdb_file, clock_sample);
+    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', max_samples,
+        [&](const ClockSample& sample) -> bool {
+            npiFsdbTime t = sample.time;
+            std::map<std::string, std::string> values = clock_sample_value_map(sample_signals, sample.values);
             SampledEdgeRecord rec;
             rec.time = t;
             rec.values = values;
@@ -318,6 +325,10 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
     std::vector<std::string> aliases, paths;
     fsdbSigVec_t handles;
     if (!build_signal_alias_handles(signals, aliases, paths, handles, error)) return Json();
+    std::vector<ClockSampleSignal> sample_signals;
+    for (size_t i = 0; i < aliases.size(); ++i) {
+        sample_signals.push_back({aliases[i], paths[i], handles[i]});
+    }
     Json rules = args.value("rules", Json::object());
     int max_wait = rules.value("max_wait_cycles", 100);
     bool check_data = rules.value("check_data_stable_when_stalled", false);
@@ -326,8 +337,11 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
     npiFsdbTime stall_begin = 0;
     std::map<std::string, std::string> stall_data;
     Json findings = Json::array();
-    if (!sample_on_clock(clock_sample, aliases, handles, begin, end, args.value("max_samples", 1000000),
-        [&](npiFsdbTime t, const std::map<std::string, std::string>& values) -> bool {
+    ClockSampleScanner scanner(g_fsdb_file, clock_sample);
+    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', args.value("max_samples", 1000000),
+        [&](const ClockSample& sample) -> bool {
+            npiFsdbTime t = sample.time;
+            std::map<std::string, std::string> values = clock_sample_value_map(sample_signals, sample.values);
             ExprTri v = xdebug_waveform::expr_truth_value(values.at("valid"));
             ExprTri r = xdebug_waveform::expr_truth_value(values.at("ready"));
             bool transfer = v == ExprTri::True && r == ExprTri::True;

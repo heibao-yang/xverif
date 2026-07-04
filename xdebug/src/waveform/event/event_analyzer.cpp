@@ -1,4 +1,5 @@
 #include "event_analyzer.h"
+#include "../common/clock_sampling.h"
 #include "../server/fsdb_value_reader.h"
 #include "../server/fsdb_scan_utils.h"
 
@@ -7,50 +8,9 @@
 #include <cctype>
 #include <cstring>
 #include <cstdlib>
-#include <set>
 #include <sstream>
 
 namespace xdebug_waveform {
-
-static bool collect_expr_identifiers(const std::string& expr, std::set<std::string>& out) {
-    out.clear();
-    size_t pos = 0;
-    while (pos < expr.size()) {
-        unsigned char ch = static_cast<unsigned char>(expr[pos]);
-        if (expr[pos] == '\'') {
-            pos++;
-            if (pos < expr.size()) pos++;
-            while (pos < expr.size()) {
-                unsigned char c = static_cast<unsigned char>(expr[pos]);
-                if (!std::isalnum(c) && expr[pos] != '_' && expr[pos] != 'x' && expr[pos] != 'X' &&
-                    expr[pos] != 'z' && expr[pos] != 'Z') break;
-                pos++;
-            }
-            continue;
-        }
-        if (std::isdigit(ch)) {
-            pos++;
-            while (pos < expr.size()) {
-                unsigned char c = static_cast<unsigned char>(expr[pos]);
-                if (!std::isalnum(c) && expr[pos] != '_' && expr[pos] != '\'') break;
-                pos++;
-            }
-            continue;
-        }
-        if (std::isalpha(ch) || expr[pos] == '_') {
-            size_t start = pos++;
-            while (pos < expr.size()) {
-                unsigned char c = static_cast<unsigned char>(expr[pos]);
-                if (!std::isalnum(c) && expr[pos] != '_' && expr[pos] != '.') break;
-                pos++;
-            }
-            out.insert(expr.substr(start, pos - start));
-            continue;
-        }
-        pos++;
-    }
-    return !out.empty();
-}
 
 static std::string strip_value_prefix(const std::string& value) {
     if (value.size() >= 2 && value[0] == '\'' &&
@@ -446,12 +406,6 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
     ExprParser validator(query.expr, dummy_values);
     if (!validator.eval(ignored, error)) return false;
 
-    npiFsdbSigHandle clk = npi_fsdb_sig_by_name(file, clock_sample.clock.c_str(), NULL);
-    if (!clk) {
-        error = "Clock signal not found: " + clock_sample.clock;
-        return false;
-    }
-
     npiFsdbSigHandle rst = nullptr;
     if (!config.rst_n.empty()) {
         rst = npi_fsdb_sig_by_name(file, config.rst_n.c_str(), NULL);
@@ -470,26 +424,10 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
         }
         signal_handles.push_back(sig);
     }
-
-    fsdbSigVec_t all_handles;
-    all_handles.push_back(clk);
-    if (rst) all_handles.push_back(rst);
-    for (auto sig : signal_handles) all_handles.push_back(sig);
-
-    fsdbValVec_t init_values;
-    std::string prev_clk_value;
-    std::string rst_value = "'b1";
-    std::vector<std::string> values(aliases.size(), "'b0");
-    npiFsdbTime init_time = query.begin > 0 ? query.begin - 1 : query.begin;
-    if (npi_fsdb_sig_hdl_vec_value_at(all_handles, init_time, init_values, npiFsdbBinStrVal) &&
-        init_values.size() == all_handles.size()) {
-        size_t idx = 0;
-        prev_clk_value = with_binary_prefix(init_values[idx++]);
-        if (rst) rst_value = with_binary_prefix(init_values[idx++]);
-        for (size_t i = 0; i < aliases.size(); ++i) values[i] = with_binary_prefix(init_values[idx++]);
-    } else {
-        error = "Failed to read initial event signal values";
-        return false;
+    std::vector<ClockSampleSignal> sample_signals;
+    if (rst) sample_signals.push_back({"__rst_n", config.rst_n, rst});
+    for (size_t i = 0; i < aliases.size(); ++i) {
+        sample_signals.push_back({aliases[i], paths[i], signal_handles[i]});
     }
 
     auto process_edge = [&](npiFsdbTime t,
@@ -532,188 +470,30 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
         return true;
     };
 
-    bool sample_before_edge = clock_sample.edge != ClockEdgeKind::Negedge &&
-        clock_sample.sample_point == ClockSamplePointKind::Before;
-
-    auto sample_handles_at = [&](npiFsdbTime t,
-                                 bool before_edge,
-                                 std::string& sampled_rst_value,
-                                 std::vector<std::string>& sampled_values,
-                                 std::string& process_error) -> bool {
-        sampled_values.assign(aliases.size(), "'b0");
-        sampled_rst_value = "'b1";
-        if (!before_edge) {
-            fsdbValVec_t sampled;
-            if (!npi_fsdb_sig_hdl_vec_value_at(all_handles, t, sampled, npiFsdbBinStrVal) ||
-                sampled.size() != all_handles.size()) {
-                process_error = "Failed to sample event signals at clock edge";
-                return false;
-            }
-            size_t idx = 0;
-            prev_clk_value = with_binary_prefix(sampled[idx++]);
-            if (rst) sampled_rst_value = with_binary_prefix(sampled[idx++]);
-            for (size_t i = 0; i < aliases.size(); ++i) sampled_values[i] = with_binary_prefix(sampled[idx++]);
-            return true;
-        }
-
-        size_t idx = 0;
-        for (auto handle : all_handles) {
-            SignalChangeCursor cursor(handle, npiFsdbBinStrVal);
-            if (!cursor.valid()) {
-                process_error = "Failed to create event signal cursor for before-edge sampling";
-                return false;
-            }
-            npiFsdbTime value_time = 0;
-            std::string raw;
-            if (!cursor.prev_before(t, value_time, raw)) {
-                process_error = "Failed to sample event signal before clock edge";
-                return false;
-            }
-            std::string value = with_binary_prefix(raw);
-            if (idx == 0) {
-                prev_clk_value = value;
-            } else if (rst && idx == 1) {
-                sampled_rst_value = value;
-            } else {
-                size_t signal_idx = idx - 1 - (rst ? 1 : 0);
-                if (signal_idx < sampled_values.size()) sampled_values[signal_idx] = value;
-            }
-            ++idx;
-        }
-        return true;
-    };
-
-    auto sample_edge_and_process = [&](npiFsdbTime t, std::string& process_error) -> bool {
-        std::string sampled_rst_value;
-        std::vector<std::string> sampled_values;
-        if (!sample_handles_at(t, sample_before_edge, sampled_rst_value, sampled_values, process_error))
-            return false;
-        return process_edge(t, sampled_rst_value, sampled_values, process_error);
-    };
-
-    if (query.fast_find && query.limit == 1) {
-        std::set<std::string> identifiers;
-        bool fast_path_ok = collect_expr_identifiers(query.expr, identifiers);
-        std::vector<npiFsdbSigHandle> candidate_handles;
-        std::set<npiFsdbSigHandle> seen_handles;
-        auto add_candidate = [&](npiFsdbSigHandle h) {
-            if (h && seen_handles.insert(h).second) candidate_handles.push_back(h);
-        };
-        if (rst) add_candidate(rst);
-        for (const auto& id : identifiers) {
-            auto alias_it = std::find(aliases.begin(), aliases.end(), id);
-            if (alias_it != aliases.end()) {
-                size_t idx = static_cast<size_t>(alias_it - aliases.begin());
-                add_candidate(signal_handles[idx]);
-                continue;
-            }
-            auto field_it = config.fields.find(id);
-            if (field_it != config.fields.end()) {
-                fast_path_ok = false;
-                break;
-            }
-            fast_path_ok = false;
-            break;
-        }
-
-        if (fast_path_ok && !candidate_handles.empty()) {
-            ClockSampleTimeResolver resolver(file, clock_sample);
-            if (resolver.valid(error)) {
-                std::set<npiFsdbTime> sampled_edges;
-                ClockSamplePoint point;
-                if (resolver.find_next_sample(query.begin, point, error) && point.sample_time <= query.end) {
-                    sampled_edges.insert(point.sample_time);
-                    if (!sample_edge_and_process(point.sample_time, error)) return false;
-                    if (!records.empty()) return true;
+    ClockSampleScanner scanner(file, clock_sample);
+    int sample_count = 0;
+    bool truncated = false;
+    if (!scanner.scan(sample_signals, query.begin, query.end, npiFsdbBinStrVal, 'b', -1,
+        [&](const ClockSample& sample) -> bool {
+            size_t offset = 0;
+            std::string sampled_rst_value = "'b1";
+            if (rst) {
+                if (sample.values.empty()) {
+                    error = "Failed to sample reset signal";
+                    return false;
                 }
-
-                TimeBasedVcIterGuard candidate_guard;
-                npiFsdbTimeBasedVcIter& candidate_iter = candidate_guard.iter();
-                for (auto sig : candidate_handles) candidate_iter.add(sig);
-                candidate_guard.start(query.begin, query.end);
-
-                npiFsdbTime curr_time = 0;
-                npiFsdbSigHandle changed_sig = nullptr;
-                while (candidate_iter.iter_next(curr_time, changed_sig) > 0) {
-                    if (!resolver.find_next_sample(curr_time, point, error)) break;
-                    if (point.sample_time > query.end) break;
-                    if (!sampled_edges.insert(point.sample_time).second) continue;
-                    if (!sample_edge_and_process(point.sample_time, error)) return false;
-                    if (!records.empty()) return true;
-                }
-                return true;
+                sampled_rst_value = sample.values[0];
+                offset = 1;
             }
-        }
+            std::vector<std::string> sampled_values(aliases.size(), "'b0");
+            for (size_t i = 0; i < aliases.size() && offset + i < sample.values.size(); ++i) {
+                sampled_values[i] = sample.values[offset + i];
+            }
+            if (!process_edge(sample.time, sampled_rst_value, sampled_values, error)) return false;
+            return query.limit <= 0 || static_cast<int>(records.size()) < query.limit;
+        }, error, sample_count, truncated)) {
+        return false;
     }
-
-    TimeBasedVcIterGuard guard;
-    npiFsdbTimeBasedVcIter& iter = guard.iter();
-    iter.add(clk);
-    if (rst) iter.add(rst);
-    for (auto sig : signal_handles) iter.add(sig);
-    guard.start(query.begin, query.end);
-
-    bool have_group = false;
-    bool clk_changed = false;
-    bool target_edge = false;
-    npiFsdbTime group_time = 0;
-    std::string group_before_rst_value = rst_value;
-    std::vector<std::string> group_before_values = values;
-
-    auto finish_group = [&]() -> bool {
-        if (!have_group || !clk_changed || !target_edge) return true;
-        const std::string& sampled_rst_value = sample_before_edge ? group_before_rst_value : rst_value;
-        const std::vector<std::string>& sampled_values = sample_before_edge ? group_before_values : values;
-        if (!process_edge(group_time, sampled_rst_value, sampled_values, error)) return false;
-        return query.limit <= 0 || static_cast<int>(records.size()) < query.limit;
-    };
-
-    npiFsdbTime curr_time = 0;
-    npiFsdbSigHandle changed_sig = nullptr;
-    bool keep_scanning = true;
-    while (keep_scanning && iter.iter_next(curr_time, changed_sig) > 0) {
-        if (!have_group) {
-            have_group = true;
-            group_time = curr_time;
-            group_before_rst_value = rst_value;
-            group_before_values = values;
-        } else if (curr_time != group_time) {
-            keep_scanning = finish_group();
-            if (!keep_scanning) break;
-            group_time = curr_time;
-            clk_changed = false;
-            target_edge = false;
-            group_before_rst_value = rst_value;
-            group_before_values = values;
-        }
-
-        npiFsdbValue val;
-        val.format = npiFsdbBinStrVal;
-        std::string val_str;
-        if (iter.get_value(val) && val.value.str) val_str = with_binary_prefix(val.value.str);
-        else continue;
-
-        if (changed_sig == clk) {
-            TriValue old_clk = truth_value(prev_clk_value);
-            TriValue new_clk = truth_value(val_str);
-            target_edge = clock_edge_transition_matches(
-                clock_sample.edge,
-                old_clk == TriValue::True,
-                new_clk == TriValue::True);
-            prev_clk_value = val_str;
-            clk_changed = true;
-        } else if (rst && changed_sig == rst) {
-            rst_value = val_str;
-        } else {
-            for (size_t i = 0; i < signal_handles.size(); ++i) {
-                if (signal_handles[i] == changed_sig) {
-                    values[i] = val_str;
-                    break;
-                }
-            }
-        }
-    }
-    if (keep_scanning) finish_group();
 
     if (!error.empty()) {
         return false;

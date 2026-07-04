@@ -89,35 +89,6 @@ std::string sample_bits_from_raw(std::string text) {
     return bits.empty() ? "x" : bits;
 }
 
-bool collect_signal_values_before(npiFsdbFileHandle file,
-                                  const std::vector<std::string>& signals,
-                                  npiFsdbTime time,
-                                  std::map<std::string, StreamValue>& values,
-                                  std::string& error) {
-    values.clear();
-    for (const auto& signal : signals) {
-        npiFsdbSigHandle handle = npi_fsdb_sig_by_name(file, signal.c_str(), NULL);
-        if (!handle) {
-            error = "signal not found: " + signal;
-            return false;
-        }
-        SignalChangeCursor cursor(handle, npiFsdbBinStrVal);
-        if (!cursor.valid()) {
-            error = "failed to create signal cursor: " + signal;
-            return false;
-        }
-        npiFsdbTime value_time = 0;
-        std::string raw;
-        if (!cursor.prev_before(time, value_time, raw)) {
-            error = "failed to read signal before sample point: " + signal;
-            return false;
-        }
-        std::string bits = sample_bits_from_raw(raw);
-        values[signal] = StreamValue{bits, bits.find_first_of("xz") == std::string::npos};
-    }
-    return true;
-}
-
 Json fields_json(const std::map<std::string, StreamValue>& fields) {
     Json out = Json::object();
     for (const auto& kv : fields) out[kv.first] = stream_value_json(kv.second);
@@ -273,46 +244,59 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
         error = "clock expression has no signal dependency";
         return false;
     }
-    std::vector<npiFsdbTime> edge_times;
-    std::set<npiFsdbTime> candidate_times;
+    std::vector<ClockSampleSignal> clock_signals;
     for (const auto& sig_name : clock_deps) {
         npiFsdbSigHandle sig = npi_fsdb_sig_by_name(file, sig_name.c_str(), NULL);
-        SignalChangeCursor cursor(sig, npiFsdbBinStrVal);
-        if (!cursor.valid()) {
-            error = "failed to create clock dependency cursor: " + sig_name;
+        if (!sig) {
+            error = "signal not found: " + sig_name;
             return false;
         }
-        npiFsdbTime change_time = 0;
-        std::string raw_value;
-        if (!cursor.first_at_or_after(options.begin, change_time, raw_value)) continue;
-        if (change_time >= options.begin && change_time <= options.end) candidate_times.insert(change_time);
-        while (cursor.next(change_time, raw_value)) {
-            if (change_time > options.end) break;
-            if (change_time >= options.begin) candidate_times.insert(change_time);
-        }
+        clock_signals.push_back({sig_name, sig_name, sig});
     }
-    bool have_prev = false;
-    bool prev_known = false;
-    bool prev_one = false;
-    for (const auto& change_time : candidate_times) {
-        std::map<std::string, StreamValue> clock_values;
-        if (!stream_collect_signal_values(file, clock_deps, change_time, clock_values, error)) return false;
-        StreamValue clock_value;
-        std::string eval_error;
-        if (!compiled.clock.evaluate(clock_values, clock_value, eval_error)) {
-            error = "clock evaluate failed: " + eval_error;
+    std::vector<ClockSampleSignal> sample_signals;
+    for (const auto& sig_name : deps) {
+        npiFsdbSigHandle sig = npi_fsdb_sig_by_name(file, sig_name.c_str(), NULL);
+        if (!sig) {
+            error = "signal not found: " + sig_name;
             return false;
         }
-        bool cur_known = clock_value.known;
-        bool cur_one = stream_value_truthy(clock_value, false);
-        bool edge_match = false;
-        if (have_prev && prev_known && cur_known) {
-            edge_match = clock_edge_transition_matches(clock_sample.edge, prev_one, cur_one);
-        }
-        if (edge_match) edge_times.push_back(change_time);
-        prev_known = cur_known;
-        prev_one = cur_one;
-        have_prev = true;
+        sample_signals.push_back({sig_name, sig_name, sig});
+    }
+    std::vector<ClockSample> sampled_edges;
+    ClockExpressionSampleScanner scanner(file, clock_sample.edge, clock_sample.sample_point);
+    int sample_count = 0;
+    bool sample_truncated = false;
+    if (!scanner.scan(clock_signals, sample_signals, options.begin, options.end,
+        npiFsdbBinStrVal, 'b', -1,
+        [&](const std::map<std::string, std::string>& raw_values,
+            bool& known,
+            bool& one,
+            std::string& eval_error) -> bool {
+            std::map<std::string, StreamValue> clock_values;
+            for (const auto& sig_name : clock_deps) {
+                auto it = raw_values.find(sig_name);
+                if (it == raw_values.end()) {
+                    eval_error = "clock dependency missing: " + sig_name;
+                    return false;
+                }
+                std::string bits = sample_bits_from_raw(it->second);
+                clock_values[sig_name] = StreamValue{bits, bits.find_first_of("xz") == std::string::npos};
+            }
+            StreamValue clock_value;
+            std::string expr_error;
+            if (!compiled.clock.evaluate(clock_values, clock_value, expr_error)) {
+                eval_error = "clock evaluate failed: " + expr_error;
+                return false;
+            }
+            known = clock_value.known;
+            one = stream_value_truthy(clock_value, false);
+            return true;
+        },
+        [&](const ClockSample& sample) -> bool {
+            sampled_edges.push_back(sample);
+            return true;
+        }, error, sample_count, sample_truncated)) {
+        return false;
     }
 
     int packet_index = 0;
@@ -396,17 +380,14 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
     };
 
     int cycle = 0;
-    bool sample_before_edge =
-        clock_sample.edge != ClockEdgeKind::Negedge &&
-        clock_sample.sample_point == ClockSamplePointKind::Before;
-    for (size_t edge_index = 0; edge_index < edge_times.size(); ++edge_index) {
-        npiFsdbTime t = edge_times[edge_index];
+    for (const auto& sample : sampled_edges) {
+        npiFsdbTime t = sample.time;
         analysis.clock_edges++;
         std::map<std::string, StreamValue> values;
-        if (sample_before_edge) {
-            if (!collect_signal_values_before(file, deps, t, values, error)) return false;
-        } else {
-            if (!stream_collect_signal_values(file, deps, t, values, error)) return false;
+        for (size_t i = 0; i < deps.size(); ++i) {
+            std::string raw = i < sample.values.size() ? sample.values[i] : "'bx";
+            std::string bits = sample_bits_from_raw(raw);
+            values[deps[i]] = StreamValue{bits, bits.find_first_of("xz") == std::string::npos};
         }
 
         auto eval = [&](StreamExpression& expr, const std::string& label) -> StreamValue {
@@ -560,7 +541,8 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
 
         cycle++;
     }
-    finish_stall(edge_times.empty() ? options.end : edge_times.back(), cycle);
+    if (sample_truncated) analysis.truncated = true;
+    finish_stall(sampled_edges.empty() ? options.end : sampled_edges.back().time, cycle);
     finish_packet(single_packet, true);
     for (auto& kv : channel_packets) finish_packet(kv.second, true);
     std::sort(analysis.packets.begin(), analysis.packets.end(),

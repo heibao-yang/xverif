@@ -451,102 +451,6 @@ Json ai_signal_stability(const Json& args, std::string& error) {
     return data;
 }
 
-bool sample_on_clock(const ClockSampleSpec& clock_sample,
-                            const std::vector<std::string>& aliases,
-                            const fsdbSigVec_t& signal_handles,
-                            npiFsdbTime begin,
-                            npiFsdbTime end,
-                            int max_samples,
-                            std::function<bool(npiFsdbTime, const std::map<std::string, std::string>&)> cb,
-    std::string& error,
-    int& sample_count,
-    bool& truncated) {
-    sample_count = 0;
-    truncated = false;
-    npiFsdbSigHandle clk = npi_fsdb_sig_by_name(g_fsdb_file, clock_sample.clock.c_str(), NULL);
-    if (!clk) {
-        error = "Clock signal not found: " + clock_sample.clock;
-        return false;
-    }
-    fsdbSigVec_t all_handles;
-    all_handles.push_back(clk);
-    for (auto h : signal_handles) all_handles.push_back(h);
-    fsdbValVec_t init_values;
-    npiFsdbTime init_time = begin > 0 ? begin - 1 : begin;
-    if (!npi_fsdb_sig_hdl_vec_value_at(all_handles, init_time, init_values, npiFsdbBinStrVal) ||
-        init_values.size() != all_handles.size()) {
-        error = "Failed to read initial sampled values";
-        return false;
-    }
-    std::string prev_clk = with_value_prefix(init_values[0], 'b');
-    std::vector<std::string> values(signal_handles.size(), "'b0");
-    for (size_t i = 0; i < signal_handles.size(); ++i) values[i] = with_value_prefix(init_values[i + 1], 'b');
-
-    TimeBasedVcIterGuard guard;
-    npiFsdbTimeBasedVcIter& iter = guard.iter();
-    iter.add(clk);
-    for (auto h : signal_handles) iter.add(h);
-    guard.start(begin, end);
-
-    bool have_group = false;
-    bool edge = false;
-    npiFsdbTime group_time = 0;
-    std::vector<std::string> group_start_values = values;
-    bool sample_before_edge =
-        clock_sample.edge != ClockEdgeKind::Negedge &&
-        clock_sample.sample_point == ClockSamplePointKind::Before;
-    auto finish_group = [&]() -> bool {
-        if (!have_group || !edge) return true;
-        std::map<std::string, std::string> value_map;
-        const std::vector<std::string>& sampled_values = sample_before_edge ? group_start_values : values;
-        for (size_t i = 0; i < aliases.size(); ++i) value_map[aliases[i]] = sampled_values[i];
-        ++sample_count;
-        if (max_samples >= 0 && sample_count > max_samples) {
-            truncated = true;
-            return false;
-        }
-        return cb(group_time, value_map);
-    };
-
-    npiFsdbTime curr_time = 0;
-    npiFsdbSigHandle changed_sig = nullptr;
-    bool keep = true;
-    while (keep && iter.iter_next(curr_time, changed_sig) > 0) {
-        if (!have_group) {
-            have_group = true;
-            group_time = curr_time;
-            group_start_values = values;
-        } else if (curr_time != group_time) {
-            keep = finish_group();
-            if (!keep) break;
-            group_time = curr_time;
-            edge = false;
-            group_start_values = values;
-        }
-        npiFsdbValue val;
-        val.format = npiFsdbBinStrVal;
-        if (!iter.get_value(val) || !val.value.str) continue;
-        std::string v = with_value_prefix(val.value.str, 'b');
-        if (changed_sig == clk) {
-            ExprTri old_clk = xdebug_waveform::expr_truth_value(prev_clk);
-            ExprTri new_clk = xdebug_waveform::expr_truth_value(v);
-            edge = clock_edge_transition_matches(
-                clock_sample.edge,
-                old_clk == ExprTri::True,
-                new_clk == ExprTri::True);
-            prev_clk = v;
-        } else {
-            for (size_t i = 0; i < signal_handles.size(); ++i) {
-                if (signal_handles[i] == changed_sig) {
-                    values[i] = v;
-                }
-            }
-        }
-    }
-    if (keep) finish_group();
-    return error.empty();
-}
-
 Json ai_expr_eval_at(const Json& args, std::string& error) {
     std::string time_s = args.value("at", args.value("time", std::string()));
     std::string expr = server_compact_expr_ws(args.value("expr", std::string()));
@@ -561,45 +465,34 @@ Json ai_expr_eval_at(const Json& args, std::string& error) {
     std::vector<std::string> aliases, paths;
     fsdbSigVec_t handles;
     if (!build_signal_alias_handles(args["signals"], aliases, paths, handles, error)) return Json();
-    ClockSampleTimeResolver resolver(g_fsdb_file, clock_sample);
-    std::string resolver_error;
-    if (!resolver.valid(resolver_error)) {
-        error = resolver_error;
+
+    std::vector<ClockPointSignal> point_signals;
+    for (size_t i = 0; i < aliases.size(); ++i) {
+        point_signals.push_back({aliases[i], paths[i], handles[i]});
+    }
+    ClockPointResult point_result;
+    ClockPointSampler sampler(g_fsdb_file, clock_sample);
+    std::string sampler_error;
+    if (!sampler.sample(t, point_signals, npiFsdbBinStrVal, 'b', point_result, sampler_error)) {
+        error = sampler_error;
         return Json();
     }
-    ClockEdgeKind actual_edge = ClockEdgeKind::Negedge;
-    bool clock_edge_hit = resolver.is_clock_edge_at(t, &actual_edge);
-    ClockEdgeKind target_edge = ClockEdgeKind::Negedge;
-    bool target_edge_hit = resolver.is_target_edge_at(t, &target_edge);
-    ClockSamplePoint prev_point, next_point;
-    bool have_prev = resolver.find_previous_sample(t, prev_point, resolver_error);
-    bool have_next = resolver.find_next_sample(t + 1, next_point, resolver_error);
 
-    auto read_values = [&](npiFsdbTime sample_time, bool before, Json& operands, ExprTri& result) -> bool {
+    auto eval_cells = [&](const char* column, Json& operands, ExprTri& result, bool required) -> bool {
         std::map<std::string, std::string> value_map;
         operands = Json::array();
-        for (size_t i = 0; i < aliases.size(); ++i) {
-            std::string v;
-            if (before) {
-                SignalChangeCursor cursor(handles[i], npiFsdbBinStrVal);
-                npiFsdbTime vt = 0;
-                if (!cursor.prev_before(sample_time, vt, v)) {
-                    error = "Failed to read expression operand before sample point: " + paths[i];
-                    return false;
-                }
-            } else {
-                fsdbValVec_t values;
-                fsdbSigVec_t one;
-                one.push_back(handles[i]);
-                if (!npi_fsdb_sig_hdl_vec_value_at(one, sample_time, values, npiFsdbBinStrVal) || values.size() != 1) {
-                    error = "Failed to read expression operand: " + paths[i];
-                    return false;
-                }
-                v = values[0];
+        for (size_t i = 0; i < point_result.rows.size(); ++i) {
+            const ClockPointCell* cell = &point_result.rows[i].middle;
+            if (std::string(column) == "before") cell = &point_result.rows[i].before;
+            else if (std::string(column) == "after") cell = &point_result.rows[i].after;
+            if (cell->status != "ok") {
+                if (required) error = "Failed to read expression operand: " + paths[i];
+                return false;
             }
-            v = with_value_prefix(v, 'b');
-            value_map[aliases[i]] = v;
-            operands.push_back({{"alias", aliases[i]}, {"signal", paths[i]}, {"value", wave_value_json(v, 'b')}});
+            value_map[aliases[i]] = cell->raw_value;
+            operands.push_back({{"alias", aliases[i]},
+                                {"signal", paths[i]},
+                                {"value", wave_value_json(cell->raw_value, 'b')}});
         }
         if (!xdebug_waveform::eval_event_expression(expr, value_map, result, error)) return false;
         return true;
@@ -607,14 +500,14 @@ Json ai_expr_eval_at(const Json& args, std::string& error) {
 
     Json operands;
     ExprTri result = ExprTri::Unknown;
-    bool middle_before = target_edge_hit && clock_sample.edge != ClockEdgeKind::Negedge &&
-                         clock_sample.sample_point == ClockSamplePointKind::Before;
-    if (!read_values(t, middle_before, operands, result)) return Json();
+    if (!eval_cells("middle", operands, result, true)) return Json();
     Json before_operands = Json::array(), after_operands = Json::array();
     ExprTri before_result = ExprTri::Unknown, after_result = ExprTri::Unknown;
-    bool have_before_result = have_prev && read_values(prev_point.sample_time, false, before_operands, before_result);
+    bool have_before_result = point_result.context.has_previous_sample_time &&
+        eval_cells("before", before_operands, before_result, false);
     if (!have_before_result && !error.empty()) return Json();
-    bool have_after_result = have_next && read_values(next_point.sample_time, false, after_operands, after_result);
+    bool have_after_result = point_result.context.has_next_sample_time &&
+        eval_cells("after", after_operands, after_result, false);
     if (!have_after_result && !error.empty()) return Json();
     Json data;
     data["summary"] = {
@@ -622,9 +515,9 @@ Json ai_expr_eval_at(const Json& args, std::string& error) {
         {"time", format_time(t)},
         {"status", xdebug_waveform::expr_tri_text(result)},
         {"known", result != ExprTri::Unknown},
-        {"clock_edge_hit", clock_edge_hit},
-        {"target_edge_hit", target_edge_hit},
-        {"bracket_complete", have_prev && have_next}
+        {"clock_edge_hit", point_result.context.clock_edge_hit},
+        {"target_edge_hit", point_result.context.target_edge_hit},
+        {"bracket_complete", point_result.context.bracket_complete}
     };
     data["expr"] = expr;
     data["time"] = format_time(t);
@@ -636,14 +529,17 @@ Json ai_expr_eval_at(const Json& args, std::string& error) {
         {"clock", clock_sample.clock},
         {"edge", clock_edge_kind_text(clock_sample.edge)},
         {"requested_time", format_time(t)},
-        {"clock_edge_hit", clock_edge_hit},
-        {"clock_edge_kind", clock_edge_hit ? Json(clock_edge_kind_text(actual_edge)) : Json(nullptr)},
-        {"target_edge_hit", target_edge_hit},
-        {"sample_point_applied", target_edge_hit && clock_sample.edge != ClockEdgeKind::Negedge
+        {"clock_edge_hit", point_result.context.clock_edge_hit},
+        {"clock_edge_kind", point_result.context.has_clock_edge_kind
+            ? Json(clock_edge_kind_text(point_result.context.clock_edge_kind)) : Json(nullptr)},
+        {"target_edge_hit", point_result.context.target_edge_hit},
+        {"sample_point_applied", point_result.context.target_edge_hit && clock_sample.edge != ClockEdgeKind::Negedge
             ? Json(clock_sample_point_text(clock_sample.sample_point)) : Json(nullptr)},
-        {"previous_sample_time", have_prev ? Json(format_time(prev_point.sample_time)) : Json(nullptr)},
-        {"next_sample_time", have_next ? Json(format_time(next_point.sample_time)) : Json(nullptr)},
-        {"bracket_complete", have_prev && have_next}
+        {"previous_sample_time", point_result.context.has_previous_sample_time
+            ? Json(format_time(point_result.context.previous_sample_time)) : Json(nullptr)},
+        {"next_sample_time", point_result.context.has_next_sample_time
+            ? Json(format_time(point_result.context.next_sample_time)) : Json(nullptr)},
+        {"bracket_complete", point_result.context.bracket_complete}
     };
     data["sample_rows"] = Json::array();
     for (size_t i = 0; i < aliases.size(); ++i) {
@@ -692,6 +588,10 @@ Json ai_window_verify(const Json& args, std::string& error) {
     std::vector<std::string> aliases, paths;
     fsdbSigVec_t handles;
     if (!build_signal_alias_handles(signal_union, aliases, paths, handles, error)) return Json();
+    std::vector<ClockSampleSignal> sample_signals;
+    for (size_t i = 0; i < aliases.size(); ++i) {
+        sample_signals.push_back({aliases[i], paths[i], handles[i]});
+    }
 
     struct CondState { std::string expr; std::string mode; int pass = 0; int fail = 0; int unknown = 0; };
     std::vector<CondState> states;
@@ -704,8 +604,10 @@ Json ai_window_verify(const Json& args, std::string& error) {
 
     int samples = 0;
     bool truncated = false;
-    bool ok = sample_on_clock(clock_sample, aliases, handles, begin, end, max_samples,
-        [&](npiFsdbTime, const std::map<std::string, std::string>& values) -> bool {
+    ClockSampleScanner scanner(g_fsdb_file, clock_sample);
+    bool ok = scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', max_samples,
+        [&](const ClockSample& sample) -> bool {
+            std::map<std::string, std::string> values = clock_sample_value_map(sample_signals, sample.values);
             bool has_eventually = false;
             bool all_eventually_seen = true;
             for (auto& st : states) {
@@ -830,6 +732,10 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
     std::vector<std::string> aliases, paths;
     fsdbSigVec_t handles;
     if (!build_signal_alias_handles(signals, aliases, paths, handles, error)) return Json();
+    std::vector<ClockSampleSignal> sample_signals;
+    for (size_t i = 0; i < aliases.size(); ++i) {
+        sample_signals.push_back({aliases[i], paths[i], handles[i]});
+    }
 
     int max_samples = args.value("max_samples", 1000000);
     int samples = 0, known = 0, unknown = 0;
@@ -843,8 +749,11 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
     npiFsdbTime first_high_time = 0, last_high_time = 0, last_fall_time = 0;
     bool prev_high = false;
 
-    if (!sample_on_clock(clock_sample, aliases, handles, begin, end, max_samples,
-        [&](npiFsdbTime t, const std::map<std::string, std::string>& values) -> bool {
+    ClockSampleScanner scanner(g_fsdb_file, clock_sample);
+    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', max_samples,
+        [&](const ClockSample& sample) -> bool {
+            npiFsdbTime t = sample.time;
+            std::map<std::string, std::string> values = clock_sample_value_map(sample_signals, sample.values);
             auto it = values.find("sig");
             if (it == values.end() || contains_xz_value(it->second)) {
                 unknown++;
@@ -970,6 +879,10 @@ Json ai_counter_statistics(const Json& args, std::string& error) {
     std::vector<std::string> aliases, paths;
     fsdbSigVec_t handles;
     if (!build_signal_alias_handles(signal_union, aliases, paths, handles, error)) return Json();
+    std::vector<ClockSampleSignal> sample_signals;
+    for (size_t i = 0; i < aliases.size(); ++i) {
+        sample_signals.push_back({aliases[i], paths[i], handles[i]});
+    }
 
     int max_samples = args.value("max_samples", 1000000);
     int samples = 0;
@@ -981,8 +894,11 @@ Json ai_counter_statistics(const Json& args, std::string& error) {
     npiFsdbTime min_first_time = 0, max_first_time = 0;
     long double sum = 0.0;
 
-    if (!sample_on_clock(clock_sample, aliases, handles, begin, end, max_samples,
-        [&](npiFsdbTime t, const std::map<std::string, std::string>& values) -> bool {
+    ClockSampleScanner scanner(g_fsdb_file, clock_sample);
+    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', max_samples,
+        [&](const ClockSample& sample) -> bool {
+            npiFsdbTime t = sample.time;
+            std::map<std::string, std::string> values = clock_sample_value_map(sample_signals, sample.values);
             ExprTri valid = ExprTri::Unknown;
             std::string eval_error;
             if (!xdebug_waveform::eval_event_expression(valid_expr, values, valid, eval_error)) {

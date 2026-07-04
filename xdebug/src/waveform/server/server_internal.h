@@ -127,13 +127,6 @@ bool build_signal_alias_handles(const Json& signals, std::vector<std::string>& a
                                 std::string& error);
 Json ai_signal_changes(const Json& args, std::string& error);
 Json ai_signal_stability(const Json& args, std::string& error);
-bool sample_on_clock(const ClockSampleSpec& clock_sample,
-                     const std::vector<std::string>& aliases,
-                     const fsdbSigVec_t& signal_handles, npiFsdbTime begin,
-                     npiFsdbTime end, int max_samples,
-                     std::function<bool(npiFsdbTime,
-                                        const std::map<std::string, std::string>&)> callback,
-                     std::string& error, int& sample_count, bool& truncated);
 Json ai_expr_eval_at(const Json& args, std::string& error);
 Json ai_window_verify(const Json& args, std::string& error);
 Json ai_signal_statistics(const Json& args, std::string& error);

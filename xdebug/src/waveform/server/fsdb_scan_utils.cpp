@@ -8,6 +8,7 @@
 namespace xdebug_waveform {
 
 std::string value_with_prefix(const std::string& value, char prefix) {
+    if (prefix == '\0') return value;
     if (value.size() >= 2 && value[0] == '\'') return value;
     char p = static_cast<char>(std::tolower(static_cast<unsigned char>(prefix)));
     return std::string("'") + p + value;

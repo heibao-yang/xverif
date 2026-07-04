@@ -1,19 +1,14 @@
 #include "clock_point_query.h"
 
 #include "core/npi/time_contract.h"
-#include "waveform/server/fsdb_scan_utils.h"
 #include "waveform/value/logic_value.h"
 
 #include "npi_L1.h"
-
-#include <cctype>
 
 namespace xdebug_design {
 namespace {
 
 using xdebug_waveform::ClockEdgeKind;
-using xdebug_waveform::ClockSamplePoint;
-using xdebug_waveform::ClockSamplePointKind;
 
 Json err(const char* code, const std::string& message) {
     return Json{{"error", code}, {"message", message}};
@@ -26,100 +21,44 @@ Json invalid_arg(const std::string& arg, const std::string& expected) {
                 {"message", "invalid clock sampling argument: " + arg}};
 }
 
-std::string trim_copy(const std::string& text) {
-    size_t begin = 0;
-    while (begin < text.size() && std::isspace(static_cast<unsigned char>(text[begin]))) ++begin;
-    size_t end = text.size();
-    while (end > begin && std::isspace(static_cast<unsigned char>(text[end - 1]))) --end;
-    return text.substr(begin, end - begin);
-}
-
-std::string with_value_prefix(const std::string& raw, char fmt) {
-    std::string text = trim_copy(raw);
-    if (text.size() >= 2 && text[0] == '\'') return text;
-    return std::string("'") + static_cast<char>(std::tolower(static_cast<unsigned char>(fmt))) + text;
-}
-
 Json value_object(const std::string& raw, char fmt) {
     return xdebug_waveform::logic_value_json(
         xdebug_waveform::logic_value_from_fsdb_raw(raw, fmt));
-}
-
-bool read_current_at(const PointSignalSpec& sig,
-                     npiFsdbFileHandle fsdb,
-                     npiFsdbTime time,
-                     npiFsdbValType value_type,
-                     char prefix,
-                     Json& cell) {
-    std::string raw;
-    if (!npi_fsdb_sig_value_at(fsdb,
-                               sig.path.c_str(),
-                               time,
-                               raw,
-                               value_type)) {
-        cell = {{"status", "signal_not_found"}, {"value", nullptr}};
-        return false;
-    }
-    raw = with_value_prefix(raw, prefix);
-    cell = {{"status", "ok"}, {"value", value_object(raw, prefix)}};
-    return true;
-}
-
-bool read_before_at(const PointSignalSpec& sig,
-                    npiFsdbFileHandle fsdb,
-                    npiFsdbTime time,
-                    npiFsdbValType value_type,
-                    char prefix,
-                    Json& cell) {
-    npiFsdbSigHandle h = npi_fsdb_sig_by_name(fsdb, sig.path.c_str(), nullptr);
-    if (!h) {
-        cell = {{"status", "signal_not_found"}, {"value", nullptr}};
-        return false;
-    }
-    xdebug_waveform::SignalChangeCursor cursor(h, value_type);
-    npiFsdbTime value_time = 0;
-    std::string raw;
-    if (!cursor.prev_before(time, value_time, raw)) {
-        cell = {{"status", "missing_value"}, {"value", nullptr}};
-        return false;
-    }
-    raw = with_value_prefix(raw, prefix);
-    cell = {{"status", "ok"},
-            {"time", xdebug_core::format_time(fsdb, value_time)},
-            {"value", value_object(raw, prefix)}};
-    return true;
 }
 
 Json missing_edge_cell() {
     return Json{{"status", "missing_edge"}, {"value", nullptr}};
 }
 
-Json sample_values_at(const std::vector<PointSignalSpec>& signals,
-                      npiFsdbFileHandle fsdb,
-                      npiFsdbTime time,
-                      bool before,
-                      npiFsdbValType value_type,
-                      char prefix) {
-    Json rows = Json::array();
-    for (const auto& sig : signals) {
-        Json cell;
-        if (before) read_before_at(sig, fsdb, time, value_type, prefix, cell);
-        else read_current_at(sig, fsdb, time, value_type, prefix, cell);
-        Json row = {{"signal", sig.label.empty() ? sig.path : sig.label},
-                    {"path", sig.path},
-                    {"time", xdebug_core::format_time(fsdb, time)},
-                    {"cell", cell}};
-        rows.push_back(row);
+Json cell_json(npiFsdbFileHandle fsdb, const xdebug_waveform::ClockPointCell& cell, char prefix) {
+    if (cell.status == "missing_edge") return missing_edge_cell();
+    Json out = {{"status", cell.status.empty() ? "missing_value" : cell.status}};
+    if (cell.status == "ok") {
+        if (cell.has_value_time) out["time"] = xdebug_core::format_time(fsdb, cell.value_time);
+        out["value"] = value_object(cell.raw_value, prefix);
+    } else {
+        out["value"] = nullptr;
     }
-    return rows;
+    return out;
 }
 
-Json cell_for_signal(const Json& sample_rows, const std::string& path) {
-    if (!sample_rows.is_array()) return missing_edge_cell();
-    for (const auto& row : sample_rows) {
-        if (row.value("path", std::string()) == path) return row.value("cell", Json::object());
+Json sample_rows_json(npiFsdbFileHandle fsdb,
+                      const std::vector<xdebug_waveform::ClockPointRow>& rows,
+                      const char* key,
+                      const Json& time,
+                      char prefix) {
+    if (time.is_null()) return Json::array();
+    Json out = Json::array();
+    for (const auto& row : rows) {
+        const xdebug_waveform::ClockPointCell* cell = &row.middle;
+        if (std::string(key) == "before") cell = &row.before;
+        else if (std::string(key) == "after") cell = &row.after;
+        out.push_back({{"signal", row.label},
+                       {"path", row.path},
+                       {"time", time},
+                       {"cell", cell_json(fsdb, *cell, prefix)}});
     }
-    return Json{{"status", "signal_not_found"}, {"value", nullptr}};
+    return out;
 }
 
 } // namespace
@@ -180,67 +119,63 @@ bool build_clock_point_query(npiFsdbFileHandle fsdb,
                              char value_prefix,
                              ClockPointQueryResult& out,
                              Json& error) {
-    xdebug_waveform::ClockSampleTimeResolver resolver(fsdb, spec);
-    std::string resolver_error;
-    if (!resolver.valid(resolver_error)) {
-        error = err("INVALID_REQUEST", resolver_error);
+    (void)formatted_requested_time;
+    std::vector<xdebug_waveform::ClockPointSignal> point_signals;
+    point_signals.reserve(signals.size());
+    for (const auto& sig : signals) {
+        point_signals.push_back({sig.label, sig.path,
+            npi_fsdb_sig_by_name(fsdb, sig.path.c_str(), nullptr)});
+    }
+
+    xdebug_waveform::ClockPointResult point_result;
+    std::string sampler_error;
+    xdebug_waveform::ClockPointSampler sampler(fsdb, spec);
+    if (!sampler.sample(requested_time, point_signals, value_type, value_prefix,
+                        point_result, sampler_error)) {
+        error = err("INVALID_REQUEST", sampler_error);
         return false;
     }
 
-    ClockEdgeKind actual_edge = ClockEdgeKind::Negedge;
-    bool clock_edge_hit = resolver.is_clock_edge_at(requested_time, &actual_edge);
-    ClockEdgeKind target_kind = ClockEdgeKind::Negedge;
-    bool target_edge_hit = resolver.is_target_edge_at(requested_time, &target_kind);
-
-    ClockSamplePoint prev_point;
-    ClockSamplePoint next_point;
-    bool have_prev = resolver.find_previous_sample(requested_time, prev_point, resolver_error);
-    bool have_next = resolver.find_next_sample(requested_time + 1, next_point, resolver_error);
-    bool edge_sample_before =
-        spec.edge != ClockEdgeKind::Negedge &&
-        spec.sample_point == ClockSamplePointKind::Before;
-
-    Json before_rows = have_prev
-        ? sample_values_at(signals, fsdb, prev_point.sample_time, edge_sample_before, value_type, value_prefix)
-        : Json::array();
-    bool middle_before = target_edge_hit &&
-        edge_sample_before;
-    Json middle_rows = sample_values_at(signals, fsdb, requested_time, middle_before, value_type, value_prefix);
-    Json after_rows = have_next
-        ? sample_values_at(signals, fsdb, next_point.sample_time, edge_sample_before, value_type, value_prefix)
-        : Json::array();
-
     Json rows = Json::array();
-    for (const auto& sig : signals) {
+    for (const auto& row_result : point_result.rows) {
         Json row;
-        row["signal"] = sig.label.empty() ? sig.path : sig.label;
-        row["path"] = sig.path;
-        row["before"] = have_prev ? cell_for_signal(before_rows, sig.path) : missing_edge_cell();
-        row["middle"] = cell_for_signal(middle_rows, sig.path);
-        row["after"] = have_next ? cell_for_signal(after_rows, sig.path) : missing_edge_cell();
+        row["signal"] = row_result.label;
+        row["path"] = row_result.path;
+        row["before"] = cell_json(fsdb, row_result.before, value_prefix);
+        row["middle"] = cell_json(fsdb, row_result.middle, value_prefix);
+        row["after"] = cell_json(fsdb, row_result.after, value_prefix);
         rows.push_back(row);
     }
 
     Json context;
     context["clock"] = spec.clock;
     context["edge"] = xdebug_waveform::clock_edge_kind_text(spec.edge);
-    context["requested_time"] = formatted_requested_time;
-    context["clock_edge_hit"] = clock_edge_hit;
-    context["clock_edge_kind"] = clock_edge_hit ? Json(xdebug_waveform::clock_edge_kind_text(actual_edge)) : Json(nullptr);
-    context["target_edge_hit"] = target_edge_hit;
+    context["requested_time"] = xdebug_core::format_time(fsdb, point_result.context.requested_time);
+    context["clock_edge_hit"] = point_result.context.clock_edge_hit;
+    context["clock_edge_kind"] = point_result.context.has_clock_edge_kind
+        ? Json(xdebug_waveform::clock_edge_kind_text(point_result.context.clock_edge_kind))
+        : Json(nullptr);
+    context["target_edge_hit"] = point_result.context.target_edge_hit;
     context["sample_point_applied"] =
-        target_edge_hit && spec.edge != ClockEdgeKind::Negedge
+        point_result.context.target_edge_hit && spec.edge != ClockEdgeKind::Negedge
         ? Json(xdebug_waveform::clock_sample_point_text(spec.sample_point))
         : Json(nullptr);
-    context["previous_sample_time"] = have_prev
-        ? Json(xdebug_core::format_time(fsdb, prev_point.sample_time)) : Json(nullptr);
-    context["next_sample_time"] = have_next
-        ? Json(xdebug_core::format_time(fsdb, next_point.sample_time)) : Json(nullptr);
-    context["bracket_complete"] = have_prev && have_next;
+    context["previous_sample_time"] = point_result.context.has_previous_sample_time
+        ? Json(xdebug_core::format_time(fsdb, point_result.context.previous_sample_time)) : Json(nullptr);
+    context["next_sample_time"] = point_result.context.has_next_sample_time
+        ? Json(xdebug_core::format_time(fsdb, point_result.context.next_sample_time)) : Json(nullptr);
+    context["bracket_complete"] = point_result.context.bracket_complete;
 
     out.clock_context = context;
     out.rows = rows;
-    out.samples = {{"before", before_rows}, {"middle", middle_rows}, {"after", after_rows}};
+    out.samples = {
+        {"before", sample_rows_json(fsdb, point_result.rows, "before",
+            context["previous_sample_time"], value_prefix)},
+        {"middle", sample_rows_json(fsdb, point_result.rows, "middle",
+            context["requested_time"], value_prefix)},
+        {"after", sample_rows_json(fsdb, point_result.rows, "after",
+            context["next_sample_time"], value_prefix)}
+    };
     return true;
 }
 

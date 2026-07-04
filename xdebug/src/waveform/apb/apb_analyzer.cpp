@@ -1,4 +1,5 @@
 #include "apb_analyzer.h"
+#include "../common/clock_sampling.h"
 #include "../server/fsdb_value_reader.h"
 #include "../server/fsdb_scan_utils.h"
 #include "npi_fsdb.h"
@@ -45,9 +46,6 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
     std::string normalize_error;
     if (!normalize_clock_sample_spec(file, clock_sample, normalize_error)) return false;
 
-    npiFsdbSigHandle clk_sig = npi_fsdb_sig_by_name(file, clock_sample.clock.c_str(), NULL);
-    if (!clk_sig) return false;
-
     std::vector<std::string> signals = {
         config.rst_n, config.psel, config.penable,
         config.pwrite, config.paddr, config.pwdata, config.prdata
@@ -66,6 +64,10 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
         npiFsdbSigHandle h = npi_fsdb_sig_by_name(file, signal.c_str(), NULL);
         if (!h) return false;
         sig_handles.push_back(h);
+    }
+    std::vector<ClockSampleSignal> sample_signals;
+    for (size_t i = 0; i < signals.size(); ++i) {
+        sample_signals.push_back({signals[i], signals[i], sig_handles[i]});
     }
 
     ApbResult result;
@@ -134,80 +136,17 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
     npi_fsdb_min_time(file, &min_time);
     npi_fsdb_max_time(file, &max_time);
 
-    fsdbSigVec_t all_handles;
-    all_handles.push_back(clk_sig);
-    for (auto sig : sig_handles) all_handles.push_back(sig);
-
-    fsdbValVec_t init_values;
-    std::vector<std::string> values(signals.size());
-    std::string prev_clk_val;
-    if (npi_fsdb_sig_hdl_vec_value_at(all_handles, min_time, init_values, npiFsdbHexStrVal) &&
-        init_values.size() == all_handles.size()) {
-        prev_clk_val = init_values[0];
-        for (size_t i = 0; i < signals.size(); ++i) values[i] = init_values[i + 1];
+    ClockSampleScanner scanner(file, clock_sample);
+    std::string scan_error;
+    int sample_count = 0;
+    bool truncated = false;
+    if (!scanner.scan(sample_signals, min_time, max_time, npiFsdbHexStrVal, '\0', -1,
+        [&](const ClockSample& sample) -> bool {
+            process_edge(sample.time, sample.values);
+            return true;
+        }, scan_error, sample_count, truncated)) {
+        return false;
     }
-
-    TimeBasedVcIterGuard guard;
-    npiFsdbTimeBasedVcIter& iter = guard.iter();
-    iter.add(clk_sig);
-    for (auto sig : sig_handles) iter.add(sig);
-    guard.start(min_time, max_time);
-
-    bool have_group = false;
-    bool clk_changed = false;
-    std::string old_clk_val;
-    std::string new_clk_val;
-    npiFsdbTime group_time = 0;
-    std::vector<std::string> group_start_values = values;
-    npiFsdbTime curr_time = 0;
-    npiFsdbSigHandle changed_sig = nullptr;
-    bool sample_before_edge =
-        clock_sample.edge != ClockEdgeKind::Negedge &&
-        clock_sample.sample_point == ClockSamplePointKind::Before;
-
-    auto finish_group = [&]() {
-        if (!have_group || !clk_changed) return;
-        bool is_target_edge = false;
-        is_target_edge = clock_edge_transition_matches(clock_sample.edge,
-                                                       old_clk_val == "1",
-                                                       new_clk_val == "1");
-        if (is_target_edge) process_edge(group_time, sample_before_edge ? group_start_values : values);
-    };
-
-    while (iter.iter_next(curr_time, changed_sig) > 0) {
-        if (!have_group) {
-            have_group = true;
-            group_time = curr_time;
-            group_start_values = values;
-        } else if (curr_time != group_time) {
-            finish_group();
-            group_time = curr_time;
-            clk_changed = false;
-            group_start_values = values;
-        }
-
-        npiFsdbValue val;
-        val.format = npiFsdbHexStrVal;
-        std::string val_str;
-        if (iter.get_value(val) && val.value.str) {
-            val_str = val.value.str;
-        }
-
-        if (changed_sig == clk_sig) {
-            old_clk_val = prev_clk_val;
-            new_clk_val = val_str;
-            prev_clk_val = val_str;
-            clk_changed = true;
-        } else {
-            for (size_t i = 0; i < sig_handles.size(); ++i) {
-                if (sig_handles[i] == changed_sig) {
-                    values[i] = val_str;
-                    break;
-                }
-            }
-        }
-    }
-    finish_group();
     // Sort by time just in case (though VCT should naturally be in order)
     auto cmp = [](const ApbTransaction& a, const ApbTransaction& b) { return a.time < b.time; };
     std::sort(result.all.begin(), result.all.end(), cmp);
