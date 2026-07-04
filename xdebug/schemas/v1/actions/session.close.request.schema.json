@@ -49,10 +49,7 @@
           "description": "目标 xdebug session 标识。"
         }
       },
-      "additionalProperties": false,
-      "required": [
-        "session_id"
-      ]
+      "additionalProperties": false
     },
     "limits": {
       "type": "object"

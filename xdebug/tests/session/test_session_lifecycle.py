@@ -23,6 +23,15 @@ def _request(action: str, *, target=None, args=None):
     return request
 
 
+def _wave_value_at_args() -> dict:
+    return {
+        "signal": "ai_complex_top.sig_a",
+        "time": "75ns",
+        "clock": "ai_complex_top.clk",
+        "format": "hex",
+    }
+
+
 def _registry(isolated_home: Path) -> dict:
     path = isolated_home / ".xdebug" / "engine" / "registry.json"
     return json.loads(path.read_text(encoding="utf-8"))
@@ -205,7 +214,15 @@ def test_session_close_accepts_target_session_id_and_args_aliases(
 def test_session_close_without_session_id_still_fails(cli_runner: CliRunner) -> None:
     missing = cli_runner.run(_request("session.close", args={}))
     assert not missing.ok
-    assert missing.response["error"]["code"] == "MISSING_FIELD"
+    assert missing.response["error"]["code"] == "INVALID_REQUEST"
+    assert (
+        missing.response["error"]["message"]
+        == "target.session_id or args.session_id or args.id is required"
+    )
+    assert (
+        missing.response["data"]["invalid_arg"]
+        == "target.session_id or args.session_id or args.id"
+    )
 
 
 @pytest.mark.session
@@ -392,11 +409,7 @@ def test_session_file_transport_open_query_doctor_and_close(
             _request(
                 "value.at",
                 target={"session_id": name},
-                args={
-                    "signal": "ai_complex_top.sig_a",
-                    "time": "75ns",
-                    "format": "hex",
-                },
+                args=_wave_value_at_args(),
             )
         )
         assert queried.ok
@@ -481,11 +494,7 @@ def test_session_uds_direct_query_times_out_without_spawn_fallback(
                 **_request(
                     "value.at",
                     target={"session_id": "hung_uds"},
-                    args={
-                        "signal": "ai_complex_top.sig_a",
-                        "time": "75ns",
-                        "format": "hex",
-                    },
+                    args=_wave_value_at_args(),
                 ),
                 "limits": {"timeout_ms": 100},
             },
@@ -543,11 +552,7 @@ def test_session_uds_connect_failure_is_logged(
             **_request(
                 "value.at",
                 target={"session_id": "dead_uds"},
-                args={
-                    "signal": "ai_complex_top.sig_a",
-                    "time": "75ns",
-                    "format": "hex",
-                },
+                args=_wave_value_at_args(),
             ),
             "limits": {"timeout_ms": 100},
         },
@@ -612,11 +617,7 @@ def test_session_uds_invalid_json_response_is_logged(
                 **_request(
                     "value.at",
                     target={"session_id": "bad_json"},
-                    args={
-                        "signal": "ai_complex_top.sig_a",
-                        "time": "75ns",
-                        "format": "hex",
-                    },
+                    args=_wave_value_at_args(),
                 ),
                 "limits": {"timeout_ms": 100},
             },

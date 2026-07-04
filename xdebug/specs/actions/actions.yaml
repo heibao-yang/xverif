@@ -1011,10 +1011,7 @@
         "response": [
           "examples/responses/session.close.basic.json"
         ]
-      },
-      "required_args": [
-        "session_id"
-      ]
+      }
     },
     {
       "name": "session.doctor",
@@ -1071,10 +1068,7 @@
         "response": [
           "examples/responses/session.kill.basic.json"
         ]
-      },
-      "required_args": [
-        "session_id"
-      ]
+      }
     },
     {
       "name": "session.list",

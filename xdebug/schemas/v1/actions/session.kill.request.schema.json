@@ -24,7 +24,14 @@
       ]
     },
     "target": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "description": "目标 xdebug session 标识。"
+        }
+      },
+      "additionalProperties": true
     },
     "args": {
       "type": "object",
@@ -42,10 +49,7 @@
           "description": "目标 xdebug session 标识。"
         }
       },
-      "additionalProperties": false,
-      "required": [
-        "session_id"
-      ]
+      "additionalProperties": false
     },
     "limits": {
       "type": "object"
@@ -57,10 +61,48 @@
       "type": "string"
     }
   },
+  "anyOf": [
+    {
+      "required": [
+        "target"
+      ],
+      "properties": {
+        "target": {
+          "required": [
+            "session_id"
+          ]
+        }
+      }
+    },
+    {
+      "required": [
+        "args"
+      ],
+      "properties": {
+        "args": {
+          "required": [
+            "session_id"
+          ]
+        }
+      }
+    },
+    {
+      "required": [
+        "args"
+      ],
+      "properties": {
+        "args": {
+          "required": [
+            "id"
+          ]
+        }
+      }
+    }
+  ],
   "additionalProperties": false,
   "description": "session.kill: 强制移除指定 session。",
   "x-purpose": "强制移除指定 session。",
   "x-how_it_works": "按 session_id 清理记录和关联资源。",
   "x-when_to_use": "处理异常残留 session。",
-  "x-arg_contract_notes": "required: session_id"
+  "x-arg_contract_notes": "required: target.session_id or args.session_id or args.id"
 }

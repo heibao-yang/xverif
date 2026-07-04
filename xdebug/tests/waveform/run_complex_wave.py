@@ -380,10 +380,8 @@ class AiRunner(object):
         self.rows = []
 
     def cleanup(self):
-        try:
-            self.query("session.kill", args={"id": "all"}, expect_ok=True, allow_no_sid=True)
-        except Exception:
-            pass
+        if self.sid:
+            self.query("session.kill", args={"session_id": self.sid}, expect_ok=True, allow_no_sid=True)
         shutil.rmtree(self.home, ignore_errors=True)
 
     def query(self, action, args=None, target=None, limits=None, expect_ok=True, allow_no_sid=False, timeout=60):
