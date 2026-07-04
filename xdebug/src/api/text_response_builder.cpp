@@ -91,14 +91,17 @@ std::string bits_to_hex(std::string bits) {
     static const char* hex = "0123456789abcdef";
     std::string out;
     for (size_t i = 0; i < bits.size(); i += 4) {
-        bool unknown = false;
+        bool has_x = false;
+        bool has_z = false;
         int v = 0;
         for (size_t j = 0; j < 4; ++j) {
             char c = bits[i + j];
-            if (c != '0' && c != '1') unknown = true;
+            if (c == 'x') has_x = true;
+            else if (c == 'z') has_z = true;
+            else if (c != '0' && c != '1') has_x = true;
             v = (v << 1) | (c == '1' ? 1 : 0);
         }
-        out.push_back(unknown ? 'x' : hex[v]);
+        out.push_back(has_x ? 'x' : (has_z ? 'z' : hex[v]));
     }
     return out.empty() ? "0" : out;
 }
@@ -412,13 +415,8 @@ std::string TextResponseBuilder::str() {
 
 void TextResponseBuilder::flush_kv_block() {
     if (pending_kv_.empty()) return;
-    size_t width = 0;
-    for (const auto& item : pending_kv_) width = std::max(width, item.key.size());
     for (const auto& item : pending_kv_) {
-        std::string line = item.indent + item.key;
-        if (item.key.size() < width) line.append(width - item.key.size(), ' ');
-        line += ": " + item.value;
-        write_line(line);
+        write_line(item.indent + item.key + ": " + item.value);
     }
     pending_kv_.clear();
 }

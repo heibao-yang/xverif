@@ -645,7 +645,20 @@ Json Dispatcher::dispatch_impl(const Json& request) {
     RequestEnvelope envelope = RequestEnvelope::from_json(request);
     RequestValidator validator;
     ValidationResult validation = validator.validate(envelope, *spec);
-    if (!validation.ok) return make_error(request, action, validation.code, validation.message);
+    if (!validation.ok) {
+        Json response = make_error(request, action, validation.code, validation.message);
+        if (validation.summary.is_object() && !validation.summary.empty()) response["summary"] = validation.summary;
+        if (validation.data.is_object() && !validation.data.empty()) response["data"] = validation.data;
+        if (response["error"].is_object() && validation.data.is_object()) {
+            static const char* keys[] = {
+                "invalid_arg", "expected", "received_type", "allowed_values", "schema_path"
+            };
+            for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); ++i) {
+                if (validation.data.contains(keys[i])) response["error"][keys[i]] = validation.data[keys[i]];
+            }
+        }
+        return response;
+    }
 
     if (spec->handler_kind == "schema") return catalog_schema_response(request);
     if (spec->handler_kind == "actions") return catalog_actions_response(request);

@@ -151,6 +151,33 @@ def test_action_schema_hints_are_synced(xdebug_root: Path) -> None:
 
 
 @pytest.mark.contract
+def test_runtime_request_schemas_are_strict_and_synced(xdebug_root: Path) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(xdebug_root / "tools" / "sync_runtime_request_schemas.py"),
+            "--check",
+        ],
+        cwd=xdebug_root.parent,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    specs = _load_json(xdebug_root / "specs" / "actions" / "actions.yaml")[
+        "actions"
+    ]
+    for spec in specs:
+        if spec["status"] == "removed":
+            continue
+        schema = _load_json(xdebug_root / spec["schemas"]["request"])
+        assert schema.get("additionalProperties") is False, spec["name"]
+        args_schema = schema.get("properties", {}).get("args", {})
+        assert args_schema.get("additionalProperties") is False, spec["name"]
+
+
+@pytest.mark.contract
 def test_action_schemas_explain_purpose_and_required_args(xdebug_root: Path) -> None:
     specs = _load_json(xdebug_root / "specs" / "actions" / "actions.yaml")[
         "actions"

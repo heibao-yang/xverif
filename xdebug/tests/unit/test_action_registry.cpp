@@ -5,6 +5,7 @@
 #include "api/response_builder.h"
 
 #include <cassert>
+#include <fstream>
 #include <memory>
 
 using namespace xdebug;
@@ -28,12 +29,34 @@ static ActionSpec demo_spec() {
     spec.resource = ResourceRequirement::None;
     spec.handler_kind = "native";
     spec.args.required.push_back("message");
-    spec.request_schema = "schemas/v1/actions/demo.echo.request.schema.json";
+    spec.request_schema = "build/tests/demo.echo.request.schema.json";
     spec.response_schema = "schemas/v1/actions/demo.echo.response.schema.json";
     return spec;
 }
 
 int main() {
+    {
+        std::ofstream schema("build/tests/demo.echo.request.schema.json");
+        schema << R"json({
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["api_version", "action", "args"],
+  "properties": {
+    "api_version": {"type": "string", "enum": ["xdebug.v1"]},
+    "action": {"type": "string", "enum": ["demo.echo"]},
+    "args": {
+      "type": "object",
+      "required": ["message"],
+      "properties": {
+        "message": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+})json";
+    }
+
     ActionRegistry registry;
     ActionSpec spec = demo_spec();
     assert(registry.register_spec(spec));
@@ -85,7 +108,8 @@ int main() {
     };
     validation = validator.validate(RequestEnvelope::from_json(missing_arg), spec);
     assert(!validation.ok);
-    assert(validation.code == "MISSING_FIELD");
+    assert(validation.code == "INVALID_REQUEST");
+    assert(validation.data["invalid_arg"] == "args.message");
 
     ActionSpec waveform = spec;
     waveform.name = "demo.wave";

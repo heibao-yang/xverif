@@ -493,6 +493,28 @@ def run_nonaxi(xdebug, fsdb):
         })
         require(anomaly["summary"]["finding_count"] >= 3, "detect_abnormal missing findings")
         require(any(f.get("type") == "glitch" for f in anomaly["data"].get("findings", [])), "glitch not detected")
+        require(any(f.get("type") == "unknown_xz" and f.get("value", {}).get("value") == "8'hzz"
+                    for f in anomaly["data"].get("findings", [])), "Z finding not preserved in detect_abnormal JSON")
+        bad_checks = r.query("detect_abnormal", args={
+            "signals": ["ai_complex_top.glitch_sig", "ai_complex_top.xz_bus"],
+            "time_range": {"begin": "0ns", "end": "200ns"},
+            "checks": ["unknown_xz", "glitch"],
+        }, expect_ok=False)
+        require(bad_checks["error"]["code"] == "INVALID_REQUEST", "string checks should return INVALID_REQUEST")
+        require(bad_checks["data"]["invalid_arg"] == "args.checks[0]", "bad checks should expose invalid_arg")
+        require(bad_checks["data"]["expected"] == "type \"object\"", "bad checks should explain expected object item")
+        require(bad_checks["data"]["received_type"] == "string", "bad checks should expose received_type")
+        require("example" in bad_checks["data"], "bad checks should expose example")
+        bad_type = r.query("detect_abnormal", args={
+            "signals": ["ai_complex_top.glitch_sig", "ai_complex_top.xz_bus"],
+            "time_range": {"begin": "0ns", "end": "200ns"},
+            "checks": [{"type": "unknown"}],
+        }, expect_ok=False)
+        require(bad_type["error"]["code"] == "INVALID_REQUEST", "unknown check type should return INVALID_REQUEST")
+        require(bad_type["data"]["invalid_arg"] == "args.checks[0].type",
+                "unknown check type should expose invalid type path")
+        health = r.query("value.at", args={"signal": "ai_complex_top.clk", "time": "10ns"})
+        require(health["ok"] is True, "session should remain healthy after invalid detect_abnormal checks")
         hs = r.query("handshake.inspect", args={
             "clock": "ai_complex_top.clk",
             "valid": "ai_complex_top.hs_valid",

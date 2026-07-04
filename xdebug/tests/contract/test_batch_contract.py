@@ -67,4 +67,5 @@ def test_batch_requires_requests_array(cli_runner: CliRunner) -> None:
     )
     assert result.returncode == 1
     assert result.response["ok"] is False
-    assert result.response["error"]["code"] == "MISSING_FIELD"
+    assert result.response["error"]["code"] == "INVALID_REQUEST"
+    assert result.response["error"]["invalid_arg"] == "args.requests"

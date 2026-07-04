@@ -2,6 +2,47 @@
 
 namespace xdebug_waveform {
 
+namespace {
+
+std::string json_type_name(const Json& value) {
+    if (value.is_null()) return "null";
+    if (value.is_boolean()) return "boolean";
+    if (value.is_number()) return "number";
+    if (value.is_string()) return "string";
+    if (value.is_array()) return "array";
+    if (value.is_object()) return "object";
+    return "unknown";
+}
+
+Json invalid_detect_abnormal_checks(const std::string& invalid_arg,
+                                    const std::string& message,
+                                    const Json& received = Json()) {
+    Json error;
+    error["code"] = "INVALID_REQUEST";
+    error["message"] = message;
+    error["recoverable"] = true;
+    error["suggested_actions"] = Json::array({
+        "Use object checks such as {\"type\":\"unknown_xz\"}. String shorthand is not supported.",
+        "Allowed check types are unknown_xz, glitch, and stuck."
+    });
+
+    Json out;
+    out["error"] = error;
+    out["message"] = message;
+    out["invalid_arg"] = invalid_arg;
+    out["expected"] = "args.checks must be an array of objects with a string type field";
+    out["allowed_types"] = Json::array({"unknown_xz", "glitch", "stuck"});
+    out["example"] = Json::array({
+        Json{{"type", "unknown_xz"}},
+        Json{{"type", "glitch"}, {"min_pulse_width", "1ns"}},
+        Json{{"type", "stuck"}, {"min_duration", "1us"}}
+    });
+    if (!received.is_null()) out["received_type"] = json_type_name(received);
+    return out;
+}
+
+}  // namespace
+
 struct SampledEdgeRecord {
     npiFsdbTime time = 0;
     std::map<std::string, std::string> values;
@@ -324,18 +365,69 @@ Json ai_detect_abnormal(const Json& args, std::string& error) {
     Json checks = args.value("checks", Json::array());
     npiFsdbTime glitch_width = 0, stuck_duration = 0;
     bool check_glitch = false, check_stuck = false, check_unknown = false;
-    for (const auto& c : checks) {
-        std::string type = c.value("type", std::string());
+    if (!checks.is_array()) {
+        return invalid_detect_abnormal_checks(
+            "args.checks",
+            "args.checks must be an array of objects with a string type field; string shorthand is not supported.",
+            checks);
+    }
+    for (size_t i = 0; i < checks.size(); ++i) {
+        const Json& c = checks[i];
+        std::string arg_path = "args.checks[" + std::to_string(i) + "]";
+        if (!c.is_object()) {
+            return invalid_detect_abnormal_checks(
+                arg_path,
+                arg_path + " must be an object with a string type field; string shorthand is not supported. Example: {\"type\":\"unknown_xz\"}",
+                c);
+        }
+        if (!c.contains("type") || !c["type"].is_string()) {
+            return invalid_detect_abnormal_checks(
+                arg_path + ".type",
+                arg_path + ".type must be a string; allowed types are unknown_xz, glitch, and stuck.",
+                c.contains("type") ? c["type"] : Json(nullptr));
+        }
+        std::string type = c["type"].get<std::string>();
         if (type == "glitch") {
             check_glitch = true;
+            if (c.contains("min_pulse_width") && !c["min_pulse_width"].is_string()) {
+                return invalid_detect_abnormal_checks(
+                    arg_path + ".min_pulse_width",
+                    arg_path + ".min_pulse_width must be a time string such as \"1ns\".",
+                    c["min_pulse_width"]);
+            }
             std::string v = c.value("min_pulse_width", std::string("1ns"));
-            if (!parse_user_time(v.c_str(), false, glitch_width, error)) return Json();
+            if (!parse_user_time(v.c_str(), false, glitch_width, error)) {
+                std::string parse_error = error;
+                error.clear();
+                return invalid_detect_abnormal_checks(
+                    arg_path + ".min_pulse_width",
+                    arg_path + ".min_pulse_width must be a valid time string such as \"1ns\": " + parse_error,
+                    c["min_pulse_width"]);
+            }
         } else if (type == "stuck") {
             check_stuck = true;
+            if (c.contains("min_duration") && !c["min_duration"].is_string()) {
+                return invalid_detect_abnormal_checks(
+                    arg_path + ".min_duration",
+                    arg_path + ".min_duration must be a time string such as \"1us\".",
+                    c["min_duration"]);
+            }
             std::string v = c.value("min_duration", std::string("1us"));
-            if (!parse_user_time(v.c_str(), false, stuck_duration, error)) return Json();
+            if (!parse_user_time(v.c_str(), false, stuck_duration, error)) {
+                std::string parse_error = error;
+                error.clear();
+                return invalid_detect_abnormal_checks(
+                    arg_path + ".min_duration",
+                    arg_path + ".min_duration must be a valid time string such as \"1us\": " + parse_error,
+                    c["min_duration"]);
+            }
         } else if (type == "unknown_xz") {
             check_unknown = true;
+        } else {
+            return invalid_detect_abnormal_checks(
+                arg_path + ".type",
+                arg_path + ".type has unsupported value \"" + type + "\"; allowed types are unknown_xz, glitch, and stuck.",
+                c["type"]);
         }
     }
     if (checks.empty()) {

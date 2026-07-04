@@ -13,7 +13,8 @@ int main() {
     const ActionSpec* trace_spec = registry.find_spec("trace.driver");
     const ActionSpec* active_spec = registry.find_spec("trace.active_driver");
     const ActionSpec* actions_spec = registry.find_spec("actions");
-    assert(value_spec && trace_spec && active_spec && actions_spec);
+    const ActionSpec* abnormal_spec = registry.find_spec("detect_abnormal");
+    assert(value_spec && trace_spec && active_spec && actions_spec && abnormal_spec);
     Json value_descriptor = action_spec_descriptor(*value_spec);
     assert(value_descriptor["required_args"].size() == 2);
     assert(value_descriptor["allowed_values"]["format"].is_array());
@@ -37,26 +38,75 @@ int main() {
     ValidationResult validation = validator.validate(value, *value_spec);
     assert(validation.ok);
 
-    RequestEnvelope missing_time = value;
-    missing_time.args.erase("time");
+    Json missing_time_json = value_json;
+    missing_time_json["args"].erase("time");
+    RequestEnvelope missing_time = RequestEnvelope::from_json(missing_time_json);
     validation = validator.validate(missing_time, *value_spec);
     assert(!validation.ok);
-    assert(validation.code == "MISSING_FIELD");
+    assert(validation.code == "INVALID_REQUEST");
+    assert(validation.data["invalid_arg"] == "args.time");
 
-    RequestEnvelope wrong_version = value;
-    wrong_version.api_version = "xdebug.v0";
+    Json wrong_version_json = value_json;
+    wrong_version_json["api_version"] = "xdebug.v0";
+    RequestEnvelope wrong_version = RequestEnvelope::from_json(wrong_version_json);
     validation = validator.validate(wrong_version, *value_spec);
     assert(!validation.ok);
     assert(validation.code == "UNSUPPORTED_API_VERSION");
 
-    RequestEnvelope bad_format = value;
-    bad_format.args["format"] = "octal";
+    Json bad_format_json = value_json;
+    bad_format_json["args"]["format"] = 7;
+    RequestEnvelope bad_format = RequestEnvelope::from_json(bad_format_json);
     validation = validator.validate(bad_format, *value_spec);
     assert(!validation.ok);
-    assert(validation.code == "INVALID_ARGUMENT");
+    assert(validation.code == "INVALID_REQUEST");
+    assert(validation.data["invalid_arg"] == "args.format");
 
-    RequestEnvelope wrong_action = value;
-    wrong_action.action = "trace.driver";
+    Json unknown_top_json = value_json;
+    unknown_top_json["unexpected"] = true;
+    RequestEnvelope unknown_top = RequestEnvelope::from_json(unknown_top_json);
+    validation = validator.validate(unknown_top, *value_spec);
+    assert(!validation.ok);
+    assert(validation.code == "INVALID_REQUEST");
+    assert(validation.data["invalid_arg"] == "unexpected");
+
+    Json unknown_arg_json = value_json;
+    unknown_arg_json["args"]["unexpected"] = true;
+    RequestEnvelope unknown_arg = RequestEnvelope::from_json(unknown_arg_json);
+    validation = validator.validate(unknown_arg, *value_spec);
+    assert(!validation.ok);
+    assert(validation.code == "INVALID_REQUEST");
+    assert(validation.data["invalid_arg"] == "args.unexpected");
+
+    Json bad_abnormal_checks_json = {
+        {"api_version", "xdebug.v1"},
+        {"request_id", "r1"},
+        {"action", "detect_abnormal"},
+        {"target", {{"fsdb", "waves.fsdb"}}},
+        {"args", {
+            {"signals", Json::array({"top.sig"})},
+            {"checks", Json::array({"unknown_xz"})}
+        }}
+    };
+    RequestEnvelope bad_abnormal_checks = RequestEnvelope::from_json(bad_abnormal_checks_json);
+    validation = validator.validate(bad_abnormal_checks, *abnormal_spec);
+    assert(!validation.ok);
+    assert(validation.code == "INVALID_REQUEST");
+    assert(validation.data["invalid_arg"] == "args.checks[0]");
+    assert(validation.data["expected"].get<std::string>().find("object") != std::string::npos);
+
+    Json missing_abnormal_check_type_json = bad_abnormal_checks_json;
+    missing_abnormal_check_type_json["args"]["checks"] = Json::array({Json::object()});
+    RequestEnvelope missing_abnormal_check_type =
+        RequestEnvelope::from_json(missing_abnormal_check_type_json);
+    validation = validator.validate(missing_abnormal_check_type, *abnormal_spec);
+    assert(!validation.ok);
+    assert(validation.code == "INVALID_REQUEST");
+    assert(validation.data["invalid_arg"] == "args.checks[0].type");
+    assert(validation.data["received_type"] == "missing");
+
+    Json wrong_action_json = value_json;
+    wrong_action_json["action"] = "trace.driver";
+    RequestEnvelope wrong_action = RequestEnvelope::from_json(wrong_action_json);
     validation = validator.validate(wrong_action, *value_spec);
     assert(!validation.ok);
     assert(validation.code == "UNKNOWN_ACTION");

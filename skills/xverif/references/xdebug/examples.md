@@ -191,7 +191,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
   "args": {
     "signals": ["top.u_if.data_leaf0", "top.u_if.data_leaf1", "top.u_if.valid", "top.u_if.ready"],
     "time_range": {"begin": "0ns", "end": "100us"},
-    "types": ["unknown_xz"],
+    "checks": [{"type": "unknown_xz"}],
     "max_findings": 20
   },
   "output_format": "json"

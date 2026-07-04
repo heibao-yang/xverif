@@ -30,251 +30,40 @@
     "args": {
       "type": "object",
       "properties": {
-        "signal": {
-          "type": "string"
-        },
-        "signals": {
-          "oneOf": [
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            }
-          ]
-        },
-        "time": {
-          "type": "string"
-        },
-        "requested_time": {
-          "type": "string"
-        },
-        "time_a": {
-          "type": "string"
-        },
-        "time_b": {
-          "type": "string"
-        },
-        "from_signal": {
-          "type": "string"
-        },
-        "to_signal": {
-          "type": "string"
-        },
-        "file": {
-          "type": "string"
-        },
-        "line": {
-          "type": "integer"
-        },
         "expr": {
           "type": "string",
           "description": "需要求值或匹配的布尔表达式。"
         },
-        "scope": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "op": {
-          "type": "string"
-        },
-        "conditions": {
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
-        },
-        "time_range": {
-          "type": "object"
-        },
-        "requests": {
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
-        },
-        "session_id": {
-          "type": "string"
-        },
-        "valid": {
-          "type": "string"
-        },
-        "ready": {
-          "type": "string"
-        },
-        "port": {
-          "type": "string"
-        },
-        "instance": {
-          "type": "string"
-        },
-        "interface": {
-          "type": "string"
-        },
-        "format": {
-          "type": "string"
-        },
-        "direction": {
-          "type": "string"
-        },
-        "mode": {
-          "type": "string"
-        },
-        "include_source": {
+        "include_statement_only": {
           "type": "boolean"
-        },
-        "include_ast": {
-          "type": "boolean"
-        },
-        "include_candidates": {
-          "type": "boolean"
-        },
-        "include_trace": {
-          "type": "boolean"
-        },
-        "include_expanded_queries": {
-          "type": "boolean"
-        },
-        "include_raw_edges": {
-          "type": "boolean"
-        },
-        "include_graph": {
-          "type": "boolean"
-        },
-        "include_debug": {
-          "type": "boolean"
-        },
-        "include_raw": {
-          "type": "boolean"
-        },
-        "include_signal_meta": {
-          "type": "boolean"
-        },
-        "include_rows": {
-          "type": "boolean"
-        },
-        "include_samples": {
-          "type": "boolean"
-        },
-        "include_all_changes": {
-          "type": "boolean"
-        },
-        "include_transactions": {
-          "type": "boolean"
-        },
-        "include_beats": {
-          "type": "boolean"
-        },
-        "include_accesses": {
-          "type": "boolean"
-        },
-        "max_items": {
-          "type": "integer"
-        },
-        "max_examples": {
-          "type": "integer"
-        },
-        "recursive": {
-          "type": "boolean"
-        },
-        "include_all_signals": {
-          "type": "boolean"
-        },
-        "clock": {
-          "type": "string"
-        },
-        "clk": {
-          "type": "string"
-        },
-        "payload": {
-          "type": "string"
-        },
-        "payloads": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "index": {
-          "oneOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "string"
-            }
-          ]
-        },
-        "begin": {
-          "type": "string"
-        },
-        "end": {
-          "type": "string"
-        },
-        "start": {
-          "type": "string"
-        },
-        "kind": {
-          "type": "string"
-        },
-        "output_file": {
-          "type": "string"
-        },
-        "output_prefix": {
-          "type": "string"
-        },
-        "sampling": {
-          "type": "string"
-        },
-        "max_samples": {
-          "type": "integer"
-        },
-        "max_events": {
-          "type": "integer"
-        },
-        "max_findings": {
-          "type": "integer"
         },
         "limit": {
           "type": "integer"
         },
-        "rst_n": {
+        "no_statement_only": {
+          "type": "boolean"
+        },
+        "role": {
           "type": "string"
         },
-        "edge": {
-          "type": "string"
+        "signal": {
+          "type": "string",
+          "description": "目标信号路径。"
         },
-        "stream": {
-          "type": "string"
-        },
-        "query": {
-          "type": "object"
-        },
-        "streams": {
-          "type": "array"
-        },
-        "config_path": {
-          "type": "string"
-        },
-        "rc_path": {
-          "type": "string"
-        },
-        "vld": {
-          "type": "string"
-        },
-        "cnt": {
-          "type": "string"
+        "time_unit": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "fs",
+            "ps",
+            "ns",
+            "us",
+            "ms",
+            "s"
+          ]
         }
       },
-      "additionalProperties": true,
+      "additionalProperties": false,
       "required": [
         "expr"
       ]
@@ -284,9 +73,12 @@
     },
     "output": {
       "type": "object"
+    },
+    "auth_token": {
+      "type": "string"
     }
   },
-  "additionalProperties": true,
+  "additionalProperties": false,
   "description": "expr.normalize: 规范化表达式。",
   "x-purpose": "规范化表达式。",
   "x-how_it_works": "无 design 时做字符串级规范化；有 design/signal 时可结合设计赋值信息。",

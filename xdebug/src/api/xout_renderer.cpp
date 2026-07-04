@@ -131,28 +131,6 @@ void render_generic(TextResponseBuilder& out, const Json& response) {
     }
 }
 
-void render_schema_summary(TextResponseBuilder& out, const Json& response) {
-    out.emit_section("summary");
-    const Json summary = response.value("summary", Json::object());
-    if (summary.is_object()) {
-        for (auto it = summary.begin(); it != summary.end(); ++it) {
-            if (should_emit_scalar_key(it.key(), it.value())) out.emit_kv(it.key(), it.value());
-        }
-    }
-
-    const Json data = response.value("data", Json::object());
-    if (data.is_object()) {
-        if (has_scalar(data, "schema_path")) out.emit_kv("schema_path", data["schema_path"]);
-        const Json contract = data.value("contract", Json::object());
-        if (contract.is_object()) {
-            if (has_scalar(contract, "schema_root")) out.emit_kv("schema_root", contract["schema_root"]);
-            if (has_scalar(contract, "action_count")) out.emit_kv("action_count", contract["action_count"]);
-        }
-    }
-
-    out.emit_kv("ai_hint", "Read schema_path JSON file or use --json for full schema.");
-}
-
 } // namespace
 
 std::string render_xout_response(const Json& response) {
@@ -186,11 +164,6 @@ std::string render_xout_response(const Json& response) {
                     out.emit_row({json_to_xout_value(item)});
             }
         }
-        return out.str();
-    }
-
-    if (action == "schema") {
-        render_schema_summary(out, response);
         return out.str();
     }
 

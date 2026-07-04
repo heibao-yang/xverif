@@ -7,6 +7,7 @@
 #include "core/logging/action_log.h"
 #include "core/npi/time_contract.h"
 #include "core/session/session_timeout.h"
+#include "core/schema/runtime_schema_validator.h"
 #include "core/transport/file_exchange.h"
 #include "json.hpp"
 
@@ -31,6 +32,7 @@
 #include <strings.h>
 #include <thread>
 #include <ctime>
+#include <exception>
 
 #include "npi.h"
 #include "npi_fsdb.h"
@@ -289,7 +291,47 @@ static Json action_error_response(const Json& data) {
         }
     }
     Json response = error_response(code, message);
+    if (error.is_object()) {
+        if (error.contains("recoverable")) response["error"]["recoverable"] = error["recoverable"];
+        if (error.contains("suggested_actions")) response["error"]["suggested_actions"] = error["suggested_actions"];
+    }
+    static const char* detail_keys[] = {
+        "invalid_arg", "expected", "allowed_types", "example", "received_type"
+    };
+    for (const char* key : detail_keys) {
+        if (data.contains(key)) response["error"][key] = data[key];
+    }
     response["details"] = data;
+    return response;
+}
+
+static Json schema_validation_error_response(const Json& request,
+                                             const std::string& action,
+                                             const xdebug_core::RuntimeSchemaValidationResult& validation) {
+    Json response = error_response(validation.code.empty() ? "INVALID_REQUEST" : validation.code,
+                                   validation.message);
+    Json details = validation.data.is_object() ? validation.data : Json::object();
+    details["message"] = validation.message;
+    details["error"] = {
+        {"code", validation.code.empty() ? "INVALID_REQUEST" : validation.code},
+        {"message", validation.message},
+        {"recoverable", true}
+    };
+    if (validation.summary.is_object() && !validation.summary.empty()) {
+        details["summary"] = validation.summary;
+        response["summary"] = validation.summary;
+    }
+    static const char* detail_keys[] = {
+        "invalid_arg", "expected", "allowed_values", "example", "received_type", "schema_path"
+    };
+    for (const char* key : detail_keys) {
+        if (validation.data.is_object() && validation.data.contains(key)) {
+            response["error"][key] = validation.data[key];
+        }
+    }
+    response["details"] = details;
+    (void)request;
+    (void)action;
     return response;
 }
 
@@ -465,6 +507,13 @@ static bool handle_client(int client_fd, bool& should_quit) {
         return send_response(client_fd, error_response("WAVEFORM_NOT_LOADED",
             "waveform not loaded; open session with -fsdb"));
 
+    xdebug_core::RuntimeSchemaValidator schema_validator;
+    xdebug_core::RuntimeSchemaValidationResult schema_validation =
+        schema_validator.validate_request(action, request);
+    if (!schema_validation.ok) {
+        return send_response(client_fd, schema_validation_error_response(request, action, schema_validation));
+    }
+
     xdebug_core::TimeRenderOptions time_render_options;
     Json args = request.value("args", Json::object());
     if (args.contains("time_unit")) {
@@ -482,7 +531,18 @@ static bool handle_client(int client_fd, bool& should_quit) {
 
     ActionResourceScope resources;
     EngineActionContext ctx(g_session_id, action, resources);
-    Json data = h->run(request, ctx);
+    Json data;
+    try {
+        data = h->run(request, ctx);
+    } catch (const std::exception& e) {
+        return send_response(client_fd, error_response(
+            "INTERNAL_ENGINE_EXCEPTION",
+            "unhandled exception while running action " + action + ": " + e.what()));
+    } catch (...) {
+        return send_response(client_fd, error_response(
+            "INTERNAL_ENGINE_EXCEPTION",
+            "unhandled exception while running action " + action));
+    }
     if (data.contains("error"))
         return send_response(client_fd, action_error_response(data));
     Json resp = ok_response(data);

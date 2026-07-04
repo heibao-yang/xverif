@@ -8,6 +8,11 @@
     "signals": [
       "top.u.valid",
       "top.u.ready"
+    ],
+    "checks": [
+      {
+        "type": "unknown_xz"
+      }
     ]
   }
 }

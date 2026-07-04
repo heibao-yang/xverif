@@ -16,7 +16,7 @@ NPI_CXXFLAGS ?=
 NPI_LDFLAGS ?=
 NPI_LIB ?=
 
-CXXFLAGS = $(COMMON_CXXFLAGS) $(NPI_CXXFLAGS) -pthread -Isrc -Isrc/core -Isrc/engine -Isrc/design -Isrc/waveform -Ithird_party
+CXXFLAGS = $(COMMON_CXXFLAGS) $(NPI_CXXFLAGS) -pthread -Isrc -Isrc/core -Isrc/engine -Isrc/design -Isrc/waveform -Ithird_party -Ithird_party/json-schema-validator/src
 LDFLAGS  = $(NPI_LDFLAGS) -pthread $(if $(NPI_LIB),-Xlinker -rpath -Xlinker $(NPI_LIB),)
 DEPFLAGS = -MMD -MP
 # Frontend does not need NPI (all NPI is in the engine subprocess).
@@ -37,8 +37,15 @@ CORE_SRCS = src/core/common/tool_config.cpp \
             src/core/logging/action_log.cpp \
             src/core/session/session_types.cpp \
             src/core/process/process_runner.cpp \
+            src/core/schema/runtime_schema_validator.cpp \
             src/core/ai/common_blocks.cpp \
-            src/core/ai/ai_response.cpp
+            src/core/ai/ai_response.cpp \
+            third_party/json-schema-validator/src/smtp-address-validator.cpp \
+            third_party/json-schema-validator/src/json-schema-draft7.json.cpp \
+            third_party/json-schema-validator/src/json-uri.cpp \
+            third_party/json-schema-validator/src/json-validator.cpp \
+            third_party/json-schema-validator/src/json-patch.cpp \
+            third_party/json-schema-validator/src/string-format-check.cpp
 
 API_SUPPORT_SRCS = src/api/action_spec.cpp \
                    src/api/action_registry.cpp \

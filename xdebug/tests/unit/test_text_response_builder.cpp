@@ -19,7 +19,7 @@ int main() {
     out.emit_warning("W", "line1\nline2");
     std::string text = out.str();
     assert(text.find("@xdebug.trace.driver.v1") == 0);
-    assert(text.find("summary:\n  signal: top.u.valid\n  known : true\n  count : 2") != std::string::npos);
+    assert(text.find("summary:\n  signal: top.u.valid\n  known: true\n  count: 2") != std::string::npos);
     assert(text.find("rows:\n  n0 top.u.valid reg with spaces") != std::string::npos);
     assert(text.find("warnings:\n  code  message\n  W     line1\\nline2") != std::string::npos);
     assert(text.find("empty") == std::string::npos);
@@ -37,8 +37,8 @@ int main() {
     };
     text = render_xout_response(response);
     assert(text.find("@xdebug.value.at.v1") == 0);
-    assert(text.find("data:\n  signal: top.clk\n  time  : 10ns") != std::string::npos);
-    assert(text.find("value : 'h1") != std::string::npos);
+    assert(text.find("data:\n  signal: top.clk\n  time: 10ns") != std::string::npos);
+    assert(text.find("value: 'h1") != std::string::npos);
 
     Json sized_value = {
         {"value", "0x4000000c"},
@@ -61,6 +61,14 @@ int main() {
         {"width", 4}
     };
     assert(json_to_xout_value(unknown_value) == "4'hx known=false bits=10xz width=4");
+
+    Json z_value = {
+        {"value", "8'hzz"},
+        {"bits", "zzzzzzzz"},
+        {"known", false},
+        {"width", 8}
+    };
+    assert(json_to_xout_value(z_value) == "8'hzz known=false bits=zzzzzzzz width=8");
 
     Json field_map = {
         {"data", sized_value},
@@ -138,11 +146,9 @@ int main() {
     assert(text.find("@xdebug.schema.v1") == 0);
     assert(text.find("summary:\n") != std::string::npos);
     assert(text.find("schema_path: schemas/v1/actions/trace.driver.response.schema.json") != std::string::npos);
-    assert(text.find("ai_hint") != std::string::npos);
-    assert(text.find("Read schema_path JSON file or use --json for full schema.") != std::string::npos);
-    assert(text.find("\nschema:\n") == std::string::npos);
-    assert(text.find("\nrequired:\n") == std::string::npos);
-    assert(text.find("\nproperties:\n") == std::string::npos);
+    assert(text.find("ai_hint") == std::string::npos);
+    assert(text.find("\nschema:\n") != std::string::npos);
+    assert(text.find("\nrequired:\n") != std::string::npos);
 
     Json handler_text = {
         {"ok", true},
@@ -163,8 +169,8 @@ int main() {
     };
     text = render_xout_response(error);
     assert(text.find("@xdebug.error.v1") == 0);
-    assert(text.find("action     : trace.driver") != std::string::npos);
-    assert(text.find("code       : SIGNAL_NOT_FOUND") != std::string::npos);
-    assert(text.find("message    : missing\\nsignal") != std::string::npos);
+    assert(text.find("action: trace.driver") != std::string::npos);
+    assert(text.find("code: SIGNAL_NOT_FOUND") != std::string::npos);
+    assert(text.find("message: missing\\nsignal") != std::string::npos);
     return 0;
 }

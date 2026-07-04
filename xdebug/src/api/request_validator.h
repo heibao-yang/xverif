@@ -2,6 +2,7 @@
 
 #include "api/action_spec.h"
 #include "api/request_envelope.h"
+#include "core/schema/runtime_schema_validator.h"
 
 #include <string>
 
@@ -11,6 +12,8 @@ struct ValidationResult {
     bool ok = true;
     std::string code;
     std::string message;
+    Json data = Json::object();
+    Json summary = Json::object();
 };
 
 class RequestValidator {
@@ -19,4 +22,3 @@ public:
 };
 
 } // namespace xdebug
-

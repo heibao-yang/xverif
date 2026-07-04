@@ -6,7 +6,6 @@
   "required": [
     "api_version",
     "action",
-    "target",
     "args"
   ],
   "properties": {
@@ -41,16 +40,37 @@
           "type": "string",
           "description": "采样、统计或协议检查使用的 clock 信号路径。"
         },
-        "sampling": {
+        "cnt": {
           "type": "string",
-          "enum": [
-            "posedge",
-            "negedge"
-          ]
+          "description": "计数器统计使用的 counter 信号路径。"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "max_events": {
+          "type": "integer"
+        },
+        "max_samples": {
+          "type": "integer"
+        },
+        "sampling": {
+          "type": "string"
         },
         "time_range": {
           "type": "object",
           "description": "查询或分析的时间窗口。"
+        },
+        "time_unit": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "fs",
+            "ps",
+            "ns",
+            "us",
+            "ms",
+            "s"
+          ]
         },
         "vld": {
           "oneOf": [
@@ -58,188 +78,25 @@
               "type": "string"
             },
             {
-              "type": "object",
-              "required": [
-                "expr",
-                "signals"
-              ],
-              "properties": {
-                "expr": {
-                  "type": "string"
-                },
-                "signals": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
-                }
-              },
-              "additionalProperties": true
+              "type": "object"
             }
           ],
           "description": "计数器统计使用的 valid 信号路径。"
-        },
-        "cnt": {
-          "type": "string",
-          "description": "计数器统计使用的 counter 信号路径。"
-        },
-        "max_samples": {
-          "type": "integer"
-        },
-        "clk": {
-          "type": "string"
-        },
-        "payload": {
-          "type": "string"
-        },
-        "payloads": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "signal": {
-          "type": "string"
-        },
-        "signals": {
-          "oneOf": [
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            }
-          ]
-        },
-        "index": {
-          "oneOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "string"
-            }
-          ]
-        },
-        "begin": {
-          "type": "string"
-        },
-        "end": {
-          "type": "string"
-        },
-        "start": {
-          "type": "string"
-        },
-        "kind": {
-          "type": "string"
-        },
-        "output_file": {
-          "type": "string"
-        },
-        "output_prefix": {
-          "type": "string"
-        },
-        "max_events": {
-          "type": "integer"
-        },
-        "max_findings": {
-          "type": "integer"
-        },
-        "limit": {
-          "type": "integer"
-        },
-        "rst_n": {
-          "type": "string"
-        },
-        "edge": {
-          "type": "string"
-        },
-        "format": {
-          "type": "string"
-        },
-        "stream": {
-          "type": "string"
-        },
-        "query": {
-          "type": "object"
-        },
-        "streams": {
-          "type": "array"
-        },
-        "config_path": {
-          "type": "string"
-        },
-        "rc_path": {
-          "type": "string"
-        },
-        "requested_time": {
-          "type": "string"
-        },
-        "from_signal": {
-          "type": "string"
-        },
-        "to_signal": {
-          "type": "string"
-        },
-        "file": {
-          "type": "string"
-        },
-        "line": {
-          "type": "integer"
-        },
-        "expr": {
-          "type": "string"
-        },
-        "scope": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "op": {
-          "type": "string"
-        },
-        "conditions": {
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
-        },
-        "time": {
-          "type": "string"
-        },
-        "requests": {
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
-        },
-        "session_id": {
-          "type": "string"
-        },
-        "valid": {
-          "type": "string"
-        },
-        "ready": {
-          "type": "string"
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "limits": {
       "type": "object"
     },
     "output": {
       "type": "object"
+    },
+    "auth_token": {
+      "type": "string"
     }
   },
-  "additionalProperties": true,
+  "additionalProperties": false,
   "description": "counter.statistics: 统计计数器行为。",
   "x-purpose": "统计计数器行为。",
   "x-how_it_works": "按 clock/vld/cnt 采样，分析递增、回绕、停顿和异常。",
