@@ -84,11 +84,11 @@ bool parse_stream_config_json(const Json& item, StreamConfig& config, std::strin
         return false;
     }
     config = StreamConfig();
-    static const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", nullptr};
+    static const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", "sample_offset", nullptr};
     for (int i = 0; legacy[i]; ++i) {
         if (item.contains(legacy[i])) {
             error = std::string("stream config uses legacy clock sampling field: ") +
-                    legacy[i] + "; use clock, edge, and sample_offset";
+                    legacy[i] + "; use clock, edge, and sample_point";
             return false;
         }
     }
@@ -112,8 +112,21 @@ bool parse_stream_config_json(const Json& item, StreamConfig& config, std::strin
         error = "invalid stream edge for " + config.name + ": " + error;
         return false;
     }
-    get_string(item, "sample_offset", config.clock_sample.sample_offset_text);
-    if (config.clock_sample.sample_offset_text.empty()) config.clock_sample.sample_offset_text = "0ns";
+    std::string sample_point;
+    if (get_string(item, "sample_point", sample_point)) {
+        config.clock_sample.has_sample_point = true;
+        if (!parse_clock_sample_point_kind(sample_point,
+                                           config.clock_sample.sample_point,
+                                           error)) {
+            error = "invalid stream sample_point for " + config.name + ": " + error;
+            return false;
+        }
+    }
+    if (config.clock_sample.edge == ClockEdgeKind::Negedge &&
+        config.clock_sample.has_sample_point) {
+        error = "stream " + config.name + " sample_point is only valid with edge:posedge or edge:dual";
+        return false;
+    }
 
     if (!stream_name_valid(config.name)) {
         error = "invalid stream name: " + config.name;
@@ -198,7 +211,8 @@ Json stream_config_json(const StreamConfig& c) {
     j["name"] = c.name;
     j["clock"] = c.clock_sample.clock;
     j["edge"] = clock_edge_kind_text(c.clock_sample.edge);
-    j["sample_offset"] = c.clock_sample.sample_offset_text.empty() ? "0ns" : c.clock_sample.sample_offset_text;
+    if (c.clock_sample.edge != ClockEdgeKind::Negedge)
+        j["sample_point"] = clock_sample_point_text(c.clock_sample.sample_point);
     if (!c.reset.empty()) j["reset"] = c.reset;
     j["vld"] = c.vld;
     if (!c.rdy.empty()) j["rdy"] = c.rdy;

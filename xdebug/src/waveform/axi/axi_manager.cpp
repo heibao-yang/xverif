@@ -28,7 +28,7 @@ static bool unlock_file(int fd) {
 }
 
 static Json axi_to_json(const AxiConfig& c) {
-    return {
+    Json j = {
         {"name", c.name},
         {"awaddr", c.awaddr}, {"awid", c.awid}, {"awlen", c.awlen}, {"awsize", c.awsize}, {"awburst", c.awburst},
         {"awvalid", c.awvalid}, {"awready", c.awready},
@@ -38,13 +38,16 @@ static Json axi_to_json(const AxiConfig& c) {
         {"arvalid", c.arvalid}, {"arready", c.arready},
         {"rid", c.rid}, {"rdata", c.rdata}, {"rresp", c.rresp}, {"rlast", c.rlast}, {"rvalid", c.rvalid}, {"rready", c.rready},
         {"clock", c.clock_sample.clock}, {"rst_n", c.rst_n},
-        {"edge", clock_edge_kind_text(c.clock_sample.edge)},
-        {"sample_offset", c.clock_sample.sample_offset_text.empty() ? "0ns" : c.clock_sample.sample_offset_text}
+        {"edge", clock_edge_kind_text(c.clock_sample.edge)}
     };
+    if (c.clock_sample.edge != ClockEdgeKind::Negedge)
+        j["sample_point"] = clock_sample_point_text(c.clock_sample.sample_point);
+    return j;
 }
 
 static bool json_to_axi(const Json& j, AxiConfig& c) {
     if (!j.is_object()) return false;
+    if (j.contains("sample_offset")) return false;
     c.name = j.value("name", "");
     c.awaddr = j.value("awaddr", ""); c.awid = j.value("awid", ""); c.awlen = j.value("awlen", ""); c.awsize = j.value("awsize", ""); c.awburst = j.value("awburst", "");
     c.awvalid = j.value("awvalid", ""); c.awready = j.value("awready", "");
@@ -59,7 +62,15 @@ static bool json_to_axi(const Json& j, AxiConfig& c) {
     if (!parse_clock_edge_kind(j.value("edge", "negedge"), c.clock_sample.edge, edge_error)) {
         return false;
     }
-    c.clock_sample.sample_offset_text = j.value("sample_offset", "0ns");
+    if (j.contains("sample_point")) {
+        if (!j["sample_point"].is_string()) return false;
+        c.clock_sample.has_sample_point = true;
+        if (!parse_clock_sample_point_kind(j["sample_point"].get<std::string>(),
+                                           c.clock_sample.sample_point,
+                                           edge_error)) return false;
+    }
+    if (c.clock_sample.edge == ClockEdgeKind::Negedge && c.clock_sample.has_sample_point)
+        return false;
     return !c.name.empty();
 }
 

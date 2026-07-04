@@ -134,33 +134,6 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
     npi_fsdb_min_time(file, &min_time);
     npi_fsdb_max_time(file, &max_time);
 
-    if (!clock_sample.zero_offset) {
-        ClockSampleTimeResolver resolver(file, clock_sample);
-        std::string resolver_error;
-        bool ok = resolver.for_each_sample_time(min_time, max_time,
-            [&](const ClockSamplePoint& point) -> bool {
-                fsdbValVec_t sampled;
-                if (!npi_fsdb_sig_hdl_vec_value_at(sig_handles,
-                                                   point.sample_time,
-                                                   sampled,
-                                                   npiFsdbHexStrVal) ||
-                    sampled.size() != sig_handles.size()) {
-                    return false;
-                }
-                std::vector<std::string> sampled_values(sampled.begin(), sampled.end());
-                process_edge(point.sample_time, sampled_values);
-                return true;
-            }, resolver_error);
-        if (!ok) return false;
-        auto cmp = [](const ApbTransaction& a, const ApbTransaction& b) { return a.time < b.time; };
-        std::sort(result.all.begin(), result.all.end(), cmp);
-        std::sort(result.writes.begin(), result.writes.end(), cmp);
-        std::sort(result.reads.begin(), result.reads.end(), cmp);
-        results_[name] = std::move(result);
-        cursors_[name] = ApbCursor();
-        return true;
-    }
-
     fsdbSigVec_t all_handles;
     all_handles.push_back(clk_sig);
     for (auto sig : sig_handles) all_handles.push_back(sig);

@@ -263,18 +263,22 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
         {"sampling_mode", "clock_edge"},
         {"clock", clock_sample.clock},
         {"edge", clock_edge_kind_text(clock_sample.edge)},
-        {"sample_offset", clock_sample.sample_offset_text},
         {"sample_time_semantics", "time is sample_time"},
         {"sample_count", sample_count},
         {"sampled_high_cycles", sampled_high},
         {"risk_count", findings.size() + (findings_truncated ? 1 : 0)},
         {"truncated", truncated}
     };
+    if (clock_sample.edge != ClockEdgeKind::Negedge)
+        data["summary"]["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
+    if (clock_sample.edge != ClockEdgeKind::Negedge)
+        data["summary"]["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
     data["clock"] = clock;
     data["valid"] = valid;
     data["payloads"] = payload_aliases;
     data["edge"] = clock_edge_kind_text(clock_sample.edge);
-    data["sample_offset"] = clock_sample.sample_offset_text;
+    if (clock_sample.edge != ClockEdgeKind::Negedge)
+        data["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
     data["sample_time_semantics"] = "time is sample_time";
     data["sampling_mode"] = "clock_edge";
     data["begin"] = format_time(begin);
@@ -359,7 +363,6 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
         {"sampling_mode", "clock_edge"},
         {"clock", clock_sample.clock},
         {"edge", clock_edge_kind_text(clock_sample.edge)},
-        {"sample_offset", clock_sample.sample_offset_text},
         {"sample_time_semantics", "time is sample_time"},
         {"sample_count", samples},
         {"transfer_count", transfers},

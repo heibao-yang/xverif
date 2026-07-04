@@ -32,12 +32,12 @@ public:
         if (!load_config_from_args(a, cfg_j, err_str))
             return Json({{"error","INVALID_REQUEST"},{"message",err_str}});
 
-        const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", nullptr};
+        const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", "sample_offset", nullptr};
         for (int i = 0; legacy[i]; ++i) {
             if (cfg_j.contains(legacy[i])) {
                 return Json({{"error","INVALID_REQUEST"},
                              {"invalid_arg", std::string("config.") + legacy[i]},
-                             {"message","legacy clock sampling field is not supported; use config.clock, config.edge, and config.sample_offset"}});
+                             {"message","legacy clock sampling field is not supported; use config.clock, config.edge, and config.sample_point"}});
             }
         }
         const char* reqs[] = {"clock","rst_n","paddr","psel","penable","pwrite","pwdata","prdata",nullptr};
@@ -56,7 +56,18 @@ public:
                                    err_str)) {
             return Json({{"error","INVALID_REQUEST"},{"message",err_str}});
         }
-        cfg.clock_sample.sample_offset_text = cfg_j.value("sample_offset", std::string("0ns"));
+        if (cfg_j.contains("sample_point")) {
+            if (!cfg_j["sample_point"].is_string())
+                return Json({{"error","INVALID_REQUEST"},{"message","config.sample_point must be before or after"}});
+            cfg.clock_sample.has_sample_point = true;
+            if (!parse_clock_sample_point_kind(cfg_j["sample_point"].get<std::string>(),
+                                               cfg.clock_sample.sample_point,
+                                               err_str))
+                return Json({{"error","INVALID_REQUEST"},{"message",err_str}});
+        }
+        if (cfg.clock_sample.edge == ClockEdgeKind::Negedge &&
+            cfg.clock_sample.has_sample_point)
+            return Json({{"error","INVALID_REQUEST"},{"message","config.sample_point is only valid with edge:posedge or edge:dual"}});
         cfg.rst_n = cfg_j["rst_n"].get<std::string>();
         cfg.paddr = cfg_j["paddr"].get<std::string>();
         cfg.psel = cfg_j["psel"].get<std::string>();
@@ -79,8 +90,8 @@ public:
         cinfo["sampling_mode"] = "clock_edge";
         cinfo["clock"] = cfg.clock_sample.clock;
         cinfo["edge"] = clock_edge_kind_text(cfg.clock_sample.edge);
-        cinfo["sample_offset"] = cfg.clock_sample.sample_offset_text.empty()
-            ? "0ns" : cfg.clock_sample.sample_offset_text;
+        if (cfg.clock_sample.edge != ClockEdgeKind::Negedge)
+            cinfo["sample_point"] = clock_sample_point_text(cfg.clock_sample.sample_point);
         cinfo["rst_n"] = cfg.rst_n;
         if (!cfg.pready.empty()) cinfo["pready"] = cfg.pready;
         if (!cfg.pslverr.empty()) cinfo["pslverr"] = cfg.pslverr;

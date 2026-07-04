@@ -3,6 +3,7 @@ import argparse
 import csv
 import json
 import os
+import selectors
 import shutil
 import subprocess
 import sys
@@ -34,11 +35,113 @@ AXI_SIM_LOG = os.path.join(
     "axi_multi_id_test",
     "sim.log",
 )
+DEFAULT_AXI_ENV = {
+    "AXI_REFERENCE_ROOT": "/home/yian/axi_test/test",
+    "SVT_VIP_INCDIR": "/home/yian/axi_test/test/include/sverilog",
+    "SVT_VIP_SRCDIR": "/home/yian/axi_test/test/src/sverilog/vcs",
+}
 DEFAULT_QUERY_TIMEOUT_MS = int(os.environ.get("XDEBUG_QUERY_TIMEOUT_MS", "120000"))
+PROGRESS_HEARTBEAT_SEC = int(os.environ.get("XDEBUG_PROGRESS_HEARTBEAT_SEC", "30"))
 
 
-def run_cmd(cmd, cwd=None, env=None, timeout=120, input_text=None):
+def log_progress(message):
+    print("[xdebug-progress] {}".format(message), flush=True)
+
+
+def should_print_progress_line(line):
+    text = line.strip()
+    if not text:
+        return False
+    if "AXI_EXPECTED_TXN_JSON" in text:
+        return False
+    important_fragments = [
+        "make ",
+        "vlogan ",
+        "vcs ",
+        "simv ",
+        "Chronologic VCS",
+        "Version V-",
+        "Top Level Modules:",
+        "CPU time:",
+        "Starting test",
+        "Starting master",
+        "TEST PASSED",
+        "Master WRITE transactions",
+        "Master READ transactions",
+        "UVM_ERROR :",
+        "UVM_FATAL :",
+        "Error-",
+        "Fatal",
+        "FAIL:",
+    ]
+    return any(fragment in text for fragment in important_fragments)
+
+
+def run_cmd(cmd, cwd=None, env=None, timeout=120, input_text=None, progress_label=None):
     start = time.time()
+    if progress_label:
+        log_progress("{}: start: {}".format(progress_label, " ".join(cmd)))
+        proc = subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+        )
+        selector = selectors.DefaultSelector()
+        if proc.stdout is not None:
+            selector.register(proc.stdout, selectors.EVENT_READ, "stdout")
+        if proc.stderr is not None:
+            selector.register(proc.stderr, selectors.EVENT_READ, "stderr")
+        stdout_chunks = []
+        stderr_chunks = []
+        last_heartbeat = start
+        def emit_heartbeat():
+            nonlocal last_heartbeat
+            heartbeat_now = time.time()
+            if heartbeat_now - last_heartbeat >= PROGRESS_HEARTBEAT_SEC:
+                log_progress("{}: still running ({}s)".format(progress_label, int(heartbeat_now - start)))
+                last_heartbeat = heartbeat_now
+
+        while selector.get_map():
+            now = time.time()
+            if timeout is not None and now - start > timeout:
+                proc.kill()
+                raise subprocess.TimeoutExpired(cmd, timeout)
+            events = selector.select(timeout=1.0)
+            if not events:
+                emit_heartbeat()
+                if proc.poll() is not None:
+                    for key in list(selector.get_map().values()):
+                        line = key.fileobj.readline()
+                        while line:
+                            if key.data == "stdout":
+                                stdout_chunks.append(line)
+                            else:
+                                stderr_chunks.append(line)
+                            if should_print_progress_line(line):
+                                print(line, end="", flush=True)
+                            line = key.fileobj.readline()
+                        selector.unregister(key.fileobj)
+                continue
+            for key, _ in events:
+                line = key.fileobj.readline()
+                if line:
+                    if key.data == "stdout":
+                        stdout_chunks.append(line)
+                    else:
+                        stderr_chunks.append(line)
+                    if should_print_progress_line(line):
+                        print(line, end="", flush=True)
+                else:
+                    selector.unregister(key.fileobj)
+            emit_heartbeat()
+        rc = proc.wait()
+        elapsed_ms = int((time.time() - start) * 1000)
+        log_progress("{}: done rc={} elapsed_ms={}".format(progress_label, rc, elapsed_ms))
+        return rc, "".join(stdout_chunks), "".join(stderr_chunks), elapsed_ms
+
     proc = subprocess.run(
         cmd,
         cwd=cwd,
@@ -53,17 +156,29 @@ def run_cmd(cmd, cwd=None, env=None, timeout=120, input_text=None):
     return proc.returncode, proc.stdout, proc.stderr, elapsed_ms
 
 
+def apply_axi_env_defaults(env):
+    for name, value in DEFAULT_AXI_ENV.items():
+        env.setdefault(name, value)
+    return env
+
+
 def require(cond, msg):
     if not cond:
         raise AssertionError(msg)
 
 
-def require_clock_summary(resp, edge, sample_offset="0ns"):
+def require_clock_summary(resp, edge, sample_point=None):
     summary = resp["summary"]
     require(summary["sampling_mode"] == "clock_edge", "missing clock_edge sampling mode")
     require(summary["clock"] == "ai_complex_top.clk", "unexpected summary clock")
     require(summary["edge"] == edge, "unexpected summary edge: {}".format(summary["edge"]))
-    require(summary["sample_offset"] == sample_offset, "unexpected summary sample_offset")
+    expected_sample_point = sample_point
+    if expected_sample_point is None and edge in ("posedge", "dual"):
+        expected_sample_point = "before"
+    if expected_sample_point is None:
+        require("sample_point" not in summary, "negedge summary should not expose sample_point")
+    else:
+        require(summary["sample_point"] == expected_sample_point, "unexpected summary sample_point")
     require(summary["sample_time_semantics"] == "time is sample_time",
             "missing sample time semantics: {}".format(json.dumps(summary, sort_keys=True)))
 
@@ -194,7 +309,7 @@ def compare_axi_export_to_log(export_data, expected_log):
     require(meta["incomplete_read_count"] == 0, "incomplete reads in export meta")
 
 
-def make_axi_config(prefix, top="axi_vip_fixture_top", edge="posedge", sample_offset=None):
+def make_axi_config(prefix, top="axi_vip_fixture_top", edge="posedge", sample_point=None):
     config = {
         "awaddr": prefix + ".awaddr",
         "awid": prefix + ".awid",
@@ -230,12 +345,12 @@ def make_axi_config(prefix, top="axi_vip_fixture_top", edge="posedge", sample_of
     }
     if edge is not None:
         config["edge"] = edge
-    if sample_offset is not None:
-        config["sample_offset"] = sample_offset
+    if sample_point is not None:
+        config["sample_point"] = sample_point
     return config
 
 
-def make_apb_config(edge=None, sample_offset=None):
+def make_apb_config(edge=None, sample_point=None):
     config = {
         "paddr": "ai_complex_top.paddr",
         "pwdata": "ai_complex_top.pwdata",
@@ -248,8 +363,8 @@ def make_apb_config(edge=None, sample_offset=None):
     }
     if edge is not None:
         config["edge"] = edge
-    if sample_offset is not None:
-        config["sample_offset"] = sample_offset
+    if sample_point is not None:
+        config["sample_point"] = sample_point
     return config
 
 
@@ -289,6 +404,7 @@ class AiRunner(object):
         req["limits"] = request_limits
 
         start = time.time()
+        log_progress("{}: query {} start timeout_ms={}".format(self.name, action, request_limits["timeout_ms"]))
         process_timeout = max(timeout, int(request_limits["timeout_ms"] / 1000) + 30)
         rc, out, err, _ = run_cmd([self.xdebug, "--json", "-"], cwd=REPO_ROOT, env=self.env,
                                   timeout=process_timeout, input_text=json.dumps(req) + "\n")
@@ -299,6 +415,7 @@ class AiRunner(object):
             raise AssertionError("non-json response for {} rc={} stdout={} stderr={}".format(action, rc, out, err))
         ok = bool(data.get("ok"))
         self.rows.append((self.name, action, rc, ok, elapsed_ms, data.get("meta", {}).get("elapsed_ms")))
+        log_progress("{}: query {} done rc={} ok={} elapsed_ms={}".format(self.name, action, rc, ok, elapsed_ms))
         if expect_ok:
             require(rc == 0 and ok, "{} failed rc={} data={} stderr={}".format(action, rc, json.dumps(data, indent=2), err))
         else:
@@ -315,15 +432,17 @@ class AiRunner(object):
 
 
 def build_nonaxi():
-    rc, out, err, _ = run_cmd(["make", "clean"], cwd=NONAXI_DIR, timeout=60)
+    rc, out, err, _ = run_cmd(["make", "clean"], cwd=NONAXI_DIR, timeout=60,
+                              progress_label="nonaxi clean")
     require(rc == 0, "non-AXI clean failed\n{}\n{}".format(out, err))
-    rc, out, err, _ = run_cmd(["make"], cwd=NONAXI_DIR, timeout=120)
+    rc, out, err, _ = run_cmd(["make"], cwd=NONAXI_DIR, timeout=120,
+                              progress_label="nonaxi build")
     require(rc == 0, "non-AXI wave build failed\n{}\n{}".format(out, err))
     require(os.path.exists(NONAXI_FSDB), "missing non-AXI fsdb: {}".format(NONAXI_FSDB))
 
 
 def build_axi():
-    env = os.environ.copy()
+    env = apply_axi_env_defaults(os.environ.copy())
     env["PWD"] = AXI_DIR
     required = ["AXI_REFERENCE_ROOT", "SVT_VIP_INCDIR", "SVT_VIP_SRCDIR"]
     missing = [name for name in required if not env.get(name)]
@@ -339,6 +458,7 @@ def build_axi():
         cwd=AXI_DIR,
         env=env,
         timeout=2400,
+        progress_label="axi vip compile/sim",
     )
     require(rc == 0, "AXI wave build failed\n{}\n{}".format(out[-4000:], err[-4000:]))
     require(os.path.exists(AXI_FSDB), "missing AXI fsdb: {}".format(AXI_FSDB))
@@ -357,25 +477,25 @@ def run_nonaxi(xdebug, fsdb):
         require("signals_preview" not in scope["data"], "scope.list generated redundant data.signals_preview")
         require("examples" not in scope["data"], "scope.list generated placeholder data.examples")
 
-        v = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "time": "75ns", "format": "hex"})
+        v = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "clock": "ai_complex_top.clk", "time": "75ns", "format": "hex"})
         require(v["data"]["value"]["value"] == "'h22" and v["data"]["value"]["known"] is True, "unexpected sig_a value")
-        xz = r.query("value.at", args={"signal": "ai_complex_top.xz_bus", "time": "95ns", "format": "binary"})
+        xz = r.query("value.at", args={"signal": "ai_complex_top.xz_bus", "clock": "ai_complex_top.clk", "time": "95ns", "format": "binary"})
         require(xz["data"]["value"]["known"] is False, "xz_bus should be unknown")
         require("bits" in xz["data"]["value"] and "has_x" in xz["data"]["value"], "xz_bus lacks logic diagnostics")
         batch = r.query(
             "value.batch_at",
-            args={"time": "95ns", "signals": ["ai_complex_top.sig_a", "ai_complex_top.xz_bus", "ai_complex_top.no_such"], "format": "hex"},
+            args={"time": "95ns", "clock": "ai_complex_top.clk", "signals": ["ai_complex_top.sig_a", "ai_complex_top.xz_bus", "ai_complex_top.no_such"], "format": "hex"},
             expect_ok=True,
         )
         require(batch["summary"]["missing_count"] == 1 and batch["summary"]["unknown_count"] == 1, "batch missing/unknown mismatch")
         require(batch["summary"]["missing_by_reason"]["signal_not_found"] == 1, "batch missing reason mismatch")
         missing_rows = [row for row in batch["data"]["values"] if row["status"] != "ok"]
         require(missing_rows and missing_rows[0]["reason"], "batch missing row lacks reason")
-        hint = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "time": "75ns", "format": "hex", "slice_hint": {"chunk_width": 4, "count": 2}})
+        hint = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "clock": "ai_complex_top.clk", "time": "75ns", "format": "hex", "slice_hint": {"chunk_width": 4, "count": 2}})
         require(hint["data"]["xbit_hints"]["status"] == "ready", "xbit hints not generated")
-        unsupported = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "time": "75ns", "format": "array_indexed"})
+        unsupported = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "clock": "ai_complex_top.clk", "time": "75ns", "format": "array_indexed"})
         require(unsupported["summary"]["status"] == "unsupported_format", "array_indexed unsupported diagnostic missing")
-        r.query("value.at", args={"signal": "ai_complex_top.no_such", "time": "10ns"}, expect_ok=False)
+        r.query("value.at", args={"signal": "ai_complex_top.no_such", "clock": "ai_complex_top.clk", "time": "10ns"}, expect_ok=False)
 
         created = r.query("list.create", args={"name": "basic"})
         require("summary" not in created["data"], "list.create generated nested data.summary")
@@ -386,7 +506,7 @@ def run_nonaxi(xdebug, fsdb):
         show = r.query("list.show", args={"name": "basic"})
         require(show["summary"]["signal_count"] == 2, "list.show count mismatch")
         require("count" not in show["data"], "list.show generated redundant data.count")
-        values = r.query("list.value_at", args={"name": "basic", "time": "75ns", "format": "hex"})
+        values = r.query("list.value_at", args={"name": "basic", "clock": "ai_complex_top.clk", "time": "75ns", "format": "hex"})
         require("summary" not in values["data"], "list.value_at generated nested data.summary")
         validated = r.query("list.validate", args={"name": "basic"})
         require("all_found" in validated["summary"], "list.validate did not expose all_found at source")
@@ -439,16 +559,19 @@ def run_nonaxi(xdebug, fsdb):
         require(apb_window["summary"]["transaction_count"] >= 1, "APB window empty")
 
         apb_modes = [
-            ("apb_default_negedge", make_apb_config(), "negedge", "0ns"),
-            ("apb_dual", make_apb_config(edge="dual"), "dual", "0ns"),
-            ("apb_pos_offset", make_apb_config(edge="posedge", sample_offset="1ns"), "posedge", "1ns"),
-            ("apb_neg_offset", make_apb_config(edge="negedge", sample_offset="-1ns"), "negedge", "-1ns"),
+            ("apb_default_negedge", make_apb_config(), "negedge", None),
+            ("apb_dual", make_apb_config(edge="dual"), "dual", "before"),
+            ("apb_pos_before", make_apb_config(edge="posedge", sample_point="before"), "posedge", "before"),
         ]
-        for name, config, expected_edge, expected_offset in apb_modes:
+        for name, config, expected_edge, expected_sample_point in apb_modes:
             loaded = r.query("apb.config.load", args={"name": name, "config": config})
             require(loaded["data"]["config"]["edge"] == expected_edge, "APB config edge mismatch for {}".format(name))
-            require(loaded["data"]["config"]["sample_offset"] == expected_offset,
-                    "APB config sample_offset mismatch for {}".format(name))
+            if expected_sample_point is None:
+                require("sample_point" not in loaded["data"]["config"],
+                        "APB negedge config should not expose sample_point for {}".format(name))
+            else:
+                require(loaded["data"]["config"]["sample_point"] == expected_sample_point,
+                        "APB config sample_point mismatch for {}".format(name))
             wr_count = r.query("apb.query", args={"name": name, "direction": "wr"})
             rd_count = r.query("apb.query", args={"name": name, "direction": "rd"})
             require(wr_count["summary"]["count"] >= 1, "APB write count empty for {}".format(name))
@@ -507,6 +630,7 @@ def run_nonaxi(xdebug, fsdb):
         require("clock" in bad_clock_field["data"]["expected"], "legacy clk expected guidance should mention clock")
 
         checks = r.query("verify.conditions", args={
+            "clock": "ai_complex_top.clk",
             "time": "95ns",
             "conditions": [
                 {"signal": "ai_complex_top.sig_a", "op": "==", "value": "'h22"},
@@ -519,12 +643,14 @@ def run_nonaxi(xdebug, fsdb):
         require("checks" in checks["data"], "verify.conditions did not expose data.checks")
 
         expr = r.query("expr.eval_at", args={
+            "clock": "ai_complex_top.clk",
             "time": "145ns",
             "expr": "valid && !ready",
             "signals": {"valid": "ai_complex_top.hs_valid", "ready": "ai_complex_top.hs_ready"},
         })
         require(expr["data"]["expr_value"] is True, "expr.eval_at expected true")
         expr_u = r.query("expr.eval_at", args={
+            "clock": "ai_complex_top.clk",
             "time": "95ns",
             "expr": "xz != 0",
             "signals": {"xz": "ai_complex_top.xz_bus"},
@@ -534,21 +660,22 @@ def run_nonaxi(xdebug, fsdb):
         win = r.query("window.verify", args={
             "clock": "ai_complex_top.clk",
             "edge": "posedge",
+            "sample_point": "after",
             "time_range": {"begin": "140ns", "end": "175ns"},
             "conditions": [{"expr": "valid && !ready", "signals": {"valid": "ai_complex_top.hs_valid", "ready": "ai_complex_top.hs_ready"}, "mode": "always"}],
         })
         require(win["summary"]["all_passed"] is True, "window.verify expected pass")
-        require_clock_summary(win, "posedge")
+        require_clock_summary(win, "posedge", "after")
         offset_win = r.query("window.verify", args={
             "clock": "ai_complex_top.clk",
             "edge": "posedge",
-            "sample_offset": "1ns",
+            "sample_point": "before",
             "time_range": {"begin": "140ns", "end": "175ns"},
             "conditions": [{"expr": "valid && !ready", "signals": {"valid": "ai_complex_top.hs_valid", "ready": "ai_complex_top.hs_ready"}, "mode": "eventually"}],
         })
         require(offset_win["summary"]["all_passed"] is True,
                 "window.verify positive offset expected eventually pass: {}".format(json.dumps(offset_win, sort_keys=True)))
-        require_clock_summary(offset_win, "posedge", "1ns")
+        require_clock_summary(offset_win, "posedge", "before")
         dual_win = r.query("window.verify", args={
             "clock": "ai_complex_top.clk",
             "edge": "dual",
@@ -578,11 +705,11 @@ def run_nonaxi(xdebug, fsdb):
             "signal": "ai_complex_top.hs_valid",
             "clock": "ai_complex_top.clk",
             "edge": "posedge",
-            "sample_offset": "-1ns",
+            "sample_point": "before",
             "time_range": {"begin": "140ns", "end": "175ns"},
             "max_samples": 1000,
         })
-        require_clock_summary(offset_stats, "posedge", "-1ns")
+        require_clock_summary(offset_stats, "posedge", "before")
         require(offset_stats["summary"]["sample_count"] > 0, "signal.statistics negative offset did not sample")
         anomaly = r.query("detect_abnormal", args={
             "signals": ["ai_complex_top.glitch_sig", "ai_complex_top.stuck_sig", "ai_complex_top.xz_bus"],
@@ -612,7 +739,7 @@ def run_nonaxi(xdebug, fsdb):
         require(bad_type["error"]["code"] == "INVALID_REQUEST", "unknown check type should return INVALID_REQUEST")
         require(bad_type["data"]["invalid_arg"] == "args.checks[0].type",
                 "unknown check type should expose invalid type path")
-        health = r.query("value.at", args={"signal": "ai_complex_top.clk", "time": "10ns"})
+        health = r.query("value.at", args={"signal": "ai_complex_top.clk", "clock": "ai_complex_top.clk", "time": "10ns"})
         require(health["ok"] is True, "session should remain healthy after invalid detect_abnormal checks")
         hs = r.query("handshake.inspect", args={
             "clock": "ai_complex_top.clk",
@@ -642,16 +769,19 @@ def run_axi(xdebug, fsdb):
         r.query("axi.query", args={"name": "axi0", "direction": "wr", "num": 1})
 
         axi_modes = [
-            ("axi_default_negedge", make_axi_config(prefix, edge=None), "negedge", "0ns"),
-            ("axi_dual", make_axi_config(prefix, edge="dual"), "dual", "0ns"),
-            ("axi_pos_offset", make_axi_config(prefix, edge="posedge", sample_offset="1ns"), "posedge", "1ns"),
-            ("axi_neg_offset", make_axi_config(prefix, edge="negedge", sample_offset="-1ns"), "negedge", "-1ns"),
+            ("axi_default_negedge", make_axi_config(prefix, edge=None), "negedge", None),
+            ("axi_dual", make_axi_config(prefix, edge="dual"), "dual", "before"),
+            ("axi_pos_before", make_axi_config(prefix, edge="posedge", sample_point="before"), "posedge", "before"),
         ]
-        for name, config, expected_edge, expected_offset in axi_modes:
+        for name, config, expected_edge, expected_sample_point in axi_modes:
             loaded = r.query("axi.config.load", args={"name": name, "config": config})
             require(loaded["data"]["config"]["edge"] == expected_edge, "AXI config edge mismatch for {}".format(name))
-            require(loaded["data"]["config"]["sample_offset"] == expected_offset,
-                    "AXI config sample_offset mismatch for {}".format(name))
+            if expected_sample_point is None:
+                require("sample_point" not in loaded["data"]["config"],
+                        "AXI negedge config should not expose sample_point for {}".format(name))
+            else:
+                require(loaded["data"]["config"]["sample_point"] == expected_sample_point,
+                        "AXI config sample_point mismatch for {}".format(name))
 
         r.query("axi.cursor", args={"name": "axi0", "op": "begin", "direction": "all"})
         r.query("axi.cursor", args={"name": "axi0", "op": "next", "direction": "all"})

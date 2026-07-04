@@ -46,7 +46,7 @@ const char* fallback_help_text() {
         "  transition timelines, window.verify for holds, and event.find for\n"
         "  first/last occurrence queries. event.find also accepts inline\n"
         "  args.expr + args.clock + args.signals for one-off event queries;\n"
-        "  edge defaults to negedge and sample_offset defaults to 0ns.\n"
+        "  edge defaults to negedge; use sample_point:before for posedge boundary checks.\n"
         "  signal.changes compact output omits\n"
         "  rows unless include_rows/include_all_changes is set.\n\n"
         "  session.open always creates a new session. Same-name live sessions\n"

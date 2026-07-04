@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "clock_point_query.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -41,10 +42,6 @@ static std::string trim_copy(const std::string& text) {
     size_t end = text.size();
     while (end > begin && std::isspace(static_cast<unsigned char>(text[end - 1]))) --end;
     return text.substr(begin, end - begin);
-}
-static Json value_object(const std::string& raw) {
-    return xdebug_waveform::logic_value_json(
-        xdebug_waveform::logic_value_from_fsdb_raw(raw, 'h'));
 }
 static std::string with_value_prefix(const std::string& raw, char fmt) {
     std::string text = trim_copy(raw);
@@ -92,6 +89,10 @@ public:
         if (signal.empty() || time_str.empty())
             return err("MISSING_FIELD", "args.signal and args.time are required");
 
+        xdebug_waveform::ClockSampleSpec clock_spec;
+        Json clock_error;
+        if (!parse_point_clock_args(args, clock_spec, clock_error)) return clock_error;
+
         char fmt = static_cast<char>(std::tolower(
             static_cast<unsigned char>(fmt_str.empty() ? 'h' : fmt_str[0])));
         if (fmt != 'h' && fmt != 'b' && fmt != 'd') fmt = 'h';
@@ -102,30 +103,51 @@ public:
             return err("TIME_SPEC_INVALID", time_error.empty() ? "failed to parse time: " + time_str : time_error);
 
         npiFsdbValType vtype = xdebug_waveform::parse_format(fmt);
-        std::string raw;
-        if (!npi_fsdb_sig_value_at(g_fsdb_file, signal.c_str(), fsdb_time, raw, vtype))
-            return err("SIGNAL_NOT_FOUND", "failed to read value: " + signal);
-        raw = with_value_prefix(raw, fmt);
 
         Json out;
         out["signal"] = signal;
         std::string formatted_time = xdebug_core::format_time(g_fsdb_file, fsdb_time);
         out["time"] = formatted_time;
-        std::string requested_format = args.value("format", "");
-        if (requested_format == "array_indexed" && raw.find('{') == std::string::npos) {
-            out["status"] = "unsupported_format";
-            out["value"] = value_object(raw);
-            out["raw_value"] = trim_copy(raw);
-            out["reason"] = "format:array_indexed requires an FSDB aggregate value";
-        } else {
-            out["status"] = "ok";
-            out["value"] = value_object(raw);
+        ClockPointQueryResult point;
+        Json point_error;
+        if (!build_clock_point_query(g_fsdb_file,
+                                     clock_spec,
+                                     fsdb_time,
+                                     formatted_time,
+                                     std::vector<PointSignalSpec>{{signal, signal}},
+                                     vtype,
+                                     fmt,
+                                     point,
+                                     point_error)) {
+            return point_error;
         }
-        out["known"] = !contains_xz(raw);
-        Json hints = make_xbit_hints(args, signal, raw);
-        if (!hints.is_null()) out["xbit_hints"] = hints;
+        Json middle_cell = point.rows.empty() ? Json() : point.rows[0].value("middle", Json::object());
+        if (middle_cell.value("status", std::string()) == "signal_not_found")
+            return err("SIGNAL_NOT_FOUND", "failed to read value: " + signal);
+        Json middle_value = middle_cell.value("value", Json());
+        std::string requested_format = args.value("format", "");
+        out["status"] = middle_cell.value("status", std::string("unknown"));
+        out["value"] = middle_value;
+        out["known"] = middle_value.is_object() ? !contains_xz(middle_value.value("value", std::string())) : false;
+        out["clock_context"] = point.clock_context;
+        out["samples"] = point.samples;
+        out["sample_rows"] = point.rows;
+        if (requested_format == "array_indexed") {
+            out["status"] = "unsupported_format";
+            out["reason"] = "format:array_indexed requires an FSDB aggregate value";
+        }
+        // xbit hints require the raw FSDB scalar. Keep the old direct middle read for hints only.
+        std::string raw;
+        if (npi_fsdb_sig_value_at(g_fsdb_file, signal.c_str(), fsdb_time, raw, vtype)) {
+            raw = with_value_prefix(raw, fmt);
+            Json hints = make_xbit_hints(args, signal, raw);
+            if (!hints.is_null()) out["xbit_hints"] = hints;
+        }
         out["summary"] = {{"signal", signal}, {"time", formatted_time},
-                          {"known", !contains_xz(raw)}, {"status", out["status"]}};
+                          {"known", out["known"]}, {"status", out["status"]},
+                          {"clock_edge_hit", point.clock_context["clock_edge_hit"]},
+                          {"target_edge_hit", point.clock_context["target_edge_hit"]},
+                          {"bracket_complete", point.clock_context["bracket_complete"]}};
         return out;
     }
 
@@ -140,9 +162,26 @@ private:
         out.emit_section("target");
         if (d.contains("signal")) out.emit_kv("signal", d["signal"]);
         if (d.contains("time")) out.emit_kv("time", d["time"]);
+        if (d.contains("clock_context")) {
+            out.emit_kv("clock", d["clock_context"].value("clock", std::string()));
+            out.emit_kv("edge", d["clock_context"].value("edge", std::string()));
+            out.emit_kv("clock_edge_hit", d["clock_context"].value("clock_edge_hit", false));
+            out.emit_kv("target_edge_hit", d["clock_context"].value("target_edge_hit", false));
+        }
         out.emit_section("summary");
         if (d.contains("status")) out.emit_kv("status", d["status"]);
-        if (d.contains("value")) out.emit_kv("value", d["value"]);
+        if (d.contains("sample_rows") && d["sample_rows"].is_array()) {
+            std::vector<std::vector<std::string>> rows;
+            for (const auto& row : d["sample_rows"]) {
+                rows.push_back({row.value("signal", std::string()),
+                                xdebug::json_to_xout_value(point_cell_value(row, "before")),
+                                xdebug::json_to_xout_value(point_cell_value(row, "middle")),
+                                xdebug::json_to_xout_value(point_cell_value(row, "after"))});
+            }
+            out.emit_table({"signal", "before", "middle", "after"}, rows);
+        } else if (d.contains("value")) {
+            out.emit_kv("value", d["value"]);
+        }
         return out.str();
     }
 };

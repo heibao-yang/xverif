@@ -6,6 +6,7 @@
   },
   "args": {
     "expr": "valid && !ready",
+    "clock": "top.u.clk",
     "time": "100ns",
     "signals": {
       "valid": "top.u.valid",

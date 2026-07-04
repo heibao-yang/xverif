@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "clock_point_query.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -31,23 +32,6 @@
 namespace xdebug_design {
 namespace {
 
-static std::string trim_copy(const std::string& text) {
-    size_t begin = 0;
-    while (begin < text.size() && std::isspace(static_cast<unsigned char>(text[begin]))) ++begin;
-    size_t end = text.size();
-    while (end > begin && std::isspace(static_cast<unsigned char>(text[end - 1]))) --end;
-    return text.substr(begin, end - begin);
-}
-static Json value_object(const std::string& raw) {
-    return xdebug_waveform::logic_value_json(
-        xdebug_waveform::logic_value_from_fsdb_raw(raw, 'h'));
-}
-static std::string with_value_prefix(const std::string& raw, char fmt) {
-    std::string text = trim_copy(raw);
-    if (text.size() >= 2 && text[0] == '\'') return text;
-    return std::string("'") + static_cast<char>(std::tolower(static_cast<unsigned char>(fmt))) + text;
-}
-
 class VerifyConditionsHandler : public EngineActionHandler {
 public:
     const char* action_name() const override { return "verify.conditions"; }
@@ -59,12 +43,33 @@ public:
         std::string time_str = args.value("time", args.value("at", ""));
         if (time_str.empty() || !conditions.is_array())
             return err("MISSING_FIELD", "args.conditions[] and args.time are required");
+        xdebug_waveform::ClockSampleSpec clock_spec;
+        Json clock_error;
+        if (!parse_point_clock_args(args, clock_spec, clock_error)) return clock_error;
 
         npiFsdbTime fsdb_time = 0;
         std::string time_error;
         if (!xdebug_waveform::parse_user_time(time_str.c_str(), false, fsdb_time, time_error))
             return err("TIME_SPEC_INVALID", time_error.empty() ? time_str : time_error);
         std::string formatted_time = xdebug_core::format_time(g_fsdb_file, fsdb_time);
+        std::vector<PointSignalSpec> signal_specs;
+        for (auto& cond : conditions) {
+            std::string signal = cond.value("signal", "");
+            if (!signal.empty()) signal_specs.push_back({signal, signal});
+        }
+        ClockPointQueryResult point;
+        Json point_error;
+        if (!build_clock_point_query(g_fsdb_file,
+                                     clock_spec,
+                                     fsdb_time,
+                                     formatted_time,
+                                     signal_specs,
+                                     npiFsdbHexStrVal,
+                                     'h',
+                                     point,
+                                     point_error)) {
+            return point_error;
+        }
 
         Json results = Json::array();
         int passed = 0;
@@ -82,14 +87,23 @@ public:
                 return err("VALUE_FORMAT_INVALID", expected_value.error);
             std::string signal = cond.value("signal", "");
             if (!signal.empty()) {
-                std::string raw;
-                if (npi_fsdb_sig_value_at(g_fsdb_file, signal.c_str(), fsdb_time, raw, npiFsdbHexStrVal)) {
-                    raw = with_value_prefix(raw, 'h');
+                Json sample_row = Json::object();
+                for (const auto& row : point.rows) {
+                    if (row.value("path", std::string()) == signal) {
+                        sample_row = row;
+                        break;
+                    }
+                }
+                Json middle = sample_row.value("middle", Json::object());
+                if (middle.value("status", std::string()) == "ok") {
+                    Json observed_json = middle.value("value", Json::object());
+                    std::string raw = observed_json.value("value", std::string());
                     xdebug_waveform::LogicValue observed =
                         xdebug_waveform::logic_value_from_fsdb_raw(raw, 'h');
                     bool known = !xdebug_waveform::logic_value_has_xz(observed) &&
                                  !xdebug_waveform::logic_value_has_xz(expected_value);
-                    r["observed"] = value_object(raw);
+                    r["observed"] = observed_json;
+                    r["samples"] = sample_row;
                     r["known"] = known;
                     std::string op = cond.value("op", "==");
                     if (known) {
@@ -108,7 +122,8 @@ public:
                     r["known"] = false;
                     r["status"] = "unknown";
                     r["pass"] = nullptr;
-                    r["error"] = "signal not found";
+                    r["error"] = middle.value("status", std::string("signal not found"));
+                    r["samples"] = sample_row;
                     unknown++;
                 }
             } else {
@@ -130,7 +145,12 @@ public:
             {"failed", failed},
             {"unknown", unknown}
         };
+        out["summary"]["clock_edge_hit"] = point.clock_context["clock_edge_hit"];
+        out["summary"]["target_edge_hit"] = point.clock_context["target_edge_hit"];
+        out["summary"]["bracket_complete"] = point.clock_context["bracket_complete"];
         out["checks"] = results;
+        out["clock_context"] = point.clock_context;
+        out["sample_rows"] = point.rows;
         return out;
     }
 private:

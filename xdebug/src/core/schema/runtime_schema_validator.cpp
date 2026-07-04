@@ -345,7 +345,7 @@ RuntimeSchemaValidationResult make_validation_error(const CachedValidator& cache
     std::string expected = additional_property ? "no additional properties allowed" :
                                                  expected_from_schema(schema_node, issue.message);
     if (additional_property && is_legacy_clock_sampling_field(extra_property)) {
-        expected = "use clock, edge, and sample_offset";
+        expected = "use clock, edge, and sample_point";
     }
     result.data = {
         {"invalid_arg", invalid_arg},

@@ -347,46 +347,6 @@ bool AxiAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
         for (size_t i = 0; i < signals.size(); ++i) values[i] = init_values[i + 1];
     }
 
-    if (!clock_sample.zero_offset) {
-        ClockSampleTimeResolver resolver(file, clock_sample);
-        std::string resolver_error;
-        bool ok = resolver.for_each_sample_time(min_time, max_time,
-            [&](const ClockSamplePoint& point) -> bool {
-                fsdbValVec_t sampled;
-                if (!npi_fsdb_sig_hdl_vec_value_at(sig_handles,
-                                                   point.sample_time,
-                                                   sampled,
-                                                   npiFsdbHexStrVal) ||
-                    sampled.size() != sig_handles.size()) {
-                    return false;
-                }
-                std::vector<std::string> sampled_values(sampled.begin(), sampled.end());
-                process_edge(point.sample_time, sampled_values);
-                return true;
-            }, resolver_error);
-        npi_fsdb_release_vct(vct);
-        if (!ok) return false;
-        pending_writes.clear();
-        pending_reads.clear();
-        w_beat_buffer.clear();
-        result.all.reserve(result.writes.size() + result.reads.size());
-        for (const auto& w : result.writes) result.all.push_back(w);
-        for (const auto& r : result.reads) result.all.push_back(r);
-        auto cmp = [](const AxiTransaction& a, const AxiTransaction& b) { return a.addr_time < b.addr_time; };
-        std::sort(result.all.begin(), result.all.end(), cmp);
-        std::sort(result.writes.begin(), result.writes.end(), cmp);
-        std::sort(result.reads.begin(), result.reads.end(), cmp);
-        result.all_by_resp_time.resize(result.all.size());
-        for (size_t i = 0; i < result.all.size(); ++i) result.all_by_resp_time[i] = i;
-        std::sort(result.all_by_resp_time.begin(), result.all_by_resp_time.end(),
-            [&](size_t lhs, size_t rhs) {
-                return result.all[lhs].resp_time < result.all[rhs].resp_time;
-            });
-        results_[name] = std::move(result);
-        cursors_[name] = AxiCursor();
-        return true;
-    }
-
     TimeBasedVcIterGuard guard;
     npiFsdbTimeBasedVcIter& iter = guard.iter();
     iter.add(clk_sig);

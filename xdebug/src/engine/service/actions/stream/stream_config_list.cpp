@@ -39,18 +39,21 @@ public:
         Json arr = Json::array();
         for (const auto& stream : streams) {
             if (verbose) arr.push_back(xdebug_waveform::stream_config_json(stream));
-            else arr.push_back({{"name", stream.name},
-                                {"sampling_mode", "clock_edge"},
-                                {"clock", stream.clock_sample.clock},
-                                {"edge", xdebug_waveform::clock_edge_kind_text(stream.clock_sample.edge)},
-                                {"sample_offset", stream.clock_sample.sample_offset_text.empty()
-                                    ? "0ns" : stream.clock_sample.sample_offset_text},
-                                {"handshake", xdebug_waveform::stream_handshake_text(stream)},
-                                {"packet", xdebug_waveform::stream_packet_enabled(stream) ? "sop/eop" : "none"},
-                                {"field_count", stream.data_fields.size() + stream.beat_fields.size() +
-                                    stream.stable_fields.size() + (stream.data.empty() ? 0 : 1)},
-                                {"channel_id_valid", stream.channel_id_valid},
-                                {"allow_interleaving", stream.allow_interleaving}});
+            else {
+                Json item = {{"name", stream.name},
+                             {"sampling_mode", "clock_edge"},
+                             {"clock", stream.clock_sample.clock},
+                             {"edge", xdebug_waveform::clock_edge_kind_text(stream.clock_sample.edge)},
+                             {"handshake", xdebug_waveform::stream_handshake_text(stream)},
+                             {"packet", xdebug_waveform::stream_packet_enabled(stream) ? "sop/eop" : "none"},
+                             {"field_count", stream.data_fields.size() + stream.beat_fields.size() +
+                                 stream.stable_fields.size() + (stream.data.empty() ? 0 : 1)},
+                             {"channel_id_valid", stream.channel_id_valid},
+                             {"allow_interleaving", stream.allow_interleaving}};
+                if (stream.clock_sample.edge != xdebug_waveform::ClockEdgeKind::Negedge)
+                    item["sample_point"] = xdebug_waveform::clock_sample_point_text(stream.clock_sample.sample_point);
+                arr.push_back(item);
+            }
         }
         return Json{{"summary", {{"count", streams.size()}}}, {"streams", arr}};
     }

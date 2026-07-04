@@ -1,176 +1,85 @@
-# xdebug Clock Sampling Breaking Migration Plan
+# xdebug Clock Sampling and Point Query Migration Plan
 
 ## Summary
 
-- Do a breaking migration for all clock-sampled xdebug actions.
-- Standardize public inputs, internal names, and output summary fields around one clock sampling model.
-- The shared component only resolves clock edge/sample times. It does not read data signal values, evaluate expressions, or maintain protocol state.
-- Default to `edge:"negedge"` and `sample_offset:"0ns"`.
-- Support `edge:"posedge"`, `edge:"negedge"`, and `edge:"dual"`.
-- Keep `sample_offset:"0ns"` on the existing single-pass value-scanning path. Do not compute a shifted sample time when the offset is zero.
+- Remove `sample_offset` semantics completely. Public clock sampling inputs are `clock`, `edge`, and `sample_point`.
+- Range-scan actions use the shared clock-sampling component. The default is `edge:"negedge"` and the negedge path remains the fast path.
+- Point-time query actions must also require `clock`: `value.at`, `value.batch_at`, `list.value_at`, `expr.eval_at`, and `verify.conditions`.
+- `trace.active_driver*`, `signal.changes`, and `cursor.*` keep their existing exact-time or active-trace semantics and are not part of this point-query clock bracket behavior.
 
-## Public Interface
+## Public API
 
-All clock-sampled actions must use these fields:
+- Point-time actions require `args.clock`.
+- `args.edge` accepts `"posedge"`, `"negedge"`, and `"dual"`; default is `"negedge"`.
+- `args.sample_point` accepts `"before"` and `"after"` only when `edge` is `"posedge"` or `"dual"`; default is `"before"`.
+- Passing `sample_point` with `edge:"negedge"` is an invalid request.
+- `sample_offset`, `clk`, `sampling`, `clock_edge`, and `posedge` are not compatibility aliases. Requests using them must return structured `INVALID_REQUEST` errors that identify the exact invalid field and expected replacement fields.
+- Point-time actions return `clock_context` with:
+  - `clock`
+  - `edge`
+  - `requested_time`
+  - `clock_edge_hit`
+  - `clock_edge_kind`
+  - `target_edge_hit`
+  - `sample_point_applied`
+  - `previous_sample_time`
+  - `next_sample_time`
+  - `bracket_complete`
+- If `time` hits the target sampling edge, `middle` is sampled with the current mode:
+  - `posedge` and `dual` use `sample_point`.
+  - `negedge` uses the current fast value-at-edge semantics.
+- If `time` does not hit the target sampling edge, the action returns three samples:
+  - `before`: nearest previous target sampling edge.
+  - `middle`: direct value at the requested time.
+  - `after`: nearest next target sampling edge.
+- If `time` hits a non-target clock edge, for example `edge:"posedge"` at a negedge timestamp, return `clock_edge_hit:true` and `target_edge_hit:false`, then still compute the before/middle/after bracket using the requested `edge`.
 
-- `clock`: clock signal path.
-- `edge`: `"posedge" | "negedge" | "dual"`, default `"negedge"`.
-- `sample_offset`: duration string, default `"0ns"`.
+## Implementation Changes
 
-Remove the old fields from public schemas and examples:
+- Update this clock sampling plan and related xdebug docs so point-time actions are clock-aware point queries, not unaffected exact-time actions.
+- Refactor `ClockSampleSpec` to remove offset fields and add `sample_point`.
+- Keep one parser/validator for required `clock`, default `edge`, `sample_point` validity, and legacy-field errors.
+- Extend the clock helper to:
+  - detect whether a timestamp is any clock edge and report the actual edge kind;
+  - detect whether a timestamp is the requested target edge;
+  - find previous and next target sample edges for a requested timestamp;
+  - apply before/after/current sample semantics.
+- Migrate range-scan actions to shared clock sampling and merged VCT/group before-after behavior. Preserve the negedge fast path without before/after overhead.
+- Add a shared point sampler for point-time actions. It collects the action signal set once and produces structured `before`, `middle`, and `after` samples.
+- Render XOUT tables:
+  - `value.at`, `value.batch_at`, and `list.value_at`: `signal | before | middle | after`.
+  - `expr.eval_at` and `verify.conditions`: first render operand signal tables, then render expression or condition result tables.
+- Missing previous or next edges at waveform boundaries must not fail the action. The missing cell reports `status:"missing_edge"` and `summary.bracket_complete:false`.
 
-- `clk`
-- `sampling`
-- `clock_edge`
-- `posedge`
+## Skill and Docs
 
-Old fields are not compatibility aliases. Requests that use them must fail validation with a structured `INVALID_REQUEST` response whose `invalid_arg` points at the old field and whose `expected` text tells the caller to use `clock`, `edge`, and `sample_offset`.
-
-Persisted event, stream, AXI, and APB configs must also use the new fields. Do not add automatic migration for old config files.
-
-## Clock Sample Time Resolver
-
-Add a shared resolver, conceptually named `ClockSampleTimeResolver`.
-
-The resolver owns only clock-time behavior:
-
-- parse and hold `ClockSampleSpec`
-- find target clock edges
-- compute `sample_time`
-- answer whether a timestamp is a target edge
-
-It may wrap clock VCT helpers internally, because finding clock edges requires the clock waveform. It must not receive data signal handles or read data signal values.
-
-Required internal model:
-
-- `ClockSampleSpec.clock`
-- `ClockSampleSpec.edge`: enum `{posedge, negedge, dual}`
-- `ClockSampleSpec.sample_offset`
-- parsed offset ticks
-- `ClockSampleSpec.zero_offset`
-
-Required resolver APIs:
-
-- `find_next_sample(anchor_time) -> {edge_time, sample_time, edge_kind}`
-- `for_each_sample_time(begin, end, callback(edge_time, sample_time, edge_kind))`
-- `is_target_edge_at(time) -> bool`
-
-`find_next_sample(anchor_time)` semantics:
-
-- A sample is valid only when `sample_time >= anchor_time`.
-- If `anchor_time` itself is the target edge and `sample_offset == 0`, return `anchor_time`.
-- If `anchor_time` is a non-target edge, return the next target edge.
-- If `sample_offset < 0` makes the current edge's `sample_time` earlier than `anchor_time`, skip to the next target edge.
-- For `edge:"dual"`, both posedge and negedge are target edges, and the nearest valid later sample wins.
-
-`is_target_edge_at(time)` implementation requirement:
-
-- Use the clock VCT precise-time pattern: position the clock VCT at `time`, read back the VCT time, and only treat it as a candidate if the returned time equals `time`.
-- Then compare the previous clock value and current clock value:
-  - `0 -> 1`: posedge
-  - `1 -> 0`: negedge
-- Do not use active-trace APIs such as `npi_check_active_handle`; those are driver-activity APIs, not clock-edge APIs.
-
-## Action Migration
-
-Actions that need clock sampling must use the new resolver:
-
-- `event.find`
-- `event.export`
-- `window.verify`
-- `signal.statistics` clock mode
-- `counter.statistics`
-- `sampled_pulse.inspect`
-- `handshake.inspect`
-- stream query/export/config/load/show/list
-- AXI/APB config/load/query/export/analysis
-
-Actions that use exact times or raw value changes must not use the resolver:
-
-- `value.at`
-- `value.batch_at`
-- `list.value_at`
-- `expr.eval_at`
-- `signal.changes`
-- other exact-time cursor/value actions unless their own semantics are explicitly clock-edge based
-
-Migration rules:
-
-- For `sample_offset == 0`, keep each action's current single-pass data-value scan when it already has one.
-- The resolver supplies edge/default/anchor semantics, not data values.
-- For `sample_offset != 0`, actions may use `find_next_sample` or `for_each_sample_time`, then point-read their own data signals at `sample_time`.
-- `event.find` fast path must use `find_next_sample(anchor_time)`. The action can still find candidate signal change times itself; the resolver decides the next valid clock sample time.
-- `event.find` full scan with zero offset must preserve the current single-pass behavior.
-
-## Output Contract
-
-Every migrated action summary must include:
-
-- `sampling_mode: "clock_edge"`
-- `clock`
-- `edge`
-- `sample_offset`
-- `sample_time_semantics: "time is sample_time"`
-
-Row, event, transaction, and sample `time` fields must represent the actual sample time:
-
-- `sample_offset == 0ns`: `time == edge_time`
-- non-zero `sample_offset`: `time == edge_time + sample_offset`
-
-When `sample_offset` is non-zero or `edge:"dual"` is used, rows may also include:
-
-- `edge_time`
-- `edge_kind`
-
-Even when those explanatory fields are present, `time` remains the sample time.
-
-## Skill And Documentation Updates
-
-Update xverif skill guidance and xdebug docs to make the action split explicit:
-
-- Prefer `edge:"negedge"` for waveform/protocol clock sampling.
-- Use `sample_offset` only when negedge sampling does not explain monitor/skew/race behavior.
-- Use `edge:"posedge"` only when an interface spec, DUT semantic, or monitor explicitly requires posedge.
-- Use `edge:"dual"` only for special cases such as DDR, true dual-edge sampling, or unknown-edge protocol bring-up. Do not use dual edge for ordinary valid/ready analysis by default.
-- Examples must use only `clock`, `edge`, and `sample_offset`.
-- Remove old-field examples for `clk`, `sampling`, `clock_edge`, and `posedge`.
+- Update the xverif skill to say AI agents should use `edge:"negedge"` by default.
+- State that `edge:"posedge"` should be used only for posedge monitors, DUT posedge semantics, or sampling-boundary race analysis.
+- State that `sample_point:"before"` and `"after"` can differ on posedge, especially when data changes at the same timestamp as the clock edge.
+- Recommend `sample_point:"before"` by default whenever posedge is required.
+- State that `sample_point:"after"` is only for inspecting post-edge waveform state.
+- State that `edge:"dual"` is for special scenarios and should not be the default for ordinary valid/ready, AXI, or APB analysis.
 
 ## Test Plan
 
-Schema and contract tests:
-
-- New fields pass: `clock`, `edge`, `sample_offset`.
-- Old fields fail: `clk`, `sampling`, `clock_edge`, `posedge`.
-- Missing `edge` and `sample_offset` default to `negedge + 0ns`.
-- `edge:"dual"` is accepted.
-
-Resolver tests:
-
-- Anchor is not an edge: return the first later target edge.
-- Anchor is a target edge and offset is zero: return anchor.
-- Anchor is posedge and spec is negedge: return the later negedge.
-- Dual-edge spec returns anchor for either posedge or negedge anchors.
-- Positive offset returns `edge_time + offset`.
-- Negative offset skips an edge when its `sample_time` is before the anchor.
-- `is_target_edge_at` rejects timestamps that are not clock value-change times.
-
-Action regression tests:
-
-- `event.find` fast path covers candidate change at an edge, before an edge, and after an edge.
-- `event.find` full scan with zero offset preserves current single-pass results.
-- `window.verify`, `signal.statistics`, `counter.statistics`, `sampled_pulse.inspect`, and `handshake.inspect` cover negedge, posedge, dual, and offset.
-- stream, AXI, and APB cover default negedge, explicit posedge, dual, positive offset, and negative offset.
-
-Skill/doc checks:
-
-- Grep confirms examples do not use old public fields.
-- Grep confirms skill guidance says negedge first, offset/posedge only when needed, and dual edge only for special scenarios.
+- Schema and contract tests:
+  - point-time actions fail without `clock`;
+  - legacy fields `sample_offset`, `clk`, `sampling`, `clock_edge`, and `posedge` fail with structured errors;
+  - `sample_point` with `edge:"negedge"` fails.
+- Synthetic waveform tests:
+  - requested time exactly at a posedge while data changes at the same timestamp; `sample_point:"before"` reads the old value and `"after"` reads the new value;
+  - requested time between two target edges returns previous, middle, and next samples;
+  - default `edge:"negedge"` does not need `sample_point` and keeps the fast path;
+  - `edge:"dual"` brackets against either edge;
+  - requested time hits a non-target edge and reports `clock_edge_hit:true`, `target_edge_hit:false`.
+- Cover JSON and XOUT table output for `value.at`, `value.batch_at`, `list.value_at`, `expr.eval_at`, and `verify.conditions`.
+- Update existing waveform regressions affected by point reads so they pass `clock` explicitly.
+- Grep docs and skill content to ensure they no longer recommend offset and include negedge-first, posedge-before, and before/after-difference guidance.
 
 ## Assumptions
 
 - This is a breaking change.
-- No compatibility aliases are kept.
-- No automatic migration is provided for old persisted configs.
-- `sample_offset` uses the existing time parser; default unit is `ns`.
-- The resolver handles only clock timing and does not read business signal values.
-- Zero offset remains the performance-critical path and must keep current single-pass action behavior.
+- No legacy-field compatibility is kept.
+- For point-time actions, `middle` is always the direct requested-time value when requested time is not a target edge.
+- Previous and next edges are selected according to requested `edge`; `edge:"dual"` is the only mode that brackets against either rising or falling edges.
+- `trace.active_driver*` keeps active-time and driver semantics and does not become a clock-bracket query.

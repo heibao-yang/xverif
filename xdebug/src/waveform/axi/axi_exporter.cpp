@@ -398,36 +398,6 @@ bool AxiExporter::scan(npiFsdbFileHandle file,
         }
     };
 
-    if (!clock_sample.zero_offset) {
-        ClockSampleTimeResolver resolver(file, clock_sample);
-        std::string resolver_error;
-        bool ok = resolver.for_each_sample_time(min_time, max_time,
-            [&](const ClockSamplePoint& point) -> bool {
-                fsdbValVec_t sampled;
-                if (!npi_fsdb_sig_hdl_vec_value_at(sig_handles,
-                                                   point.sample_time,
-                                                   sampled,
-                                                   npiFsdbHexStrVal) ||
-                    sampled.size() != sig_handles.size()) {
-                    return false;
-                }
-                std::vector<std::string> sampled_values(sampled.begin(), sampled.end());
-                process_edge(point.sample_time, sampled_values);
-                return true;
-            }, resolver_error);
-        npi_fsdb_release_vct(vct);
-        if (!ok) {
-            error = resolver_error.empty() ? "failed to sample AXI export values" : resolver_error;
-            return false;
-        }
-        result.incomplete_write_count = static_cast<int>(pending_writes.size());
-        for (const auto& kv : pending_reads) result.incomplete_read_count += static_cast<int>(kv.second.size());
-
-        std::sort(result.writes.begin(), result.writes.end(), txn_less);
-        std::sort(result.reads.begin(), result.reads.end(), txn_less);
-        return true;
-    }
-
     TimeBasedVcIterGuard guard;
     npiFsdbTimeBasedVcIter& iter = guard.iter();
     iter.add(clk_sig);

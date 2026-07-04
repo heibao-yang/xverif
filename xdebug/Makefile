@@ -112,6 +112,7 @@ ENGINE_SRCS = src/engine/main.cpp \
               src/engine/service/actions/waveform/axi_latency_outlier.cpp \
               src/engine/service/actions/waveform/axi_outstanding_timeline.cpp \
               src/engine/service/actions/waveform/axi_request_response_pair.cpp \
+              src/engine/service/actions/waveform/clock_point_query.cpp \
               src/engine/service/actions/waveform/counter_statistics.cpp \
               src/engine/service/actions/waveform/cursor_delete.cpp \
               src/engine/service/actions/waveform/cursor_get.cpp \

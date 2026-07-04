@@ -14,7 +14,7 @@ MCP 场景下，本文所有原生 xdebug action 都通过 `xverif_debug_query` 
 - 不要导出全量 rows/samples/transactions 作为第一步。
 - 最终结论必须保留 `signal/time/value/file:line/finding/confidence/truncated`。
 - action 分工先定清楚：raw 异常用 `detect_abnormal`，clock-edge 条件用 `event.find/export`，valid 未采样解释用 `sampled_pulse.inspect`，协议 stall 用 `handshake.inspect`，窗口证明用 `window.verify`。
-- clock sampling action 统一使用 `clock`、`edge`、`sample_offset`；默认优先 `edge:"negedge"`、`sample_offset:"0ns"`。只有 monitor/interface 明确按上升沿采样，或 negedge 结果无法解释 race/skew 时才改 `edge:"posedge"` 或非零 `sample_offset`。`edge:"dual"` 只用于 DDR、真实双沿协议或不确定边沿 bring-up，不作为普通 valid/ready 分析默认值。
+- clock sampling action 统一使用 `clock`、`edge`、`sample_point`；默认优先 `edge:"negedge"`。只有 monitor/interface 明确按上升沿采样，或 negedge 结果无法解释 race/skew 时才改 `edge:"posedge"`。使用 posedge 时必须注意 `sample_point:"before"` 与 `"after"` 在同 timestamp 数据变化时会不同；必须用 posedge 时默认推荐 `sample_point:"before"`，只有要观察沿后状态时才用 `"after"`。`edge:"dual"` 只用于 DDR、真实双沿协议或不确定边沿 bring-up，不作为普通 valid/ready 分析默认值。
 - packed struct / aggregate payload 必须优先查最终 leaf signal path，例如 `top.u.payload.opcode`、`top.u.payload.data`；不要把 aggregate path 的 knownness 当最终结论，也不要期待 xdebug 自动展开 struct。
 
 ## Ready 卡低

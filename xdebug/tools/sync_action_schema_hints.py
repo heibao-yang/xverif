@@ -43,7 +43,7 @@ PARAM_DESCRIPTIONS = {
     "ready": "valid-ready 握手中的 ready 信号路径。",
     "requested_time": "需要解释或追溯的目标时间点。",
     "requests": "batch action 中按顺序执行的 request 列表。",
-    "sample_offset": "相对 clock edge 的采样偏移，默认 0ns。",
+    "sample_point": "posedge/dual 时的采样点：before 或 after；posedge 默认推荐 before。",
     "session_id": "目标 xdebug session 标识。",
     "signal": "目标信号路径。",
     "signals": "信号列表，或 alias 到信号路径的映射。",

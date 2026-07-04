@@ -54,12 +54,12 @@ public:
             if (!em.get_event(g_session_id, g_fsdb_file_path, name, config))
                 return Json({{"error","CONFIG_NOT_FOUND"},{"message",name}});
         } else {
-            static const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", nullptr};
+            static const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", "sample_offset", nullptr};
             for (int i = 0; legacy[i]; ++i) {
                 if (args.contains(legacy[i])) {
                     return Json({{"error","INVALID_REQUEST"},
                                  {"invalid_arg", std::string("args.") + legacy[i]},
-                                 {"message","legacy clock sampling field is not supported; use args.clock, args.edge, and args.sample_offset"}});
+                                 {"message","legacy clock sampling field is not supported; use args.clock, args.edge, and args.sample_point"}});
                 }
             }
             std::string clock = args.value("clock", "");
@@ -73,7 +73,18 @@ public:
                                        edge_error)) {
                 return Json({{"error","INVALID_REQUEST"},{"message",edge_error}});
             }
-            config.clock_sample.sample_offset_text = args.value("sample_offset", std::string("0ns"));
+            if (args.contains("sample_point")) {
+                if (!args["sample_point"].is_string())
+                    return Json({{"error","INVALID_REQUEST"},{"message","args.sample_point must be before or after"}});
+                config.clock_sample.has_sample_point = true;
+                if (!parse_clock_sample_point_kind(args["sample_point"].get<std::string>(),
+                                                   config.clock_sample.sample_point,
+                                                   edge_error))
+                    return Json({{"error","INVALID_REQUEST"},{"message",edge_error}});
+            }
+            if (config.clock_sample.edge == ClockEdgeKind::Negedge &&
+                config.clock_sample.has_sample_point)
+                return Json({{"error","INVALID_REQUEST"},{"message","args.sample_point is only valid with edge:posedge or edge:dual"}});
             Json sigs = args.value("signals", Json::object());
             for (auto it = sigs.begin(); it != sigs.end(); ++it) {
                 if (it->is_string()) config.signals[it.key()] = it->get<std::string>();
@@ -194,10 +205,10 @@ public:
             {"sampling_mode", "clock_edge"},
             {"clock", config.clock_sample.clock},
             {"edge", clock_edge_kind_text(config.clock_sample.edge)},
-            {"sample_offset", config.clock_sample.sample_offset_text.empty()
-                ? "0ns" : config.clock_sample.sample_offset_text},
             {"sample_time_semantics", "time is sample_time"}
         };
+        if (config.clock_sample.edge != ClockEdgeKind::Negedge)
+            out["summary"]["sample_point"] = clock_sample_point_text(config.clock_sample.sample_point);
         if (!arr.empty()) {
             out["first"] = arr[0]["time"];
             out["last"] = arr[arr.size()-1]["time"];
@@ -211,8 +222,8 @@ public:
         out["sampling_mode"] = "clock_edge";
         out["clock"] = config.clock_sample.clock;
         out["edge"] = clock_edge_kind_text(config.clock_sample.edge);
-        out["sample_offset"] = config.clock_sample.sample_offset_text.empty()
-            ? "0ns" : config.clock_sample.sample_offset_text;
+        if (config.clock_sample.edge != ClockEdgeKind::Negedge)
+            out["sample_point"] = clock_sample_point_text(config.clock_sample.sample_point);
         out["sample_time_semantics"] = "time is sample_time";
         return out;
     }

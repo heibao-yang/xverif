@@ -142,7 +142,7 @@ file transport directory:
 | 跳变时间线 | `signal.changes` |
 | 窗口保持 0/1 | `window.verify` 或 `signal.statistics` |
 | first/last occurrence | `event.find` 或 `signal.changes` 的 head/tail |
-| 临时事件表达式 | `event.find` with `expr` + `clock` + `signals`；默认 `edge:"negedge"`、`sample_offset:"0ns"`，支持布尔组合、相等比较和大小比较 |
+| 临时事件表达式 | `event.find` with `expr` + `clock` + `signals`；默认 `edge:"negedge"`，posedge/dual 场景可用 `sample_point:"before"`，支持布尔组合、相等比较和大小比较 |
 | packed value 切字段 | `value.at`/`value.batch_at` with `slice_hint`，再调用 `tools/xbit` |
 
 ## 输出档位
@@ -279,7 +279,6 @@ slice 信号会先校验完整路径；若 FSDB signal lookup 不接受 slice，
     "expr": "valid && !ready && wait_count >= 512",
     "clock": "top.clk",
     "edge": "negedge",
-    "sample_offset": "0ns",
     "signals": {
       "valid": "top.u.valid",
       "ready": "top.u.ready",

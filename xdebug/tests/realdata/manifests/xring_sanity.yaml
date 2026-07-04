@@ -9,6 +9,7 @@ queries:
     action: value.at
     args:
       signal: xring_tb_top.rst_n
+      clock: xring_tb_top.clk
       time: 11000ns
       format: binary
     expect:

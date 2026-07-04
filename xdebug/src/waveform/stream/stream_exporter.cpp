@@ -52,8 +52,8 @@ bool write_meta(const std::string& output_file,
     meta["sampling_mode"] = "clock_edge";
     meta["clock"] = config.clock_sample.clock;
     meta["edge"] = clock_edge_kind_text(config.clock_sample.edge);
-    meta["sample_offset"] = config.clock_sample.sample_offset_text.empty()
-        ? "0ns" : config.clock_sample.sample_offset_text;
+    if (config.clock_sample.edge != ClockEdgeKind::Negedge)
+        meta["sample_point"] = clock_sample_point_text(config.clock_sample.sample_point);
     meta["sample_time_semantics"] = "time is sample_time";
     meta["handshake"] = stream_handshake_text(config);
     meta["packet_enabled"] = stream_packet_enabled(config);

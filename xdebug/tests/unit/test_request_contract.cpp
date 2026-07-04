@@ -16,7 +16,8 @@ int main() {
     const ActionSpec* abnormal_spec = registry.find_spec("detect_abnormal");
     assert(value_spec && trace_spec && active_spec && actions_spec && abnormal_spec);
     Json value_descriptor = action_spec_descriptor(*value_spec);
-    assert(value_descriptor["required_args"].size() == 2);
+    assert(value_descriptor["required_args"].size() == 3);
+    assert(value_descriptor["required_args"][2] == "clock");
     assert(value_descriptor["allowed_values"]["format"].is_array());
 
     Json value_json = {
@@ -24,7 +25,7 @@ int main() {
         {"request_id", "r0"},
         {"action", "value.at"},
         {"target", {{"fsdb", "waves.fsdb"}}},
-        {"args", {{"signal", "top.clk"}, {"time", "10ns"}}},
+        {"args", {{"signal", "top.clk"}, {"clock", "top.clk"}, {"time", "10ns"}}},
         {"limits", {{"timeout_ms", 1000}}},
         {"output", {{"format", "json"}}}
     };

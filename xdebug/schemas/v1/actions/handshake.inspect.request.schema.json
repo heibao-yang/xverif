@@ -77,9 +77,13 @@
             }
           ]
         },
-        "sample_offset": {
+        "sample_point": {
           "type": "string",
-          "description": "相对 clock edge 的采样偏移，默认 0ns。"
+          "enum": [
+            "before",
+            "after"
+          ],
+          "description": "posedge/dual 时的采样点：before 或 after；posedge 默认推荐 before。"
         },
         "time_range": {
           "type": "object",

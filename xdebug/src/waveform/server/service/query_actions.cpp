@@ -186,11 +186,12 @@ Json ai_axi_outstanding_timeline(const Json& args, std::string& error) {
         {"sampling_mode", "clock_edge"},
         {"clock", clock_sample.clock},
         {"edge", clock_edge_kind_text(clock_sample.edge)},
-        {"sample_offset", clock_sample.sample_offset_text},
         {"sample_time_semantics", "time is sample_time"},
         {"sample_count", static_cast<int>(arr.size())},
         {"truncated", truncated}
     };
+    if (clock_sample.edge != ClockEdgeKind::Negedge)
+        data["summary"]["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
     data["name"] = name;
     data["sample_count"] = arr.size();
     data["truncated"] = truncated;
@@ -198,7 +199,8 @@ Json ai_axi_outstanding_timeline(const Json& args, std::string& error) {
     data["sampling_mode"] = "clock_edge";
     data["clock"] = clock_sample.clock;
     data["edge"] = clock_edge_kind_text(clock_sample.edge);
-    data["sample_offset"] = clock_sample.sample_offset_text;
+    if (clock_sample.edge != ClockEdgeKind::Negedge)
+        data["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
     data["sample_time_semantics"] = "time is sample_time";
     return data;
 }
@@ -335,13 +337,14 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
         {"sampling_mode", "clock_edge"},
         {"clock", clock_sample.clock},
         {"edge", clock_edge_kind_text(clock_sample.edge)},
-        {"sample_offset", clock_sample.sample_offset_text},
         {"sample_time_semantics", "time is sample_time"},
         {"sample_count", sample_count},
         {"transfer_count", transfers},
         {"max_stall_cycles", max_stall},
         {"truncated", truncated}
     };
+    if (clock_sample.edge != ClockEdgeKind::Negedge)
+        data["summary"]["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
     data["sample_count"] = sample_count;
     data["transfer_count"] = transfers;
     data["max_stall_cycles"] = max_stall;
@@ -354,7 +357,8 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
     data["sampling_mode"] = "clock_edge";
     data["clock"] = clock_sample.clock;
     data["edge"] = clock_edge_kind_text(clock_sample.edge);
-    data["sample_offset"] = clock_sample.sample_offset_text;
+    if (clock_sample.edge != ClockEdgeKind::Negedge)
+        data["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
     data["sample_time_semantics"] = "time is sample_time";
     return data;
 }

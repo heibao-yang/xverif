@@ -112,7 +112,7 @@ def test_stdio_loop_json_and_quit(tmp_path: Path) -> None:
         {
             "api_version": "xdebug.v1",
             "action": "value.at",
-            "args": {"signal": "top.clk", "time": "0ns"},
+            "args": {"signal": "top.clk", "clock": "top.clk", "time": "0ns"},
             "output": {"format": "json"},
         }
     )
@@ -247,7 +247,7 @@ tags: [smoke]
 timeout_sec: 12
 queries:
   - action: value.at
-    args: {signal: top.clk, time: 0ns}
+    args: {signal: top.clk, clock: top.clk, time: 0ns}
     expect:
       ok: true
 """,

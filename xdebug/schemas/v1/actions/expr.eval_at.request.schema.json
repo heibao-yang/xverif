@@ -30,6 +30,14 @@
     "args": {
       "type": "object",
       "properties": {
+        "clock": {
+          "type": "string",
+          "description": "采样、统计或协议检查使用的 clock 信号路径。"
+        },
+        "edge": {
+          "type": "string",
+          "description": "clock sampling 使用的边沿：posedge、negedge 或 dual。"
+        },
         "expr": {
           "type": "string",
           "description": "需要求值或匹配的布尔表达式。"
@@ -39,6 +47,14 @@
         },
         "max_events": {
           "type": "integer"
+        },
+        "sample_point": {
+          "type": "string",
+          "enum": [
+            "before",
+            "after"
+          ],
+          "description": "posedge/dual 时的采样点：before 或 after；posedge 默认推荐 before。"
         },
         "signals": {
           "oneOf": [
@@ -82,7 +98,8 @@
       "required": [
         "expr",
         "time",
-        "signals"
+        "signals",
+        "clock"
       ]
     },
     "limits": {

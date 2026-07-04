@@ -713,7 +713,7 @@ full 或 `include_raw:true`：
 | `summary.status` | string | `loaded` |
 | `data.config` | object | event config |
 
-event config 字段：`name`、`clk`、`rst_n`、`edge`、`signals`、`fields`。`fields.<field>` 包含 `signal`、`left`、`right`。
+event config 字段：`name`、`clock`、`rst_n`、`edge`、`sample_point`、`signals`、`fields`。`sample_point` 仅在 `edge:"posedge"` 或 `edge:"dual"` 时出现；`fields.<field>` 包含 `signal`、`left`、`right`。
 
 ### `event.config.list`
 
@@ -784,7 +784,7 @@ event item 常见字段：
 | `summary.status` | string | load 时为 `loaded` |
 | `data.config` | object | APB config |
 
-APB config 字段：`name`、`paddr`、`pwdata`、`prdata`、`pwrite`、`penable`、`psel`、`clk`、`rst_n`、`edge`。
+APB config 字段：`name`、`paddr`、`pwdata`、`prdata`、`pwrite`、`penable`、`psel`、`clock`、`rst_n`、`edge`、`sample_point`。`sample_point` 仅在 `edge:"posedge"` 或 `edge:"dual"` 时出现。
 
 ### `apb.query`
 
@@ -841,7 +841,7 @@ APB config 字段：`name`、`paddr`、`pwdata`、`prdata`、`pwrite`、`penable
 | `summary.status` | string | load 时为 `loaded` |
 | `data.config` | object | AXI config |
 
-AXI config 字段：`name`、`awaddr`、`awid`、`awlen`、`awsize`、`awburst`、`awvalid`、`awready`、`wdata`、`wstrb`、`wlast`、`wvalid`、`wready`、`bid`、`bresp`、`bvalid`、`bready`、`araddr`、`arid`、`arlen`、`arsize`、`arburst`、`arvalid`、`arready`、`rid`、`rdata`、`rresp`、`rlast`、`rvalid`、`rready`、`clk`、`rst_n`、`edge`。
+AXI config 字段：`name`、`awaddr`、`awid`、`awlen`、`awsize`、`awburst`、`awvalid`、`awready`、`wdata`、`wstrb`、`wlast`、`wvalid`、`wready`、`bid`、`bresp`、`bvalid`、`bready`、`araddr`、`arid`、`arlen`、`arsize`、`arburst`、`arvalid`、`arready`、`rid`、`rdata`、`rresp`、`rlast`、`rvalid`、`rready`、`clock`、`rst_n`、`edge`、`sample_point`。`sample_point` 仅在 `edge:"posedge"` 或 `edge:"dual"` 时出现。
 
 ### `axi.query`
 
@@ -1069,7 +1069,7 @@ change item：`time`、`time_ps`、`value`。
 | `data.clock` | string | clock |
 | `data.sampling_mode` | string | `clock_edge` 或 `raw_value_changes` |
 | `data.edge` | string | `posedge`、`negedge` 或 `dual`；默认 `negedge` |
-| `data.sample_offset` | string | 相对 clock edge 的采样偏移；默认 `0ns` |
+| `data.sample_point` | string | `before` 或 `after`；仅 posedge/dual 需要，posedge 默认推荐 `before` |
 | `data.sample_time_semantics` | string | 返回的时间为真实采样时间 |
 | `data.begin` | string | begin |
 | `data.end` | string | end |
@@ -1108,7 +1108,7 @@ change item：`time`、`time_ps`、`value`。
 | `data.valid` | string | valid signal |
 | `data.payloads[]` | array | payload alias/signal |
 | `data.edge` | string | `posedge`、`negedge` 或 `dual`；默认 `negedge` |
-| `data.sample_offset` | string | 相对 clock edge 的采样偏移；默认 `0ns` |
+| `data.sample_point` | string | `before` 或 `after`；仅 posedge/dual 需要，posedge 默认推荐 `before` |
 | `data.sample_time_semantics` | string | 返回的时间为真实采样时间 |
 | `data.begin` | string | begin |
 | `data.end` | string | end |

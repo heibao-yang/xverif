@@ -43,16 +43,26 @@ bool read_vct_value(npiFsdbVctHandle vct, std::string& out) {
     return true;
 }
 
-bool checked_add(npiFsdbTime base, long long offset, npiFsdbTime& out) {
-    if (offset >= 0) {
-        unsigned long long uoff = static_cast<unsigned long long>(offset);
-        if (base > std::numeric_limits<npiFsdbTime>::max() - uoff) return false;
-        out = base + uoff;
-        return true;
+bool read_edge_at(npiFsdbSigHandle clock_handle, npiFsdbTime time, ClockEdgeKind* edge_kind) {
+    if (!clock_handle) return false;
+    VctHandle vct(clock_handle);
+    if (!vct.valid()) return false;
+    if (!npi_fsdb_goto_time(vct.get(), time)) return false;
+    npiFsdbTime current_time = 0;
+    if (!npi_fsdb_vct_time(vct.get(), &current_time) || current_time != time) return false;
+    std::string current_value;
+    if (!read_vct_value(vct.get(), current_value)) return false;
+    if (!npi_fsdb_goto_prev(vct.get())) return false;
+    std::string previous_value;
+    if (!read_vct_value(vct.get(), previous_value)) return false;
+    ClockEdgeKind actual = ClockEdgeKind::Negedge;
+    if (!clock_edge_transition_matches(ClockEdgeKind::Dual,
+                                       truthy_one(previous_value),
+                                       truthy_one(current_value),
+                                       &actual)) {
+        return false;
     }
-    unsigned long long abs_off = static_cast<unsigned long long>(-(offset + 1)) + 1ULL;
-    if (base < abs_off) return false;
-    out = base - abs_off;
+    if (edge_kind) *edge_kind = actual;
     return true;
 }
 
@@ -65,6 +75,14 @@ const char* clock_edge_kind_text(ClockEdgeKind edge) {
     case ClockEdgeKind::Dual: return "dual";
     }
     return "negedge";
+}
+
+const char* clock_sample_point_text(ClockSamplePointKind point) {
+    switch (point) {
+    case ClockSamplePointKind::Before: return "before";
+    case ClockSamplePointKind::After: return "after";
+    }
+    return "before";
 }
 
 bool parse_clock_edge_kind(const std::string& text, ClockEdgeKind& edge, std::string& error) {
@@ -85,6 +103,22 @@ bool parse_clock_edge_kind(const std::string& text, ClockEdgeKind& edge, std::st
     return false;
 }
 
+bool parse_clock_sample_point_kind(const std::string& text,
+                                   ClockSamplePointKind& point,
+                                   std::string& error) {
+    std::string value = lower_copy(trim_copy(text));
+    if (value.empty() || value == "before") {
+        point = ClockSamplePointKind::Before;
+        return true;
+    }
+    if (value == "after") {
+        point = ClockSamplePointKind::After;
+        return true;
+    }
+    error = "invalid sample_point: " + text + "; expected before or after";
+    return false;
+}
+
 bool clock_edge_transition_matches(ClockEdgeKind requested,
                                    bool old_one,
                                    bool new_one,
@@ -100,49 +134,14 @@ bool clock_edge_transition_matches(ClockEdgeKind requested,
     return false;
 }
 
-bool parse_clock_sample_offset(npiFsdbFileHandle fsdb,
-                               const std::string& text,
-                               long long& ticks,
-                               std::string& normalized_text,
-                               std::string& error) {
-    std::string value = trim_copy(text.empty() ? "0ns" : text);
-    char* end = nullptr;
-    double number = std::strtod(value.c_str(), &end);
-    if (end == value.c_str() || !std::isfinite(number)) {
-        error = "invalid sample_offset: " + value;
-        return false;
-    }
-    std::string unit = trim_copy(end ? end : "");
-    if (unit.empty()) unit = "ns";
-    double abs_number = std::fabs(number);
-    npiFsdbTime abs_ticks = 0;
-    if (!xdebug_core::convert_time(fsdb, abs_number, unit, abs_ticks, error)) {
-        error = "invalid sample_offset: " + error;
-        return false;
-    }
-    if (abs_ticks > static_cast<unsigned long long>(std::numeric_limits<long long>::max())) {
-        error = "sample_offset is too large";
-        return false;
-    }
-    ticks = static_cast<long long>(abs_ticks);
-    if (number < 0) ticks = -ticks;
-    normalized_text = (ticks == 0) ? "0ns" : value;
-    return true;
-}
-
 bool normalize_clock_sample_spec(npiFsdbFileHandle fsdb,
                                  ClockSampleSpec& spec,
                                  std::string& error) {
-    std::string normalized;
-    if (!parse_clock_sample_offset(fsdb,
-                                   spec.sample_offset_text.empty() ? "0ns" : spec.sample_offset_text,
-                                   spec.sample_offset_ticks,
-                                   normalized,
-                                   error)) {
+    (void)fsdb;
+    if (spec.edge == ClockEdgeKind::Negedge && spec.has_sample_point) {
+        error = "sample_point is only valid with edge:posedge or edge:dual";
         return false;
     }
-    spec.sample_offset_text = normalized;
-    spec.zero_offset = spec.sample_offset_ticks == 0;
     return true;
 }
 
@@ -169,27 +168,38 @@ bool ClockSampleTimeResolver::valid(std::string& error) const {
     return true;
 }
 
-bool ClockSampleTimeResolver::sample_time_for_edge(npiFsdbTime edge_time, npiFsdbTime& sample_time) const {
-    return checked_add(edge_time, spec_.sample_offset_ticks, sample_time);
+bool ClockSampleTimeResolver::is_clock_edge_at(npiFsdbTime time, ClockEdgeKind* edge_kind) const {
+    return read_edge_at(clock_handle_, time, edge_kind);
 }
 
 bool ClockSampleTimeResolver::is_target_edge_at(npiFsdbTime time, ClockEdgeKind* edge_kind) const {
-    if (!clock_handle_) return false;
-    VctHandle vct(clock_handle_);
-    if (!vct.valid()) return false;
-    if (!npi_fsdb_goto_time(vct.get(), time)) return false;
-    npiFsdbTime current_time = 0;
-    if (!npi_fsdb_vct_time(vct.get(), &current_time) || current_time != time) return false;
-    std::string current_value;
-    if (!read_vct_value(vct.get(), current_value)) return false;
-    if (!npi_fsdb_goto_prev(vct.get())) return false;
-    std::string previous_value;
-    if (!read_vct_value(vct.get(), previous_value)) return false;
     ClockEdgeKind actual = ClockEdgeKind::Negedge;
-    bool matched = clock_edge_transition_matches(
-        spec_.edge, truthy_one(previous_value), truthy_one(current_value), &actual);
+    bool have_edge = is_clock_edge_at(time, &actual);
+    bool matched = have_edge &&
+        (spec_.edge == ClockEdgeKind::Dual || spec_.edge == actual);
     if (matched && edge_kind) *edge_kind = actual;
     return matched;
+}
+
+bool ClockSampleTimeResolver::previous_single_edge_sample(ClockEdgeKind edge,
+                                                          npiFsdbTime anchor_time,
+                                                          ClockSamplePoint& point,
+                                                          std::string& error) const {
+    if (!clock_handle_) {
+        error = "Clock signal not found: " + spec_.clock;
+        return false;
+    }
+    ClockEdgeCursor cursor(clock_handle_, edge == ClockEdgeKind::Posedge);
+    if (!cursor.valid()) {
+        error = "failed to create clock edge cursor for " + spec_.clock;
+        return false;
+    }
+    npiFsdbTime t = 0;
+    if (!cursor.prev_before(anchor_time, t)) return false;
+    point.edge_time = t;
+    point.sample_time = t;
+    point.edge_kind = edge;
+    return true;
 }
 
 bool ClockSampleTimeResolver::next_single_edge_sample(ClockEdgeKind edge,
@@ -197,10 +207,6 @@ bool ClockSampleTimeResolver::next_single_edge_sample(ClockEdgeKind edge,
                                                        ClockSamplePoint& point,
                                                        std::string& error) const {
     npiFsdbTime start_time = anchor_time;
-    if (spec_.sample_offset_ticks > 0) {
-        unsigned long long offset = static_cast<unsigned long long>(spec_.sample_offset_ticks);
-        start_time = anchor_time > offset ? anchor_time - offset : 0;
-    }
 
     SignalChangeCursor cursor(clock_handle_, npiFsdbBinStrVal);
     if (!cursor.valid()) {
@@ -225,13 +231,10 @@ bool ClockSampleTimeResolver::next_single_edge_sample(ClockEdgeKind edge,
                                               truthy_one(previous_value),
                                               truthy_one(current_value),
                                               &actual)) {
-                npiFsdbTime sample_time = 0;
-                if (sample_time_for_edge(change_time, sample_time) && sample_time >= anchor_time) {
-                    point.edge_time = change_time;
-                    point.sample_time = sample_time;
-                    point.edge_kind = actual;
-                    return true;
-                }
+                point.edge_time = change_time;
+                point.sample_time = change_time;
+                point.edge_kind = actual;
+                return true;
             }
             previous_value = current_value;
             have_previous = true;
@@ -261,6 +264,28 @@ bool ClockSampleTimeResolver::find_next_sample(npiFsdbTime anchor_time,
         return false;
     }
     if (!have_neg || (have_pos && pos.sample_time <= neg.sample_time)) point = pos;
+    else point = neg;
+    return true;
+}
+
+bool ClockSampleTimeResolver::find_previous_sample(npiFsdbTime anchor_time,
+                                                   ClockSamplePoint& point,
+                                                   std::string& error) const {
+    if (!valid(error)) return false;
+    if (spec_.edge != ClockEdgeKind::Dual) {
+        return previous_single_edge_sample(spec_.edge, anchor_time, point, error);
+    }
+    ClockSamplePoint pos;
+    ClockSamplePoint neg;
+    std::string pos_error;
+    std::string neg_error;
+    bool have_pos = previous_single_edge_sample(ClockEdgeKind::Posedge, anchor_time, pos, pos_error);
+    bool have_neg = previous_single_edge_sample(ClockEdgeKind::Negedge, anchor_time, neg, neg_error);
+    if (!have_pos && !have_neg) {
+        error = pos_error.empty() ? neg_error : pos_error;
+        return false;
+    }
+    if (!have_neg || (have_pos && pos.sample_time >= neg.sample_time)) point = pos;
     else point = neg;
     return true;
 }

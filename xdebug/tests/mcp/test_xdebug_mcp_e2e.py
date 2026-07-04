@@ -212,6 +212,7 @@ def test_mcp_direct_real_waveform_design_and_combined_sessions(
                     "action": "value.at",
                     "args": {
                         "signal": "ai_complex_top.sig_a",
+                        "clock": "ai_complex_top.clk",
                         "time": "75ns",
                         "format": "hex",
                     },
@@ -231,6 +232,7 @@ def test_mcp_direct_real_waveform_design_and_combined_sessions(
                     "action": "value.at",
                     "args": {
                         "signal": "ai_complex_top.no_such",
+                        "clock": "ai_complex_top.clk",
                         "time": "10ns",
                     },
                     "output_format": "json",
@@ -338,6 +340,7 @@ def test_mcp_direct_matches_cli_normalized_json_response(
                     "action": "value.at",
                     "args": {
                         "signal": "ai_complex_top.sig_a",
+                        "clock": "ai_complex_top.clk",
                         "time": "75ns",
                         "format": "hex",
                     },
@@ -354,6 +357,7 @@ def test_mcp_direct_matches_cli_normalized_json_response(
                 "target": {"session_id": "mcp_cli_equiv"},
                 "args": {
                     "signal": "ai_complex_top.sig_a",
+                    "clock": "ai_complex_top.clk",
                     "time": "75ns",
                     "format": "hex",
                 },
@@ -417,7 +421,7 @@ def test_mcp_batch_runs_real_session_workflow(
             "args": {
                 "session": "batch_wave",
                 "action": "value.at",
-                "args": {"signal": "ai_complex_top.sig_a", "time": "75ns"},
+                "args": {"signal": "ai_complex_top.sig_a", "clock": "ai_complex_top.clk", "time": "75ns"},
                 "output_format": "json",
             },
         },
@@ -497,6 +501,7 @@ def test_mcp_fake_lsf_launches_real_xdebug_stdio_loop(
                     "action": "value.at",
                     "args": {
                         "signal": "ai_complex_top.sig_a",
+                        "clock": "ai_complex_top.clk",
                         "time": "75ns",
                     },
                     "output_format": "json",
@@ -586,6 +591,7 @@ def test_mcp_fake_lsf_child_crash_evicts_session(
                     "action": "value.at",
                     "args": {
                         "signal": "ai_complex_top.sig_a",
+                        "clock": "ai_complex_top.clk",
                         "time": "75ns",
                     },
                     "output_format": "json",
@@ -646,6 +652,7 @@ def test_mcp_real_lsf_optional_waveform_smoke(
                     "action": "value.at",
                     "args": {
                         "signal": "ai_complex_top.sig_a",
+                        "clock": "ai_complex_top.clk",
                         "time": "75ns",
                     },
                     "output_format": "json",

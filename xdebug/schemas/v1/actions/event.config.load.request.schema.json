@@ -72,7 +72,7 @@
   "additionalProperties": false,
   "description": "event.config.load: 保存事件查询配置。",
   "x-purpose": "保存事件查询配置。",
-  "x-how_it_works": "将 name/clock/edge/sample_offset/signals/reset 等配置写入 EventManager。",
+  "x-how_it_works": "将 name/clock/edge/sample_point/signals/reset 等配置写入 EventManager。",
   "x-when_to_use": "复用常见事件查询上下文。",
   "x-arg_contract_notes": "required: name"
 }

@@ -543,21 +543,6 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
         return process_edge(t, process_error);
     };
 
-    if (!clock_sample.zero_offset) {
-        ClockSampleTimeResolver resolver(file, clock_sample);
-        bool stopped_for_limit = false;
-        bool ok = resolver.for_each_sample_time(query.begin, query.end,
-            [&](const ClockSamplePoint& point) -> bool {
-                if (!sample_edge_and_process(point.sample_time, error)) return false;
-                if (query.limit > 0 && static_cast<int>(records.size()) >= query.limit) {
-                    stopped_for_limit = true;
-                    return false;
-                }
-                return true;
-            }, error);
-        return ok || (stopped_for_limit && error.empty());
-    }
-
     if (query.fast_find && query.limit == 1) {
         std::set<std::string> identifiers;
         bool fast_path_ok = collect_expr_identifiers(query.expr, identifiers);

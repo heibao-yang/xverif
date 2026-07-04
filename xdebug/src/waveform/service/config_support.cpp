@@ -12,11 +12,11 @@ bool parse_clock_sample_config(const Json& j,
                                const char* owner,
                                ClockSampleSpec& spec,
                                std::string& err) {
-    static const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", nullptr};
+    static const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", "sample_offset", nullptr};
     for (int i = 0; legacy[i]; ++i) {
         if (j.contains(legacy[i])) {
             err = std::string(owner) + " config uses legacy clock sampling field: " +
-                  legacy[i] + "; use clock, edge, and sample_offset";
+                  legacy[i] + "; use clock, edge, and sample_point";
             return false;
         }
     }
@@ -28,9 +28,23 @@ bool parse_clock_sample_config(const Json& j,
         err = std::string("invalid ") + owner + " edge: " + err;
         return false;
     }
-    spec.sample_offset_text = string_or(j, "sample_offset", "0ns");
-    spec.sample_offset_ticks = 0;
-    spec.zero_offset = spec.sample_offset_text.empty() || spec.sample_offset_text == "0ns";
+    if (j.contains("sample_point")) {
+        if (!j["sample_point"].is_string()) {
+            err = std::string(owner) + " config sample_point must be before or after";
+            return false;
+        }
+        spec.has_sample_point = true;
+        if (!parse_clock_sample_point_kind(j["sample_point"].get<std::string>(),
+                                           spec.sample_point,
+                                           err)) {
+            err = std::string("invalid ") + owner + " sample_point: " + err;
+            return false;
+        }
+    }
+    if (spec.edge == ClockEdgeKind::Negedge && spec.has_sample_point) {
+        err = std::string(owner) + " config sample_point is only valid with edge:posedge or edge:dual";
+        return false;
+    }
     return true;
 }
 
@@ -64,9 +78,10 @@ Json apb_config_json(const ApbConfig& c) {
         {"name", c.name}, {"paddr", c.paddr}, {"pwdata", c.pwdata}, {"prdata", c.prdata},
         {"pwrite", c.pwrite}, {"penable", c.penable}, {"psel", c.psel},
         {"clock", c.clock_sample.clock}, {"rst_n", c.rst_n},
-        {"edge", clock_edge_kind_text(c.clock_sample.edge)},
-        {"sample_offset", c.clock_sample.sample_offset_text.empty() ? "0ns" : c.clock_sample.sample_offset_text}
+        {"edge", clock_edge_kind_text(c.clock_sample.edge)}
     };
+    if (c.clock_sample.edge != ClockEdgeKind::Negedge)
+        j["sample_point"] = clock_sample_point_text(c.clock_sample.sample_point);
     if (!c.pready.empty()) j["pready"] = c.pready;
     if (!c.pslverr.empty()) j["pslverr"] = c.pslverr;
     return j;
@@ -118,7 +133,8 @@ Json axi_config_json(const AxiConfig& c) {
     j["clock"] = c.clock_sample.clock;
     j["rst_n"] = c.rst_n;
     j["edge"] = clock_edge_kind_text(c.clock_sample.edge);
-    j["sample_offset"] = c.clock_sample.sample_offset_text.empty() ? "0ns" : c.clock_sample.sample_offset_text;
+    if (c.clock_sample.edge != ClockEdgeKind::Negedge)
+        j["sample_point"] = clock_sample_point_text(c.clock_sample.sample_point);
     return j;
 }
 
@@ -205,7 +221,8 @@ Json event_config_json(const EventConfig& c) {
     j["clock"] = c.clock_sample.clock;
     if (!c.rst_n.empty()) j["rst_n"] = c.rst_n;
     j["edge"] = clock_edge_kind_text(c.clock_sample.edge);
-    j["sample_offset"] = c.clock_sample.sample_offset_text.empty() ? "0ns" : c.clock_sample.sample_offset_text;
+    if (c.clock_sample.edge != ClockEdgeKind::Negedge)
+        j["sample_point"] = clock_sample_point_text(c.clock_sample.sample_point);
     j["signals"] = c.signals;
     Json fields = Json::object();
     for (const auto& kv : c.fields) {

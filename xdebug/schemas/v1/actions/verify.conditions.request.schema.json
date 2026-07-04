@@ -33,12 +33,28 @@
         "at": {
           "type": "string"
         },
+        "clock": {
+          "type": "string",
+          "description": "采样、统计或协议检查使用的 clock 信号路径。"
+        },
         "conditions": {
           "type": "array",
           "items": {
             "type": "object"
           },
           "description": "需要验证的条件列表。"
+        },
+        "edge": {
+          "type": "string",
+          "description": "clock sampling 使用的边沿：posedge、negedge 或 dual。"
+        },
+        "sample_point": {
+          "type": "string",
+          "enum": [
+            "before",
+            "after"
+          ],
+          "description": "posedge/dual 时的采样点：before 或 after；posedge 默认推荐 before。"
         },
         "time": {
           "type": "string",
@@ -60,7 +76,8 @@
       "additionalProperties": false,
       "required": [
         "conditions",
-        "time"
+        "time",
+        "clock"
       ]
     },
     "limits": {

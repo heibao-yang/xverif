@@ -93,7 +93,7 @@ void apply_arg_contract(ActionSpec& spec) {
         {"event.config.load", {"name"}, 1},
         {"event.export", {"expr"}, 1},
         {"event.find", {"expr"}, 1},
-        {"expr.eval_at", {"expr", "time", "signals"}, 3},
+        {"expr.eval_at", {"expr", "time", "signals", "clock"}, 4},
         {"expr.normalize", {"expr"}, 1},
         {"handshake.inspect", {"clock", "valid", "ready"}, 3},
         {"list.add", {"name", "signal"}, 2},
@@ -102,7 +102,7 @@ void apply_arg_contract(ActionSpec& spec) {
         {"list.diff", {"name", "begin", "end"}, 3},
         {"list.export", {"name"}, 1},
         {"list.validate", {"name"}, 1},
-        {"list.value_at", {"name", "time"}, 2},
+        {"list.value_at", {"name", "time", "clock"}, 3},
         {"rc.generate", {"config_path", "rc_path"}, 2},
         {"signal.canonicalize", {"signal"}, 1},
         {"signal.changes", {"signal"}, 1},
@@ -121,9 +121,9 @@ void apply_arg_contract(ActionSpec& spec) {
         {"trace.active_driver_chain", {"signal", "requested_time"}, 2},
         {"trace.driver", {"signal"}, 1},
         {"trace.load", {"signal"}, 1},
-        {"value.at", {"signal", "time"}, 2},
-        {"value.batch_at", {"signals", "time"}, 2},
-        {"verify.conditions", {"conditions", "time"}, 2},
+        {"value.at", {"signal", "time", "clock"}, 3},
+        {"value.batch_at", {"signals", "time", "clock"}, 3},
+        {"verify.conditions", {"conditions", "time", "clock"}, 3},
         {"window.verify", {"clock", "conditions"}, 2}
     };
     for (size_t i = 0; i < sizeof(required) / sizeof(required[0]); ++i) {

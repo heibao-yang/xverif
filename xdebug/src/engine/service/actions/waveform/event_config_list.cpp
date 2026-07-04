@@ -53,8 +53,8 @@ public:
         out["sampling_mode"] = "clock_edge";
         out["clock"] = cfg.clock_sample.clock;
         out["edge"] = xdebug_waveform::clock_edge_kind_text(cfg.clock_sample.edge);
-        out["sample_offset"] = cfg.clock_sample.sample_offset_text.empty()
-            ? "0ns" : cfg.clock_sample.sample_offset_text;
+        if (cfg.clock_sample.edge != xdebug_waveform::ClockEdgeKind::Negedge)
+            out["sample_point"] = xdebug_waveform::clock_sample_point_text(cfg.clock_sample.sample_point);
         out["signals"] = cfg.signals;
         return out;
     }

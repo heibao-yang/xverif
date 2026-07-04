@@ -5,6 +5,7 @@
     "session_id": "case_a"
   },
   "args": {
+    "clock": "top.u.clk",
     "conditions": [
       {
         "signal": "top.u.valid",

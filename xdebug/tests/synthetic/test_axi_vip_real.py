@@ -10,6 +10,13 @@ import pytest
 from runner import ArtifactWriter, CommandRunner, RunResult
 
 
+DEFAULT_AXI_ENV = {
+    "AXI_REFERENCE_ROOT": "/home/yian/axi_test/test",
+    "SVT_VIP_INCDIR": "/home/yian/axi_test/test/include/sverilog",
+    "SVT_VIP_SRCDIR": "/home/yian/axi_test/test/src/sverilog/vcs",
+}
+
+
 def _require_success(
     result: RunResult,
     *,
@@ -69,6 +76,8 @@ def test_axi_vip_real_waveform_actions(
     have_resources = _resources_ready(fixture_dir, manifest)
     if not have_resources:
         required_env = manifest["required_env"]
+        for name in required_env:
+            os.environ.setdefault(name, DEFAULT_AXI_ENV.get(name, ""))
         missing = [name for name in required_env if not os.environ.get(name)]
         assert not missing, (
             "AXI VIP fixture requires environment variables: %s"

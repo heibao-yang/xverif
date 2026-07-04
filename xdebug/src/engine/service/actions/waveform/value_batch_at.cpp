@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "clock_point_query.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -35,23 +36,6 @@ static bool contains_xz(const std::string& v) {
     return xdebug_waveform::logic_value_has_xz(
         xdebug_waveform::logic_value_from_fsdb_raw(v, 'h'));
 }
-static std::string trim_copy(const std::string& text) {
-    size_t begin = 0;
-    while (begin < text.size() && std::isspace(static_cast<unsigned char>(text[begin]))) ++begin;
-    size_t end = text.size();
-    while (end > begin && std::isspace(static_cast<unsigned char>(text[end - 1]))) --end;
-    return text.substr(begin, end - begin);
-}
-static Json value_object(const std::string& raw) {
-    return xdebug_waveform::logic_value_json(
-        xdebug_waveform::logic_value_from_fsdb_raw(raw, 'h'));
-}
-static std::string with_value_prefix(const std::string& raw, char fmt) {
-    std::string text = trim_copy(raw);
-    if (text.size() >= 2 && text[0] == '\'') return text;
-    return std::string("'") + static_cast<char>(std::tolower(static_cast<unsigned char>(fmt))) + text;
-}
-
 class ValueBatchAtHandler : public EngineActionHandler {
 public:
     const char* action_name() const override { return "value.batch_at"; }
@@ -66,6 +50,10 @@ public:
         if (!signals_j.is_array() || signals_j.empty() || time_str.empty())
             return err("MISSING_FIELD", "args.signals[] and args.time are required");
 
+        xdebug_waveform::ClockSampleSpec clock_spec;
+        Json clock_error;
+        if (!parse_point_clock_args(args, clock_spec, clock_error)) return clock_error;
+
         char fmt = static_cast<char>(std::tolower(
             static_cast<unsigned char>(fmt_str.empty() ? 'h' : fmt_str[0])));
         if (fmt != 'h' && fmt != 'b' && fmt != 'd') fmt = 'h';
@@ -79,42 +67,58 @@ public:
         for (const auto& s : signals_j)
             if (s.is_string()) names.push_back(s.get<std::string>());
 
-        std::vector<std::string> values;
-        std::vector<bool> found;
-        xdebug_waveform::read_sig_vec_value_at_with_status(
-            g_fsdb_file, names, fsdb_time, fmt, values, found);
-
         Json out;
         std::string formatted_time = xdebug_core::format_time(g_fsdb_file, fsdb_time);
         out["time"] = formatted_time;
+        std::vector<PointSignalSpec> specs;
+        for (const auto& name : names) specs.push_back({name, name});
+        ClockPointQueryResult point;
+        Json point_error;
+        if (!build_clock_point_query(g_fsdb_file,
+                                     clock_spec,
+                                     fsdb_time,
+                                     formatted_time,
+                                     specs,
+                                     xdebug_waveform::parse_format(fmt),
+                                     fmt,
+                                     point,
+                                     point_error)) {
+            return point_error;
+        }
         Json batch = Json::array();
         Json missing_by_reason = Json::object();
         int missing_count = 0;
         int unknown_count = 0;
-        for (size_t i = 0; i < names.size(); ++i) {
+        for (size_t i = 0; i < names.size() && i < point.rows.size(); ++i) {
             Json item;
             item["signal"] = names[i];
             item["time"] = formatted_time;
-            if (found[i]) {
-                values[i] = with_value_prefix(values[i], fmt);
+            Json middle = point.rows[i].value("middle", Json::object());
+            if (middle.value("status", std::string()) == "ok") {
                 item["status"] = "ok";
-                item["value"] = value_object(values[i]);
-                if (contains_xz(values[i])) unknown_count++;
+                item["value"] = middle.value("value", Json());
+                if (item["value"].is_object() && contains_xz(item["value"].value("value", std::string()))) unknown_count++;
             } else {
-                item["status"] = "signal_not_found";
+                item["status"] = middle.value("status", std::string("signal_not_found"));
                 item["value"] = nullptr;
                 item["reason"] = "Signal path was not found in the FSDB: " + names[i];
                 missing_count++;
-                missing_by_reason["signal_not_found"] =
-                    missing_by_reason.value("signal_not_found", 0) + 1;
+                missing_by_reason[item["status"].get<std::string>()] =
+                    missing_by_reason.value(item["status"].get<std::string>(), 0) + 1;
             }
             batch.push_back(item);
         }
         out["values"] = batch;
+        out["sample_rows"] = point.rows;
+        out["samples"] = point.samples;
+        out["clock_context"] = point.clock_context;
         out["summary"] = {{"time", formatted_time}, {"signal_count", batch.size()},
                           {"x_or_z_count", unknown_count}, {"unknown_count", unknown_count},
                           {"missing_count", missing_count},
-                          {"missing_by_reason", missing_by_reason}};
+                          {"missing_by_reason", missing_by_reason},
+                          {"clock_edge_hit", point.clock_context["clock_edge_hit"]},
+                          {"target_edge_hit", point.clock_context["target_edge_hit"]},
+                          {"bracket_complete", point.clock_context["bracket_complete"]}};
         return out;
     }
 
@@ -131,7 +135,16 @@ private:
         if (s.contains("time")) out.emit_kv("time", s["time"]);
         if (s.contains("signal_count")) out.emit_kv("signal_count", s["signal_count"]);
         out.emit_section("values");
-        if (d.contains("values") && d["values"].is_array()) {
+        if (d.contains("sample_rows") && d["sample_rows"].is_array()) {
+            std::vector<std::vector<std::string>> rows;
+            for (const auto& row : d["sample_rows"]) {
+                rows.push_back({row.value("signal", std::string()),
+                                xdebug::json_to_xout_value(point_cell_value(row, "before")),
+                                xdebug::json_to_xout_value(point_cell_value(row, "middle")),
+                                xdebug::json_to_xout_value(point_cell_value(row, "after"))});
+            }
+            out.emit_table({"signal", "before", "middle", "after"}, rows);
+        } else if (d.contains("values") && d["values"].is_array()) {
             std::vector<std::vector<std::string>> rows;
             for (const auto& item : d["values"]) {
                 if (!item.is_object()) continue;

@@ -54,6 +54,7 @@ description: >
 
 - 脚本解析或字段比较时使用 JSON；不要解析默认人类文本。
 - 不确定 action 参数时，先查 `actions` 和 action-specific `schema`，不要猜字段。
+- xdebug clock sampling 默认优先用 `edge:"negedge"`；只有 posedge monitor、DUT posedge 语义或采样边界 race 证据需要时才用 `edge:"posedge"`。使用 posedge 时注意 `sample_point:"before"` 和 `"after"` 可能不同，尤其数据与 clock edge 同时间变化时；必须用 posedge 时默认推荐 `sample_point:"before"`。`edge:"dual"` 只用于 DDR、真实双沿协议或特殊 bring-up，不作为普通 valid/ready、AXI、APB 默认选择。
 - 结论保留事实证据：signal/path/time/value/file:line/error code。
 - 用户可见回答不要暴露本机绝对路径；用 `<xverif-root>`、`<project-root>` 或 `$XVERIF_HOME`。
 - license/NPI/仿真/真实 LSF/UDS bind/file transport 实机验证可能需要在受限沙箱外运行。

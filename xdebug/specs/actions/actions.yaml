@@ -678,7 +678,8 @@
       "required_args": [
         "expr",
         "time",
-        "signals"
+        "signals",
+        "clock"
       ]
     },
     {
@@ -909,7 +910,8 @@
       },
       "required_args": [
         "name",
-        "time"
+        "time",
+        "clock"
       ]
     },
     {
@@ -1378,7 +1380,8 @@
       },
       "required_args": [
         "signal",
-        "time"
+        "time",
+        "clock"
       ]
     },
     {
@@ -1401,7 +1404,8 @@
       },
       "required_args": [
         "signals",
-        "time"
+        "time",
+        "clock"
       ]
     },
     {
@@ -1424,7 +1428,8 @@
       },
       "required_args": [
         "conditions",
-        "time"
+        "time",
+        "clock"
       ]
     },
     {

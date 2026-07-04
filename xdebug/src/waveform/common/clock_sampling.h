@@ -13,12 +13,16 @@ enum class ClockEdgeKind {
     Dual
 };
 
+enum class ClockSamplePointKind {
+    Before,
+    After
+};
+
 struct ClockSampleSpec {
     std::string clock;
     ClockEdgeKind edge = ClockEdgeKind::Negedge;
-    std::string sample_offset_text = "0ns";
-    long long sample_offset_ticks = 0;
-    bool zero_offset = true;
+    ClockSamplePointKind sample_point = ClockSamplePointKind::Before;
+    bool has_sample_point = false;
 };
 
 struct ClockSamplePoint {
@@ -28,16 +32,15 @@ struct ClockSamplePoint {
 };
 
 const char* clock_edge_kind_text(ClockEdgeKind edge);
+const char* clock_sample_point_text(ClockSamplePointKind point);
 bool parse_clock_edge_kind(const std::string& text, ClockEdgeKind& edge, std::string& error);
+bool parse_clock_sample_point_kind(const std::string& text,
+                                   ClockSamplePointKind& point,
+                                   std::string& error);
 bool clock_edge_transition_matches(ClockEdgeKind requested,
                                    bool old_one,
                                    bool new_one,
                                    ClockEdgeKind* actual = nullptr);
-bool parse_clock_sample_offset(npiFsdbFileHandle fsdb,
-                               const std::string& text,
-                               long long& ticks,
-                               std::string& normalized_text,
-                               std::string& error);
 bool normalize_clock_sample_spec(npiFsdbFileHandle fsdb,
                                  ClockSampleSpec& spec,
                                  std::string& error);
@@ -47,7 +50,11 @@ public:
     ClockSampleTimeResolver(npiFsdbFileHandle fsdb, const ClockSampleSpec& spec);
 
     bool valid(std::string& error) const;
+    bool is_clock_edge_at(npiFsdbTime time, ClockEdgeKind* edge_kind = nullptr) const;
     bool is_target_edge_at(npiFsdbTime time, ClockEdgeKind* edge_kind = nullptr) const;
+    bool find_previous_sample(npiFsdbTime anchor_time,
+                              ClockSamplePoint& point,
+                              std::string& error) const;
     bool find_next_sample(npiFsdbTime anchor_time,
                           ClockSamplePoint& point,
                           std::string& error) const;
@@ -57,7 +64,10 @@ public:
                               std::string& error) const;
 
 private:
-    bool sample_time_for_edge(npiFsdbTime edge_time, npiFsdbTime& sample_time) const;
+    bool previous_single_edge_sample(ClockEdgeKind edge,
+                                     npiFsdbTime anchor_time,
+                                     ClockSamplePoint& point,
+                                     std::string& error) const;
     bool next_single_edge_sample(ClockEdgeKind edge,
                                  npiFsdbTime anchor_time,
                                  ClockSamplePoint& point,
