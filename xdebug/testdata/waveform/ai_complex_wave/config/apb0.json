@@ -5,7 +5,7 @@
   "pwrite": "ai_complex_top.pwrite",
   "penable": "ai_complex_top.penable",
   "psel": "ai_complex_top.psel",
-  "clk": "ai_complex_top.clk",
+  "clock": "ai_complex_top.clk",
   "rst_n": "ai_complex_top.rst_n",
   "edge": "posedge"
 }

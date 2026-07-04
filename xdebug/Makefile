@@ -181,6 +181,7 @@ WAVEFORM_SRCS = src/waveform/service/action_support.cpp \
                 src/waveform/cursor/cursor_manager.cpp \
                 src/waveform/common/xdebug_waveform_paths.cpp \
                 src/waveform/common/time_spec.cpp \
+                src/waveform/common/clock_sampling.cpp \
                 src/waveform/apb/apb_manager.cpp \
                 src/waveform/apb/apb_analyzer.cpp \
                 src/waveform/axi/axi_manager.cpp \

@@ -1,5 +1,5 @@
 {
-  "clk": "xif_tb_top.clk",
+  "clock": "xif_tb_top.clk",
   "rst_n": "xif_tb_top.rst_n",
   "edge": "posedge",
   "signals": {

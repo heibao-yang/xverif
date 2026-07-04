@@ -14,7 +14,8 @@ MCP 场景下，本文所有原生 xdebug action 都通过 `xverif_debug_query` 
 - 不要导出全量 rows/samples/transactions 作为第一步。
 - 最终结论必须保留 `signal/time/value/file:line/finding/confidence/truncated`。
 - action 分工先定清楚：raw 异常用 `detect_abnormal`，clock-edge 条件用 `event.find/export`，valid 未采样解释用 `sampled_pulse.inspect`，协议 stall 用 `handshake.inspect`，窗口证明用 `window.verify`。
-- interface packed struct 优先查 leaf field，例如 `top.xif.pd.opcode`、`top.xif.pd.data`；不要把 aggregate `pd` 的 knownness 当最终结论。
+- clock sampling action 统一使用 `clock`、`edge`、`sample_offset`；默认优先 `edge:"negedge"`、`sample_offset:"0ns"`。只有 monitor/interface 明确按上升沿采样，或 negedge 结果无法解释 race/skew 时才改 `edge:"posedge"` 或非零 `sample_offset`。`edge:"dual"` 只用于 DDR、真实双沿协议或不确定边沿 bring-up，不作为普通 valid/ready 分析默认值。
+- packed struct / aggregate payload 必须优先查最终 leaf signal path，例如 `top.u.payload.opcode`、`top.u.payload.data`；不要把 aggregate path 的 knownness 当最终结论，也不要期待 xdebug 自动展开 struct。
 
 ## Ready 卡低
 
@@ -45,7 +46,7 @@ MCP 场景下，本文所有原生 xdebug action 都通过 `xverif_debug_query` 
 2. 若问题是“raw valid 有过，但采样边沿没看到”，用 `sampled_pulse.inspect`，并把 payload/payloads 传入保留现场。
 3. 若问题是采样点上 valid 被 backpressure，用 `event.find` 或 `event.export` 查 `valid && !ready`，counter 阈值可直接写成 `wait_count >= 512`。
 4. `handshake.inspect` 找 long stall、accept gap 或 stalled data stability violation。
-5. `value.batch_at` 取 payload、ready、backpressure、state；struct payload 用 leaf field path，如 `xif.pd.opcode`。
+5. `value.batch_at` 取 payload、ready、backpressure、state；struct payload 用最终 leaf signal path，如 `top.u.payload.opcode`。
 6. `trace.driver` 或 `trace.active_driver` 查 ready/backpressure 的设计原因。
 
 表达式查找：
@@ -57,7 +58,7 @@ MCP 场景下，本文所有原生 xdebug action 都通过 `xverif_debug_query` 
   "target": {"session_id": "case_a"},
   "args": {
     "expr": "valid && !ready",
-    "clk": "top.clk",
+    "clock": "top.clk",
     "signals": {
       "valid": "top.u.valid",
       "ready": "top.u.ready"
@@ -68,24 +69,24 @@ MCP 场景下，本文所有原生 xdebug action 都通过 `xverif_debug_query` 
 }
 ```
 
-合法 idle/backpressure 窗口不等于 bug。对 XIF/valid-ready timeout，`detect_abnormal` 只负责 raw abnormal smoke；最终协议证明用 valid-qualified `event.find/export`、`handshake.inspect`、`signal.changes` 和 `window.verify`。
+合法 idle/backpressure 窗口不等于 bug。对 valid-ready timeout，`detect_abnormal` 只负责 raw abnormal smoke；最终协议证明用 valid-qualified `event.find/export`、`handshake.inspect`、`signal.changes` 和 `window.verify`。
 
-## XIF / Interface Struct 字段
+## Struct 字段
 
-1. 先用 `scope.list` 或 `value.at` 确认 direct field path 可读，例如 `top.xif.pd.opcode`、`top.xif.pd.channel`、`top.xif.pd.id`、`top.xif.pd.data`。
+1. AI 必须直接传最终 leaf signal path；xdebug 不自动展开 packed struct / aggregate。例如先用 `scope.list` 或 `value.at` 确认 `top.u.payload.opcode`、`top.u.payload.channel`、`top.u.payload.id`、`top.u.payload.data` 可读。
 2. `event.find/export` 的 `signals` 里直接配置这些 leaf fields：
 
 ```json
 {
-  "opcode": "top.xif.pd.opcode",
-  "channel": "top.xif.pd.channel",
-  "id": "top.xif.pd.id",
-  "data": "top.xif.pd.data"
+  "opcode": "top.u.payload.opcode",
+  "channel": "top.u.payload.channel",
+  "id": "top.u.payload.id",
+  "data": "top.u.payload.data"
 }
 ```
 
 3. 表达式直接写 leaf alias，例如 `vld && rdy && opcode == 8'h5a && data >= 16'h1000`。
-4. `detect_abnormal` 也传 leaf field path 做多信号扫描；aggregate `pd` 可作为辅助信号，但不能替代 leaf field 结论。
+4. `detect_abnormal` 也传 leaf field path 列表做多信号扫描；aggregate path 可作为辅助信号，但不能替代 leaf field 结论。
 
 ## AXI latency 异常
 
@@ -176,7 +177,7 @@ APB 示例（9 信号）：
   "args": {
     "name": "apb0",
     "config": {
-      "clk": "top.pclk",
+      "clock": "top.pclk",
       "rst_n": "top.presetn",
       "paddr": "top.u_dut.paddr",
       "psel": "top.u_dut.psel",
@@ -200,7 +201,7 @@ AXI 示例（26 信号，5 通道各需 valid/ready + data/addr/id/last/strobe +
   "args": {
     "name": "axi0",
     "config": {
-      "clk": "top.aclk",
+      "clock": "top.aclk",
       "rst_n": "top.aresetn",
       "awvalid": "top.u_dut.awvalid",
       "awready": "top.u_dut.awready",

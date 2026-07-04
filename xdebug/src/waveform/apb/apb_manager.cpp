@@ -38,9 +38,10 @@ static Json apb_to_json(const ApbConfig& c) {
         {"psel", c.psel},
         {"pready", c.pready},
         {"pslverr", c.pslverr},
-        {"clk", c.clk},
+        {"clock", c.clock_sample.clock},
         {"rst_n", c.rst_n},
-        {"edge", c.posedge ? "posedge" : "negedge"}
+        {"edge", clock_edge_kind_text(c.clock_sample.edge)},
+        {"sample_offset", c.clock_sample.sample_offset_text.empty() ? "0ns" : c.clock_sample.sample_offset_text}
     };
 }
 
@@ -55,9 +56,13 @@ static bool json_to_apb(const Json& j, ApbConfig& c) {
     c.psel = j.value("psel", "");
     c.pready = j.value("pready", "");
     c.pslverr = j.value("pslverr", "");
-    c.clk = j.value("clk", "");
+    c.clock_sample.clock = j.value("clock", "");
     c.rst_n = j.value("rst_n", "");
-    c.posedge = j.value("edge", "posedge") != "negedge";
+    std::string edge_error;
+    if (!parse_clock_edge_kind(j.value("edge", "negedge"), c.clock_sample.edge, edge_error)) {
+        return false;
+    }
+    c.clock_sample.sample_offset_text = j.value("sample_offset", "0ns");
     return !c.name.empty();
 }
 
@@ -75,9 +80,10 @@ bool ApbManager::parse_legacy_line(const char* line, ApbConfig& config, int& ses
     config.pwrite  = buf[4];
     config.penable = buf[5];
     config.psel    = buf[6];
-    config.clk     = buf[7];
+    config.clock_sample.clock = buf[7];
     config.rst_n   = buf[8];
-    config.posedge = (strcmp(buf[9], "posedge") == 0);
+    config.clock_sample.edge = (strcmp(buf[9], "posedge") == 0)
+        ? ClockEdgeKind::Posedge : ClockEdgeKind::Negedge;
     return true;
 }
 

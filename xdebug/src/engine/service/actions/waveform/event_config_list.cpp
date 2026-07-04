@@ -50,7 +50,11 @@ public:
         if (!em.get_event(g_session_id, g_fsdb_file_path, name, cfg))
             return Json({{"error","CONFIG_NOT_FOUND"},{"message",name}});
         Json out; out["name"] = name;
-        out["clk"] = cfg.clk; out["posedge"] = cfg.posedge;
+        out["sampling_mode"] = "clock_edge";
+        out["clock"] = cfg.clock_sample.clock;
+        out["edge"] = xdebug_waveform::clock_edge_kind_text(cfg.clock_sample.edge);
+        out["sample_offset"] = cfg.clock_sample.sample_offset_text.empty()
+            ? "0ns" : cfg.clock_sample.sample_offset_text;
         out["signals"] = cfg.signals;
         return out;
     }

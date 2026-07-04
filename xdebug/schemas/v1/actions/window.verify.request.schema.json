@@ -41,14 +41,19 @@
           },
           "description": "需要验证的条件列表。"
         },
+        "edge": {
+          "type": "string",
+          "description": "clock sampling 使用的边沿：posedge、negedge 或 dual。"
+        },
         "limit": {
           "type": "integer"
         },
         "max_events": {
           "type": "integer"
         },
-        "sampling": {
-          "type": "string"
+        "sample_offset": {
+          "type": "string",
+          "description": "相对 clock edge 的采样偏移，默认 0ns。"
         },
         "time_range": {
           "type": "object",

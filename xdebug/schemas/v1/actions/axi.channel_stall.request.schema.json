@@ -30,6 +30,9 @@
     "args": {
       "type": "object",
       "properties": {
+        "channel": {
+          "type": "string"
+        },
         "include_transactions": {
           "type": "boolean"
         },
@@ -39,9 +42,22 @@
         "max_events": {
           "type": "integer"
         },
+        "max_samples": {
+          "type": "integer"
+        },
         "name": {
           "type": "string",
           "description": "已保存配置、游标、列表或接口配置名称。"
+        },
+        "rules": {
+          "oneOf": [
+            {
+              "type": "array"
+            },
+            {
+              "type": "object"
+            }
+          ]
         },
         "time_range": {
           "type": "object",

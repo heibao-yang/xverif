@@ -58,6 +58,9 @@
             "ms",
             "s"
           ]
+        },
+        "top_n": {
+          "type": "integer"
         }
       },
       "additionalProperties": false,

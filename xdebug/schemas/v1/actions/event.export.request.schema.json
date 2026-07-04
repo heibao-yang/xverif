@@ -33,12 +33,13 @@
         "aggregate": {
           "type": "object"
         },
-        "clk": {
+        "clock": {
           "type": "string",
-          "description": "事件配置使用的 clock 信号路径。"
+          "description": "采样、统计或协议检查使用的 clock 信号路径。"
         },
         "edge": {
-          "type": "string"
+          "type": "string",
+          "description": "clock sampling 使用的边沿：posedge、negedge 或 dual。"
         },
         "events": {
           "type": "boolean"
@@ -66,11 +67,12 @@
           "type": "string",
           "description": "已保存配置、游标、列表或接口配置名称。"
         },
-        "posedge": {
-          "type": "string"
-        },
         "rst_n": {
           "type": "string"
+        },
+        "sample_offset": {
+          "type": "string",
+          "description": "相对 clock edge 的采样偏移，默认 0ns。"
         },
         "scan_limit": {
           "type": "integer",
@@ -122,7 +124,7 @@
         },
         {
           "required": [
-            "clk",
+            "clock",
             "signals"
           ]
         }
@@ -143,5 +145,5 @@
   "x-purpose": "导出满足表达式的事件。",
   "x-how_it_works": "与 event.find 同样分析，但按 export 模式返回/写出更多命中数据；表达式支持布尔组合、相等比较和大小比较。",
   "x-when_to_use": "把事件列表交给后处理或报告。",
-  "x-arg_contract_notes": "required: expr; also one of: name / clk + signals"
+  "x-arg_contract_notes": "required: expr; also one of: name / clock + signals"
 }

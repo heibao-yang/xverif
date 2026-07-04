@@ -3,7 +3,7 @@
     {
       "name": "valid_only",
       "clock": "stream_v1_top.clk || 1'b0",
-      "clock_edge": "posedge",
+      "edge": "posedge",
       "reset": "!stream_v1_top.rst_n",
       "vld": "stream_v1_top.vo_vld",
       "data": "stream_v1_top.vo_data",
@@ -12,7 +12,7 @@
     {
       "name": "ready_stream",
       "clock": "stream_v1_top.clk",
-      "clock_edge": "posedge",
+      "edge": "posedge",
       "reset": "!stream_v1_top.rst_n",
       "vld": "stream_v1_top.ready_vld && !stream_v1_top.ready_flush",
       "rdy": "stream_v1_top.ready_rdy",
@@ -28,7 +28,7 @@
     {
       "name": "bp_stream",
       "clock": "stream_v1_top.clk",
-      "clock_edge": "posedge",
+      "edge": "posedge",
       "reset": "!stream_v1_top.rst_n",
       "vld": "stream_v1_top.bp_vld",
       "bp": "stream_v1_top.bp_bp",
@@ -38,7 +38,7 @@
     {
       "name": "ready_packet",
       "clock": "stream_v1_top.clk",
-      "clock_edge": "posedge",
+      "edge": "posedge",
       "reset": "!stream_v1_top.rst_n",
       "vld": "stream_v1_top.rpkt_vld",
       "rdy": "stream_v1_top.rpkt_rdy",
@@ -56,7 +56,7 @@
     {
       "name": "bp_packet",
       "clock": "stream_v1_top.clk",
-      "clock_edge": "posedge",
+      "edge": "posedge",
       "reset": "!stream_v1_top.rst_n",
       "vld": "stream_v1_top.bpkt_vld",
       "bp": "stream_v1_top.bpkt_bp",
@@ -74,7 +74,7 @@
     {
       "name": "ready_bp_packet_negedge",
       "clock": "stream_v1_top.clk",
-      "clock_edge": "negedge",
+      "edge": "negedge",
       "reset": "!stream_v1_top.rst_n",
       "vld": "stream_v1_top.npkt_vld",
       "rdy": "stream_v1_top.npkt_rdy",
@@ -92,7 +92,7 @@
     {
       "name": "interleaved_packet",
       "clock": "stream_v1_top.clk",
-      "clock_edge": "posedge",
+      "edge": "posedge",
       "reset": "!stream_v1_top.rst_n",
       "vld": "stream_v1_top.ipkt_vld",
       "rdy": "stream_v1_top.ipkt_rdy",

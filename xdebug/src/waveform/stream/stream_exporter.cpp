@@ -49,8 +49,12 @@ bool write_meta(const std::string& output_file,
     Json meta;
     meta["stream"] = config.name;
     meta["kind"] = kind;
-    meta["clock"] = config.clock;
-    meta["clock_edge"] = config.posedge ? "posedge" : "negedge";
+    meta["sampling_mode"] = "clock_edge";
+    meta["clock"] = config.clock_sample.clock;
+    meta["edge"] = clock_edge_kind_text(config.clock_sample.edge);
+    meta["sample_offset"] = config.clock_sample.sample_offset_text.empty()
+        ? "0ns" : config.clock_sample.sample_offset_text;
+    meta["sample_time_semantics"] = "time is sample_time";
     meta["handshake"] = stream_handshake_text(config);
     meta["packet_enabled"] = stream_packet_enabled(config);
     meta["row_count"] = kind == "packet" ? analysis.packets.size() : analysis.transfers.size();

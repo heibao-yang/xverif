@@ -20,6 +20,7 @@ REQUEST_EXAMPLES = XDEBUG_ROOT / "examples" / "requests"
 
 ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
     "action": {"type": "string"},
+    "analysis": {"type": "string", "enum": ["latency", "osd", "outstanding"]},
     "address": {"type": "string"},
     "addr": {"type": "string"},
     "after": {"type": "string"},
@@ -33,10 +34,12 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
     "bind_host": {"type": "string"},
     "channel": {"type": "string"},
     "clk_period": {"type": "string"},
+    "config": {"type": "object"},
     "context_lines": {"type": "integer"},
     "data": {"oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
     "dependency_types": {"type": "array", "items": {"type": "string"}},
     "dynamic": {"type": "boolean"},
+    "edge": {"type": "string", "enum": ["posedge", "negedge", "dual"]},
     "events": {"type": "boolean"},
     "field_scope": {"type": "string"},
     "from": {"type": "string"},
@@ -60,12 +63,13 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
     "num": {"type": "integer"},
     "origin": {"type": "string"},
     "output_dir": {"type": "string"},
+    "output_prefix": {"type": "string"},
     "packet_index": {"type": "integer"},
     "path": {"type": "string"},
-    "posedge": {"type": "string"},
     "role": {"type": "string"},
     "rules": {"oneOf": [{"type": "array"}, {"type": "object"}]},
     "scan_limit": {"type": "integer"},
+    "sample_offset": {"type": "string"},
     "slice_hint": {"type": "object"},
     "source": {"type": "string"},
     "symbol": {"type": "string"},
@@ -79,19 +83,20 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
 
 EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "apb.cursor": {"direction"},
-    "apb.config.load": {"config_path"},
+    "apb.config.load": {"config", "config_path"},
     "apb.query": {"direction", "address", "addr", "num", "last"},
     "apb.transfer_window": {"limit", "max_events", "time_range"},
-    "axi.channel_stall": {"limit", "max_events", "time_range"},
-    "axi.config.load": {"config_path"},
+    "axi.analysis": {"analysis", "direction", "id"},
+    "axi.channel_stall": {"channel", "limit", "max_events", "max_samples", "rules", "time_range"},
+    "axi.config.load": {"config", "config_path"},
     "axi.cursor": {"direction"},
-    "axi.export": {"begin", "end", "start", "to"},
-    "axi.latency_outlier": {"limit", "max_events", "time_range"},
+    "axi.export": {"begin", "end", "format", "output_prefix", "start", "time_range", "to"},
+    "axi.latency_outlier": {"limit", "max_events", "time_range", "top_n"},
     "axi.outstanding_timeline": {"limit", "max_events", "time_range"},
     "axi.query": {"direction", "address", "addr", "id", "num", "last"},
     "axi.request_response_pair": {"limit", "max_events", "time_range"},
     "batch": {"mode"},
-    "counter.statistics": {"limit", "max_events"},
+    "counter.statistics": {"edge", "limit", "max_events", "sample_offset"},
     "detect_abnormal": {"limit", "max_events", "max_findings", "max_samples", "time_range"},
     "event.config.list": {"name"},
     "event.config.load": {"config_path"},
@@ -104,8 +109,8 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
         "max_events",
         "mode",
         "name",
-        "posedge",
         "rst_n",
+        "sample_offset",
         "scan_limit",
         "time_range",
     },
@@ -118,22 +123,24 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
         "max_events",
         "mode",
         "name",
-        "posedge",
         "rst_n",
+        "sample_offset",
         "scan_limit",
         "time_range",
     },
     "expr.eval_at": {"limit", "max_events", "time_range"},
     "expr.normalize": {"include_statement_only", "limit", "no_statement_only", "role", "signal"},
-    "handshake.inspect": {"data", "limit", "max_events", "max_findings", "max_samples", "rules", "sampling", "time_range"},
+    "handshake.inspect": {"data", "edge", "limit", "max_events", "max_findings", "max_samples", "rules", "sample_offset", "time_range"},
     "list.delete": {"index"},
     "list.export": {"begin", "end", "limit", "output_file"},
     "list.show": {"name"},
     "sampled_pulse.inspect": {
+        "edge",
         "limit",
         "max_events",
         "max_samples",
         "payloads",
+        "sample_offset",
         "time_range",
     },
     "scope.list": {"max_depth", "recursive"},
@@ -143,10 +150,11 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "session.kill": {"id", "name"},
     "session.list": {"id", "name", "session_id"},
     "session.open": {"bind", "bind_host", "host", "id", "port", "session_id", "transport"},
-    "signal.changes": {"aggregate_only", "begin", "clock", "end", "from", "limit", "max_events", "max_samples", "mode", "sampling", "time_range", "to"},
-    "signal.stability": {"around", "at", "begin", "clock", "conditions", "end", "from", "limit", "max_events", "max_samples", "mode", "sampling", "signals", "time_range", "to"},
-    "signal.statistics": {"around", "at", "begin", "conditions", "end", "from", "limit", "max_events", "max_samples", "mode", "sampling", "signals", "time_range", "to"},
+    "signal.changes": {"aggregate_only", "begin", "end", "from", "limit", "max_events", "max_samples", "mode", "time_range", "to"},
+    "signal.stability": {"around", "at", "begin", "conditions", "end", "from", "limit", "max_events", "max_samples", "mode", "signals", "time_range", "to"},
+    "signal.statistics": {"around", "at", "begin", "clock", "conditions", "edge", "end", "from", "limit", "max_events", "max_samples", "mode", "sample_offset", "signals", "time_range", "to"},
     "source.context": {"context_lines", "symbol"},
+    "stream.config.load": {"config", "config_path", "file", "mode"},
     "stream.export": {"begin", "channel", "limit", "name", "time_range"},
     "stream.query": {"begin", "channel", "field_scope", "limit", "match", "name", "packet_index", "time_range"},
     "stream.show": {"name"},
@@ -164,7 +172,7 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "value.at": {"at", "slice_hint"},
     "value.batch_at": {"at"},
     "verify.conditions": {"at"},
-    "window.verify": {"limit", "max_events", "sampling", "time_range"},
+    "window.verify": {"edge", "limit", "max_events", "sample_offset", "time_range"},
 }
 
 
@@ -325,6 +333,11 @@ def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[
             selected_props[key].setdefault("description", PARAM_DESCRIPTIONS[key])
     args["properties"] = selected_props
     args["additionalProperties"] = False
+    groups = spec.get("required_arg_groups", [])
+    if groups:
+        args["anyOf"] = [{"required": list(group)} for group in groups]
+    else:
+        args.pop("anyOf", None)
     updated["additionalProperties"] = False
     return updated
 

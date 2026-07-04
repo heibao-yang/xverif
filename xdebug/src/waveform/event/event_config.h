@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../common/clock_sampling.h"
+
 #include <map>
 #include <string>
 
@@ -13,9 +15,8 @@ struct EventField {
 
 struct EventConfig {
     std::string name;
-    std::string clk;
+    ClockSampleSpec clock_sample;
     std::string rst_n;
-    bool posedge = true;
     std::map<std::string, std::string> signals;
     std::map<std::string, EventField> fields;
 };

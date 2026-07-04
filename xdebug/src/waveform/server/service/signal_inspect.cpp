@@ -92,7 +92,9 @@ Json sampled_payloads_json(const std::vector<SampledEdgeRecord>& edges,
 }
 
 Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
-    std::string clock = args.value("clock", std::string());
+    ClockSampleSpec clock_sample;
+    if (!clock_sample_from_args(args, clock_sample, error)) return Json();
+    std::string clock = clock_sample.clock;
     std::string valid = args.value("valid", std::string());
     if (clock.empty() || valid.empty()) {
         error = "sampled_pulse.inspect requires args.clock and args.valid";
@@ -122,7 +124,6 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
     fsdbSigVec_t handles;
     if (!build_signal_alias_handles(signals, aliases, paths, handles, error)) return Json();
 
-    bool posedge = args.value("sampling", std::string("posedge")) != "negedge";
     int max_samples = args.value("max_samples", 1000000);
     int max_events = args.value("max_events", 100000);
     int max_findings = args.value("max_findings", args.value("limit", 100));
@@ -134,7 +135,7 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
     bool sample_truncated = false;
     int sampled_high = 0, sampled_low = 0, sampled_unknown = 0;
     npiFsdbTime first_high = 0, last_high = 0;
-    if (!sample_on_clock(clock, posedge, aliases, handles, begin, end, max_samples,
+    if (!sample_on_clock(clock_sample, aliases, handles, begin, end, max_samples,
         [&](npiFsdbTime t, const std::map<std::string, std::string>& values) -> bool {
             SampledEdgeRecord rec;
             rec.time = t;
@@ -258,10 +259,24 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
 
     bool truncated = sample_truncated || valid_truncated || payload_truncated || findings_truncated;
     Json data;
+    data["summary"] = {
+        {"sampling_mode", "clock_edge"},
+        {"clock", clock_sample.clock},
+        {"edge", clock_edge_kind_text(clock_sample.edge)},
+        {"sample_offset", clock_sample.sample_offset_text},
+        {"sample_time_semantics", "time is sample_time"},
+        {"sample_count", sample_count},
+        {"sampled_high_cycles", sampled_high},
+        {"risk_count", findings.size() + (findings_truncated ? 1 : 0)},
+        {"truncated", truncated}
+    };
     data["clock"] = clock;
     data["valid"] = valid;
     data["payloads"] = payload_aliases;
-    data["sampling"] = posedge ? "posedge" : "negedge";
+    data["edge"] = clock_edge_kind_text(clock_sample.edge);
+    data["sample_offset"] = clock_sample.sample_offset_text;
+    data["sample_time_semantics"] = "time is sample_time";
+    data["sampling_mode"] = "clock_edge";
     data["begin"] = format_time(begin);
     data["end"] = format_time(end);
     data["sample_count"] = sample_count;
@@ -280,7 +295,9 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
 }
 
 Json ai_handshake_inspect(const Json& args, std::string& error) {
-    std::string clock = args.value("clock", std::string());
+    ClockSampleSpec clock_sample;
+    if (!clock_sample_from_args(args, clock_sample, error)) return Json();
+    std::string clock = clock_sample.clock;
     std::string valid = args.value("valid", std::string());
     std::string ready = args.value("ready", std::string());
     if (clock.empty() || valid.empty() || ready.empty()) {
@@ -297,7 +314,6 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
     std::vector<std::string> aliases, paths;
     fsdbSigVec_t handles;
     if (!build_signal_alias_handles(signals, aliases, paths, handles, error)) return Json();
-    bool posedge = args.value("sampling", std::string("posedge")) != "negedge";
     Json rules = args.value("rules", Json::object());
     int max_wait = rules.value("max_wait_cycles", 100);
     bool check_data = rules.value("check_data_stable_when_stalled", false);
@@ -306,7 +322,7 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
     npiFsdbTime stall_begin = 0;
     std::map<std::string, std::string> stall_data;
     Json findings = Json::array();
-    if (!sample_on_clock(clock, posedge, aliases, handles, begin, end, args.value("max_samples", 1000000),
+    if (!sample_on_clock(clock_sample, aliases, handles, begin, end, args.value("max_samples", 1000000),
         [&](npiFsdbTime t, const std::map<std::string, std::string>& values) -> bool {
             ExprTri v = xdebug_waveform::expr_truth_value(values.at("valid"));
             ExprTri r = xdebug_waveform::expr_truth_value(values.at("ready"));
@@ -340,6 +356,11 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
     if (in_stall && stall_cycles > max_stall) max_stall = stall_cycles;
     Json data;
     data["summary"] = {
+        {"sampling_mode", "clock_edge"},
+        {"clock", clock_sample.clock},
+        {"edge", clock_edge_kind_text(clock_sample.edge)},
+        {"sample_offset", clock_sample.sample_offset_text},
+        {"sample_time_semantics", "time is sample_time"},
         {"sample_count", samples},
         {"transfer_count", transfers},
         {"max_stall_cycles", max_stall},

@@ -37,7 +37,9 @@ static Json axi_to_json(const AxiConfig& c) {
         {"araddr", c.araddr}, {"arid", c.arid}, {"arlen", c.arlen}, {"arsize", c.arsize}, {"arburst", c.arburst},
         {"arvalid", c.arvalid}, {"arready", c.arready},
         {"rid", c.rid}, {"rdata", c.rdata}, {"rresp", c.rresp}, {"rlast", c.rlast}, {"rvalid", c.rvalid}, {"rready", c.rready},
-        {"clk", c.clk}, {"rst_n", c.rst_n}, {"edge", c.posedge ? "posedge" : "negedge"}
+        {"clock", c.clock_sample.clock}, {"rst_n", c.rst_n},
+        {"edge", clock_edge_kind_text(c.clock_sample.edge)},
+        {"sample_offset", c.clock_sample.sample_offset_text.empty() ? "0ns" : c.clock_sample.sample_offset_text}
     };
 }
 
@@ -51,8 +53,13 @@ static bool json_to_axi(const Json& j, AxiConfig& c) {
     c.araddr = j.value("araddr", ""); c.arid = j.value("arid", ""); c.arlen = j.value("arlen", ""); c.arsize = j.value("arsize", ""); c.arburst = j.value("arburst", "");
     c.arvalid = j.value("arvalid", ""); c.arready = j.value("arready", "");
     c.rid = j.value("rid", ""); c.rdata = j.value("rdata", ""); c.rresp = j.value("rresp", ""); c.rlast = j.value("rlast", ""); c.rvalid = j.value("rvalid", ""); c.rready = j.value("rready", "");
-    c.clk = j.value("clk", ""); c.rst_n = j.value("rst_n", "");
-    c.posedge = j.value("edge", "posedge") != "negedge";
+    c.clock_sample.clock = j.value("clock", "");
+    c.rst_n = j.value("rst_n", "");
+    std::string edge_error;
+    if (!parse_clock_edge_kind(j.value("edge", "negedge"), c.clock_sample.edge, edge_error)) {
+        return false;
+    }
+    c.clock_sample.sample_offset_text = j.value("sample_offset", "0ns");
     return !c.name.empty();
 }
 
@@ -101,9 +108,10 @@ bool AxiManager::parse_legacy_line(const char* line, AxiConfig& config, int& ses
     config.rlast     = fields[28];
     config.rvalid    = fields[29];
     config.rready    = fields[30];
-    config.clk       = fields[31];
+    config.clock_sample.clock = fields[31];
     config.rst_n     = fields[32];
-    config.posedge   = (fields[33] == "posedge");
+    config.clock_sample.edge = (fields[33] == "posedge")
+        ? ClockEdgeKind::Posedge : ClockEdgeKind::Negedge;
     return true;
 }
 

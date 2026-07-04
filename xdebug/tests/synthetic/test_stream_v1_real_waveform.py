@@ -146,7 +146,7 @@ def test_stream_v1_real_waveform_actions(
             artifact_root=artifact_root,
             extra={"config": json.loads(config_path.read_text(encoding="utf-8"))},
         )
-        assert loaded["data"]["summary"]["loaded"] == len(expected)
+        assert loaded["summary"]["loaded"] == len(expected)
 
         listed = _query(
             cli_runner,
@@ -159,7 +159,7 @@ def test_stream_v1_real_waveform_actions(
             case_name="stream-v1-config-list",
             artifact_root=artifact_root,
         )
-        assert listed["data"]["summary"]["count"] == len(expected)
+        assert listed["summary"]["count"] == len(expected)
         assert {
             row["name"] for row in listed["data"]["streams"]
         } == set(expected.keys())
@@ -205,7 +205,7 @@ def test_stream_v1_real_waveform_actions(
                 case_name="stream-v1-show-" + stream_name,
                 artifact_root=artifact_root,
             )
-            assert shown["data"]["summary"]["stream"] == stream_name
+            assert shown["summary"]["stream"] == stream_name
 
             validated = _query(
                 cli_runner,
@@ -223,7 +223,7 @@ def test_stream_v1_real_waveform_actions(
                 case_name="stream-v1-validate-" + stream_name,
                 artifact_root=artifact_root,
             )
-            assert validated["data"]["summary"]["ok"] is True
+            assert validated["summary"]["ok"] is True
 
             summary = _query(
                 cli_runner,
@@ -241,7 +241,7 @@ def test_stream_v1_real_waveform_actions(
                 },
                 case_name="stream-v1-summary-" + stream_name,
                 artifact_root=artifact_root,
-            )["data"]["summary"]
+            )["summary"]
             assert summary["transfer_count"] == counts["transfer_count"]
             assert summary["transfer_count"] >= 10000
             if "stall_cycles" in counts:
@@ -310,7 +310,7 @@ def test_stream_v1_real_waveform_actions(
                 artifact_root=artifact_root,
             )
             assert len(window["data"]["rows"]) == 8
-            assert window["data"]["truncated"] is True
+            assert window["summary"]["truncated"] is True
 
         first_packet = _query(
             cli_runner,
@@ -416,7 +416,7 @@ def test_stream_v1_real_waveform_actions(
             artifact_root=artifact_root,
         )
         assert mismatch_packet["data"]["packet"]["stable_mismatches"]
-        assert mismatch_packet["data"]["summary"]["stable_mismatch_count"] > 0
+        assert mismatch_packet["summary"]["stable_mismatch_count"] > 0
 
         stalls = _query(
             cli_runner,
@@ -456,7 +456,7 @@ def test_stream_v1_real_waveform_actions(
             artifact_root=artifact_root,
         )
         assert len(packets["data"]["packets"]) == 4
-        assert packets["data"]["summary"]["clock_edge"] == "negedge"
+        assert packets["summary"]["edge"] == "negedge"
         packets_xout = _query_xout(
             cli_runner,
             {
@@ -518,7 +518,7 @@ def test_stream_v1_real_waveform_actions(
             case_name="stream-v1-match-field",
             artifact_root=artifact_root,
         )
-        assert match["data"]["summary"]["match_count"] > 0
+        assert match["summary"]["match_count"] > 0
         assert match["data"]["rows"][0]["fields"]["low8"]["value"] == "8'h5a"
         match_xout = _query_xout(
             cli_runner,

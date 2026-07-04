@@ -32,7 +32,15 @@ public:
         if (!load_config_from_args(a, cfg_j, err_str))
             return Json({{"error","INVALID_REQUEST"},{"message",err_str}});
 
-        const char* reqs[] = {"clk","rst_n","paddr","psel","penable","pwrite","pwdata","prdata",nullptr};
+        const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", nullptr};
+        for (int i = 0; legacy[i]; ++i) {
+            if (cfg_j.contains(legacy[i])) {
+                return Json({{"error","INVALID_REQUEST"},
+                             {"invalid_arg", std::string("config.") + legacy[i]},
+                             {"message","legacy clock sampling field is not supported; use config.clock, config.edge, and config.sample_offset"}});
+            }
+        }
+        const char* reqs[] = {"clock","rst_n","paddr","psel","penable","pwrite","pwdata","prdata",nullptr};
         for (int i = 0; reqs[i]; ++i) {
             if (!cfg_j.contains(reqs[i]) || !cfg_j[reqs[i]].is_string() ||
                 cfg_j[reqs[i]].get<std::string>().empty())
@@ -42,7 +50,13 @@ public:
 
         ApbConfig cfg;
         cfg.name = name;
-        cfg.clk = cfg_j["clk"].get<std::string>();
+        cfg.clock_sample.clock = cfg_j["clock"].get<std::string>();
+        if (!parse_clock_edge_kind(cfg_j.value("edge", std::string("negedge")),
+                                   cfg.clock_sample.edge,
+                                   err_str)) {
+            return Json({{"error","INVALID_REQUEST"},{"message",err_str}});
+        }
+        cfg.clock_sample.sample_offset_text = cfg_j.value("sample_offset", std::string("0ns"));
         cfg.rst_n = cfg_j["rst_n"].get<std::string>();
         cfg.paddr = cfg_j["paddr"].get<std::string>();
         cfg.psel = cfg_j["psel"].get<std::string>();
@@ -52,7 +66,6 @@ public:
         cfg.prdata = cfg_j["prdata"].get<std::string>();
         cfg.pready = cfg_j.value("pready", "");
         cfg.pslverr = cfg_j.value("pslverr", "");
-        if (cfg_j.contains("posedge")) cfg.posedge = cfg_j["posedge"].get<bool>();
 
         ApbManager am;
         if (!am.create_apb(g_session_id, cfg))
@@ -61,7 +74,14 @@ public:
         Json out;
         out["summary"] = {{"name", name}, {"status", "loaded"}};
         out["name"] = name; out["status"] = "loaded";
-        Json cinfo; cinfo["name"] = name; cinfo["clk"] = cfg.clk; cinfo["rst_n"] = cfg.rst_n;
+        Json cinfo;
+        cinfo["name"] = name;
+        cinfo["sampling_mode"] = "clock_edge";
+        cinfo["clock"] = cfg.clock_sample.clock;
+        cinfo["edge"] = clock_edge_kind_text(cfg.clock_sample.edge);
+        cinfo["sample_offset"] = cfg.clock_sample.sample_offset_text.empty()
+            ? "0ns" : cfg.clock_sample.sample_offset_text;
+        cinfo["rst_n"] = cfg.rst_n;
         if (!cfg.pready.empty()) cinfo["pready"] = cfg.pready;
         if (!cfg.pslverr.empty()) cinfo["pslverr"] = cfg.pslverr;
         out["config"] = cinfo;

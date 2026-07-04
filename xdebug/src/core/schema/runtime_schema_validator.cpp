@@ -213,6 +213,11 @@ bool is_additional_property_error(const std::string& message) {
     return message.find("additional property") != std::string::npos;
 }
 
+bool is_legacy_clock_sampling_field(const std::string& field) {
+    return field == "clk" || field == "sampling" ||
+           field == "clock_edge" || field == "posedge";
+}
+
 bool plain_pointer_get(const PlainJson& root, const std::string& pointer, PlainJson& out) {
     try {
         if (pointer.empty()) {
@@ -322,12 +327,13 @@ RuntimeSchemaValidationResult make_validation_error(const CachedValidator& cache
 
     std::string pointer = issue.pointer;
     std::string missing_property;
+    std::string extra_property;
     bool additional_property = false;
     if (is_required_error(issue.message)) {
         missing_property = parse_quoted_property(issue.message);
         if (!missing_property.empty()) pointer = child_pointer(pointer, missing_property);
     } else if (is_additional_property_error(issue.message)) {
-        std::string extra_property = parse_quoted_property(issue.message);
+        extra_property = parse_quoted_property(issue.message);
         if (!extra_property.empty()) pointer = child_pointer(pointer, extra_property);
         additional_property = true;
     }
@@ -336,10 +342,14 @@ RuntimeSchemaValidationResult make_validation_error(const CachedValidator& cache
     PlainJson received;
     bool has_received = plain_pointer_get(instance, pointer, received);
     std::string invalid_arg = pointer_to_arg_path(pointer);
+    std::string expected = additional_property ? "no additional properties allowed" :
+                                                 expected_from_schema(schema_node, issue.message);
+    if (additional_property && is_legacy_clock_sampling_field(extra_property)) {
+        expected = "use clock, edge, and sample_offset";
+    }
     result.data = {
         {"invalid_arg", invalid_arg},
-        {"expected", additional_property ? "no additional properties allowed" :
-                                           expected_from_schema(schema_node, issue.message)},
+        {"expected", expected},
         {"schema_path", cached.schema_path}
     };
     if (has_received) {

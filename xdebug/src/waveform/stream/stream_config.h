@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../common/clock_sampling.h"
+
 #include "json.hpp"
 
 #include <map>
@@ -12,8 +14,7 @@ using Json = nlohmann::ordered_json;
 
 struct StreamConfig {
     std::string name;
-    std::string clock;
-    bool posedge = true;
+    ClockSampleSpec clock_sample;
     std::string reset;
     std::string vld;
     std::string rdy;

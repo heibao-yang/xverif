@@ -10,7 +10,7 @@
       {
         "name": "req_stream",
         "clock": "top.clk",
-        "clock_edge": "posedge",
+        "edge": "posedge",
         "reset": "!top.rst_n",
         "vld": "top.req_vld",
         "rdy": "top.req_rdy",

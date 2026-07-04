@@ -41,7 +41,11 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
         return true; // already cached
     }
 
-    npiFsdbSigHandle clk_sig = npi_fsdb_sig_by_name(file, config.clk.c_str(), NULL);
+    ClockSampleSpec clock_sample = config.clock_sample;
+    std::string normalize_error;
+    if (!normalize_clock_sample_spec(file, clock_sample, normalize_error)) return false;
+
+    npiFsdbSigHandle clk_sig = npi_fsdb_sig_by_name(file, clock_sample.clock.c_str(), NULL);
     if (!clk_sig) return false;
 
     std::vector<std::string> signals = {
@@ -130,6 +134,33 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
     npi_fsdb_min_time(file, &min_time);
     npi_fsdb_max_time(file, &max_time);
 
+    if (!clock_sample.zero_offset) {
+        ClockSampleTimeResolver resolver(file, clock_sample);
+        std::string resolver_error;
+        bool ok = resolver.for_each_sample_time(min_time, max_time,
+            [&](const ClockSamplePoint& point) -> bool {
+                fsdbValVec_t sampled;
+                if (!npi_fsdb_sig_hdl_vec_value_at(sig_handles,
+                                                   point.sample_time,
+                                                   sampled,
+                                                   npiFsdbHexStrVal) ||
+                    sampled.size() != sig_handles.size()) {
+                    return false;
+                }
+                std::vector<std::string> sampled_values(sampled.begin(), sampled.end());
+                process_edge(point.sample_time, sampled_values);
+                return true;
+            }, resolver_error);
+        if (!ok) return false;
+        auto cmp = [](const ApbTransaction& a, const ApbTransaction& b) { return a.time < b.time; };
+        std::sort(result.all.begin(), result.all.end(), cmp);
+        std::sort(result.writes.begin(), result.writes.end(), cmp);
+        std::sort(result.reads.begin(), result.reads.end(), cmp);
+        results_[name] = std::move(result);
+        cursors_[name] = ApbCursor();
+        return true;
+    }
+
     fsdbSigVec_t all_handles;
     all_handles.push_back(clk_sig);
     for (auto sig : sig_handles) all_handles.push_back(sig);
@@ -160,11 +191,9 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
     auto finish_group = [&]() {
         if (!have_group || !clk_changed) return;
         bool is_target_edge = false;
-        if (config.posedge && old_clk_val == "0" && new_clk_val == "1") {
-            is_target_edge = true;
-        } else if (!config.posedge && old_clk_val == "1" && new_clk_val == "0") {
-            is_target_edge = true;
-        }
+        is_target_edge = clock_edge_transition_matches(clock_sample.edge,
+                                                       old_clk_val == "1",
+                                                       new_clk_val == "1");
         if (is_target_edge) process_edge(group_time, values);
     };
 

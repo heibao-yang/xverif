@@ -390,16 +390,16 @@ bool EventAnalyzer::validate_config(npiFsdbFileHandle file,
                                     std::string& error) {
     ordered_aliases.clear();
     ordered_paths.clear();
-    if (config.clk.empty()) {
-        error = "Event config requires clk";
+    if (config.clock_sample.clock.empty()) {
+        error = "Event config requires clock";
         return false;
     }
     if (config.signals.empty()) {
         error = "Event config requires at least one signal alias";
         return false;
     }
-    if (!npi_fsdb_sig_by_name(file, config.clk.c_str(), NULL)) {
-        error = "Clock signal not found: " + config.clk;
+    if (!npi_fsdb_sig_by_name(file, config.clock_sample.clock.c_str(), NULL)) {
+        error = "Clock signal not found: " + config.clock_sample.clock;
         return false;
     }
     if (!config.rst_n.empty() && !npi_fsdb_sig_by_name(file, config.rst_n.c_str(), NULL)) {
@@ -433,6 +433,8 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
                             std::vector<EventRecord>& records,
                             std::string& error) {
     records.clear();
+    ClockSampleSpec clock_sample = config.clock_sample;
+    if (!normalize_clock_sample_spec(file, clock_sample, error)) return false;
     std::vector<std::string> aliases;
     std::vector<std::string> paths;
     if (!validate_config(file, config, aliases, paths, error)) return false;
@@ -444,9 +446,9 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
     ExprParser validator(query.expr, dummy_values);
     if (!validator.eval(ignored, error)) return false;
 
-    npiFsdbSigHandle clk = npi_fsdb_sig_by_name(file, config.clk.c_str(), NULL);
+    npiFsdbSigHandle clk = npi_fsdb_sig_by_name(file, clock_sample.clock.c_str(), NULL);
     if (!clk) {
-        error = "Clock signal not found: " + config.clk;
+        error = "Clock signal not found: " + clock_sample.clock;
         return false;
     }
 
@@ -541,6 +543,21 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
         return process_edge(t, process_error);
     };
 
+    if (!clock_sample.zero_offset) {
+        ClockSampleTimeResolver resolver(file, clock_sample);
+        bool stopped_for_limit = false;
+        bool ok = resolver.for_each_sample_time(query.begin, query.end,
+            [&](const ClockSamplePoint& point) -> bool {
+                if (!sample_edge_and_process(point.sample_time, error)) return false;
+                if (query.limit > 0 && static_cast<int>(records.size()) >= query.limit) {
+                    stopped_for_limit = true;
+                    return false;
+                }
+                return true;
+            }, error);
+        return ok || (stopped_for_limit && error.empty());
+    }
+
     if (query.fast_find && query.limit == 1) {
         std::set<std::string> identifiers;
         bool fast_path_ok = collect_expr_identifiers(query.expr, identifiers);
@@ -567,13 +584,13 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
         }
 
         if (fast_path_ok && !candidate_handles.empty()) {
-            ClockEdgeCursor edge_cursor(clk, config.posedge);
-            if (edge_cursor.valid()) {
+            ClockSampleTimeResolver resolver(file, clock_sample);
+            if (resolver.valid(error)) {
                 std::set<npiFsdbTime> sampled_edges;
-                npiFsdbTime edge_time = 0;
-                if (edge_cursor.first_at_or_after(query.begin, edge_time) && edge_time <= query.end) {
-                    sampled_edges.insert(edge_time);
-                    if (!sample_edge_and_process(edge_time, error)) return false;
+                ClockSamplePoint point;
+                if (resolver.find_next_sample(query.begin, point, error) && point.sample_time <= query.end) {
+                    sampled_edges.insert(point.sample_time);
+                    if (!sample_edge_and_process(point.sample_time, error)) return false;
                     if (!records.empty()) return true;
                 }
 
@@ -585,10 +602,10 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
                 npiFsdbTime curr_time = 0;
                 npiFsdbSigHandle changed_sig = nullptr;
                 while (candidate_iter.iter_next(curr_time, changed_sig) > 0) {
-                    if (!edge_cursor.first_at_or_after(curr_time, edge_time)) break;
-                    if (edge_time > query.end) break;
-                    if (!sampled_edges.insert(edge_time).second) continue;
-                    if (!sample_edge_and_process(edge_time, error)) return false;
+                    if (!resolver.find_next_sample(curr_time, point, error)) break;
+                    if (point.sample_time > query.end) break;
+                    if (!sampled_edges.insert(point.sample_time).second) continue;
+                    if (!sample_edge_and_process(point.sample_time, error)) return false;
                     if (!records.empty()) return true;
                 }
                 return true;
@@ -638,9 +655,10 @@ bool EventAnalyzer::analyze(npiFsdbFileHandle file,
         if (changed_sig == clk) {
             TriValue old_clk = truth_value(prev_clk_value);
             TriValue new_clk = truth_value(val_str);
-            target_edge = config.posedge
-                ? (old_clk == TriValue::False && new_clk == TriValue::True)
-                : (old_clk == TriValue::True && new_clk == TriValue::False);
+            target_edge = clock_edge_transition_matches(
+                clock_sample.edge,
+                old_clk == TriValue::True,
+                new_clk == TriValue::True);
             prev_clk_value = val_str;
             clk_changed = true;
         } else if (rst && changed_sig == rst) {

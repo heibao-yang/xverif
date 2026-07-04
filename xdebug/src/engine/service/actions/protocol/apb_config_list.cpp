@@ -31,7 +31,12 @@ public:
         if (!am.get_apb(xdebug_waveform::g_session_id, name, cfg))
             return Json({{"error","CONFIG_NOT_FOUND"}});
         Json out; out["name"] = name;
-        out["clk"] = cfg.clk; out["rst_n"] = cfg.rst_n;
+        out["sampling_mode"] = "clock_edge";
+        out["clock"] = cfg.clock_sample.clock;
+        out["edge"] = xdebug_waveform::clock_edge_kind_text(cfg.clock_sample.edge);
+        out["sample_offset"] = cfg.clock_sample.sample_offset_text.empty()
+            ? "0ns" : cfg.clock_sample.sample_offset_text;
+        out["rst_n"] = cfg.rst_n;
         if (!cfg.pready.empty()) out["pready"] = cfg.pready;
         if (!cfg.pslverr.empty()) out["pslverr"] = cfg.pslverr;
         return out;

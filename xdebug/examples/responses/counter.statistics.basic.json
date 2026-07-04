@@ -11,7 +11,7 @@
   },
   "data": {
     "clock": "top.clk",
-    "sampling": "posedge",
+    "edge": "posedge",
     "begin": "100ns",
     "end": "200ns",
     "valid_false_count": 3,

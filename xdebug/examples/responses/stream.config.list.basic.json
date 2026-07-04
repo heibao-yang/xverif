@@ -10,7 +10,7 @@
       {
         "name": "req_stream",
         "clock": "top.clk",
-        "clock_edge": "posedge",
+        "edge": "posedge",
         "handshake": "vld/rdy",
         "packet": "sop/eop",
         "field_count": 3

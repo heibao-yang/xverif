@@ -173,9 +173,12 @@ bool AxiExporter::scan(npiFsdbFileHandle file,
     result.begin = begin;
     result.end = end;
 
-    npiFsdbSigHandle clk_sig = npi_fsdb_sig_by_name(file, config.clk.c_str(), NULL);
+    ClockSampleSpec clock_sample = config.clock_sample;
+    if (!normalize_clock_sample_spec(file, clock_sample, error)) return false;
+
+    npiFsdbSigHandle clk_sig = npi_fsdb_sig_by_name(file, clock_sample.clock.c_str(), NULL);
     if (!clk_sig) {
-        error = "Clock signal not found: " + config.clk;
+        error = "Clock signal not found: " + clock_sample.clock;
         return false;
     }
     npiFsdbVctHandle vct = npi_fsdb_create_vct(clk_sig);
@@ -395,6 +398,36 @@ bool AxiExporter::scan(npiFsdbFileHandle file,
         }
     };
 
+    if (!clock_sample.zero_offset) {
+        ClockSampleTimeResolver resolver(file, clock_sample);
+        std::string resolver_error;
+        bool ok = resolver.for_each_sample_time(min_time, max_time,
+            [&](const ClockSamplePoint& point) -> bool {
+                fsdbValVec_t sampled;
+                if (!npi_fsdb_sig_hdl_vec_value_at(sig_handles,
+                                                   point.sample_time,
+                                                   sampled,
+                                                   npiFsdbHexStrVal) ||
+                    sampled.size() != sig_handles.size()) {
+                    return false;
+                }
+                std::vector<std::string> sampled_values(sampled.begin(), sampled.end());
+                process_edge(point.sample_time, sampled_values);
+                return true;
+            }, resolver_error);
+        npi_fsdb_release_vct(vct);
+        if (!ok) {
+            error = resolver_error.empty() ? "failed to sample AXI export values" : resolver_error;
+            return false;
+        }
+        result.incomplete_write_count = static_cast<int>(pending_writes.size());
+        for (const auto& kv : pending_reads) result.incomplete_read_count += static_cast<int>(kv.second.size());
+
+        std::sort(result.writes.begin(), result.writes.end(), txn_less);
+        std::sort(result.reads.begin(), result.reads.end(), txn_less);
+        return true;
+    }
+
     TimeBasedVcIterGuard guard;
     npiFsdbTimeBasedVcIter& iter = guard.iter();
     iter.add(clk_sig);
@@ -412,8 +445,9 @@ bool AxiExporter::scan(npiFsdbFileHandle file,
     auto finish_group = [&]() {
         if (!have_group || !clk_changed) return;
         bool is_target_edge = false;
-        if (config.posedge && old_clk_val == "0" && new_clk_val == "1") is_target_edge = true;
-        else if (!config.posedge && old_clk_val == "1" && new_clk_val == "0") is_target_edge = true;
+        is_target_edge = clock_edge_transition_matches(clock_sample.edge,
+                                                       old_clk_val == "1",
+                                                       new_clk_val == "1");
         if (is_target_edge) process_edge(group_time, values);
     };
 

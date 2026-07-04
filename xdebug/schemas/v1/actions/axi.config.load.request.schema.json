@@ -30,6 +30,10 @@
     "args": {
       "type": "object",
       "properties": {
+        "config": {
+          "type": "object",
+          "description": "内联配置对象。"
+        },
         "config_path": {
           "type": "string",
           "description": "输入配置文件路径。"
@@ -57,6 +61,18 @@
       "additionalProperties": false,
       "required": [
         "name"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "config"
+          ]
+        },
+        {
+          "required": [
+            "config_path"
+          ]
+        }
       ]
     },
     "limits": {

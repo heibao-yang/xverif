@@ -58,6 +58,16 @@ def require(cond, msg):
         raise AssertionError(msg)
 
 
+def require_clock_summary(resp, edge, sample_offset="0ns"):
+    summary = resp["summary"]
+    require(summary["sampling_mode"] == "clock_edge", "missing clock_edge sampling mode")
+    require(summary["clock"] == "ai_complex_top.clk", "unexpected summary clock")
+    require(summary["edge"] == edge, "unexpected summary edge: {}".format(summary["edge"]))
+    require(summary["sample_offset"] == sample_offset, "unexpected summary sample_offset")
+    require(summary["sample_time_semantics"] == "time is sample_time",
+            "missing sample time semantics: {}".format(json.dumps(summary, sort_keys=True)))
+
+
 def normalize_sv_hex(value):
     text = str(value).strip().lower().replace("_", "")
     if text.startswith("'h"):
@@ -184,8 +194,8 @@ def compare_axi_export_to_log(export_data, expected_log):
     require(meta["incomplete_read_count"] == 0, "incomplete reads in export meta")
 
 
-def make_axi_config(prefix, top="axi_vip_fixture_top"):
-    return {
+def make_axi_config(prefix, top="axi_vip_fixture_top", edge="posedge", sample_offset=None):
+    config = {
         "awaddr": prefix + ".awaddr",
         "awid": prefix + ".awid",
         "awlen": prefix + ".awlen",
@@ -215,10 +225,32 @@ def make_axi_config(prefix, top="axi_vip_fixture_top"):
         "rlast": prefix + ".rlast",
         "rvalid": prefix + ".rvalid",
         "rready": prefix + ".rready",
-        "clk": top + ".clk",
+        "clock": top + ".clk",
         "rst_n": top + ".rst_n",
-        "edge": "posedge",
     }
+    if edge is not None:
+        config["edge"] = edge
+    if sample_offset is not None:
+        config["sample_offset"] = sample_offset
+    return config
+
+
+def make_apb_config(edge=None, sample_offset=None):
+    config = {
+        "paddr": "ai_complex_top.paddr",
+        "pwdata": "ai_complex_top.pwdata",
+        "prdata": "ai_complex_top.prdata",
+        "pwrite": "ai_complex_top.pwrite",
+        "penable": "ai_complex_top.penable",
+        "psel": "ai_complex_top.psel",
+        "clock": "ai_complex_top.clk",
+        "rst_n": "ai_complex_top.rst_n",
+    }
+    if edge is not None:
+        config["edge"] = edge
+    if sample_offset is not None:
+        config["sample_offset"] = sample_offset
+    return config
 
 
 class AiRunner(object):
@@ -406,11 +438,28 @@ def run_nonaxi(xdebug, fsdb):
         apb_window = r.query("apb.transfer_window", args={"name": "apb0", "time_range": {"begin": "200ns", "end": "400ns"}, "limit": 2})
         require(apb_window["summary"]["transaction_count"] >= 1, "APB window empty")
 
+        apb_modes = [
+            ("apb_default_negedge", make_apb_config(), "negedge", "0ns"),
+            ("apb_dual", make_apb_config(edge="dual"), "dual", "0ns"),
+            ("apb_pos_offset", make_apb_config(edge="posedge", sample_offset="1ns"), "posedge", "1ns"),
+            ("apb_neg_offset", make_apb_config(edge="negedge", sample_offset="-1ns"), "negedge", "-1ns"),
+        ]
+        for name, config, expected_edge, expected_offset in apb_modes:
+            loaded = r.query("apb.config.load", args={"name": name, "config": config})
+            require(loaded["data"]["config"]["edge"] == expected_edge, "APB config edge mismatch for {}".format(name))
+            require(loaded["data"]["config"]["sample_offset"] == expected_offset,
+                    "APB config sample_offset mismatch for {}".format(name))
+            wr_count = r.query("apb.query", args={"name": name, "direction": "wr"})
+            rd_count = r.query("apb.query", args={"name": name, "direction": "rd"})
+            require(wr_count["summary"]["count"] >= 1, "APB write count empty for {}".format(name))
+            require(rd_count["summary"]["count"] >= 1, "APB read count empty for {}".format(name))
+
         event_cfg = os.path.join(NONAXI_DIR, "config", "event0.json")
         r.query("event.config.load", args={"name": "evt0", "config_path": event_cfg})
         r.query("event.config.list", args={"name": "evt0"})
         found = r.query("event.find", args={"name": "evt0", "expr": "vld && !rdy && payload_lo != 0", "time_range": {"begin": "0ns", "end": "200ns"}})
         require(len(found["data"]["events"]) == 1, "event.find did not return one event")
+        require_clock_summary(found, "posedge")
         require("examples" not in found["data"], "event.find generated redundant data.examples")
         ge_threshold = r.query("event.find", args={"name": "evt0", "expr": "vld && !rdy && payload_lo >= 10", "time_range": {"begin": "0ns", "end": "200ns"}})
         require(len(ge_threshold["data"]["events"]) == 1, "event.find >= threshold failed")
@@ -420,7 +469,8 @@ def run_nonaxi(xdebug, fsdb):
         require(len(lt_threshold["data"]["events"]) == 0, "event.find < threshold matched unexpectedly")
         inline = r.query("event.find", args={
             "expr": "vld && !rdy",
-            "clk": "ai_complex_top.clk",
+            "clock": "ai_complex_top.clk",
+            "edge": "posedge",
             "rst_n": "ai_complex_top.rst_n",
             "signals": {
                 "vld": "ai_complex_top.event_vld",
@@ -430,9 +480,11 @@ def run_nonaxi(xdebug, fsdb):
             "mode": "last"
         })
         require(inline["summary"]["inline"] is True and len(inline["data"]["events"]) == 1, "inline event.find failed")
+        require_clock_summary(inline, "posedge")
         require("examples" not in inline["data"], "inline event.find generated redundant data.examples")
         exported = r.query("event.export", args={"name": "evt0", "expr": "vld && !rdy", "time_range": {"begin": "0ns", "end": "200ns"}, "limit": 1})
         require(len(exported["data"]["events"]) == 1, "event.export limit failed")
+        require_clock_summary(exported, "posedge")
         require("examples" not in exported["data"], "event.export generated redundant data.examples")
         event_vld = exported["data"]["events"][0]["signals"]["vld"]
         require("'h" in event_vld["value"] and event_vld["known"] is True, "event signal value is not normalized")
@@ -444,6 +496,15 @@ def run_nonaxi(xdebug, fsdb):
         no_xz_order = r.query("event.export", args={"name": "evt0", "expr": "xz >= 1", "time_range": {"begin": "0ns", "end": "200ns"}, "limit": 5})
         require(len(no_xz_order["data"]["events"]) == 0, "x/z event ordering comparison matched unexpectedly")
         r.query("event.find", args={"name": "evt0", "expr": "bad_alias", "time_range": {"begin": "0ns", "end": "200ns"}}, expect_ok=False)
+        bad_clock_field = r.query("event.find", args={
+            "expr": "vld",
+            "clk": "ai_complex_top.clk",
+            "signals": {"vld": "ai_complex_top.event_vld"},
+            "time_range": {"begin": "0ns", "end": "200ns"},
+        }, expect_ok=False)
+        require(bad_clock_field["error"]["code"] == "INVALID_REQUEST", "legacy clk should be INVALID_REQUEST")
+        require(bad_clock_field["data"]["invalid_arg"] == "args.clk", "legacy clk should identify args.clk")
+        require("clock" in bad_clock_field["data"]["expected"], "legacy clk expected guidance should mention clock")
 
         checks = r.query("verify.conditions", args={
             "time": "95ns",
@@ -472,19 +533,57 @@ def run_nonaxi(xdebug, fsdb):
 
         win = r.query("window.verify", args={
             "clock": "ai_complex_top.clk",
-            "sampling": "posedge",
+            "edge": "posedge",
             "time_range": {"begin": "140ns", "end": "175ns"},
             "conditions": [{"expr": "valid && !ready", "signals": {"valid": "ai_complex_top.hs_valid", "ready": "ai_complex_top.hs_ready"}, "mode": "always"}],
         })
         require(win["summary"]["all_passed"] is True, "window.verify expected pass")
+        require_clock_summary(win, "posedge")
+        offset_win = r.query("window.verify", args={
+            "clock": "ai_complex_top.clk",
+            "edge": "posedge",
+            "sample_offset": "1ns",
+            "time_range": {"begin": "140ns", "end": "175ns"},
+            "conditions": [{"expr": "valid && !ready", "signals": {"valid": "ai_complex_top.hs_valid", "ready": "ai_complex_top.hs_ready"}, "mode": "eventually"}],
+        })
+        require(offset_win["summary"]["all_passed"] is True,
+                "window.verify positive offset expected eventually pass: {}".format(json.dumps(offset_win, sort_keys=True)))
+        require_clock_summary(offset_win, "posedge", "1ns")
+        dual_win = r.query("window.verify", args={
+            "clock": "ai_complex_top.clk",
+            "edge": "dual",
+            "time_range": {"begin": "140ns", "end": "160ns"},
+            "conditions": [{"expr": "rst", "signals": {"rst": "ai_complex_top.rst_n"}, "mode": "always"}],
+        })
+        require(dual_win["summary"]["sample_count"] >= 4, "dual edge window should sample both edges")
+        require_clock_summary(dual_win, "dual")
+        bad_window_field = r.query("window.verify", args={
+            "clock": "ai_complex_top.clk",
+            "posedge": True,
+            "time_range": {"begin": "140ns", "end": "175ns"},
+            "conditions": [{"expr": "valid", "signals": {"valid": "ai_complex_top.hs_valid"}}],
+        }, expect_ok=False)
+        require(bad_window_field["error"]["code"] == "INVALID_REQUEST", "legacy posedge should be INVALID_REQUEST")
+        require(bad_window_field["data"]["invalid_arg"] == "args.posedge", "legacy posedge should identify args.posedge")
 
         changes = r.query("signal.changes", args={"signal": "ai_complex_top.sig_a", "time_range": {"begin": "0ns", "end": "120ns"}, "limit": 2})
         require(changes["meta"]["truncated"] is True, "signal.changes did not truncate")
         stab = r.query("signal.stability", args={"signal": "ai_complex_top.stable_sig", "time_range": {"begin": "0ns", "end": "400ns"}})
         require(stab["data"]["stable"] is True, "stable_sig should be stable")
         stats = r.query("signal.statistics", args={"signal": "ai_complex_top.hs_valid", "clock": "ai_complex_top.clk", "time_range": {"begin": "120ns", "end": "210ns"}, "max_samples": 1000})
-        require(stats["data"]["sample_count"] > 0 and stats["data"]["known_count"] > 0, "signal.statistics did not sample")
+        require_clock_summary(stats, "negedge")
+        require(stats["summary"]["sample_count"] > 0 and stats["summary"]["known_count"] > 0, "signal.statistics did not sample")
         require("high_cycles" in stats["data"] and "low_cycles" in stats["data"], "signal.statistics missing cycle counts")
+        offset_stats = r.query("signal.statistics", args={
+            "signal": "ai_complex_top.hs_valid",
+            "clock": "ai_complex_top.clk",
+            "edge": "posedge",
+            "sample_offset": "-1ns",
+            "time_range": {"begin": "140ns", "end": "175ns"},
+            "max_samples": 1000,
+        })
+        require_clock_summary(offset_stats, "posedge", "-1ns")
+        require(offset_stats["summary"]["sample_count"] > 0, "signal.statistics negative offset did not sample")
         anomaly = r.query("detect_abnormal", args={
             "signals": ["ai_complex_top.glitch_sig", "ai_complex_top.stuck_sig", "ai_complex_top.xz_bus"],
             "time_range": {"begin": "0ns", "end": "200ns"},
@@ -524,6 +623,7 @@ def run_nonaxi(xdebug, fsdb):
             "rules": {"max_wait_cycles": 2, "check_data_stable_when_stalled": True},
         })
         require(hs["summary"]["max_stall_cycles"] >= 3 and hs["data"]["data_stability_violations"] >= 1, "handshake.inspect mismatch")
+        require_clock_summary(hs, "negedge")
         return r.rows
     finally:
         r.cleanup()
@@ -540,6 +640,19 @@ def run_axi(xdebug, fsdb):
         rd = r.query("axi.query", args={"name": "axi0", "direction": "rd"})
         require(wr["summary"].get("count", 0) > 0 and rd["summary"].get("count", 0) > 0, "AXI query count is empty")
         r.query("axi.query", args={"name": "axi0", "direction": "wr", "num": 1})
+
+        axi_modes = [
+            ("axi_default_negedge", make_axi_config(prefix, edge=None), "negedge", "0ns"),
+            ("axi_dual", make_axi_config(prefix, edge="dual"), "dual", "0ns"),
+            ("axi_pos_offset", make_axi_config(prefix, edge="posedge", sample_offset="1ns"), "posedge", "1ns"),
+            ("axi_neg_offset", make_axi_config(prefix, edge="negedge", sample_offset="-1ns"), "negedge", "-1ns"),
+        ]
+        for name, config, expected_edge, expected_offset in axi_modes:
+            loaded = r.query("axi.config.load", args={"name": name, "config": config})
+            require(loaded["data"]["config"]["edge"] == expected_edge, "AXI config edge mismatch for {}".format(name))
+            require(loaded["data"]["config"]["sample_offset"] == expected_offset,
+                    "AXI config sample_offset mismatch for {}".format(name))
+
         r.query("axi.cursor", args={"name": "axi0", "op": "begin", "direction": "all"})
         r.query("axi.cursor", args={"name": "axi0", "op": "next", "direction": "all"})
         r.query("axi.analysis", args={"name": "axi0", "analysis": "latency", "direction": "all"})
@@ -553,9 +666,9 @@ def run_axi(xdebug, fsdb):
         lat = r.query("axi.latency_outlier", args={"name": "axi0", "time_range": tr, "top_n": 5, "limit": 200})
         require(lat["data"]["outlier_count"] > 0, "AXI latency_outlier empty")
         osd = r.query("axi.outstanding_timeline", args={"name": "axi0", "time_range": tr, "limit": 20})
-        require(osd["data"]["sample_count"] > 0, "AXI outstanding_timeline empty")
+        require(osd["summary"]["sample_count"] > 0, "AXI outstanding_timeline empty")
         stall = r.query("axi.channel_stall", args={"name": "axi0", "channel": "r", "time_range": tr, "rules": {"max_wait_cycles": 2}, "max_samples": 1000000})
-        require(stall["data"]["sample_count"] > 0, "AXI channel_stall did not sample")
+        require(stall["summary"]["sample_count"] > 0, "AXI channel_stall did not sample")
 
         expected_log = parse_axi_expected_log(AXI_SIM_LOG)
         export_dir = tempfile.mkdtemp(prefix="xdebug_axi_export_")

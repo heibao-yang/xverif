@@ -1,6 +1,9 @@
 #include "../server_internal.h"
 #include "core/npi/time_contract.h"
 
+#include <algorithm>
+#include <limits>
+
 namespace xdebug_waveform {
 
 int direction_filter(const Json& args) {
@@ -149,6 +152,13 @@ Json ai_axi_outstanding_timeline(const Json& args, std::string& error) {
     }
     npiFsdbTime begin = 0, end = 0;
     if (!json_time_range(args, begin, end, error)) return Json();
+    AxiConfig cfg;
+    if (!read_axi_from_registry(g_session_id, name.c_str(), cfg)) {
+        error = "AXI config not found: " + name;
+        return Json();
+    }
+    ClockSampleSpec clock_sample = cfg.clock_sample;
+    if (!normalize_clock_sample_spec(g_fsdb_file, clock_sample, error)) return Json();
     if (!ensure_axi_analyzed_for_ai(name, error)) return Json();
     std::vector<xdebug_waveform::AxiOutstandingSample> samples;
     int limit = args.value("max_rows", args.value("limit", 1000));
@@ -171,7 +181,26 @@ Json ai_axi_outstanding_timeline(const Json& args, std::string& error) {
         if (filter == 0 || filter == 1) item["write"] = s.write;
         arr.push_back(item);
     }
-    return Json{{"name", name}, {"sample_count", arr.size()}, {"truncated", truncated}, {"samples", arr}};
+    Json data;
+    data["summary"] = {
+        {"sampling_mode", "clock_edge"},
+        {"clock", clock_sample.clock},
+        {"edge", clock_edge_kind_text(clock_sample.edge)},
+        {"sample_offset", clock_sample.sample_offset_text},
+        {"sample_time_semantics", "time is sample_time"},
+        {"sample_count", static_cast<int>(arr.size())},
+        {"truncated", truncated}
+    };
+    data["name"] = name;
+    data["sample_count"] = arr.size();
+    data["truncated"] = truncated;
+    data["samples"] = arr;
+    data["sampling_mode"] = "clock_edge";
+    data["clock"] = clock_sample.clock;
+    data["edge"] = clock_edge_kind_text(clock_sample.edge);
+    data["sample_offset"] = clock_sample.sample_offset_text;
+    data["sample_time_semantics"] = "time is sample_time";
+    return data;
 }
 
 Json ai_axi_channel_stall(const Json& args, std::string& error) {
@@ -195,10 +224,13 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
     else if (channel == "r") { valid = cfg.rvalid; ready = cfg.rready; }
     else { valid = cfg.arvalid; ready = cfg.arready; channel = "ar"; }
 
-    npiFsdbSigHandle clk_h = npi_fsdb_sig_by_name(g_fsdb_file, cfg.clk.c_str(), NULL);
+    ClockSampleSpec clock_sample = cfg.clock_sample;
+    if (!normalize_clock_sample_spec(g_fsdb_file, clock_sample, error)) return Json();
+    ClockSampleTimeResolver sample_resolver(g_fsdb_file, clock_sample);
+    if (!sample_resolver.valid(error)) return Json();
     npiFsdbSigHandle valid_h = npi_fsdb_sig_by_name(g_fsdb_file, valid.c_str(), NULL);
     npiFsdbSigHandle ready_h = npi_fsdb_sig_by_name(g_fsdb_file, ready.c_str(), NULL);
-    if (!clk_h || !valid_h || !ready_h) {
+    if (!valid_h || !ready_h) {
         error = "AXI channel signal not found for channel: " + channel;
         return Json();
     }
@@ -228,16 +260,11 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
         ExprTri r = xdebug_waveform::expr_truth_value(ready_value);
         bool interesting = (v == ExprTri::True || r == ExprTri::True);
         if (!interesting) return true;
-        ClockEdgeCursor edge_cursor(clk_h, cfg.posedge);
-        if (!edge_cursor.valid()) {
-            error = "Failed to create AXI channel clock cursor";
-            return false;
-        }
-        npiFsdbTime edge_time = 0;
-        if (!edge_cursor.first_at_or_after(start, edge_time)) return true;
+        ClockSamplePoint point;
+        if (!sample_resolver.find_next_sample(start, point, error)) return true;
         int stall_cycles = 0;
         npiFsdbTime stall_begin = 0;
-        while (edge_time <= stop) {
+        while (point.sample_time <= stop) {
             if (max_samples >= 0 && sample_count >= max_samples) {
                 truncated = true;
                 return false;
@@ -249,21 +276,23 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
                     if (stall_cycles > max_stall) max_stall = stall_cycles;
                     if (stall_cycles > max_wait) {
                         findings.push_back({{"type", "long_stall"}, {"severity", "warning"},
-                                            {"begin", format_time(stall_begin)}, {"end", format_time(edge_time)},
+                                            {"begin", format_time(stall_begin)}, {"end", format_time(point.sample_time)},
                                             {"cycles", stall_cycles}});
                     }
                     stall_cycles = 0;
                 }
             } else if (v == ExprTri::True && r == ExprTri::False) {
-                if (stall_cycles == 0) stall_begin = edge_time;
+                if (stall_cycles == 0) stall_begin = point.sample_time;
                 ++stall_cycles;
             } else if (r == ExprTri::True && v == ExprTri::False) {
                 ++ready_only;
             }
-            npiFsdbTime next_edge = 0;
-            if (!edge_cursor.next(next_edge)) break;
-            if (next_edge == edge_time) break;
-            edge_time = next_edge;
+            if (point.edge_time == std::numeric_limits<npiFsdbTime>::max() ||
+                point.sample_time == std::numeric_limits<npiFsdbTime>::max()) {
+                break;
+            }
+            npiFsdbTime next_anchor = std::max(point.edge_time + 1, point.sample_time + 1);
+            if (!sample_resolver.find_next_sample(next_anchor, point, error)) break;
         }
         if (stall_cycles > 0) {
             if (stall_cycles > max_stall) max_stall = stall_cycles;
@@ -302,6 +331,17 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
     if (keep && interval_begin <= end) visit_interval(interval_begin, end);
 
     Json data;
+    data["summary"] = {
+        {"sampling_mode", "clock_edge"},
+        {"clock", clock_sample.clock},
+        {"edge", clock_edge_kind_text(clock_sample.edge)},
+        {"sample_offset", clock_sample.sample_offset_text},
+        {"sample_time_semantics", "time is sample_time"},
+        {"sample_count", sample_count},
+        {"transfer_count", transfers},
+        {"max_stall_cycles", max_stall},
+        {"truncated", truncated}
+    };
     data["sample_count"] = sample_count;
     data["transfer_count"] = transfers;
     data["max_stall_cycles"] = max_stall;
@@ -311,6 +351,11 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
     data["findings"] = findings;
     data["name"] = name;
     data["channel"] = channel;
+    data["sampling_mode"] = "clock_edge";
+    data["clock"] = clock_sample.clock;
+    data["edge"] = clock_edge_kind_text(clock_sample.edge);
+    data["sample_offset"] = clock_sample.sample_offset_text;
+    data["sample_time_semantics"] = "time is sample_time";
     return data;
 }
 

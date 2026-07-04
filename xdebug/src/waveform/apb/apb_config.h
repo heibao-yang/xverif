@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../common/clock_sampling.h"
+
 #include <string>
 
 namespace xdebug_waveform {
@@ -14,9 +16,8 @@ struct ApbConfig {
     std::string psel;
     std::string pready;
     std::string pslverr;
-    std::string clk;
+    ClockSampleSpec clock_sample;
     std::string rst_n;
-    bool posedge = true;
 };
 
 } // namespace xdebug_waveform

@@ -2,6 +2,27 @@
 
 namespace xdebug_waveform {
 
+bool clock_sample_from_args(const Json& args, ClockSampleSpec& spec, std::string& error) {
+    static const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", nullptr};
+    for (int i = 0; legacy[i]; ++i) {
+        if (args.contains(legacy[i])) {
+            error = std::string("invalid legacy clock sampling field args.") + legacy[i] +
+                    "; use args.clock, args.edge, and args.sample_offset";
+            return false;
+        }
+    }
+    spec = ClockSampleSpec();
+    spec.clock = args.value("clock", std::string());
+    if (!parse_clock_edge_kind(args.value("edge", std::string("negedge")), spec.edge, error)) {
+        return false;
+    }
+    spec.sample_offset_text = args.value("sample_offset", std::string("0ns"));
+    if (!normalize_clock_sample_spec(g_fsdb_file, spec, error)) {
+        return false;
+    }
+    return true;
+}
+
 bool read_signal_changes(const std::string& signal,
                                 npiFsdbTime begin,
                                 npiFsdbTime end,
@@ -309,6 +330,12 @@ Json ai_signal_changes(const Json& args, std::string& error) {
     bool includes_initial = row_count > 0;
     size_t actual_transitions = includes_initial ? row_count - 1 : 0;
     Json data;
+    data["summary"] = {
+        {"signal", signal},
+        {"returned_change_rows", static_cast<int>(row_count)},
+        {"actual_transition_count", static_cast<int>(actual_transitions)},
+        {"truncated", truncated}
+    };
     data["signal"] = signal;
     data["begin"] = format_time(begin);
     data["end"] = format_time(end);
@@ -413,22 +440,52 @@ Json ai_signal_stability(const Json& args, std::string& error) {
     return data;
 }
 
-bool sample_on_clock(const std::string& clock_path,
-                            bool posedge,
+bool sample_on_clock(const ClockSampleSpec& clock_sample,
                             const std::vector<std::string>& aliases,
                             const fsdbSigVec_t& signal_handles,
                             npiFsdbTime begin,
                             npiFsdbTime end,
                             int max_samples,
                             std::function<bool(npiFsdbTime, const std::map<std::string, std::string>&)> cb,
-                            std::string& error,
-                            int& sample_count,
-                            bool& truncated) {
+    std::string& error,
+    int& sample_count,
+    bool& truncated) {
     sample_count = 0;
     truncated = false;
-    npiFsdbSigHandle clk = npi_fsdb_sig_by_name(g_fsdb_file, clock_path.c_str(), NULL);
+    if (!clock_sample.zero_offset || clock_sample.sample_offset_ticks != 0) {
+        ClockSampleTimeResolver resolver(g_fsdb_file, clock_sample);
+        std::string resolver_error;
+        if (!resolver.valid(resolver_error)) {
+            error = resolver_error;
+            return false;
+        }
+        bool ok = resolver.for_each_sample_time(begin, end, [&](const ClockSamplePoint& point) -> bool {
+            ++sample_count;
+            if (max_samples >= 0 && sample_count > max_samples) {
+                truncated = true;
+                return false;
+            }
+            fsdbValVec_t values;
+            if (!npi_fsdb_sig_hdl_vec_value_at(signal_handles,
+                                               point.sample_time,
+                                               values,
+                                               npiFsdbBinStrVal) ||
+                values.size() != signal_handles.size()) {
+                error = "Failed to read sampled values at " + format_time(point.sample_time);
+                return false;
+            }
+            std::map<std::string, std::string> value_map;
+            for (size_t i = 0; i < aliases.size(); ++i) {
+                value_map[aliases[i]] = with_value_prefix(values[i], 'b');
+            }
+            return cb(point.sample_time, value_map);
+        }, resolver_error);
+        if (!ok && error.empty()) error = resolver_error;
+        return error.empty();
+    }
+    npiFsdbSigHandle clk = npi_fsdb_sig_by_name(g_fsdb_file, clock_sample.clock.c_str(), NULL);
     if (!clk) {
-        error = "Clock signal not found: " + clock_path;
+        error = "Clock signal not found: " + clock_sample.clock;
         return false;
     }
     fsdbSigVec_t all_handles;
@@ -486,8 +543,10 @@ bool sample_on_clock(const std::string& clock_path,
         if (changed_sig == clk) {
             ExprTri old_clk = xdebug_waveform::expr_truth_value(prev_clk);
             ExprTri new_clk = xdebug_waveform::expr_truth_value(v);
-            edge = posedge ? (old_clk == ExprTri::False && new_clk == ExprTri::True)
-                           : (old_clk == ExprTri::True && new_clk == ExprTri::False);
+            edge = clock_edge_transition_matches(
+                clock_sample.edge,
+                old_clk == ExprTri::True,
+                new_clk == ExprTri::True);
             prev_clk = v;
         } else {
             for (size_t i = 0; i < signal_handles.size(); ++i) {
@@ -544,14 +603,15 @@ Json ai_expr_eval_at(const Json& args, std::string& error) {
 }
 
 Json ai_window_verify(const Json& args, std::string& error) {
-    std::string clock = args.value("clock", std::string());
+    ClockSampleSpec clock_sample;
+    if (!clock_sample_from_args(args, clock_sample, error)) return Json();
+    std::string clock = clock_sample.clock;
     if (clock.empty() || !args.contains("conditions") || !args["conditions"].is_array()) {
         error = "window.verify requires args.clock and args.conditions[]";
         return Json();
     }
     npiFsdbTime begin = 0, end = 0;
     if (!json_time_range(args, begin, end, error)) return Json();
-    bool posedge = args.value("sampling", std::string("posedge")) != "negedge";
     int max_samples = args.value("max_samples", 1000000);
 
     Json signal_union = Json::object();
@@ -583,7 +643,7 @@ Json ai_window_verify(const Json& args, std::string& error) {
 
     int samples = 0;
     bool truncated = false;
-    bool ok = sample_on_clock(clock, posedge, aliases, handles, begin, end, max_samples,
+    bool ok = sample_on_clock(clock_sample, aliases, handles, begin, end, max_samples,
         [&](npiFsdbTime, const std::map<std::string, std::string>& values) -> bool {
             bool has_eventually = false;
             bool all_eventually_seen = true;
@@ -631,7 +691,12 @@ Json ai_window_verify(const Json& args, std::string& error) {
         {"sample_count", samples},
         {"failed_samples", failed_samples},
         {"unknown_samples", unknown_samples},
-        {"truncated", truncated}
+        {"truncated", truncated},
+        {"sampling_mode", "clock_edge"},
+        {"clock", clock_sample.clock},
+        {"edge", clock_edge_kind_text(clock_sample.edge)},
+        {"sample_offset", clock_sample.sample_offset_text},
+        {"sample_time_semantics", "time is sample_time"}
     };
     data["all_passed"] = all_passed;
     data["sample_count"] = samples;
@@ -644,7 +709,9 @@ Json ai_window_verify(const Json& args, std::string& error) {
 
 Json ai_signal_statistics(const Json& args, std::string& error) {
     std::string signal = args.value("signal", std::string());
-    std::string clock = args.value("clock", std::string());
+    ClockSampleSpec clock_sample;
+    if (!clock_sample_from_args(args, clock_sample, error)) return Json();
+    std::string clock = clock_sample.clock;
     if (signal.empty()) {
         error = "signal.statistics requires args.signal";
         return Json();
@@ -702,7 +769,6 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
     fsdbSigVec_t handles;
     if (!build_signal_alias_handles(signals, aliases, paths, handles, error)) return Json();
 
-    bool posedge = args.value("sampling", std::string("posedge")) != "negedge";
     int max_samples = args.value("max_samples", 1000000);
     int samples = 0, known = 0, unknown = 0;
     int high_cycles = 0, low_cycles = 0;
@@ -715,7 +781,7 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
     npiFsdbTime first_high_time = 0, last_high_time = 0, last_fall_time = 0;
     bool prev_high = false;
 
-    if (!sample_on_clock(clock, posedge, aliases, handles, begin, end, max_samples,
+    if (!sample_on_clock(clock_sample, aliases, handles, begin, end, max_samples,
         [&](npiFsdbTime t, const std::map<std::string, std::string>& values) -> bool {
             auto it = values.find("sig");
             if (it == values.end() || contains_xz_value(it->second)) {
@@ -770,10 +836,23 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
     if (prev_high && current_high > max_high_cycles) max_high_cycles = current_high;
 
     Json data;
+    data["summary"] = {
+        {"sampling_mode", "clock_edge"},
+        {"clock", clock},
+        {"edge", clock_edge_kind_text(clock_sample.edge)},
+        {"sample_offset", clock_sample.sample_offset_text},
+        {"sample_time_semantics", "time is sample_time"},
+        {"sample_count", samples},
+        {"known_count", known},
+        {"unknown_count", unknown},
+        {"truncated", truncated}
+    };
     data["signal"] = signal;
     data["clock"] = clock;
-    data["sampling"] = posedge ? "posedge" : "negedge";
-    data["sampling_mode"] = "clock";
+    data["edge"] = clock_edge_kind_text(clock_sample.edge);
+    data["sample_offset"] = clock_sample.sample_offset_text;
+    data["sample_time_semantics"] = "time is sample_time";
+    data["sampling_mode"] = "clock_edge";
     data["begin"] = format_time(begin);
     data["end"] = format_time(end);
     data["sample_count"] = samples;
@@ -803,7 +882,9 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
 }
 
 Json ai_counter_statistics(const Json& args, std::string& error) {
-    std::string clock = args.value("clock", std::string());
+    ClockSampleSpec clock_sample;
+    if (!clock_sample_from_args(args, clock_sample, error)) return Json();
+    std::string clock = clock_sample.clock;
     if (clock.empty()) {
         error = "MISSING_FIELD: counter.statistics requires args.clock";
         return Json();
@@ -826,7 +907,6 @@ Json ai_counter_statistics(const Json& args, std::string& error) {
     fsdbSigVec_t handles;
     if (!build_signal_alias_handles(signal_union, aliases, paths, handles, error)) return Json();
 
-    bool posedge = args.value("sampling", std::string("posedge")) != "negedge";
     int max_samples = args.value("max_samples", 1000000);
     int samples = 0;
     bool truncated = false;
@@ -837,7 +917,7 @@ Json ai_counter_statistics(const Json& args, std::string& error) {
     npiFsdbTime min_first_time = 0, max_first_time = 0;
     long double sum = 0.0;
 
-    if (!sample_on_clock(clock, posedge, aliases, handles, begin, end, max_samples,
+    if (!sample_on_clock(clock_sample, aliases, handles, begin, end, max_samples,
         [&](npiFsdbTime t, const std::map<std::string, std::string>& values) -> bool {
             ExprTri valid = ExprTri::Unknown;
             std::string eval_error;
@@ -893,8 +973,22 @@ Json ai_counter_statistics(const Json& args, std::string& error) {
         }, error, samples, truncated)) return Json();
 
     Json data;
+    data["summary"] = {
+        {"sampling_mode", "clock_edge"},
+        {"clock", clock_sample.clock},
+        {"edge", clock_edge_kind_text(clock_sample.edge)},
+        {"sample_offset", clock_sample.sample_offset_text},
+        {"sample_time_semantics", "time is sample_time"},
+        {"sample_count", samples},
+        {"valid_count", valid_count},
+        {"unknown_count", unknown_count},
+        {"truncated", truncated}
+    };
     data["clock"] = clock;
-    data["sampling"] = posedge ? "posedge" : "negedge";
+    data["edge"] = clock_edge_kind_text(clock_sample.edge);
+    data["sample_offset"] = clock_sample.sample_offset_text;
+    data["sample_time_semantics"] = "time is sample_time";
+    data["sampling_mode"] = "clock_edge";
     data["begin"] = format_time(begin);
     data["end"] = format_time(end);
     data["sample_count"] = samples;

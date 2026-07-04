@@ -6,6 +6,7 @@
   },
   "args": {
     "name": "if0",
+    "config_path": "xdebug/testdata/waveform/ai_complex_wave/config/apb0.json",
     "include_accesses": false
   }
 }

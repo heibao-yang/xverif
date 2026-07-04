@@ -28,9 +28,11 @@ static Json config_to_json(const std::string& fsdb_file, const EventConfig& conf
     Json j;
     j["fsdb_file"] = fsdb_file;
     j["name"] = config.name;
-    j["clk"] = config.clk;
+    j["clock"] = config.clock_sample.clock;
     j["rst_n"] = config.rst_n;
-    j["edge"] = config.posedge ? "posedge" : "negedge";
+    j["edge"] = clock_edge_kind_text(config.clock_sample.edge);
+    j["sample_offset"] = config.clock_sample.sample_offset_text.empty()
+        ? "0ns" : config.clock_sample.sample_offset_text;
     j["signals"] = config.signals;
     Json fields = Json::object();
     for (const auto& kv : config.fields) fields[kv.first] = field_to_json(kv.second);
@@ -42,10 +44,13 @@ static bool json_to_config(const Json& j, std::string& fsdb_file, EventConfig& c
     if (!j.is_object()) return false;
     fsdb_file = j.value("fsdb_file", "");
     config.name = j.value("name", "");
-    config.clk = j.value("clk", "");
+    config.clock_sample.clock = j.value("clock", "");
     config.rst_n = j.value("rst_n", "");
-    const std::string edge = j.value("edge", "posedge");
-    config.posedge = (edge != "negedge");
+    std::string edge_error;
+    if (!parse_clock_edge_kind(j.value("edge", "negedge"), config.clock_sample.edge, edge_error)) {
+        return false;
+    }
+    config.clock_sample.sample_offset_text = j.value("sample_offset", "0ns");
     config.signals.clear();
     config.fields.clear();
     if (j.contains("signals") && j["signals"].is_object()) {
@@ -63,7 +68,7 @@ static bool json_to_config(const Json& j, std::string& fsdb_file, EventConfig& c
             config.fields[it.key()] = field;
         }
     }
-    return !fsdb_file.empty() && !config.name.empty() && !config.clk.empty();
+    return !fsdb_file.empty() && !config.name.empty() && !config.clock_sample.clock.empty();
 }
 
 static bool lock_file(int fd) {

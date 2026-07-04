@@ -24,12 +24,13 @@ def run_counter_statistics(xdebug, fsdb):
 
         direct = r.query("counter.statistics", args={
             "clock": "ai_complex_top.clk",
+            "edge": "posedge",
             "time_range": {"begin": "55ns", "end": "95ns"},
             "vld": "ai_complex_top.rst_n",
             "cnt": "ai_complex_top.counter_inc",
             "max_samples": 1000,
         })
-        require(direct["data"]["valid_count"] >= 4, "counter.statistics valid_count too small")
+        require(direct["summary"]["valid_count"] >= 4, "counter.statistics valid_count too small")
         require(direct["data"]["min_value"] == "1", "counter.statistics min mismatch")
         require(direct["data"]["max_value"] == "5", "counter.statistics max mismatch")
         require(direct["data"]["min_count"] == 1 and direct["data"]["max_count"] == 1, "counter.statistics min/max count mismatch")
@@ -37,6 +38,7 @@ def run_counter_statistics(xdebug, fsdb):
 
         expr = r.query("counter.statistics", args={
             "clock": "ai_complex_top.clk",
+            "edge": "posedge",
             "time_range": {"begin": "55ns", "end": "95ns"},
             "vld": {
                 "expr": "rst && inc_nonzero",
@@ -48,11 +50,12 @@ def run_counter_statistics(xdebug, fsdb):
             "cnt": "ai_complex_top.counter_inc",
             "max_samples": 1000,
         })
-        require(expr["data"]["valid_count"] == direct["data"]["valid_count"], "expression vld valid_count mismatch")
+        require(expr["summary"]["valid_count"] == direct["summary"]["valid_count"], "expression vld valid_count mismatch")
         require(expr["data"]["average_value"] == "3", "expression vld average mismatch")
 
         concat = r.query("counter.statistics", args={
             "clock": "ai_complex_top.clk",
+            "edge": "posedge",
             "time_range": {"begin": "55ns", "end": "95ns"},
             "vld": "ai_complex_top.rst_n",
             "cnt": "{ai_complex_top.sig_a,ai_complex_top.counter_inc}",
@@ -64,6 +67,7 @@ def run_counter_statistics(xdebug, fsdb):
         r.query("cursor.set", args={"name": "cnt_end", "time": "95ns"})
         cursor = r.query("counter.statistics", args={
             "clock": "ai_complex_top.clk",
+            "edge": "posedge",
             "time_range": {"begin": "@cnt_begin", "end": "@cnt_end"},
             "vld": "ai_complex_top.rst_n",
             "cnt": "ai_complex_top.counter_inc",
@@ -74,18 +78,21 @@ def run_counter_statistics(xdebug, fsdb):
 
         r.query("counter.statistics", args={
             "clock": "ai_complex_top.clk",
+            "edge": "posedge",
             "time_range": {"begin": "55ns", "end": "95ns"},
             "vld": {"expr": "missing", "signals": {"other": "ai_complex_top.rst_n"}},
             "cnt": "ai_complex_top.counter_inc",
         }, expect_ok=False)
         r.query("counter.statistics", args={
             "clock": "ai_complex_top.clk",
+            "edge": "posedge",
             "time_range": {"begin": "55ns", "end": "95ns"},
             "vld": "ai_complex_top.rst_n",
             "cnt": "{ai_complex_top.counter_inc,'b0}",
         }, expect_ok=False)
         r.query("counter.statistics", args={
             "clock": "ai_complex_top.clk",
+            "edge": "posedge",
             "time_range": {"begin": "55ns", "end": "95ns"},
             "vld": "ai_complex_top.rst_n",
             "cnt": "{ai_complex_top.sig_a,ai_complex_top.sig_a,ai_complex_top.sig_a,ai_complex_top.sig_a,ai_complex_top.sig_a,ai_complex_top.sig_a,ai_complex_top.sig_a,ai_complex_top.sig_a,ai_complex_top.sig_a}",

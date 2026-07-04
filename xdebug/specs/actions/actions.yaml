@@ -62,6 +62,14 @@
       },
       "required_args": [
         "name"
+      ],
+      "required_arg_groups": [
+        [
+          "config"
+        ],
+        [
+          "config_path"
+        ]
       ]
     },
     {
@@ -248,6 +256,14 @@
       },
       "required_args": [
         "name"
+      ],
+      "required_arg_groups": [
+        [
+          "config"
+        ],
+        [
+          "config_path"
+        ]
       ]
     },
     {
@@ -605,7 +621,7 @@
           "name"
         ],
         [
-          "clk",
+          "clock",
           "signals"
         ]
       ]
@@ -636,7 +652,7 @@
           "name"
         ],
         [
-          "clk",
+          "clock",
           "signals"
         ]
       ]
@@ -1452,8 +1468,19 @@
           "examples/responses/stream.config.load.basic.json"
         ]
       },
-      "required_args": [
-        "streams"
+      "required_arg_groups": [
+        [
+          "streams"
+        ],
+        [
+          "config"
+        ],
+        [
+          "config_path"
+        ],
+        [
+          "file"
+        ]
       ]
     },
     {

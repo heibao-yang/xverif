@@ -64,6 +64,19 @@ def _query(
     )
 
 
+def _resources_ready(fixture_dir: Path, manifest: dict[str, Any]) -> bool:
+    resources = manifest["resources"]
+    fsdb = fixture_dir / resources["fsdb"]
+    daidir = fixture_dir / resources["daidir"]
+    sim_log = fixture_dir / resources["simulation_log"]
+    return (
+        fsdb.is_file()
+        and fsdb.stat().st_size > 0
+        and daidir.is_dir()
+        and sim_log.is_file()
+    )
+
+
 @pytest.mark.synthetic
 @pytest.mark.waveform
 @pytest.mark.apb
@@ -80,31 +93,32 @@ def test_apb_vip_real_wait_state_and_error_actions(
     manifest = json.loads(
         (fixture_dir / "manifest.json").read_text(encoding="utf-8")
     )
-    missing = [
-        name for name in manifest["required_env"] if not os.environ.get(name)
-    ]
-    assert not missing, (
-        "APB VIP fixture requires environment variables: %s"
-        % ", ".join(missing)
-    )
-
-    build = command_runner.run(
-        ["make", "clean", "run"],
-        cwd=fixture_dir,
-        timeout_sec=1200,
-        metadata={
-            "suite": "apb_vip_real",
-            "fixture": str(fixture_dir),
-            "seed": manifest["seed"],
-        },
-    )
-    if build.returncode != 0 or build.timed_out:
-        _require_success(
-            build,
-            case_name="apb-vip-real-build",
-            artifact_root=artifact_root,
-            manifest=manifest,
+    if not _resources_ready(fixture_dir, manifest):
+        missing = [
+            name for name in manifest["required_env"] if not os.environ.get(name)
+        ]
+        assert not missing, (
+            "APB VIP fixture requires environment variables: %s"
+            % ", ".join(missing)
         )
+
+        build = command_runner.run(
+            ["make", "clean", "run"],
+            cwd=fixture_dir,
+            timeout_sec=1200,
+            metadata={
+                "suite": "apb_vip_real",
+                "fixture": str(fixture_dir),
+                "seed": manifest["seed"],
+            },
+        )
+        if build.returncode != 0 or build.timed_out:
+            _require_success(
+                build,
+                case_name="apb-vip-real-build",
+                artifact_root=artifact_root,
+                manifest=manifest,
+            )
 
     resources = manifest["resources"]
     fsdb = fixture_dir / resources["fsdb"]
@@ -142,7 +156,7 @@ def test_apb_vip_real_wait_state_and_error_actions(
         "psel": prefix + ".psel[0]",
         "pready": prefix + ".pready[0]",
         "pslverr": prefix + ".pslverr[0]",
-        "clk": manifest["top"] + ".clk",
+        "clock": manifest["top"] + ".clk",
         "rst_n": manifest["top"] + ".rst_n",
         "edge": "posedge",
     }

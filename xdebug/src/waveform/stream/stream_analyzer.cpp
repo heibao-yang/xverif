@@ -145,7 +145,7 @@ bool StreamAnalyzer::compile(npiFsdbFileHandle file, const StreamConfig& config,
         return true;
     };
 
-    if (!parse_one("clock", config.clock, c.clock)) return false;
+    if (!parse_one("clock", config.clock_sample.clock, c.clock)) return false;
     if (!c.clock.is_plain_signal()) {
         if (issues) issue(*issues, "WARNING", "CLOCK_COMPLEX",
             "clock expression is not a plain signal; edge detection uses expression dependency changes");
@@ -218,6 +218,8 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
                              const StreamQueryOptions& options, StreamAnalysis& analysis,
                              std::string& error) {
     analysis = StreamAnalysis();
+    ClockSampleSpec clock_sample = config.clock_sample;
+    if (!normalize_clock_sample_spec(file, clock_sample, error)) return false;
     Compiled compiled;
     if (!compile(file, config, compiled, nullptr, error)) return false;
     std::vector<std::string> deps = sorted_signals(compiled.deps);
@@ -227,47 +229,56 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
         return false;
     }
     std::vector<npiFsdbTime> edge_times;
-    std::set<npiFsdbTime> candidate_times;
-    for (const auto& sig_name : clock_deps) {
-        npiFsdbSigHandle sig = npi_fsdb_sig_by_name(file, sig_name.c_str(), NULL);
-        SignalChangeCursor cursor(sig, npiFsdbBinStrVal);
-        if (!cursor.valid()) {
-            error = "failed to create clock dependency cursor: " + sig_name;
+    if (!clock_sample.zero_offset) {
+        ClockSampleTimeResolver resolver(file, clock_sample);
+        if (!resolver.for_each_sample_time(options.begin, options.end,
+                [&](const ClockSamplePoint& point) -> bool {
+                    edge_times.push_back(point.sample_time);
+                    return true;
+                }, error)) {
             return false;
         }
-        npiFsdbTime change_time = 0;
-        std::string raw_value;
-        if (!cursor.first_at_or_after(options.begin, change_time, raw_value)) continue;
-        if (change_time >= options.begin && change_time <= options.end) candidate_times.insert(change_time);
-        while (cursor.next(change_time, raw_value)) {
-            if (change_time > options.end) break;
-            if (change_time >= options.begin) candidate_times.insert(change_time);
+    } else {
+        std::set<npiFsdbTime> candidate_times;
+        for (const auto& sig_name : clock_deps) {
+            npiFsdbSigHandle sig = npi_fsdb_sig_by_name(file, sig_name.c_str(), NULL);
+            SignalChangeCursor cursor(sig, npiFsdbBinStrVal);
+            if (!cursor.valid()) {
+                error = "failed to create clock dependency cursor: " + sig_name;
+                return false;
+            }
+            npiFsdbTime change_time = 0;
+            std::string raw_value;
+            if (!cursor.first_at_or_after(options.begin, change_time, raw_value)) continue;
+            if (change_time >= options.begin && change_time <= options.end) candidate_times.insert(change_time);
+            while (cursor.next(change_time, raw_value)) {
+                if (change_time > options.end) break;
+                if (change_time >= options.begin) candidate_times.insert(change_time);
+            }
         }
-    }
-    bool have_prev = false;
-    bool prev_known = false;
-    bool prev_one = false;
-    for (const auto& change_time : candidate_times) {
-        std::map<std::string, StreamValue> clock_values;
-        if (!stream_collect_signal_values(file, clock_deps, change_time, clock_values, error)) return false;
-        StreamValue clock_value;
-        std::string eval_error;
-        if (!compiled.clock.evaluate(clock_values, clock_value, eval_error)) {
-            error = "clock evaluate failed: " + eval_error;
-            return false;
+        bool have_prev = false;
+        bool prev_known = false;
+        bool prev_one = false;
+        for (const auto& change_time : candidate_times) {
+            std::map<std::string, StreamValue> clock_values;
+            if (!stream_collect_signal_values(file, clock_deps, change_time, clock_values, error)) return false;
+            StreamValue clock_value;
+            std::string eval_error;
+            if (!compiled.clock.evaluate(clock_values, clock_value, eval_error)) {
+                error = "clock evaluate failed: " + eval_error;
+                return false;
+            }
+            bool cur_known = clock_value.known;
+            bool cur_one = stream_value_truthy(clock_value, false);
+            bool edge_match = false;
+            if (have_prev && prev_known && cur_known) {
+                edge_match = clock_edge_transition_matches(clock_sample.edge, prev_one, cur_one);
+            }
+            if (edge_match) edge_times.push_back(change_time);
+            prev_known = cur_known;
+            prev_one = cur_one;
+            have_prev = true;
         }
-        bool cur_known = false;
-        bool cur_one = false;
-        cur_known = clock_value.known;
-        cur_one = stream_value_truthy(clock_value, false);
-        bool edge_match = false;
-        if (have_prev && prev_known && cur_known) {
-            edge_match = config.posedge ? (!prev_one && cur_one) : (prev_one && !cur_one);
-        }
-        if (edge_match) edge_times.push_back(change_time);
-        prev_known = cur_known;
-        prev_one = cur_one;
-        have_prev = true;
     }
 
     int packet_index = 0;
@@ -617,8 +628,12 @@ Json stream_packet_json(const StreamPacket& packet) {
 Json stream_summary_json(const StreamConfig& config, const StreamAnalysis& analysis) {
     Json j;
     j["stream"] = config.name;
-    j["clock"] = config.clock;
-    j["clock_edge"] = config.posedge ? "posedge" : "negedge";
+    j["sampling_mode"] = "clock_edge";
+    j["clock"] = config.clock_sample.clock;
+    j["edge"] = clock_edge_kind_text(config.clock_sample.edge);
+    j["sample_offset"] = config.clock_sample.sample_offset_text.empty()
+        ? "0ns" : config.clock_sample.sample_offset_text;
+    j["sample_time_semantics"] = "time is sample_time";
     j["handshake"] = stream_handshake_text(config);
     j["packet_enabled"] = stream_packet_enabled(config);
     j["clock_edges"] = analysis.clock_edges;

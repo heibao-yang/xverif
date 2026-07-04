@@ -79,7 +79,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
   "action": "event.find",
   "args": {
     "expr": "valid && !ready",
-    "clk": "top.clk",
+    "clock": "top.clk",
     "signals": {
       "valid": "top.u_if.valid",
       "ready": "top.u_if.ready"
@@ -103,7 +103,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
   "session_id": "case_a",
   "action": "handshake.inspect",
   "args": {
-    "clk": "top.clk",
+    "clock": "top.clk",
     "valid": "top.u_if.valid",
     "ready": "top.u_if.ready",
     "time_range": {"begin": "0ns", "end": "100us"},
@@ -128,7 +128,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
   "args": {
     "name": "axi0",
     "config": {
-      "clk": "top.aclk",
+      "clock": "top.aclk",
       "rst_n": "top.aresetn",
       "arvalid": "top.u_axi.arvalid",
       "arready": "top.u_axi.arready",
@@ -201,7 +201,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
 证据读取：
 
 - `known:false` 只是未知值证据，不是 root cause。
-- packed struct payload 优先展开到 leaf field 检查；不要直接把 aggregate `pd` 的 unknown finding 当作最终协议结论。
+- packed struct / aggregate payload 必须由 AI 直接传最终 leaf signal path 检查；不要直接把 aggregate path 的 unknown finding 当作最终协议结论，也不要期待 xdebug 自动展开 struct。
 - 找到第一处 unknown 后，用 `signal.changes` 缩小出现时间。
 - combined session 下对同一时间调用 `trace.active_driver`。
 

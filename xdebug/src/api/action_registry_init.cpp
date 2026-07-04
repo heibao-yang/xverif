@@ -113,7 +113,6 @@ void apply_arg_contract(ActionSpec& spec) {
         {"session.close", {"session_id"}, 1},
         {"session.kill", {"session_id"}, 1},
         {"source.context", {"file", "line"}, 2},
-        {"stream.config.load", {"streams"}, 1},
         {"stream.show", {"stream"}, 1},
         {"stream.validate", {"stream"}, 1},
         {"stream.query", {"stream", "query"}, 2},

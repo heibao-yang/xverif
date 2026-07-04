@@ -36,6 +36,19 @@ def _require_success(
     )
 
 
+def _resources_ready(fixture_dir: Path, manifest: dict) -> bool:
+    resources = manifest["resources"]
+    fsdb = fixture_dir / resources["fsdb"]
+    daidir = fixture_dir / resources["daidir"]
+    sim_log = fixture_dir / resources["simulation_log"]
+    return (
+        fsdb.is_file()
+        and fsdb.stat().st_size > 0
+        and daidir.is_dir()
+        and sim_log.is_file()
+    )
+
+
 @pytest.mark.synthetic
 @pytest.mark.waveform
 @pytest.mark.axi
@@ -53,22 +66,28 @@ def test_axi_vip_real_waveform_actions(
     manifest = json.loads(
         (fixture_dir / "manifest.json").read_text(encoding="utf-8")
     )
-    required_env = manifest["required_env"]
-    missing = [name for name in required_env if not os.environ.get(name)]
-    assert not missing, (
-        "AXI VIP fixture requires environment variables: %s"
-        % ", ".join(missing)
-    )
+    have_resources = _resources_ready(fixture_dir, manifest)
+    if not have_resources:
+        required_env = manifest["required_env"]
+        missing = [name for name in required_env if not os.environ.get(name)]
+        assert not missing, (
+            "AXI VIP fixture requires environment variables: %s"
+            % ", ".join(missing)
+        )
+
+    command = [
+        sys.executable,
+        str(xdebug_root / "tests" / "waveform" / "run_complex_wave.py"),
+        "--mode",
+        "axi",
+        "--xdebug",
+        str(xdebug_bin),
+    ]
+    if have_resources:
+        command.append("--skip-build")
 
     result = command_runner.run(
-        [
-            sys.executable,
-            str(xdebug_root / "tests" / "waveform" / "run_complex_wave.py"),
-            "--mode",
-            "axi",
-            "--xdebug",
-            str(xdebug_bin),
-        ],
+        command,
         cwd=repo_root,
         timeout_sec=2400,
         metadata={

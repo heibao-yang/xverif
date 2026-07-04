@@ -9,8 +9,8 @@
 
 ## Waveform Action Boundaries
 
-- `detect_abnormal`：raw waveform smoke scan。用于找 `unknown_xz`、周期内异常短脉冲/毛刺 `glitch`、长时间不变 `stuck`。可传多个信号，也可以直接传 interface struct leaf path，例如 `top.xif.pd.opcode`。它不单独证明 valid/ready 协议 bug，`stuck` 命中后还要结合协议上下文解释。
-- `event.find` / `event.export`：clock-edge sampled event query。用于按 `clk` 和 alias 表达式查 `valid && !ready`、`opcode >= 8'h10`、`data != 0` 这类采样点条件。interface struct 字段优先作为 direct leaf signal alias 传入，例如 `"opcode": "top.xif.pd.opcode"`，不要只依赖 aggregate `pd`。
+- `detect_abnormal`：raw waveform smoke scan。用于找 `unknown_xz`、周期内异常短脉冲/毛刺 `glitch`、长时间不变 `stuck`。可传多个信号；对 packed struct / aggregate payload，AI 必须直接传最终 leaf signal path，例如 `top.u.payload.opcode`，不要传 struct aggregate path 后期待 xdebug 自动展开。它不单独证明 valid/ready 协议 bug，`stuck` 命中后还要结合协议上下文解释。
+- `event.find` / `event.export`：clock-edge sampled event query。用于按 `clock`、`edge`、`sample_offset` 和 alias 表达式查 `valid && !ready`、`opcode >= 8'h10`、`data != 0` 这类采样点条件。默认优先用 `edge:"negedge"` 和 `sample_offset:"0ns"`；只有接口规范、monitor 语义或 race/skew 证据要求时才改用 `edge:"posedge"` 或非零 `sample_offset`；`edge:"dual"` 只用于 DDR/双沿采样/不确定边沿 bring-up。packed struct 字段必须作为 direct leaf signal alias 传入，例如 `"opcode": "top.u.payload.opcode"`，不要只依赖 aggregate `payload`。
 - `sampled_pulse.inspect`：valid sampling explanation。用于回答“raw valid 脉冲存在，但没有被采样边沿看到”以及 payload 在未采样窗口附近是否变化；它不是通用 glitch/stuck/XZ 扫描入口。
 - `handshake.inspect`：valid/ready protocol inspection。用于统计 transfer、stall、ready-without-valid、stalled data stability violation；适合协议层风险，不替代 raw glitch 检测。
 - `window.verify`：sampled proof。用于证明某个 clock window 内条件 always/eventually/never 是否成立；适合最终证明，不适合枚举原始 value-change timeline。
@@ -66,9 +66,9 @@
 | `cursor.use` | stable | waveform | 激活游标。 | 按 name 取游标并设为当前 active。 | 让后续交互默认围绕该时间点。 | required: name |
 | `detect_abnormal` | stable | waveform | 扫描常见波形异常。 | 对 signals 执行 glitch/stuck/unknown 等检查并返回 findings；valid/ready 协议里的合法 idle/backpressure 不应只凭 stuck finding 判为 bug。 | 快速发现值得展开的异常窗口。 | required: signals |
 | `event.config.list` | stable | waveform | 列出事件配置。 | 读取 EventManager 中保存的配置名和摘要。 | 查看可用事件查询模板。 | none |
-| `event.config.load` | stable | waveform | 保存事件查询配置。 | 将 name/clk/signals/reset 等配置写入 EventManager。 | 复用常见事件查询上下文。 | required: name |
-| `event.export` | stable | waveform | 导出满足表达式的事件。 | 与 event.find 同样分析，但按 export 模式返回/写出更多命中数据；表达式支持布尔组合、相等比较和大小比较。 | 把事件列表交给后处理或报告。 | required: expr<br>also one of: name / clk + signals |
-| `event.find` | stable | waveform | 查找满足表达式的事件样例。 | 用 name 配置或 inline clk/signals 构建 EventQuery，按 clock 扫描表达式命中；表达式支持布尔组合、相等比较和大小比较。 | 快速找到协议条件发生的时间。 | required: expr<br>also one of: name / clk + signals |
+| `event.config.load` | stable | waveform | 保存事件查询配置。 | 将 name/clock/edge/sample_offset/signals/reset 等配置写入 EventManager。 | 复用常见事件查询上下文。 | required: name |
+| `event.export` | stable | waveform | 导出满足表达式的事件。 | 与 event.find 同样分析，但按 export 模式返回/写出更多命中数据；表达式支持布尔组合、相等比较和大小比较。 | 把事件列表交给后处理或报告。 | required: expr<br>also one of: name / clock + signals |
+| `event.find` | stable | waveform | 查找满足表达式的事件样例。 | 用 name 配置或 inline clock/signals 构建 EventQuery，按 clock sampling 模式扫描表达式命中；表达式支持布尔组合、相等比较和大小比较。 | 快速找到协议条件发生的时间。 | required: expr<br>also one of: name / clock + signals |
 | `expr.eval_at` | stable | waveform | 在指定时间求布尔/表达式值。 | 把 signals alias 映射到 FSDB 信号，读取 time 值后交给表达式求值器。 | 用自然表达式检查组合条件。 | required: expr, time, signals |
 | `handshake.inspect` | stable | waveform | 检查 valid/ready 握手。 | 按 clock 采样 valid/ready/data，统计 stall、transfer 和数据稳定性违规。 | 定位握手停顿和协议风险。 | required: clock, valid, ready |
 | `list.add` | stable | waveform | 向信号列表追加一个信号。 | 检查 signal 在 FSDB 中存在后写入 ListManager。 | 逐步构建观察列表。 | required: name, signal |

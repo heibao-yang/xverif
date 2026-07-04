@@ -6,6 +6,36 @@
 
 namespace xdebug_waveform {
 
+namespace {
+
+bool parse_clock_sample_config(const Json& j,
+                               const char* owner,
+                               ClockSampleSpec& spec,
+                               std::string& err) {
+    static const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", nullptr};
+    for (int i = 0; legacy[i]; ++i) {
+        if (j.contains(legacy[i])) {
+            err = std::string(owner) + " config uses legacy clock sampling field: " +
+                  legacy[i] + "; use clock, edge, and sample_offset";
+            return false;
+        }
+    }
+    if (!get_string(j, "clock", spec.clock)) {
+        err = std::string(owner) + " config requires clock";
+        return false;
+    }
+    if (!parse_clock_edge_kind(string_or(j, "edge", "negedge"), spec.edge, err)) {
+        err = std::string("invalid ") + owner + " edge: " + err;
+        return false;
+    }
+    spec.sample_offset_text = string_or(j, "sample_offset", "0ns");
+    spec.sample_offset_ticks = 0;
+    spec.zero_offset = spec.sample_offset_text.empty() || spec.sample_offset_text == "0ns";
+    return true;
+}
+
+} // namespace
+
 bool parse_apb_config(const Json& j, ApbConfig& c, std::string& err) {
     auto get = [&j](const char* key) -> std::string {
         auto it = j.find(key);
@@ -19,14 +49,10 @@ bool parse_apb_config(const Json& j, ApbConfig& c, std::string& err) {
     c.psel = get("psel");
     c.pready = get("pready");
     c.pslverr = get("pslverr");
-    c.clk = get("clk");
     c.rst_n = get("rst_n");
-    std::string edge = get("edge");
-    if (edge.empty() || edge == "posedge") c.posedge = true;
-    else if (edge == "negedge") c.posedge = false;
-    else { err = "invalid APB edge: " + edge; return false; }
+    if (!parse_clock_sample_config(j, "APB", c.clock_sample, err)) return false;
     if (c.paddr.empty() || c.pwdata.empty() || c.prdata.empty() || c.pwrite.empty() ||
-        c.penable.empty() || c.psel.empty() || c.clk.empty() || c.rst_n.empty()) {
+        c.penable.empty() || c.psel.empty() || c.clock_sample.clock.empty() || c.rst_n.empty()) {
         err = "missing required APB config field";
         return false;
     }
@@ -37,7 +63,9 @@ Json apb_config_json(const ApbConfig& c) {
     Json j = {
         {"name", c.name}, {"paddr", c.paddr}, {"pwdata", c.pwdata}, {"prdata", c.prdata},
         {"pwrite", c.pwrite}, {"penable", c.penable}, {"psel", c.psel},
-        {"clk", c.clk}, {"rst_n", c.rst_n}, {"edge", c.posedge ? "posedge" : "negedge"}
+        {"clock", c.clock_sample.clock}, {"rst_n", c.rst_n},
+        {"edge", clock_edge_kind_text(c.clock_sample.edge)},
+        {"sample_offset", c.clock_sample.sample_offset_text.empty() ? "0ns" : c.clock_sample.sample_offset_text}
     };
     if (!c.pready.empty()) j["pready"] = c.pready;
     if (!c.pslverr.empty()) j["pslverr"] = c.pslverr;
@@ -58,11 +86,8 @@ bool parse_axi_config(const Json& j, AxiConfig& c, std::string& err) {
     c.arsize = get("arsize"); c.arburst = get("arburst"); c.arvalid = get("arvalid");
     c.arready = get("arready"); c.rid = get("rid"); c.rdata = get("rdata");
     c.rresp = get("rresp"); c.rlast = get("rlast"); c.rvalid = get("rvalid");
-    c.rready = get("rready"); c.clk = get("clk"); c.rst_n = get("rst_n");
-    std::string edge = get("edge");
-    if (edge.empty() || edge == "posedge") c.posedge = true;
-    else if (edge == "negedge") c.posedge = false;
-    else { err = "invalid AXI edge: " + edge; return false; }
+    c.rready = get("rready"); c.rst_n = get("rst_n");
+    if (!parse_clock_sample_config(j, "AXI", c.clock_sample, err)) return false;
     if (c.awaddr.empty() || c.awid.empty() || c.awlen.empty() || c.awsize.empty() ||
         c.awburst.empty() || c.awvalid.empty() || c.awready.empty() || c.wdata.empty() ||
         c.wstrb.empty() || c.wlast.empty() || c.wvalid.empty() || c.wready.empty() ||
@@ -70,7 +95,7 @@ bool parse_axi_config(const Json& j, AxiConfig& c, std::string& err) {
         c.araddr.empty() || c.arid.empty() || c.arlen.empty() || c.arsize.empty() ||
         c.arburst.empty() || c.arvalid.empty() || c.arready.empty() || c.rid.empty() ||
         c.rdata.empty() || c.rresp.empty() || c.rlast.empty() || c.rvalid.empty() ||
-        c.rready.empty() || c.clk.empty() || c.rst_n.empty()) {
+        c.rready.empty() || c.clock_sample.clock.empty() || c.rst_n.empty()) {
         err = "missing required AXI config field";
         return false;
     }
@@ -89,8 +114,11 @@ Json axi_config_json(const AxiConfig& c) {
     j["arsize"] = c.arsize; j["arburst"] = c.arburst; j["arvalid"] = c.arvalid;
     j["arready"] = c.arready; j["rid"] = c.rid; j["rdata"] = c.rdata;
     j["rresp"] = c.rresp; j["rlast"] = c.rlast; j["rvalid"] = c.rvalid;
-    j["rready"] = c.rready; j["clk"] = c.clk; j["rst_n"] = c.rst_n;
-    j["edge"] = c.posedge ? "posedge" : "negedge";
+    j["rready"] = c.rready;
+    j["clock"] = c.clock_sample.clock;
+    j["rst_n"] = c.rst_n;
+    j["edge"] = clock_edge_kind_text(c.clock_sample.edge);
+    j["sample_offset"] = c.clock_sample.sample_offset_text.empty() ? "0ns" : c.clock_sample.sample_offset_text;
     return j;
 }
 
@@ -120,15 +148,8 @@ bool parse_field_ref(const std::string& text, EventField& field) {
 }
 
 bool parse_event_config(const Json& j, EventConfig& c, std::string& err) {
-    if (!get_string(j, "clk", c.clk)) {
-        err = "event config requires clk";
-        return false;
-    }
+    if (!parse_clock_sample_config(j, "event", c.clock_sample, err)) return false;
     get_string(j, "rst_n", c.rst_n);
-    std::string edge = string_or(j, "edge", "posedge");
-    if (edge == "posedge") c.posedge = true;
-    else if (edge == "negedge") c.posedge = false;
-    else { err = "invalid event edge: " + edge; return false; }
     auto sig_it = j.find("signals");
     if (sig_it == j.end() || !sig_it->is_object() || sig_it->empty()) {
         err = "event config requires non-empty signals object";
@@ -181,9 +202,10 @@ bool parse_event_config(const Json& j, EventConfig& c, std::string& err) {
 Json event_config_json(const EventConfig& c) {
     Json j;
     j["name"] = c.name;
-    j["clk"] = c.clk;
+    j["clock"] = c.clock_sample.clock;
     if (!c.rst_n.empty()) j["rst_n"] = c.rst_n;
-    j["edge"] = c.posedge ? "posedge" : "negedge";
+    j["edge"] = clock_edge_kind_text(c.clock_sample.edge);
+    j["sample_offset"] = c.clock_sample.sample_offset_text.empty() ? "0ns" : c.clock_sample.sample_offset_text;
     j["signals"] = c.signals;
     Json fields = Json::object();
     for (const auto& kv : c.fields) {

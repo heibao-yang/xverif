@@ -84,8 +84,16 @@ bool parse_stream_config_json(const Json& item, StreamConfig& config, std::strin
         return false;
     }
     config = StreamConfig();
+    static const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", nullptr};
+    for (int i = 0; legacy[i]; ++i) {
+        if (item.contains(legacy[i])) {
+            error = std::string("stream config uses legacy clock sampling field: ") +
+                    legacy[i] + "; use clock, edge, and sample_offset";
+            return false;
+        }
+    }
     get_string(item, "name", config.name);
-    get_string(item, "clock", config.clock);
+    get_string(item, "clock", config.clock_sample.clock);
     get_string(item, "reset", config.reset);
     get_string(item, "vld", config.vld);
     get_string(item, "rdy", config.rdy);
@@ -99,19 +107,19 @@ bool parse_stream_config_json(const Json& item, StreamConfig& config, std::strin
     get_string(item, "description", config.description);
 
     std::string edge;
-    if (!get_string(item, "clock_edge", edge)) get_string(item, "edge", edge);
-    if (edge.empty() || edge == "posedge") config.posedge = true;
-    else if (edge == "negedge") config.posedge = false;
-    else {
-        error = "invalid clock_edge for stream " + config.name + ": " + edge;
+    get_string(item, "edge", edge);
+    if (!parse_clock_edge_kind(edge.empty() ? "negedge" : edge, config.clock_sample.edge, error)) {
+        error = "invalid stream edge for " + config.name + ": " + error;
         return false;
     }
+    get_string(item, "sample_offset", config.clock_sample.sample_offset_text);
+    if (config.clock_sample.sample_offset_text.empty()) config.clock_sample.sample_offset_text = "0ns";
 
     if (!stream_name_valid(config.name)) {
         error = "invalid stream name: " + config.name;
         return false;
     }
-    if (config.clock.empty()) {
+    if (config.clock_sample.clock.empty()) {
         error = "stream " + config.name + " requires clock";
         return false;
     }
@@ -188,8 +196,9 @@ bool parse_stream_config_json(const Json& item, StreamConfig& config, std::strin
 Json stream_config_json(const StreamConfig& c) {
     Json j;
     j["name"] = c.name;
-    j["clock"] = c.clock;
-    j["clock_edge"] = c.posedge ? "posedge" : "negedge";
+    j["clock"] = c.clock_sample.clock;
+    j["edge"] = clock_edge_kind_text(c.clock_sample.edge);
+    j["sample_offset"] = c.clock_sample.sample_offset_text.empty() ? "0ns" : c.clock_sample.sample_offset_text;
     if (!c.reset.empty()) j["reset"] = c.reset;
     j["vld"] = c.vld;
     if (!c.rdy.empty()) j["rdy"] = c.rdy;

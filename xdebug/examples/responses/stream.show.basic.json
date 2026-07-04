@@ -11,7 +11,7 @@
     "config": {
       "name": "req_stream",
       "clock": "top.clk",
-      "clock_edge": "posedge",
+      "edge": "posedge",
       "vld": "top.req_vld",
       "rdy": "top.req_rdy"
     },

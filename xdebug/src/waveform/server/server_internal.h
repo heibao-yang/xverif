@@ -14,6 +14,7 @@
 #include "../event/event_manager.h"
 #include "../cursor/cursor_manager.h"
 #include "../common/time_spec.h"
+#include "../common/clock_sampling.h"
 #include "core/session/session_types.h"
 #include "json.hpp"
 
@@ -91,6 +92,7 @@ bool json_time_range(const Json& args, npiFsdbTime& begin, npiFsdbTime& end, std
 npiFsdbValType json_value_format(const Json& args);
 std::string server_compact_expr_ws(const std::string& expr);
 char json_value_prefix(npiFsdbValType fmt);
+bool clock_sample_from_args(const Json& args, ClockSampleSpec& spec, std::string& error);
 
 void handle_value(int client_fd, const char* signal_path, npiFsdbTime time, char fmt);
 void handle_list_value(int client_fd, const char* list_name, npiFsdbTime time, char fmt, bool json);
@@ -125,7 +127,7 @@ bool build_signal_alias_handles(const Json& signals, std::vector<std::string>& a
                                 std::string& error);
 Json ai_signal_changes(const Json& args, std::string& error);
 Json ai_signal_stability(const Json& args, std::string& error);
-bool sample_on_clock(const std::string& clock_path, bool posedge,
+bool sample_on_clock(const ClockSampleSpec& clock_sample,
                      const std::vector<std::string>& aliases,
                      const fsdbSigVec_t& signal_handles, npiFsdbTime begin,
                      npiFsdbTime end, int max_samples,

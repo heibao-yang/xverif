@@ -17,7 +17,7 @@
         "signal": "ai_complex_top.hs_data"
       }
     ],
-    "sampling": "posedge",
+    "edge": "posedge",
     "begin": "0ns",
     "end": "200ns",
     "sample_count": 20,

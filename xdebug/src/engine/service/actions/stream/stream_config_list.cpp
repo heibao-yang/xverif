@@ -39,8 +39,12 @@ public:
         Json arr = Json::array();
         for (const auto& stream : streams) {
             if (verbose) arr.push_back(xdebug_waveform::stream_config_json(stream));
-            else arr.push_back({{"name", stream.name}, {"clock", stream.clock},
-                                {"clock_edge", stream.posedge ? "posedge" : "negedge"},
+            else arr.push_back({{"name", stream.name},
+                                {"sampling_mode", "clock_edge"},
+                                {"clock", stream.clock_sample.clock},
+                                {"edge", xdebug_waveform::clock_edge_kind_text(stream.clock_sample.edge)},
+                                {"sample_offset", stream.clock_sample.sample_offset_text.empty()
+                                    ? "0ns" : stream.clock_sample.sample_offset_text},
                                 {"handshake", xdebug_waveform::stream_handshake_text(stream)},
                                 {"packet", xdebug_waveform::stream_packet_enabled(stream) ? "sop/eop" : "none"},
                                 {"field_count", stream.data_fields.size() + stream.beat_fields.size() +

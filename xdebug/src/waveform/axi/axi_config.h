@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../common/clock_sampling.h"
+
 #include <string>
 
 namespace xdebug_waveform {
@@ -19,8 +21,8 @@ struct AxiConfig {
     // Read Data
     std::string rid, rdata, rresp, rlast, rvalid, rready;
     // Common
-    std::string clk, rst_n;
-    bool posedge = true;
+    ClockSampleSpec clock_sample;
+    std::string rst_n;
 };
 
 } // namespace xdebug_waveform

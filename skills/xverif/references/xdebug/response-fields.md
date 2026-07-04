@@ -1060,15 +1060,17 @@ change item：`time`、`time_ps`、`value`。
 
 | 路径 | 类型 | 含义 |
 | --- | --- | --- |
-| `summary.sampling_mode` | string | `clock` 或 `raw_value_changes` |
+| `summary.sampling_mode` | string | `clock_edge` 或 `raw_value_changes` |
 | `summary.sample_count` | number | sample 数 |
 | `summary.transition_count` | number | transition 数 |
 | `summary.high_cycles` | number/null | clock-sampled 高周期；raw 模式可能为空 |
 | `summary.low_cycles` | number/null | clock-sampled 低周期；raw 模式可能为空 |
 | `data.signal` | string | 信号 |
 | `data.clock` | string | clock |
-| `data.sampling_mode` | string | `clock` 或 `raw_value_changes` |
-| `data.sampling` | string | `posedge` 或 `negedge` |
+| `data.sampling_mode` | string | `clock_edge` 或 `raw_value_changes` |
+| `data.edge` | string | `posedge`、`negedge` 或 `dual`；默认 `negedge` |
+| `data.sample_offset` | string | 相对 clock edge 的采样偏移；默认 `0ns` |
+| `data.sample_time_semantics` | string | 返回的时间为真实采样时间 |
 | `data.begin` | string | begin |
 | `data.end` | string | end |
 | `data.sample_count` | number | sample 数 |
@@ -1105,7 +1107,9 @@ change item：`time`、`time_ps`、`value`。
 | `data.clock` | string | clock |
 | `data.valid` | string | valid signal |
 | `data.payloads[]` | array | payload alias/signal |
-| `data.sampling` | string | sampling edge |
+| `data.edge` | string | `posedge`、`negedge` 或 `dual`；默认 `negedge` |
+| `data.sample_offset` | string | 相对 clock edge 的采样偏移；默认 `0ns` |
+| `data.sample_time_semantics` | string | 返回的时间为真实采样时间 |
 | `data.begin` | string | begin |
 | `data.end` | string | end |
 | `data.sample_count` | number | sample 数 |
@@ -1130,7 +1134,7 @@ finding type：
 
 ### `detect_abnormal`
 
-`detect_abnormal` 是 raw waveform abnormal smoke 扫描，负责 `unknown_xz`、周期内异常短脉冲/毛刺 `glitch`、长时间不变 `stuck`。valid/ready 协议里的合法 idle/backpressure 不应只凭 `stuck` finding 判为 bug；payload knownness 和 interface struct 结论优先检查 leaf field，例如 `xif.pd.opcode`。
+`detect_abnormal` 是 raw waveform abnormal smoke 扫描，负责 `unknown_xz`、周期内异常短脉冲/毛刺 `glitch`、长时间不变 `stuck`。它支持 `args.signals` 传多个信号。valid/ready 协议里的合法 idle/backpressure 不应只凭 `stuck` finding 判为 bug；packed struct / aggregate payload 的 knownness 结论必须优先检查最终 leaf signal path，例如 `top.u.payload.opcode`，不要期待 xdebug 自动展开 struct。
 
 | 路径 | 类型 | 含义 |
 | --- | --- | --- |

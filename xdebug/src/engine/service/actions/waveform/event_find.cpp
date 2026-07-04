@@ -54,12 +54,26 @@ public:
             if (!em.get_event(g_session_id, g_fsdb_file_path, name, config))
                 return Json({{"error","CONFIG_NOT_FOUND"},{"message",name}});
         } else {
-            std::string clk = args.value("clk", "");
-            if (clk.empty())
-                return Json({{"error","MISSING_FIELD"},{"message","args.clk is required for inline event config"}});
-            config.clk = clk;
+            static const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", nullptr};
+            for (int i = 0; legacy[i]; ++i) {
+                if (args.contains(legacy[i])) {
+                    return Json({{"error","INVALID_REQUEST"},
+                                 {"invalid_arg", std::string("args.") + legacy[i]},
+                                 {"message","legacy clock sampling field is not supported; use args.clock, args.edge, and args.sample_offset"}});
+                }
+            }
+            std::string clock = args.value("clock", "");
+            if (clock.empty())
+                return Json({{"error","MISSING_FIELD"},{"message","args.clock is required for inline event config"}});
+            config.clock_sample.clock = clock;
             config.rst_n = args.value("rst_n", "");
-            config.posedge = args.value("edge", args.value("posedge", "posedge")) != "negedge";
+            std::string edge_error;
+            if (!parse_clock_edge_kind(args.value("edge", std::string("negedge")),
+                                       config.clock_sample.edge,
+                                       edge_error)) {
+                return Json({{"error","INVALID_REQUEST"},{"message",edge_error}});
+            }
+            config.clock_sample.sample_offset_text = args.value("sample_offset", std::string("0ns"));
             Json sigs = args.value("signals", Json::object());
             for (auto it = sigs.begin(); it != sigs.end(); ++it) {
                 if (it->is_string()) config.signals[it.key()] = it->get<std::string>();
@@ -176,7 +190,13 @@ public:
         out["summary"] = {
             {"event_count", static_cast<int>(arr.size())},
             {"mode", mode},
-            {"inline", name.empty()}
+            {"inline", name.empty()},
+            {"sampling_mode", "clock_edge"},
+            {"clock", config.clock_sample.clock},
+            {"edge", clock_edge_kind_text(config.clock_sample.edge)},
+            {"sample_offset", config.clock_sample.sample_offset_text.empty()
+                ? "0ns" : config.clock_sample.sample_offset_text},
+            {"sample_time_semantics", "time is sample_time"}
         };
         if (!arr.empty()) {
             out["first"] = arr[0]["time"];
@@ -189,6 +209,11 @@ public:
         out["end"] = formatted_range.second;
         if (scan_limit > 0) out["scan_limit"] = scan_limit;
         out["sampling_mode"] = "clock_edge";
+        out["clock"] = config.clock_sample.clock;
+        out["edge"] = clock_edge_kind_text(config.clock_sample.edge);
+        out["sample_offset"] = config.clock_sample.sample_offset_text.empty()
+            ? "0ns" : config.clock_sample.sample_offset_text;
+        out["sample_time_semantics"] = "time is sample_time";
         return out;
     }
 };

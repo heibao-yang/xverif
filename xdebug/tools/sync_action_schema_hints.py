@@ -22,12 +22,13 @@ REFERENCE_PATH = (
 
 PARAM_DESCRIPTIONS = {
     "begin": "查询窗口起始时间。",
-    "clk": "事件配置使用的 clock 信号路径。",
     "clock": "采样、统计或协议检查使用的 clock 信号路径。",
     "cnt": "计数器统计使用的 counter 信号路径。",
     "conditions": "需要验证的条件列表。",
+    "config": "内联配置对象。",
     "config_path": "输入配置文件路径。",
     "end": "查询窗口结束时间。",
+    "edge": "clock sampling 使用的边沿：posedge、negedge 或 dual。",
     "expr": "需要求值或匹配的布尔表达式。",
     "file": "源码文件路径。",
     "from_signal": "路径查询的起点信号。",
@@ -42,6 +43,7 @@ PARAM_DESCRIPTIONS = {
     "ready": "valid-ready 握手中的 ready 信号路径。",
     "requested_time": "需要解释或追溯的目标时间点。",
     "requests": "batch action 中按顺序执行的 request 列表。",
+    "sample_offset": "相对 clock edge 的采样偏移，默认 0ns。",
     "session_id": "目标 xdebug session 标识。",
     "signal": "目标信号路径。",
     "signals": "信号列表，或 alias 到信号路径的映射。",

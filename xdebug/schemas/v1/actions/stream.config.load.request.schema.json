@@ -5,8 +5,7 @@
   "type": "object",
   "required": [
     "api_version",
-    "action",
-    "args"
+    "action"
   ],
   "properties": {
     "api_version": {
@@ -27,6 +26,18 @@
     "args": {
       "type": "object",
       "properties": {
+        "config": {
+          "type": "object",
+          "description": "内联配置对象。"
+        },
+        "config_path": {
+          "type": "string",
+          "description": "输入配置文件路径。"
+        },
+        "file": {
+          "type": "string",
+          "description": "源码文件路径。"
+        },
         "mode": {
           "type": "string"
         },
@@ -48,8 +59,28 @@
         }
       },
       "additionalProperties": false,
-      "required": [
-        "streams"
+      "required": [],
+      "anyOf": [
+        {
+          "required": [
+            "streams"
+          ]
+        },
+        {
+          "required": [
+            "config"
+          ]
+        },
+        {
+          "required": [
+            "config_path"
+          ]
+        },
+        {
+          "required": [
+            "file"
+          ]
+        }
       ]
     },
     "limits": {

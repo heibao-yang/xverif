@@ -6,7 +6,7 @@
   },
   "args": {
     "clock": "top.clk",
-    "sampling": "posedge",
+    "edge": "posedge",
     "time_range": {
       "begin": "100ns",
       "end": "200ns"
