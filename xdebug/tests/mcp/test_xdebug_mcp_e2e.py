@@ -105,7 +105,7 @@ def _kill_native_sessions(isolated_home: Path) -> None:
             {
                 "api_version": "xdebug.v1",
                 "action": "session.kill",
-                "args": {"id": "all"},
+                "target": {"session_id": "all"},
             }
         )
         + "\n",
@@ -180,7 +180,8 @@ def test_mcp_direct_tools_discovery_schema_and_one_shot_actions(
             )
         )
         assert schema["ok"] is True
-        assert schema["data"]["action"] == "value.at"
+        assert schema["summary"]["action"] == "value.at"
+        assert schema["data"]["schema"]["title"] == "value.at request"
     finally:
         _close_loaded_server()
         _kill_native_sessions(isolated_home)
@@ -292,7 +293,7 @@ def test_mcp_direct_real_waveform_design_and_combined_sessions(
                     "action": "trace.active_driver",
                     "args": {
                         "signal": "active_driver_tb.u_dut.q",
-                        "requested_time": "20ns",
+                        "time": "20ns",
                     },
                     "output_format": "json",
                 },

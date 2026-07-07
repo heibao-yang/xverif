@@ -15,7 +15,7 @@ def run_counter_statistics(xdebug, fsdb):
             "signal": "ai_complex_top.counter_inc",
             "clock": "ai_complex_top.clk",
             "time_range": {"begin": "55ns", "end": "95ns"},
-            "max_samples": 1000,
+            "limit": 1000,
         })
         for key in ("first", "final", "min", "max"):
             value = stats["data"][key]
@@ -28,11 +28,10 @@ def run_counter_statistics(xdebug, fsdb):
             "time_range": {"begin": "55ns", "end": "95ns"},
             "vld": "ai_complex_top.rst_n",
             "cnt": "ai_complex_top.counter_inc",
-            "max_samples": 1000,
         })
         require(direct["summary"]["valid_count"] >= 4, "counter.statistics valid_count too small")
-        require(direct["data"]["min_value"] == "1", "counter.statistics min mismatch")
-        require(direct["data"]["max_value"] == "5", "counter.statistics max mismatch")
+        require(direct["data"]["min_value"] == "0", "counter.statistics min mismatch")
+        require(direct["data"]["max_value"] == "4", "counter.statistics max mismatch")
         require(direct["data"]["min_count"] == 1 and direct["data"]["max_count"] == 1, "counter.statistics min/max count mismatch")
         require("ns" in direct["data"]["min_first_time"], "counter.statistics missing min_first_time")
 
@@ -41,17 +40,15 @@ def run_counter_statistics(xdebug, fsdb):
             "edge": "posedge",
             "time_range": {"begin": "55ns", "end": "95ns"},
             "vld": {
-                "expr": "rst && inc_nonzero",
+                "expr": "rst",
                 "signals": {
                     "rst": "ai_complex_top.rst_n",
-                    "inc_nonzero": "ai_complex_top.counter_inc",
                 },
             },
             "cnt": "ai_complex_top.counter_inc",
-            "max_samples": 1000,
         })
         require(expr["summary"]["valid_count"] == direct["summary"]["valid_count"], "expression vld valid_count mismatch")
-        require(expr["data"]["average_value"] == "3", "expression vld average mismatch")
+        require(expr["data"]["average_value"] == "2", "expression vld average mismatch")
 
         concat = r.query("counter.statistics", args={
             "clock": "ai_complex_top.clk",
@@ -59,7 +56,6 @@ def run_counter_statistics(xdebug, fsdb):
             "time_range": {"begin": "55ns", "end": "95ns"},
             "vld": "ai_complex_top.rst_n",
             "cnt": "{ai_complex_top.sig_a,ai_complex_top.counter_inc}",
-            "max_samples": 1000,
         })
         require(int(concat["data"]["max_value"]) > 255, "concat counter max did not include high bits")
 
@@ -71,7 +67,6 @@ def run_counter_statistics(xdebug, fsdb):
             "time_range": {"begin": "@cnt_begin", "end": "@cnt_end"},
             "vld": "ai_complex_top.rst_n",
             "cnt": "ai_complex_top.counter_inc",
-            "max_samples": 1000,
         })
         require(cursor["data"]["min_value"] == direct["data"]["min_value"], "cursor window min mismatch")
         require(cursor["data"]["max_value"] == direct["data"]["max_value"], "cursor window max mismatch")

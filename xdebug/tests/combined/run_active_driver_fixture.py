@@ -164,7 +164,7 @@ def do_active_driver(session_id: str, signal: str, requested_time: str,
     """Run trace.active_driver, returns (rc, raw_output, json_response)."""
     args = {
         "signal": signal,
-        "requested_time": requested_time,
+        "time": requested_time,
     }
     if extra_args:
         args.update(extra_args)

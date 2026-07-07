@@ -291,6 +291,38 @@ def test_all_examples_validate_against_action_schemas(xdebug_root: Path) -> None
 
 
 @pytest.mark.contract
+def test_stream_query_match_schema_rejects_legacy_field_shorthand(
+    xdebug_root: Path,
+) -> None:
+    schema = _load_json(
+        xdebug_root / "schemas" / "v1" / "actions" / "stream.query.request.schema.json"
+    )
+    validator = jsonschema.Draft202012Validator(schema)
+    valid = {
+        "api_version": "xdebug.v1",
+        "action": "stream.query",
+        "args": {
+            "stream": "req_stream",
+            "query": "match_field",
+            "match": {"field": "opcode", "op": "==", "value": "8'h5a"},
+        },
+    }
+    validator.validate(valid)
+
+    legacy = {
+        "api_version": "xdebug.v1",
+        "action": "stream.query",
+        "args": {
+            "stream": "req_stream",
+            "query": "match_field",
+            "match": {"opcode": "8'h5a"},
+        },
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        validator.validate(legacy)
+
+
+@pytest.mark.contract
 def test_response_examples_do_not_encode_removed_redundant_payloads(
     xdebug_root: Path,
 ) -> None:

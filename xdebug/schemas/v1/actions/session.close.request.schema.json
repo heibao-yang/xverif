@@ -56,46 +56,20 @@
     },
     "auth_token": {
       "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "trace_id": {
+      "type": "string"
+    },
+    "span_id": {
+      "type": "string"
+    },
+    "parent_span_id": {
+      "type": "string"
     }
   },
-  "anyOf": [
-    {
-      "required": [
-        "target"
-      ],
-      "properties": {
-        "target": {
-          "required": [
-            "session_id"
-          ]
-        }
-      }
-    },
-    {
-      "required": [
-        "args"
-      ],
-      "properties": {
-        "args": {
-          "required": [
-            "session_id"
-          ]
-        }
-      }
-    },
-    {
-      "required": [
-        "args"
-      ],
-      "properties": {
-        "args": {
-          "required": [
-            "id"
-          ]
-        }
-      }
-    }
-  ],
   "additionalProperties": false,
   "description": "session.close: 关闭指定 session。",
   "x-purpose": "关闭指定 session。",

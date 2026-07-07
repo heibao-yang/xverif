@@ -110,6 +110,7 @@ void apply_arg_contract(ActionSpec& spec) {
         {"signal.stability", {"signal"}, 1},
         {"signal.statistics", {"signal"}, 1},
         {"sampled_pulse.inspect", {"clock", "valid"}, 2},
+        {"session.open", {"name"}, 1},
         {"source.context", {"file", "line"}, 2},
         {"stream.show", {"stream"}, 1},
         {"stream.validate", {"stream"}, 1},

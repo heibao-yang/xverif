@@ -23,6 +23,7 @@
 - `event.find` / `event.export`：clock-edge sampled event query。用于按 `clock`、`edge`、`sample_point` 和 alias 表达式查 `valid && !ready`、`opcode >= 8'h10`、`data != 0` 这类采样点条件。默认优先用 `edge:"negedge"`；只有接口规范、monitor 语义或 race/skew 证据要求时才改用 `edge:"posedge"`。使用 posedge 时默认推荐 `sample_point:"before"`，因为数据与 clock edge 同 timestamp 变化时 before/after 语义不同；只有要观察沿后状态才用 `"after"`。`edge:"dual"` 只用于 DDR/双沿采样/不确定边沿 bring-up。packed struct 字段必须作为 direct leaf signal alias 传入，例如 `"opcode": "top.u.payload.opcode"`，不要只依赖 aggregate `payload`。
 - `sampled_pulse.inspect`：valid sampling explanation。用于回答“raw valid 脉冲存在，但没有被采样边沿看到”以及 payload 在未采样窗口附近是否变化；它不是通用 glitch/stuck/XZ 扫描入口。
 - `handshake.inspect`：valid/ready protocol inspection。用于统计 transfer、stall、ready-without-valid、stalled data stability violation；适合协议层风险，不替代 raw glitch 检测。
+- `stream.*`：通用 vld-data / vld-rdy-data 任务抽取，是重要能力。凡是可抽象成 `clock + vld + data`，并可选 `rdy`、`bp`、`sop/eop`、`channel_id` 的外部接口、模块内部交互、pipeline stage、FIFO/queue 出入口、仲裁请求授予、RM/scoreboard 内部任务流，都可以注册 stream 后查询 transfer、stall、packet、field match 或导出 beats。一次性条件找点用 `event.find/export`；协议统计用 `handshake.inspect`；标准 AXI/APB 可优先用专用 action；非标准或模块内部 vld-data 任务优先考虑 stream。stream action 字段统一写 `stream`，不写 `name`。
 - `window.verify`：sampled proof。用于证明某个 clock window 内条件 always/eventually/never 是否成立；适合最终证明，不适合枚举原始 value-change timeline。
 - `signal.changes`：raw timeline。用于列出某个信号的精确变化时间；需要按表达式关联多信号时改用 `event.find/export`。
 
@@ -54,7 +55,7 @@
 | action | status | resource | purpose | how it works | objective | args contract |
 | --- | --- | --- | --- | --- | --- | --- |
 | `apb.config.list` | stable | waveform | 列出 APB 配置。 | 读取 APB 配置存储。 | 查看可用 APB interface 名称。 | required: name |
-| `apb.config.load` | stable | waveform | 加载 APB 配置。 | 保存 APB interface 信号映射。 | 定义后续 APB 查询对象。 | required: name |
+| `apb.config.load` | stable | waveform | 加载 APB 配置。 | 保存 APB interface 信号映射。 | 定义后续 APB 查询对象。 | required: name; also one of: config / config_path |
 | `apb.cursor` | stable | waveform | 在 APB transfer 间移动游标。 | 基于 APB 查询结果按 op/direction 定位 begin/next/prev 等。 | 交互式浏览 APB 事务。 | required: name, op |
 | `apb.query` | stable | waveform | 查询 APB transfer。 | 按 APB 配置扫描 PSEL/PENABLE/PREADY 等握手和地址数据。 | 抽取 APB 读写访问。 | required: name |
 | `apb.transfer_window` | experimental | waveform | 实验性 APB 窗口分析。 | 围绕指定 APB transfer 返回相关信号窗口。 | 解释单笔 APB 访问现场。 | required: name |
@@ -62,7 +63,7 @@
 | `axi.export` | stable | waveform | 导出 AXI 数据。 | 按 name 和 time_range 查询 AXI，再按 format/output.path 写出。 | 给外部表格或脚本分析。 | required: name<br>also one of: time_range |
 | `axi.channel_stall` | experimental | waveform | 实验性 AXI stall 分析。 | 按 channel 检查 valid 高 ready 低的持续窗口。 | 定位背压和阻塞。 | required: name |
 | `axi.config.list` | stable | waveform | 列出 AXI 配置。 | 读取 AXI 配置存储。 | 查看可用 AXI interface 名称。 | required: name |
-| `axi.config.load` | stable | waveform | 加载 AXI 配置。 | 保存 AXI channel 信号映射。 | 定义后续 AXI 查询对象。 | required: name |
+| `axi.config.load` | stable | waveform | 加载 AXI 配置。 | 保存 AXI channel 信号映射。 | 定义后续 AXI 查询对象。 | required: name; also one of: config / config_path |
 | `axi.cursor` | stable | waveform | 在 AXI transfer 间移动游标。 | 基于 AXI 查询结果按 op/direction 定位事务。 | 交互式浏览 AXI 事务。 | required: name, op |
 | `axi.latency_outlier` | experimental | waveform | 实验性 AXI latency 异常。 | 从配对结果中找超过阈值或分布异常的事务。 | 定位慢事务。 | required: name |
 | `axi.outstanding_timeline` | experimental | waveform | 实验性 AXI outstanding 时间线。 | 跟踪请求和响应，统计未完成事务数量随时间变化。 | 发现 outstanding 积压或乱序风险。 | required: name |
@@ -76,7 +77,7 @@
 | `cursor.use` | stable | waveform | 激活游标。 | 按 name 取游标并设为当前 active。 | 让后续交互默认围绕该时间点。 | required: name |
 | `detect_abnormal` | stable | waveform | 扫描常见波形异常。 | 对 signals 执行 glitch/stuck/unknown 等检查并返回 findings；valid/ready 协议里的合法 idle/backpressure 不应只凭 stuck finding 判为 bug。 | 快速发现值得展开的异常窗口。 | required: signals |
 | `event.config.list` | stable | waveform | 列出事件配置。 | 读取 EventManager 中保存的配置名和摘要。 | 查看可用事件查询模板。 | none |
-| `event.config.load` | stable | waveform | 保存事件查询配置。 | 将 name/clock/edge/sample_point/signals/reset 等配置写入 EventManager。 | 复用常见事件查询上下文。 | required: name |
+| `event.config.load` | stable | waveform | 保存事件查询配置。 | request args 只传 name 和可选 config_path/time_unit；clock/edge/sample_point/signals/reset 来自配置文件内容。 | 复用常见事件查询上下文。 | required: name |
 | `event.export` | stable | waveform | 导出满足表达式的事件。 | 与 event.find 同样分析，但按 export 模式返回/写出更多命中数据；表达式支持布尔组合、相等比较和大小比较。 | 把事件列表交给后处理或报告。 | required: expr<br>also one of: name / clock + signals |
 | `event.find` | stable | waveform | 查找满足表达式的事件样例。 | 用 name 配置或 inline clock/signals 构建 EventQuery，按 clock sampling 模式扫描表达式命中；表达式支持布尔组合、相等比较和大小比较。 | 快速找到协议条件发生的时间。 | required: expr<br>also one of: name / clock + signals |
 | `expr.eval_at` | stable | waveform | 在指定时间求布尔/表达式值。 | 把 signals alias 映射到 FSDB 信号，按 clock/time 采样后交给表达式求值器。 | 用自然表达式检查组合条件。 | required: expr, time, signals, clock |
@@ -100,7 +101,7 @@
 | `value.batch_at` | stable | waveform | 批量读取多个信号值。 | 对 signals 列表按同一 clock/time 执行 FSDB 读取。 | 减少多信号同一时刻检查的开销。 | required: signals, time, clock |
 | `verify.conditions` | stable | waveform | 在单个时间验证条件集合。 | 解析 clock/time，读取条件引用信号并求值。 | 检查某个时间点的多条件事实。 | required: conditions, time, clock |
 | `window.verify` | stable | waveform | 按 clock 在窗口内验证条件。 | 按 clock edge 采样 signals，逐个 condition 统计 pass/fail/unknown。 | 判断协议或断言类条件是否持续满足。 | required: clock, conditions |
-| `stream.config.load` | stable | waveform | 加载 stream 配置。 | 把 stream 定义写入 stream manager。 | 定义 valid/ready/data 类流接口。 | required: streams |
+| `stream.config.load` | stable | waveform | 加载 stream 配置。 | 把 stream 定义写入 stream manager。 | 定义 valid/ready/data 类流接口。 | also one of: streams / config / config_path / file |
 | `stream.config.list` | stable | waveform | 列出 stream 配置。 | 读取已保存 stream 定义。 | 查看可查询的 stream。 | none |
 | `stream.show` | stable | waveform | 显示 stream 定义和摘要。 | 按 stream 名读取配置并返回字段。 | 确认 stream 绑定了哪些信号。 | required: stream |
 | `stream.validate` | stable | waveform | 验证 stream 配置。 | 检查 stream 信号在 FSDB 中是否可解析。 | 提前发现错误信号路径。 | required: stream |

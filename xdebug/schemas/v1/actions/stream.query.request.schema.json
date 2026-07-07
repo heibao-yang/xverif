@@ -47,7 +47,48 @@
           "description": "返回、扫描或导出的数量上限。"
         },
         "match": {
-          "type": "object"
+          "type": "object",
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "op": {
+              "type": "string",
+              "enum": [
+                "==",
+                "!=",
+                "<",
+                "<=",
+                ">",
+                ">=",
+                "range"
+              ]
+            },
+            "value": {
+              "type": "string"
+            },
+            "lo": {
+              "type": "string"
+            },
+            "hi": {
+              "type": "string"
+            },
+            "mask": {
+              "type": "string"
+            },
+            "field_scope": {
+              "type": "string",
+              "enum": [
+                "beat",
+                "stable",
+                "any"
+              ]
+            }
+          },
+          "required": [
+            "field"
+          ],
+          "additionalProperties": false
         },
         "packet_index": {
           "type": "integer",
@@ -97,6 +138,18 @@
       "type": "string"
     },
     "auth_token": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "trace_id": {
+      "type": "string"
+    },
+    "span_id": {
+      "type": "string"
+    },
+    "parent_span_id": {
       "type": "string"
     }
   },

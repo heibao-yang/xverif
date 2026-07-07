@@ -81,6 +81,9 @@
           ],
           "description": "信号列表，或 alias 到信号路径的映射。"
         },
+        "slice_hint": {
+          "type": "object"
+        },
         "time": {
           "type": "string",
           "description": "查询或验证的目标时间点。"
@@ -112,6 +115,18 @@
       "type": "object"
     },
     "auth_token": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "trace_id": {
+      "type": "string"
+    },
+    "span_id": {
+      "type": "string"
+    },
+    "parent_span_id": {
       "type": "string"
     }
   },

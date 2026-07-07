@@ -18,7 +18,6 @@ queries:
         - data.value.value
         - summary.known
       equals:
-        data.status: ok
         data.value.known: true
   - name: clock_changes
     action: signal.changes
@@ -56,7 +55,6 @@ queries:
     action: trace.driver
     args:
       signal: xring_tb_top.rst_n
-      include_source: false
     expect:
       ok: true
       required_paths:

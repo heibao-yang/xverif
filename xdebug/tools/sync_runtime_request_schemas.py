@@ -48,7 +48,20 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
     "include_statement_only": {"type": "boolean"},
     "last": {"type": "boolean"},
     "limits": {"type": "object"},
-    "match": {"type": "object"},
+    "match": {
+        "type": "object",
+        "properties": {
+            "field": {"type": "string"},
+            "op": {"type": "string", "enum": ["==", "!=", "<", "<=", ">", ">=", "range"]},
+            "value": {"type": "string"},
+            "lo": {"type": "string"},
+            "hi": {"type": "string"},
+            "mask": {"type": "string"},
+            "field_scope": {"type": "string", "enum": ["beat", "stable", "any"]},
+        },
+        "required": ["field"],
+        "additionalProperties": False,
+    },
     "max_depth": {"type": "integer"},
     "max_edges": {"type": "integer"},
     "max_rows": {"type": "integer"},
@@ -159,7 +172,7 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "trace.driver": {"include_statement_only", "limit", "no_statement_only", "role"},
     "trace.load": {"include_statement_only", "limit", "no_statement_only", "role"},
     "value.at": {"edge", "sample_point", "slice_hint"},
-    "value.batch_at": {"edge", "sample_point"},
+    "value.batch_at": {"edge", "sample_point", "slice_hint"},
     "list.value_at": {"edge", "format", "sample_point"},
     "verify.conditions": {"edge", "sample_point"},
     "window.verify": {"edge", "limit", "sample_point", "time_range"},
@@ -187,6 +200,10 @@ ARGS_REQUIRED_EXCEPTIONS = {
 TOP_LEVEL_PROPERTIES: dict[str, dict[str, Any]] = {
     "api_version": {"type": "string", "enum": ["xdebug.v1"]},
     "request_id": {"type": "string"},
+    "id": {"type": "string"},
+    "trace_id": {"type": "string"},
+    "span_id": {"type": "string"},
+    "parent_span_id": {"type": "string"},
     "action": {"type": "string"},
     "target": {"type": "object"},
     "args": {"type": "object"},
@@ -242,6 +259,7 @@ def collect_arg_schemas(specs: list[dict[str, Any]]) -> dict[str, dict[str, Any]
                         arg_schemas[key] = copy.deepcopy(value)
     for key, value in ADDITIONAL_ARG_SCHEMAS.items():
         arg_schemas.setdefault(key, copy.deepcopy(value))
+    arg_schemas["match"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["match"])
 
     arg_schemas["checks"] = {
         "type": "array",
@@ -351,6 +369,9 @@ def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[
         ]
     else:
         args.pop("allOf", None)
+    updated.pop("anyOf", None)
+    updated.pop("allOf", None)
+    updated.pop("oneOf", None)
     updated["additionalProperties"] = False
     return updated
 

@@ -216,7 +216,7 @@ def test_apb_vip_real_wait_state_and_error_actions(
                 "target": target,
                 "args": {
                     "name": "apb0",
-                    "direction": "rd",
+                    "direction": "read",
                     "address": "'hf0",
                 },
             },

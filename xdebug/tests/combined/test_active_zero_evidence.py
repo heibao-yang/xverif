@@ -116,7 +116,7 @@ def _query(
 ) -> dict[str, Any]:
     args: dict[str, Any] = {
         "signal": signal,
-        "requested_time": requested_time,
+        "time": requested_time,
         "include_trace": True,
         "clk_period": "10ns",
     }

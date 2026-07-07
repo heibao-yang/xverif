@@ -18,7 +18,7 @@ tools/xverif-loop-client --socket /tmp/xverif-loop.sock --json \
 ## 请求格式
 
 ```json
-{"id":"1","method":"debug.query","params":{"session":"s0","action":"value.at","args":{"signal":"top.clk","time":"10ns"},"output_format":"json"}}
+{"id":"1","method":"debug.query","params":{"session":"s0","action":"value.at","args":{"signal":"top.clk","time":"10ns"}}}
 ```
 
 成功：

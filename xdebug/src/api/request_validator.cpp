@@ -13,14 +13,12 @@ bool has_string_field(const Json& object, const std::string& field) {
 bool is_missing_session_selector(const RequestEnvelope& request) {
     if (request.action != "session.close" && request.action != "session.kill") return false;
     if (has_string_field(request.target, "session_id")) return false;
-    if (has_string_field(request.args, "session_id")) return false;
-    if (has_string_field(request.args, "id")) return false;
     return true;
 }
 
 void normalize_session_selector_error(const RequestEnvelope& request, ValidationResult& result) {
     if (!is_missing_session_selector(request)) return;
-    const std::string expected = "target.session_id or args.session_id or args.id";
+    const std::string expected = "target.session_id";
     result.message = expected + " is required";
     result.data = {
         {"invalid_arg", expected},

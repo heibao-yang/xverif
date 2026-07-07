@@ -14,8 +14,89 @@ MCP 场景下，本文所有原生 xdebug action 都通过 `xverif_debug_query` 
 - 不要导出全量 rows/samples/transactions 作为第一步。
 - 最终结论必须保留 `signal/time/value/file:line/finding/confidence/truncated`。
 - action 分工先定清楚：raw 异常用 `detect_abnormal`，clock-edge 条件用 `event.find/export`，valid 未采样解释用 `sampled_pulse.inspect`，协议 stall 用 `handshake.inspect`，窗口证明用 `window.verify`。
+- 通用 vld-data / vld-rdy-data 任务优先考虑 `stream.*`：外部接口、模块内部握手、pipeline stage、FIFO/queue、仲裁请求授予、RM/scoreboard 任务流，只要能抽象成 `clock + vld + data`，并可选 `rdy/bp/sop/eop/channel_id`，就可以注册 stream 查询 transfer/stall/packet/field match。
+- 对 `stream.config.load`、`axi.config.load`、`apb.config.load`、`event.config.load` 等需要加载配置的 action，先找项目内已有配置目录和信号路径文档，不要每次从 0 推导。若缺少，主动询问用户是否创建 `xdebug/configs/`、`xdebug/signals.md` 或项目约定路径，并建议写入项目 `AGENTS.md`；同时主动询问用户是否使用 xwiki 保存长期项目记忆，确认前不要写入 xwiki。
 - clock sampling action 统一使用 `clock`、`edge`、`sample_point`；默认优先 `edge:"negedge"`。只有 monitor/interface 明确按上升沿采样，或 negedge 结果无法解释 race/skew 时才改 `edge:"posedge"`。使用 posedge 时必须注意 `sample_point:"before"` 与 `"after"` 在同 timestamp 数据变化时会不同；必须用 posedge 时默认推荐 `sample_point:"before"`，只有要观察沿后状态时才用 `"after"`。`edge:"dual"` 只用于 DDR、真实双沿协议或不确定边沿 bring-up，不作为普通 valid/ready 分析默认值。
 - packed struct / aggregate payload 必须优先查最终 leaf signal path，例如 `top.u.payload.opcode`、`top.u.payload.data`；不要把 aggregate path 的 knownness 当最终结论，也不要期待 xdebug 自动展开 struct。
+
+## 配置与信号路径复用
+
+所有 `*.config.load` 类 action 都应优先复用项目内配置，不要在每次 debug 时重新推导相同信号列表。
+
+建议被调试项目维护：
+
+- `xdebug/configs/`：保存 stream、AXI、APB、event 等 JSON 配置，例如 `streams.json`、`axi.json`、`apb.json`、`events.json`。
+- `xdebug/signals.md` 或 `doc/xdebug-signals.md`：记录 clock/reset、valid/ready/data、payload leaf fields、channel/id/opcode、常用 cursor/time 语义和信号路径证据。
+- 项目 `AGENTS.md`：记录配置目录、信号文档位置、维护规则和是否使用 xwiki。
+
+若当前用户工作目录没有这些材料，AI 必须先询问用户是否创建配置目录和信号路径文档，并建议把维护规则写入项目 `AGENTS.md`。同时询问用户是否启用/使用 xwiki，把稳定信号路径、debug 配置索引、接口语义和常见查询流程维护为长期项目记忆；用户确认前不要直接创建或写入 xwiki。
+
+配置复用示例：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "stream.config.load",
+  "target": {"session_id": "case_a"},
+  "args": {
+    "config_path": "<project>/xdebug/configs/streams.json",
+    "mode": "replace"
+  }
+}
+```
+
+## 通用 Stream / 模块内部交互
+
+1. 用用户说明、`xdebug/signals.md`、xwiki 或 `scope.list` 确认 `clock/vld/rdy/data` 的最终 leaf signal path。
+2. 用 `stream.config.load` 注册 stream。payload 是 packed struct 时，优先拆成 `data_fields` leaf fields。
+3. 用 `stream.validate` 确认信号可解析。
+4. 用 `stream.query` 查 `first_transfer`、`last_transfer`、`first_stall`、`stall_window`、`packet_window` 或 `match_field`。
+5. 大量 beat/packet 输出用 `stream.export`，不要把全量 rows 放进首轮 compact 响应。
+
+inline 配置示例：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "stream.config.load",
+  "target": {"session_id": "case_a"},
+  "args": {
+    "streams": [
+      {
+        "name": "req_stream",
+        "clock": "top.clk",
+        "edge": "negedge",
+        "vld": "top.u_core.req_vld",
+        "rdy": "top.u_core.req_rdy",
+        "data_fields": {
+          "opcode": "top.u_core.req_opcode",
+          "id": "top.u_core.req_id",
+          "addr": "top.u_core.req_addr",
+          "data": "top.u_core.req_data"
+        }
+      }
+    ],
+    "mode": "replace"
+  }
+}
+```
+
+查询示例：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "stream.query",
+  "target": {"session_id": "case_a"},
+  "args": {
+    "stream": "req_stream",
+    "query": "match_field",
+    "match": {"field": "opcode", "op": "==", "value": "8'h5a"},
+    "time_range": {"begin": "0ns", "end": "100us"},
+    "limit": 20
+  }
+}
+```
 
 ## Ready 卡低
 

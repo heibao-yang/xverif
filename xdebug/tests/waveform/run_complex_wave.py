@@ -381,7 +381,7 @@ class AiRunner(object):
 
     def cleanup(self):
         if self.sid:
-            self.query("session.kill", args={"session_id": self.sid}, expect_ok=True, allow_no_sid=True)
+            self.query("session.kill", target={"session_id": self.sid}, expect_ok=True, allow_no_sid=True)
         shutil.rmtree(self.home, ignore_errors=True)
 
     def query(self, action, args=None, target=None, limits=None, expect_ok=True, allow_no_sid=False, timeout=60):
@@ -467,7 +467,7 @@ def run_nonaxi(xdebug, fsdb):
     try:
         r.open()
         r.query("session.list", expect_ok=True, allow_no_sid=True)
-        r.query("session.doctor", args={"session_id": r.sid}, target={"session_id": r.sid})
+        r.query("session.doctor", target={"session_id": r.sid})
         r.query("session.gc", expect_ok=True, allow_no_sid=True)
 
         scope = r.query("scope.list", args={"path": "ai_complex_top", "recursive": True}, limits={"max_rows": 8})
@@ -491,6 +491,21 @@ def run_nonaxi(xdebug, fsdb):
         require(missing_rows and missing_rows[0]["reason"], "batch missing row lacks reason")
         hint = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "clock": "ai_complex_top.clk", "time": "75ns", "format": "hex", "slice_hint": {"chunk_width": 4, "count": 2}})
         require(hint["data"]["xbit_hints"]["status"] == "ready", "xbit hints not generated")
+        batch_hint = r.query(
+            "value.batch_at",
+            args={
+                "signals": ["ai_complex_top.sig_a", "ai_complex_top.sig_b"],
+                "clock": "ai_complex_top.clk",
+                "time": "75ns",
+                "format": "hex",
+                "slice_hint": {"chunk_width": 4, "count": 2},
+            },
+        )
+        hinted_rows = [
+            row for row in batch_hint["data"]["values"]
+            if row["signal"] == "ai_complex_top.sig_a"
+        ]
+        require(hinted_rows and hinted_rows[0]["xbit_hints"]["status"] == "ready", "batch xbit hints not generated")
         unsupported = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "clock": "ai_complex_top.clk", "time": "75ns", "format": "array_indexed"})
         require(unsupported["summary"]["status"] == "unsupported_format", "array_indexed unsupported diagnostic missing")
         r.query("value.at", args={"signal": "ai_complex_top.no_such", "clock": "ai_complex_top.clk", "time": "10ns"}, expect_ok=False)
@@ -509,7 +524,7 @@ def run_nonaxi(xdebug, fsdb):
         validated = r.query("list.validate", args={"name": "basic"})
         require("all_found" in validated["summary"], "list.validate did not expose all_found at source")
         require("summary" not in validated["data"], "list.validate generated nested data.summary")
-        diff = r.query("list.diff", args={"name": "basic", "begin": "0ns", "end": "120ns"})
+        diff = r.query("list.diff", args={"name": "basic", "time_range": {"begin": "0ns", "end": "120ns"}})
         require("ns" in diff["summary"]["diff_time"] or "ps" in diff["summary"]["diff_time"], "list.diff did not return time")
         require("time" not in diff["data"], "list.diff generated redundant data.time")
         list_export_dir = tempfile.mkdtemp(prefix="xdebug_list_export_")
@@ -517,7 +532,7 @@ def run_nonaxi(xdebug, fsdb):
             "name": "basic",
             "time_range": {"begin": "0ns", "end": "400ns"},
             "format": "u64bin",
-            "output_dir": list_export_dir,
+            "output": {"path": list_export_dir},
         })
         require("summary" not in list_export["data"], "list.export generated nested data.summary")
         manifest_file = list_export["data"]["manifest_file"]
@@ -550,8 +565,8 @@ def run_nonaxi(xdebug, fsdb):
         apb_cfg = os.path.join(NONAXI_DIR, "config", "apb0.json")
         r.query("apb.config.load", args={"name": "apb0", "config_path": apb_cfg})
         r.query("apb.config.list", args={"name": "apb0"})
-        r.query("apb.query", args={"name": "apb0", "direction": "wr"})
-        r.query("apb.query", args={"name": "apb0", "direction": "rd", "num": 1})
+        r.query("apb.query", args={"name": "apb0", "direction": "write"})
+        r.query("apb.query", args={"name": "apb0", "direction": "read", "num": 1})
         r.query("apb.cursor", args={"name": "apb0", "op": "begin", "direction": "all"})
         apb_window = r.query("apb.transfer_window", args={"name": "apb0", "time_range": {"begin": "200ns", "end": "400ns"}, "limit": 2})
         require(apb_window["summary"]["transaction_count"] >= 1, "APB window empty")
@@ -571,12 +586,12 @@ def run_nonaxi(xdebug, fsdb):
             else:
                 require(loaded["data"]["config"]["sample_point"] == expected_sample_point,
                         "APB config sample_point mismatch for {}".format(name))
-            wr_count = r.query("apb.query", args={"name": name, "direction": "wr"})
-            rd_count = r.query("apb.query", args={"name": name, "direction": "rd"})
+            wr_count = r.query("apb.query", args={"name": name, "direction": "write"})
+            rd_count = r.query("apb.query", args={"name": name, "direction": "read"})
             require(wr_count["summary"]["count"] >= 1, "APB write count empty for {}".format(name))
             require(rd_count["summary"]["count"] >= 1, "APB read count empty for {}".format(name))
-        apb_before_first = r.query("apb.query", args={"name": "apb_pos_before", "direction": "wr", "num": 1})
-        apb_after_first = r.query("apb.query", args={"name": "apb_pos_after", "direction": "wr", "num": 1})
+        apb_before_first = r.query("apb.query", args={"name": "apb_pos_before", "direction": "write", "num": 1})
+        apb_after_first = r.query("apb.query", args={"name": "apb_pos_after", "direction": "write", "num": 1})
         require(apb_before_first["data"]["transaction"]["time"] > apb_after_first["data"]["transaction"]["time"],
                 "APB posedge before should observe the completion one edge later than after")
 
@@ -768,7 +783,7 @@ def run_nonaxi(xdebug, fsdb):
         require(changes["meta"]["truncated"] is True, "signal.changes did not truncate")
         stab = r.query("signal.stability", args={"signal": "ai_complex_top.stable_sig", "time_range": {"begin": "0ns", "end": "400ns"}})
         require(stab["data"]["stable"] is True, "stable_sig should be stable")
-        stats = r.query("signal.statistics", args={"signal": "ai_complex_top.hs_valid", "clock": "ai_complex_top.clk", "time_range": {"begin": "120ns", "end": "210ns"}, "max_samples": 1000})
+        stats = r.query("signal.statistics", args={"signal": "ai_complex_top.hs_valid", "clock": "ai_complex_top.clk", "time_range": {"begin": "120ns", "end": "210ns"}, "limit": 1000})
         require_clock_summary(stats, "negedge")
         require(stats["summary"]["sample_count"] > 0 and stats["summary"]["known_count"] > 0, "signal.statistics did not sample")
         require("high_cycles" in stats["data"] and "low_cycles" in stats["data"], "signal.statistics missing cycle counts")
@@ -778,7 +793,7 @@ def run_nonaxi(xdebug, fsdb):
             "edge": "posedge",
             "sample_point": "before",
             "time_range": {"begin": "140ns", "end": "175ns"},
-            "max_samples": 1000,
+            "limit": 1000,
         })
         require_clock_summary(offset_stats, "posedge", "before")
         require(offset_stats["summary"]["sample_count"] > 0, "signal.statistics negative offset did not sample")
@@ -786,7 +801,7 @@ def run_nonaxi(xdebug, fsdb):
             "signals": ["ai_complex_top.glitch_sig", "ai_complex_top.stuck_sig", "ai_complex_top.xz_bus"],
             "time_range": {"begin": "0ns", "end": "200ns"},
             "checks": [{"type": "glitch", "min_pulse_width": "1ns"}, {"type": "stuck", "min_duration": "100ns"}, {"type": "unknown_xz"}],
-            "max_findings": 10,
+            "limit": 10,
         })
         require(anomaly["summary"]["finding_count"] >= 3, "detect_abnormal missing findings")
         require(any(f.get("type") == "glitch" for f in anomaly["data"].get("findings", [])), "glitch not detected")
@@ -834,10 +849,10 @@ def run_axi(xdebug, fsdb):
         prefix = "axi_vip_fixture_top.axi_vip_if.master_if[0]"
         r.query("axi.config.load", args={"name": "axi0", "config": make_axi_config(prefix)})
         r.query("axi.config.list", args={"name": "axi0"})
-        wr = r.query("axi.query", args={"name": "axi0", "direction": "wr"})
-        rd = r.query("axi.query", args={"name": "axi0", "direction": "rd"})
+        wr = r.query("axi.query", args={"name": "axi0", "direction": "write"})
+        rd = r.query("axi.query", args={"name": "axi0", "direction": "read"})
         require(wr["summary"].get("count", 0) > 0 and rd["summary"].get("count", 0) > 0, "AXI query count is empty")
-        r.query("axi.query", args={"name": "axi0", "direction": "wr", "num": 1})
+        r.query("axi.query", args={"name": "axi0", "direction": "write", "num": 1})
 
         axi_modes = [
             ("axi_default_negedge", make_axi_config(prefix, edge=None), "negedge", None),
@@ -868,7 +883,7 @@ def run_axi(xdebug, fsdb):
         require(lat["data"]["outlier_count"] > 0, "AXI latency_outlier empty")
         osd = r.query("axi.outstanding_timeline", args={"name": "axi0", "time_range": tr, "limit": 20})
         require(osd["summary"]["sample_count"] > 0, "AXI outstanding_timeline empty")
-        stall = r.query("axi.channel_stall", args={"name": "axi0", "channel": "r", "time_range": tr, "rules": {"max_wait_cycles": 2}, "max_samples": 1000000})
+        stall = r.query("axi.channel_stall", args={"name": "axi0", "channel": "r", "time_range": tr, "rules": {"max_wait_cycles": 2}, "limit": 1000000})
         require(stall["summary"]["sample_count"] > 0, "AXI channel_stall did not sample")
 
         expected_log = parse_axi_expected_log(AXI_SIM_LOG)
@@ -880,7 +895,7 @@ def run_axi(xdebug, fsdb):
                 "name": "axi0",
                 "time_range": tr,
                 "format": "tsv",
-                "output_prefix": export_prefix,
+                "output": {"path": export_prefix},
             },
             timeout=240,
         )
@@ -892,7 +907,7 @@ def run_axi(xdebug, fsdb):
                 "name": "axi0",
                 "time_range": {"begin": "1us", "end": "200ms"},
                 "format": "tsv",
-                "output_prefix": os.path.join(export_dir, "axi0_windowed"),
+                "output": {"path": os.path.join(export_dir, "axi0_windowed")},
             },
             timeout=240,
         )

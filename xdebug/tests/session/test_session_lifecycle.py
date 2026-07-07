@@ -172,15 +172,44 @@ def test_session_open_list_doctor_close_for_each_resource_mode(
 
 @pytest.mark.session
 @pytest.mark.waveform
+def test_session_close_accepts_target_session_id(
+    resource_targets: dict,
+    cli_runner: CliRunner,
+    isolated_home: Path,
+) -> None:
+    name = "close_target_only"
+    try:
+        opened = cli_runner.run(
+            _request(
+                "session.open",
+                target=resource_targets["waveform"],
+                args={"name": name},
+            )
+        )
+        assert opened.ok
+
+        closed = cli_runner.run(_request("session.close", target={"session_id": name}))
+        assert closed.ok
+        assert closed.response["summary"]["session_id"] == name
+        assert closed.response["summary"]["removed"] is True
+        assert not any(
+            item["session_id"] == name
+            for item in _registry(isolated_home).get("sessions", [])
+        )
+    finally:
+        _kill_all(cli_runner)
+
+
+@pytest.mark.session
+@pytest.mark.waveform
 @pytest.mark.parametrize(
     "close_kind,close_request",
     [
-        ("target", lambda name: _request("session.close", target={"session_id": name})),
         ("args_session_id", lambda name: _request("session.close", args={"session_id": name})),
         ("args_id", lambda name: _request("session.close", args={"id": name})),
     ],
 )
-def test_session_close_accepts_target_session_id_and_args_aliases(
+def test_session_close_rejects_args_session_id_aliases(
     close_kind: str,
     close_request,
     resource_targets: dict,
@@ -199,10 +228,10 @@ def test_session_close_accepts_target_session_id_and_args_aliases(
         assert opened.ok
 
         closed = cli_runner.run(close_request(name))
-        assert closed.ok
-        assert closed.response["summary"]["session_id"] == name
-        assert closed.response["summary"]["removed"] is True
-        assert not any(
+        assert not closed.ok
+        assert closed.response["error"]["code"] == "INVALID_REQUEST"
+        assert closed.response["data"]["invalid_arg"] == "target.session_id"
+        assert any(
             item["session_id"] == name
             for item in _registry(isolated_home).get("sessions", [])
         )
@@ -215,14 +244,8 @@ def test_session_close_without_session_id_still_fails(cli_runner: CliRunner) -> 
     missing = cli_runner.run(_request("session.close", args={}))
     assert not missing.ok
     assert missing.response["error"]["code"] == "INVALID_REQUEST"
-    assert (
-        missing.response["error"]["message"]
-        == "target.session_id or args.session_id or args.id is required"
-    )
-    assert (
-        missing.response["data"]["invalid_arg"]
-        == "target.session_id or args.session_id or args.id"
-    )
+    assert missing.response["error"]["message"] == "target.session_id is required"
+    assert missing.response["data"]["invalid_arg"] == "target.session_id"
 
 
 @pytest.mark.session

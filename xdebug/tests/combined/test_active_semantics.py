@@ -156,7 +156,7 @@ def test_active_trace_semantic_branches_and_gates(
     ) -> dict[str, Any]:
         args: dict[str, Any] = {
             "signal": signal,
-            "requested_time": requested_time,
+            "time": requested_time,
             "include_trace": include_trace,
         }
         if limits is not None:
@@ -187,7 +187,7 @@ def test_active_trace_semantic_branches_and_gates(
             "target": {"session_id": session_id},
             "args": {
                 "signal": signal,
-                "requested_time": requested_time,
+                "time": requested_time,
                 "clk_period": "10ns",
             },
             "output": {"verbosity": "compact"},
@@ -209,7 +209,7 @@ def test_active_trace_semantic_branches_and_gates(
             "target": {"session_id": session_id},
             "args": {
                 "signal": signal,
-                "requested_time": requested_time,
+                "time": requested_time,
                 "include_trace": True,
             },
             "output": {"verbosity": "compact"},
@@ -229,7 +229,7 @@ def test_active_trace_semantic_branches_and_gates(
             "target": {"session_id": session_id},
             "args": {
                 "signal": signal,
-                "requested_time": requested_time,
+                "time": requested_time,
                 "clk_period": "10ns",
             },
             "output": {"verbosity": "compact"},

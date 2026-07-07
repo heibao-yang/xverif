@@ -142,10 +142,7 @@ std::string request_session_name(const OrderedJson& request) {
 
 std::string session_id_from_request(const OrderedJson& request) {
     const OrderedJson target = request.value("target", OrderedJson::object());
-    const OrderedJson args = request.value("args", OrderedJson::object());
     if (target.contains("session_id") && target["session_id"].is_string()) return target["session_id"].get<std::string>();
-    if (args.contains("session_id") && args["session_id"].is_string()) return args["session_id"].get<std::string>();
-    if (args.contains("id") && args["id"].is_string()) return args["id"].get<std::string>();
     return "";
 }
 
@@ -272,7 +269,7 @@ OrderedJson handle_session_action(const OrderedJson& request, const std::string&
     }
     if (action == "session.doctor") {
         std::string sid = session_id_from_request(request);
-        if (sid.empty()) return make_error(request, action, "MISSING_FIELD", "target.session_id or args.session_id is required");
+        if (sid.empty()) return make_error(request, action, "MISSING_FIELD", "target.session_id is required");
         SessionHealth health = manager.diagnose_session(sid);
         OrderedJson response = make_response(request, action, health.healthy);
         response["session"] = session_to_json(health.info);

@@ -6,14 +6,25 @@
 
 MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_debug_query` 进入 xdebug 原生 action。本文 JSON 片段只展示 query 的核心参数：
 
+默认优先使用 xout 输出；示例省略 `output_format`，等价于让 MCP 使用默认的 `output_format:"xout"`。只有脚本需要稳定读取 JSON 字段，或专门讲 JSON response/schema 时，才显式写 `output_format:"json"`。
+
 ```json
 {
   "session_id": "case_a",
   "action": "value.batch_at",
-  "args": {},
+  "args": {
+    "time": "100ns",
+    "clock": "top.clk",
+    "signals": [
+      "top.u.valid",
+      "top.u.ready"
+    ],
+    "format": "hex"
+  },
   "limits": {},
-  "output": {"verbosity": "compact"},
-  "output_format": "json"
+  "output": {
+    "verbosity": "compact"
+  }
 }
 ```
 
@@ -31,6 +42,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
   "action": "value.batch_at",
   "args": {
     "time": "@stall",
+    "clock": "top.clk",
     "signals": [
       "top.u_if.valid",
       "top.u_if.ready",
@@ -39,8 +51,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
       "top.u_if.bp"
     ],
     "format": "hex"
-  },
-  "output_format": "json"
+  }
 }
 ```
 
@@ -60,8 +71,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
     "signal": "top.u_if.ready",
     "time": "@stall",
     "include_control": true
-  },
-  "output_format": "json"
+  }
 }
 ```
 
@@ -84,10 +94,12 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
       "valid": "top.u_if.valid",
       "ready": "top.u_if.ready"
     },
-    "time_range": {"begin": "0ns", "end": "100us"},
+    "time_range": {
+      "begin": "0ns",
+      "end": "100us"
+    },
     "mode": "first"
-  },
-  "output_format": "json"
+  }
 }
 ```
 
@@ -106,14 +118,285 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
     "clock": "top.clk",
     "valid": "top.u_if.valid",
     "ready": "top.u_if.ready",
-    "time_range": {"begin": "0ns", "end": "100us"},
-    "max_stall_cycles": 16
-  },
-  "output_format": "json"
+    "time_range": {
+      "begin": "0ns",
+      "end": "100us"
+    },
+    "rules": {
+      "max_stall_cycles": 16
+    }
+  }
 }
 ```
 
 注意确认 ready 极性。active-high backpressure 不能直接当 active-high ready。
+
+## 通用 Stream / 模块内部交互
+
+现象：接口不是标准 AXI/APB，但有 `vld/rdy/data` 或 `vld/data` 语义；也可能是模块内部 request、pipeline stage、FIFO 出口或 RM/scoreboard 任务流。
+
+优先复用项目配置：
+
+```json
+{
+  "session_id": "case_a",
+  "action": "stream.config.load",
+  "args": {
+    "config_path": "<project>/xdebug/configs/streams.json",
+    "mode": "replace"
+  }
+}
+```
+
+如果项目还没有 `xdebug/configs/` 和 `xdebug/signals.md`，先询问用户是否创建，并建议把维护规则写入项目 `AGENTS.md`。同时询问用户是否使用 xwiki 维护稳定信号路径、stream 配置索引、接口语义和常见查询流程；用户确认前不要写入 xwiki。
+
+### 模块内部 request stream
+
+自定义 request 不是标准总线，但可抽象成 `req_vld && req_rdy` 接受一笔任务。
+
+```json
+{
+  "session_id": "case_a",
+  "action": "stream.config.load",
+  "args": {
+    "streams": [
+      {
+        "name": "core_req",
+        "clock": "top.clk",
+        "edge": "negedge",
+        "vld": "top.u_core.req_vld",
+        "rdy": "top.u_core.req_rdy",
+        "data_fields": {
+          "opcode": "top.u_core.req_opcode",
+          "id": "top.u_core.req_id",
+          "addr": "top.u_core.req_addr",
+          "data": "top.u_core.req_data"
+        }
+      }
+    ],
+    "mode": "replace"
+  }
+}
+```
+
+查某类任务：
+
+```json
+{
+  "session_id": "case_a",
+  "action": "stream.query",
+  "args": {
+    "stream": "core_req",
+    "query": "match_field",
+    "match": {
+      "field": "opcode",
+      "op": "==",
+      "value": "8'h5a"
+    },
+    "time_range": {
+      "begin": "0ns",
+      "end": "100us"
+    },
+    "limit": 20
+  }
+}
+```
+
+### Pipeline stage stall
+
+pipeline stage 内部 `stage2_vld/stage2_rdy` 长时间不能前进时，把该 stage 当 stream。
+
+```json
+{
+  "session_id": "case_a",
+  "action": "stream.config.load",
+  "args": {
+    "streams": [
+      {
+        "name": "stage2",
+        "clock": "top.clk",
+        "edge": "negedge",
+        "vld": "top.u_pipe.stage2_vld",
+        "rdy": "top.u_pipe.stage2_rdy",
+        "data_fields": {
+          "tag": "top.u_pipe.stage2_tag",
+          "state": "top.u_pipe.stage2_state",
+          "payload": "top.u_pipe.stage2_payload"
+        }
+      }
+    ]
+  }
+}
+```
+
+查 stall 窗口：
+
+```json
+{
+  "session_id": "case_a",
+  "action": "stream.query",
+  "args": {
+    "stream": "stage2",
+    "query": "stall_window",
+    "time_range": {
+      "begin": "20us",
+      "end": "30us"
+    },
+    "limit": 10
+  }
+}
+```
+
+### FIFO / queue 出口 backpressure
+
+FIFO 出口 `deq_vld/deq_rdy/deq_data` 可直接作为 stream，用于定位消费者不接收还是生产者无数据。
+
+```json
+{
+  "session_id": "case_a",
+  "action": "stream.config.load",
+  "args": {
+    "streams": [
+      {
+        "name": "fifo_deq",
+        "clock": "top.clk",
+        "edge": "negedge",
+        "vld": "top.u_fifo.deq_vld",
+        "rdy": "top.u_fifo.deq_rdy",
+        "data": "top.u_fifo.deq_data"
+      }
+    ]
+  }
+}
+```
+
+先查第一处 stall，再对该时间补 `value.batch_at` 或 `trace.active_driver`：
+
+```json
+{
+  "session_id": "case_a",
+  "action": "stream.query",
+  "args": {
+    "stream": "fifo_deq",
+    "query": "first_stall",
+    "time_range": {
+      "begin": "0ns",
+      "end": "100us"
+    },
+    "limit": 1
+  }
+}
+```
+
+### Packetized internal stream
+
+有 `sop/eop/channel_id` 的内部包流可用 stream 查询某个 channel 的 packet。
+
+```json
+{
+  "session_id": "case_a",
+  "action": "stream.config.load",
+  "args": {
+    "streams": [
+      {
+        "name": "pkt_stream",
+        "clock": "top.clk",
+        "edge": "negedge",
+        "vld": "top.u_pkt.vld",
+        "rdy": "top.u_pkt.rdy",
+        "sop": "top.u_pkt.sop",
+        "eop": "top.u_pkt.eop",
+        "channel_id": "top.u_pkt.channel",
+        "data_fields": {
+          "typ": "top.u_pkt.typ",
+          "seq": "top.u_pkt.seq",
+          "data": "top.u_pkt.data"
+        }
+      }
+    ]
+  }
+}
+```
+
+```json
+{
+  "session_id": "case_a",
+  "action": "stream.query",
+  "args": {
+    "stream": "pkt_stream",
+    "query": "packet_window",
+    "channel": "3",
+    "time_range": {
+      "begin": "0ns",
+      "end": "200us"
+    },
+    "limit": 5
+  }
+}
+```
+
+大量 beat 使用 `stream.export`，不要把全量 packet beats 放进首轮回答：
+
+```json
+{
+  "session_id": "case_a",
+  "action": "stream.export",
+  "args": {
+    "stream": "pkt_stream",
+    "kind": "packet_beats",
+    "format": "tsv",
+    "time_range": {
+      "begin": "0ns",
+      "end": "200us"
+    },
+    "output": {
+      "path": "<project>/xdebug/out/pkt_stream.tsv"
+    }
+  }
+}
+```
+
+### 只有 vld-data 的任务流
+
+没有 ready 时，`transfer = vld`。适合抽取 task issue、scoreboard enqueue、RM input 等任务序列。
+
+```json
+{
+  "session_id": "case_a",
+  "action": "stream.config.load",
+  "args": {
+    "streams": [
+      {
+        "name": "task_issue",
+        "clock": "top.clk",
+        "edge": "negedge",
+        "vld": "top.u_sched.task_vld",
+        "data_fields": {
+          "task_type": "top.u_sched.task_type",
+          "arg0": "top.u_sched.task_arg0",
+          "arg1": "top.u_sched.task_arg1"
+        }
+      }
+    ]
+  }
+}
+```
+
+```json
+{
+  "session_id": "case_a",
+  "action": "stream.query",
+  "args": {
+    "stream": "task_issue",
+    "query": "first_transfer",
+    "time_range": {
+      "begin": "0ns",
+      "end": "50us"
+    },
+    "limit": 10
+  }
+}
+```
 
 ## AXI latency 或通道 stall
 
@@ -140,8 +423,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
       "rresp": "top.u_axi.rresp",
       "rlast": "top.u_axi.rlast"
     }
-  },
-  "output_format": "json"
+  }
 }
 ```
 
@@ -154,10 +436,12 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
   "args": {
     "name": "axi0",
     "channel": "r",
-    "time_range": {"begin": "0ns", "end": "100us"},
+    "time_range": {
+      "begin": "0ns",
+      "end": "100us"
+    },
     "limit": 20
-  },
-  "output_format": "json"
+  }
 }
 ```
 
@@ -189,12 +473,23 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
   "session_id": "case_a",
   "action": "detect_abnormal",
   "args": {
-    "signals": ["top.u_if.data_leaf0", "top.u_if.data_leaf1", "top.u_if.valid", "top.u_if.ready"],
-    "time_range": {"begin": "0ns", "end": "100us"},
-    "checks": [{"type": "unknown_xz"}],
+    "signals": [
+      "top.u_if.data_leaf0",
+      "top.u_if.data_leaf1",
+      "top.u_if.valid",
+      "top.u_if.ready"
+    ],
+    "time_range": {
+      "begin": "0ns",
+      "end": "100us"
+    },
+    "checks": [
+      {
+        "type": "unknown_xz"
+      }
+    ],
     "limit": 20
-  },
-  "output_format": "json"
+  }
 }
 ```
 
@@ -224,6 +519,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
   "action": "value.batch_at",
   "args": {
     "time": "10462510ps",
+    "clock": "top.clk",
     "signals": [
       "top.u_arb.arb_addr",
       "top.u_arb.arb_src",
@@ -232,9 +528,11 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
       "top.u_axi.araddr"
     ],
     "format": "hex",
-    "slice_hint": {"chunk_width": 32, "count": 4}
-  },
-  "output_format": "json"
+    "slice_hint": {
+      "chunk_width": 32,
+      "count": 4
+    }
+  }
 }
 ```
 
@@ -269,8 +567,7 @@ MCP 场景下先用 `xverif_debug_session_open` 打开 session，再用 `xverif_
     "output": {
       "path": "signal.rc"
     }
-  },
-  "output_format": "json"
+  }
 }
 ```
 

@@ -26,7 +26,7 @@ xdebug --json -
 tools/xdebug --json -
 ```
 
-机器解析必须请求 JSON。默认 `xout` 适合人读或 AI 摘要，不适合脚本字段比较。
+默认优先使用 `xout`，它适合 AI 阅读和调试摘要。只有脚本需要稳定读取字段、校验 JSON response schema，或用户明确要求 JSON 时，才请求 JSON；机器字段比较必须请求 JSON。
 
 ## target 决策
 

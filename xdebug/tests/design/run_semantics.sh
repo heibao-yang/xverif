@@ -96,7 +96,7 @@ query '{"api_version":"xdebug.v1","action":"trace.driver","target":{"session_id"
 query '{"api_version":"xdebug.v1","action":"signal.canonicalize","target":{"session_id":"uart_ai"},"args":{"signal":"uart_16550.RXDin"}}' \
   | check_json 'd["ok"] and d["data"]["canonical"].endswith("RXDin")'
 
-query '{"api_version":"xdebug.v1","action":"source.context","args":{"file":"'"$ROOT_DIR"'/testdata/design/uart/uart_16550.sv","line":164,"context_lines":2,"include_source":true}}' \
+query '{"api_version":"xdebug.v1","action":"source.context","args":{"file":"'"$ROOT_DIR"'/testdata/design/uart/uart_16550.sv","line":164,"context_lines":2}}' \
   | check_json 'd["ok"] and len(d["data"]["context"]) == 5 and any(x["hit"] for x in d["data"]["context"]) and d["data"]["enclosing"]["type"] != "unknown"'
 
 query '{"api_version":"xdebug.v1","action":"expr.normalize","args":{"expr":"valid && !ready"}}' \

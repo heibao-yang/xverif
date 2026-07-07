@@ -54,6 +54,18 @@
     },
     "auth_token": {
       "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "trace_id": {
+      "type": "string"
+    },
+    "span_id": {
+      "type": "string"
+    },
+    "parent_span_id": {
+      "type": "string"
     }
   },
   "additionalProperties": false,

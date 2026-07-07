@@ -13,6 +13,8 @@
 
 MCP query 形态示例：
 
+默认优先使用 xout 输出；以下示例省略 `output_format`，等价于让 MCP 使用默认的 `output_format:"xout"`。只有脚本需要稳定读取 JSON 字段，或专门验证 JSON response/schema 时，才显式写 `output_format:"json"`。
+
 ```json
 {
   "session_id": "case_a",
@@ -20,12 +22,16 @@ MCP query 形态示例：
   "args": {
     "time": "100ns",
     "clock": "top.u.clk",
-    "signals": ["top.u.valid", "top.u.ready", "top.u.data"],
-    "format": "hex",
-    "limit": 100
+    "signals": [
+      "top.u.valid",
+      "top.u.ready",
+      "top.u.data"
+    ],
+    "format": "hex"
   },
-  "output": {"verbosity": "compact"},
-  "output_format": "json"
+  "output": {
+    "verbosity": "compact"
+  }
 }
 ```
 

@@ -566,7 +566,7 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
         if (!advisories.empty()) response["advisories"] = advisories;
         return response;
     }
-    std::string id = target.value("session_id", args.value("session_id", args.value("id", std::string())));
+    std::string id = target.value("session_id", std::string());
     if (id == "all") {
         Json results = Json::array();
         int removed_count = 0;

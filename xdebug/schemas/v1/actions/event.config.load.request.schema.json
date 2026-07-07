@@ -64,12 +64,24 @@
     },
     "auth_token": {
       "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "trace_id": {
+      "type": "string"
+    },
+    "span_id": {
+      "type": "string"
+    },
+    "parent_span_id": {
+      "type": "string"
     }
   },
   "additionalProperties": false,
   "description": "event.config.load: 保存事件查询配置。",
   "x-purpose": "保存事件查询配置。",
-  "x-how_it_works": "将 name/clock/edge/sample_point/signals/reset 等配置写入 EventManager。",
+  "x-how_it_works": "request args 只传 name 和可选 config_path/time_unit；clock/edge/sample_point/signals/reset 来自配置文件内容。",
   "x-when_to_use": "复用常见事件查询上下文。",
   "x-arg_contract_notes": "required: name"
 }

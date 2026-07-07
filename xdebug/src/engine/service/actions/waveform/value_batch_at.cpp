@@ -25,6 +25,7 @@
 #include <fstream>
 #include <memory>
 #include <algorithm>
+#include <cctype>
 #include <map>
 #include <sstream>
 #include <vector>
@@ -35,6 +36,44 @@ namespace {
 static bool contains_xz(const std::string& v) {
     return xdebug_waveform::logic_value_has_xz(
         xdebug_waveform::logic_value_from_fsdb_raw(v, 'h'));
+}
+static std::string trim_copy(const std::string& text) {
+    size_t begin = 0;
+    while (begin < text.size() && std::isspace(static_cast<unsigned char>(text[begin]))) ++begin;
+    size_t end = text.size();
+    while (end > begin && std::isspace(static_cast<unsigned char>(text[end - 1]))) --end;
+    return text.substr(begin, end - begin);
+}
+static std::string with_value_prefix(const std::string& raw, char fmt) {
+    std::string text = trim_copy(raw);
+    if (text.size() >= 2 && text[0] == '\'') return text;
+    return std::string("'") + static_cast<char>(std::tolower(static_cast<unsigned char>(fmt))) + text;
+}
+static Json make_xbit_hints(const Json& args,
+                            const std::string& signal,
+                            const std::string& raw) {
+    if (!args.contains("slice_hint") || !args["slice_hint"].is_object()) return Json();
+    Json hint = args["slice_hint"];
+    long long width = hint.value("chunk_width", 0LL);
+    long long count = hint.value("count", 1LL);
+    if (width <= 0) {
+        return Json{{"status", "needs_slice_hint"}, {"signal", signal},
+                    {"raw_value", trim_copy(raw)}};
+    }
+    if (count <= 0) count = 1;
+    Json slices = Json::array();
+    Json commands = Json::array();
+    for (long long i = 0; i < count; ++i) {
+        long long lo = i * width;
+        long long hi = lo + width - 1;
+        slices.push_back({{"index", i},
+                          {"range", "[" + std::to_string(hi) + ":" + std::to_string(lo) + "]"}});
+        commands.push_back("tools/xbit slice \"" + trim_copy(raw) + "\" " +
+                           std::to_string(hi) + " " + std::to_string(lo) + " --json");
+    }
+    return Json{{"status", "ready"}, {"signal", signal}, {"raw_value", trim_copy(raw)},
+                {"chunk_width", width}, {"count", count}, {"slices", slices},
+                {"commands", commands}};
 }
 class ValueBatchAtHandler : public EngineActionHandler {
 public:
@@ -98,6 +137,12 @@ public:
                 item["status"] = "ok";
                 item["value"] = middle.value("value", Json());
                 if (item["value"].is_object() && contains_xz(item["value"].value("value", std::string()))) unknown_count++;
+                std::string raw;
+                if (npi_fsdb_sig_value_at(g_fsdb_file, names[i].c_str(), fsdb_time, raw, xdebug_waveform::parse_format(fmt))) {
+                    raw = with_value_prefix(raw, fmt);
+                    Json hints = make_xbit_hints(args, names[i], raw);
+                    if (!hints.is_null()) item["xbit_hints"] = hints;
+                }
             } else {
                 item["status"] = middle.value("status", std::string("signal_not_found"));
                 item["value"] = nullptr;
@@ -158,6 +203,28 @@ private:
             for (auto it = d["values"].begin(); it != d["values"].end(); ++it)
                 rows.push_back({it.key(), xdebug::json_to_xout_value(it.value())});
             out.emit_table({"signal", "value"}, rows);
+        }
+        if (d.contains("values") && d["values"].is_array()) {
+            std::vector<std::vector<std::string>> hint_rows;
+            for (const auto& item : d["values"]) {
+                if (!item.is_object() || !item.contains("xbit_hints")) continue;
+                const Json& hints = item["xbit_hints"];
+                std::string commands;
+                if (hints.contains("commands") && hints["commands"].is_array()) {
+                    for (const auto& command : hints["commands"]) {
+                        if (!command.is_string()) continue;
+                        if (!commands.empty()) commands += "; ";
+                        commands += command.get<std::string>();
+                    }
+                }
+                hint_rows.push_back({item.value("signal", std::string()),
+                                     hints.value("status", std::string()),
+                                     commands});
+            }
+            if (!hint_rows.empty()) {
+                out.emit_section("xbit_hints");
+                out.emit_table({"signal", "status", "commands"}, hint_rows);
+            }
         }
         return out.str();
     }
