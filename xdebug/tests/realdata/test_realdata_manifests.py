@@ -166,7 +166,7 @@ def test_realdata_manifest_invariants(
             {
                 "api_version": "xdebug.v1",
                 "action": "session.kill",
-                "args": {"id": manifest.name},
+                "target": {"session_id": manifest.name},
             },
             timeout_sec=60,
         )

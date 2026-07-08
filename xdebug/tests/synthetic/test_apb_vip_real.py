@@ -274,7 +274,7 @@ def test_apb_vip_real_wait_state_and_error_actions(
             {
                 "api_version": "xdebug.v1",
                 "action": "session.kill",
-                "args": {"id": session_id},
+                "target": {"session_id": session_id},
             },
             timeout_sec=60,
         )

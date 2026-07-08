@@ -879,7 +879,7 @@ def run_axi(xdebug, fsdb):
         require(pair_cold["data"]["transaction_count"] > 0, "AXI request_response_pair empty")
         pair_cache = r.query("axi.request_response_pair", args={"name": "axi0", "time_range": tr, "limit": 20})
         require(pair_cache["data"]["transaction_count"] > 0, "AXI cached request_response_pair empty")
-        lat = r.query("axi.latency_outlier", args={"name": "axi0", "time_range": tr, "top_n": 5, "limit": 200})
+        lat = r.query("axi.latency_outlier", args={"name": "axi0", "time_range": tr, "limit": 5})
         require(lat["data"]["outlier_count"] > 0, "AXI latency_outlier empty")
         osd = r.query("axi.outstanding_timeline", args={"name": "axi0", "time_range": tr, "limit": 20})
         require(osd["summary"]["sample_count"] > 0, "AXI outstanding_timeline empty")

@@ -183,15 +183,6 @@ static std::string extract_slice_value(const std::string& value, int left, int r
     return "'b" + bits.substr(start, end - start + 1);
 }
 
-static std::string with_binary_prefix(const std::string& value) {
-    if (value.size() >= 2 && value[0] == '\'' &&
-        (value[1] == 'b' || value[1] == 'B' || value[1] == 'h' || value[1] == 'H' ||
-         value[1] == 'd' || value[1] == 'D')) {
-        return value;
-    }
-    return "'b" + value;
-}
-
 class ExprParser {
 public:
     ExprParser(const std::string& expr, const std::map<std::string, std::string>& values)

@@ -143,7 +143,7 @@ def main():
                 {"type": "unknown_xz"},
                 {"type": "stuck", "min_duration": "20ns"},
             ],
-            "max_findings": 20,
+            "limit": 20,
         }, {"session_id": session})
         findings = abnormal["data"].get("findings", [])
         require(any(f.get("type") == "unknown_xz" and f.get("signal") == "xif_event_top.xz_data"
@@ -158,7 +158,7 @@ def main():
             counts, len(findings)))
     finally:
         try:
-            query(args.xdebug, home, "session.kill", {"id": "all"})
+            query(args.xdebug, home, "session.kill", target={"session_id": "all"})
         except Exception:
             pass
         shutil.rmtree(str(home), ignore_errors=True)

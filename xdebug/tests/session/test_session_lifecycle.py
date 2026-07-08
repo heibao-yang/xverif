@@ -43,7 +43,7 @@ def _registry_session(isolated_home: Path, session_id: str) -> dict:
 
 
 def _kill_all(cli_runner: CliRunner) -> None:
-    cli_runner.run(_request("session.kill", args={"id": "all"}))
+    cli_runner.run(_request("session.kill", target={"session_id": "all"}))
 
 
 def _write_registry_session(isolated_home: Path, record: dict) -> None:

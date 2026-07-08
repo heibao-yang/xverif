@@ -16,7 +16,7 @@ NPI_CXXFLAGS ?=
 NPI_LDFLAGS ?=
 NPI_LIB ?=
 
-CXXFLAGS = $(COMMON_CXXFLAGS) $(NPI_CXXFLAGS) -pthread -Isrc -Isrc/core -Isrc/engine -Isrc/design -Isrc/waveform -Ithird_party -Ithird_party/json-schema-validator/src
+CXXFLAGS = $(COMMON_CXXFLAGS) $(NPI_CXXFLAGS) -pthread -Isrc -Isrc/core -Isrc/engine -Isrc/design -Isrc/waveform -isystem third_party -isystem third_party/json-schema-validator/src
 LDFLAGS  = $(NPI_LDFLAGS) -pthread $(if $(NPI_LIB),-Xlinker -rpath -Xlinker $(NPI_LIB),)
 DEPFLAGS = -MMD -MP
 # Frontend does not need NPI (all NPI is in the engine subprocess).

@@ -1,6 +1,6 @@
 VCS        ?= vcs
 VERDI_HOME ?= ~/Synopsys/verdi/V-2023.12-SP2
-XIF_AGENT  ?= ~/xif_agent
+XIF_AGENT  ?= $(HOME)/xif_agent
 XDEBUG     ?= ../../../../tools/xdebug
 
 OUT        := out
