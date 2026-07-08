@@ -175,7 +175,7 @@ inline 配置示例：
 1. `axi.analysis` 用 compact 查 latency/outstanding/response findings。
 2. 对 top abnormal 的 begin/end 设 cursor 或直接用 TimeSpec。
 3. `value.batch_at` 查 AW/W/B/AR/R channel 的 valid/ready/id/resp。
-4. 只有需要证明异常 transaction/beat 时才加 `include_transactions:true` 或 `include_beats:true`。
+4. 需要具体 transaction 时用 `axi.query` 的 `query.index` / `query.limit` 缩小；需要批量导出时用 `axi.export`。
 
 ```json
 {
@@ -194,7 +194,7 @@ inline 配置示例：
 
 1. `apb.query` 查 error/slow findings。
 2. 对 finding 的 time/window 用 `value.batch_at` 取 `psel/penable/pready/pslverr/paddr/pwrite`。
-3. 只有需要完整访问明细时才加 `include_accesses:true`。
+3. 需要具体 access 时用 `apb.query` 的 `query.index` / `query.limit`；需要窗口上下文时用 `apb.transfer_window`。
 
 ## X/Z 传播
 
@@ -321,10 +321,26 @@ AXI 示例（26 信号，5 通道各需 valid/ready + data/addr/id/last/strobe +
 
 加载后用 `apb.config.list` / `axi.config.list` 确认已注册，然后：
 
-- `apb.query` / `axi.query`：查指定时间窗口的传输。
+- `apb.query` / `axi.query`：查指定方向、地址或第 N 个传输；第 N 个写 1-based `args.query.index`，前 N 条写 `args.query.limit`，不要写旧 `args.num` 或猜成 `args.limit`。
 - `axi.analysis`：查异常（protocol violation、timing outlier 等）。
 - `axi.channel_stall`：查通道级停顿热点。
 - `axi.latency_outlier`：查延迟异常。
 - `axi.outstanding_timeline`：查未完成事务的时间线。
 
 **没有 config.load，query 会报 `MISSING_FIELD: requires args.name or latest config`。** config 字段名以实际代码中的 VIP/DUT 信号名为准，没有自动检测。
+
+APB/AXI query 最小形态：
+
+```json
+{
+  "session_id": "case_a",
+  "action": "axi.query",
+  "args": {
+    "name": "axi0",
+    "direction": "write",
+    "query": {
+      "index": 1
+    }
+  }
+}
+```

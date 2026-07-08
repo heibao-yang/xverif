@@ -559,14 +559,14 @@ def run_nonaxi(xdebug, fsdb):
         require(rendered["width"] == 4096, "xwaveform did not render 4096px width")
         require(os.path.exists(rendered["image_file"]), "missing xwaveform JPG")
         require(os.path.exists(rendered["stats_file"]), "missing xwaveform stats")
-        r.query("list.delete", args={"name": "basic", "index": "2"})
+        r.query("list.delete", args={"name": "basic", "index": 2})
         r.query("list.show", args={"name": "basic"})
 
         apb_cfg = os.path.join(NONAXI_DIR, "config", "apb0.json")
         r.query("apb.config.load", args={"name": "apb0", "config_path": apb_cfg})
         r.query("apb.config.list", args={"name": "apb0"})
         r.query("apb.query", args={"name": "apb0", "direction": "write"})
-        r.query("apb.query", args={"name": "apb0", "direction": "read", "num": 1})
+        r.query("apb.query", args={"name": "apb0", "direction": "read", "query": {"index": 1}})
         r.query("apb.cursor", args={"name": "apb0", "op": "begin", "direction": "all"})
         apb_window = r.query("apb.transfer_window", args={"name": "apb0", "time_range": {"begin": "200ns", "end": "400ns"}, "limit": 2})
         require(apb_window["summary"]["transaction_count"] >= 1, "APB window empty")
@@ -590,8 +590,8 @@ def run_nonaxi(xdebug, fsdb):
             rd_count = r.query("apb.query", args={"name": name, "direction": "read"})
             require(wr_count["summary"]["count"] >= 1, "APB write count empty for {}".format(name))
             require(rd_count["summary"]["count"] >= 1, "APB read count empty for {}".format(name))
-        apb_before_first = r.query("apb.query", args={"name": "apb_pos_before", "direction": "write", "num": 1})
-        apb_after_first = r.query("apb.query", args={"name": "apb_pos_after", "direction": "write", "num": 1})
+        apb_before_first = r.query("apb.query", args={"name": "apb_pos_before", "direction": "write", "query": {"index": 1}})
+        apb_after_first = r.query("apb.query", args={"name": "apb_pos_after", "direction": "write", "query": {"index": 1}})
         require(apb_before_first["data"]["transaction"]["time"] > apb_after_first["data"]["transaction"]["time"],
                 "APB posedge before should observe the completion one edge later than after")
 
@@ -852,7 +852,7 @@ def run_axi(xdebug, fsdb):
         wr = r.query("axi.query", args={"name": "axi0", "direction": "write"})
         rd = r.query("axi.query", args={"name": "axi0", "direction": "read"})
         require(wr["summary"].get("count", 0) > 0 and rd["summary"].get("count", 0) > 0, "AXI query count is empty")
-        r.query("axi.query", args={"name": "axi0", "direction": "write", "num": 1})
+        r.query("axi.query", args={"name": "axi0", "direction": "write", "query": {"index": 1}})
 
         axi_modes = [
             ("axi_default_negedge", make_axi_config(prefix, edge=None), "negedge", None),

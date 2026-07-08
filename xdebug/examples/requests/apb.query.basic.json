@@ -6,6 +6,9 @@
   },
   "args": {
     "name": "if0",
-    "include_accesses": false
+    "direction": "read",
+    "query": {
+      "index": 1
+    }
   }
 }

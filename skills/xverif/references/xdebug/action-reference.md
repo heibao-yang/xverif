@@ -12,9 +12,9 @@
 - session 标识统一写 `session_id`；native xdebug request 使用 `target.session_id`，MCP `xverif_debug_query` 使用 `session_id` 参数。
 - 单点时间统一写 `time`。
 - 时间窗口统一写 `time_range.begin` / `time_range.end`。
-- 数量上限统一写 `args.limit`。
+- 数量上限以 action-specific schema 为准。通用窗口/统计类常用 `args.limit`；APB/AXI 查询类使用 `args.query.limit` / `args.query.index`；active-driver 链深度使用 top-level `limits.max_depth`。
 - stream action 统一写 `stream`，不写 `name`。
-- AXI/APB direction 统一写 `read` / `write` / `all`。
+- AXI/APB direction 以 action-specific schema 为准；query action 用 `read` / `write`，cursor/analysis 等 action 可按 schema 使用 `all`。
 - 导出路径统一写 `args.output.path`；不同 action 可把该 path 解释为文件、目录或文件前缀。
 
 ## Waveform Action Boundaries
@@ -57,7 +57,7 @@
 | `apb.config.list` | stable | waveform | 列出 APB 配置。 | 读取 APB 配置存储。 | 查看可用 APB interface 名称。 | required: name |
 | `apb.config.load` | stable | waveform | 加载 APB 配置。 | 保存 APB interface 信号映射。 | 定义后续 APB 查询对象。 | required: name; also one of: config / config_path |
 | `apb.cursor` | stable | waveform | 在 APB transfer 间移动游标。 | 基于 APB 查询结果按 op/direction 定位 begin/next/prev 等。 | 交互式浏览 APB 事务。 | required: name, op |
-| `apb.query` | stable | waveform | 查询 APB transfer。 | 按 APB 配置扫描 PSEL/PENABLE/PREADY 等握手和地址数据。 | 抽取 APB 读写访问。 | required: name |
+| `apb.query` | stable | waveform | 查询 APB transfer。 | 按 APB 配置扫描 PSEL/PENABLE/PREADY 等握手和地址数据；第 N 个 transfer 用 1-based `query.index`，多条用 `query.limit`。 | 抽取 APB 读写访问。 | required: name<br>use query.index / query.limit; do not use args.num or args.limit |
 | `apb.transfer_window` | experimental | waveform | 实验性 APB 窗口分析。 | 围绕指定 APB transfer 返回相关信号窗口。 | 解释单笔 APB 访问现场。 | required: name |
 | `axi.analysis` | stable | waveform | 汇总 AXI 行为。 | 基于 AXI 解析结果统计 channel、latency、stall 等。 | 快速判断 AXI 接口健康度。 | required: name |
 | `axi.export` | stable | waveform | 导出 AXI 数据。 | 按 name 和 time_range 查询 AXI，再按 format/output.path 写出。 | 给外部表格或脚本分析。 | required: name<br>also one of: time_range |
@@ -67,7 +67,7 @@
 | `axi.cursor` | stable | waveform | 在 AXI transfer 间移动游标。 | 基于 AXI 查询结果按 op/direction 定位事务。 | 交互式浏览 AXI 事务。 | required: name, op |
 | `axi.latency_outlier` | experimental | waveform | 实验性 AXI latency 异常。 | 从配对结果中找超过阈值或分布异常的事务。 | 定位慢事务。 | required: name |
 | `axi.outstanding_timeline` | experimental | waveform | 实验性 AXI outstanding 时间线。 | 跟踪请求和响应，统计未完成事务数量随时间变化。 | 发现 outstanding 积压或乱序风险。 | required: name |
-| `axi.query` | stable | waveform | 查询 AXI channel/transaction。 | 按 AXI 配置扫描 valid/ready 和 channel 字段。 | 抽取 AXI beat/transaction。 | required: name |
+| `axi.query` | stable | waveform | 查询 AXI channel/transaction。 | 按 AXI 配置扫描 valid/ready 和 channel 字段；第 N 个 transaction 用 1-based `query.index`，多条用 `query.limit`。 | 抽取 AXI beat/transaction。 | required: name<br>use query.index / query.limit; do not use args.num or args.limit |
 | `axi.request_response_pair` | experimental | waveform | 实验性 AXI 请求响应配对。 | 用 ID/address/channel 信息把请求与响应关联。 | 分析 latency 和缺失响应。 | required: name |
 | `counter.statistics` | stable | waveform | 统计计数器行为。 | 按 clock/vld/cnt 采样，分析递增、回绕、停顿和异常。 | 判断计数器是否符合预期。 | required: clock, time_range, vld, cnt |
 | `cursor.delete` | stable | waveform | 删除游标。 | 按 name 从 CursorManager 删除记录。 | 清理不再需要的时间标记。 | required: name |
@@ -86,7 +86,7 @@
 | `list.create` | stable | waveform | 创建命名信号列表。 | 在 ListManager 存储中创建 list，并可追加初始 signals。 | 为一组信号建立可复用集合。 | required: name |
 | `list.delete` | stable | waveform | 从信号列表删除信号或 index。 | 按 name 找 list，再用 signal 或 index 删除条目。 | 维护已保存观察列表。 | required: name<br>also one of: signal / index |
 | `list.diff` | stable | waveform | 查找 list 在时间窗口内的首次差异。 | 解析 time_range.begin/end 后扫描 list 内信号变化。 | 定位一组信号何时开始不同。 | required: name, time_range |
-| `list.export` | stable | waveform | 导出 list 数据。 | 读取 list 信号并按请求格式写出波形表。 | 把窗口数据交给外部分析。 | required: name |
+| `list.export` | stable | waveform | 导出 list 数据。 | 读取 list 信号并写出 `u64bin` 波形表；manifest format 为 `u64bin.v1`。 | 把窗口数据交给外部分析。 | required: name<br>format: u64bin only |
 | `list.show` | stable | waveform | 显示信号列表内容。 | 读取 ListManager 存储并返回 index/signal。 | 确认 list 当前包含哪些信号。 | none |
 | `list.validate` | stable | waveform | 验证 list 中信号是否存在。 | 逐条检查 FSDB signal handle。 | 发现过期或错误路径。 | required: name |
 | `list.value_at` | stable | waveform | 读取 list 内所有信号在指定时间的值。 | 加载 list 后按 clock/time 对所有信号做同一时刻批量读取。 | 快速比较一组相关信号。 | required: name, time, clock |
@@ -106,9 +106,9 @@
 | `stream.show` | stable | waveform | 显示 stream 定义和摘要。 | 按 stream 名读取配置并返回字段。 | 确认 stream 绑定了哪些信号。 | required: stream |
 | `stream.validate` | stable | waveform | 验证 stream 配置。 | 检查 stream 信号在 FSDB 中是否可解析。 | 提前发现错误信号路径。 | required: stream |
 | `stream.query` | stable | waveform | 查询 stream transfer。 | 按 stream 配置和 query 条件扫描握手/beat。 | 抽取流事务或 beats。 | required: stream, query |
-| `stream.export` | stable | waveform | 导出 stream 查询结果。 | 运行 stream query 后按 kind/format 写出。packet_beats 需要 output.path。 | 把流数据输出给外部脚本。 | required: stream<br>when kind=packet_beats: output |
+| `stream.export` | stable | waveform | 导出 stream 查询结果。 | 运行 stream query 后按 kind/format 写出；`kind` 只能是 `transfer`、`packet`、`packet_beats`。 | 把流数据输出给外部脚本。 | required: stream<br>kind: transfer / packet / packet_beats<br>format: tsv / csv / xout<br>when kind=packet_beats: output |
 ## Combined Actions
 | action | status | resource | purpose | how it works | objective | args contract |
 | --- | --- | --- | --- | --- | --- | --- |
 | `trace.active_driver` | stable | combined | 在指定时间找 active driver。 | 结合 waveform 当前值和 design 依赖，定位 time 的有效驱动证据。 | 回答“此刻是谁真正驱动了它”。 | required: signal, time |
-| `trace.active_driver_chain` | stable | combined | 展开 active driver 链。 | 从 signal/time 递归追溯 active driver。 | 给出跨级根因链。 | required: signal, time |
+| `trace.active_driver_chain` | stable | combined | 展开 active driver 链。 | 从 signal/time 递归追溯 active driver；深度限制写 top-level `limits.max_depth`。 | 给出跨级根因链。 | required: signal, time<br>do not use args.depth |

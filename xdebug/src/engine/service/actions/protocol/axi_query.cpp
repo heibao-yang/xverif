@@ -52,6 +52,22 @@ static bool parse_user_uint64_literal(const std::string& text,
     }
     return true;
 }
+static Json axi_transaction_json(const xdebug_waveform::AxiTransaction& txn) {
+    Json tj;
+    tj["time"] = txn.addr_time;
+    tj["addr"] = txn.addr;
+    tj["id"] = txn.id;
+    tj["len"] = txn.len;
+    tj["size"] = txn.size;
+    tj["burst"] = txn.burst;
+    tj["is_write"] = txn.is_write;
+    if (!txn.data.empty()) {
+        Json da = Json::array();
+        for (const auto& d : txn.data) da.push_back(d);
+        tj["data"] = da;
+    }
+    return tj;
+}
 
 class AxiQueryHandler : public EngineActionHandler {
 public:
@@ -72,7 +88,9 @@ public:
         bool is_write = (dir != "read");
         std::string addr_str = a.value("address", a.value("addr", ""));
         std::string id_str = a.value("id", "");
-        int num = a.value("num", -1);
+        Json query = a.value("query", Json::object());
+        int num = query.value("index", -1);
+        int limit = query.value("limit", -1);
         bool last = a.value("last", false);
 
         const AxiTransaction* txn = nullptr;
@@ -92,6 +110,21 @@ public:
                 if (num >= 0)
                     found = is_write ? g_axi_analyzer.get_write_by_addr_num(name, addr, id_str.c_str(), (size_t)num, txn)
                                      : g_axi_analyzer.get_read_by_addr_num(name, addr, id_str.c_str(), (size_t)num, txn);
+                else if (limit > 0) {
+                    Json transactions = Json::array();
+                    for (int i = 1; i <= limit; ++i) {
+                        const AxiTransaction* item = nullptr;
+                        bool ok = is_write ? g_axi_analyzer.get_write_by_addr_num(name, addr, id_str.c_str(), (size_t)i, item)
+                                           : g_axi_analyzer.get_read_by_addr_num(name, addr, id_str.c_str(), (size_t)i, item);
+                        if (!ok || !item) break;
+                        transactions.push_back(axi_transaction_json(*item));
+                    }
+                    Json out;
+                    out["summary"] = {{"name",name},{"direction",dir},{"count",(int)transactions.size()}};
+                    out["name"] = name; out["direction"] = dir; out["count"] = (int)transactions.size();
+                    out["transactions"] = transactions;
+                    return out;
+                }
                 else if (last)
                     found = is_write ? g_axi_analyzer.get_write_by_addr_last(name, addr, id_str.c_str(), txn)
                                      : g_axi_analyzer.get_read_by_addr_last(name, addr, id_str.c_str(), txn);
@@ -102,6 +135,21 @@ public:
                 if (num >= 0)
                     found = is_write ? g_axi_analyzer.get_write_by_addr_num(name, addr, (size_t)num, txn)
                                      : g_axi_analyzer.get_read_by_addr_num(name, addr, (size_t)num, txn);
+                else if (limit > 0) {
+                    Json transactions = Json::array();
+                    for (int i = 1; i <= limit; ++i) {
+                        const AxiTransaction* item = nullptr;
+                        bool ok = is_write ? g_axi_analyzer.get_write_by_addr_num(name, addr, (size_t)i, item)
+                                           : g_axi_analyzer.get_read_by_addr_num(name, addr, (size_t)i, item);
+                        if (!ok || !item) break;
+                        transactions.push_back(axi_transaction_json(*item));
+                    }
+                    Json out;
+                    out["summary"] = {{"name",name},{"direction",dir},{"count",(int)transactions.size()}};
+                    out["name"] = name; out["direction"] = dir; out["count"] = (int)transactions.size();
+                    out["transactions"] = transactions;
+                    return out;
+                }
                 else if (last)
                     found = is_write ? g_axi_analyzer.get_write_by_addr_last(name, addr, txn)
                                      : g_axi_analyzer.get_read_by_addr_last(name, addr, txn);
@@ -113,12 +161,41 @@ public:
             if (num >= 0)
                 found = is_write ? g_axi_analyzer.get_write_by_num(name, id_str.c_str(), (size_t)num, txn)
                                  : g_axi_analyzer.get_read_by_num(name, id_str.c_str(), (size_t)num, txn);
+            else if (limit > 0) {
+                Json transactions = Json::array();
+                for (int i = 1; i <= limit; ++i) {
+                    const AxiTransaction* item = nullptr;
+                    bool ok = is_write ? g_axi_analyzer.get_write_by_num(name, id_str.c_str(), (size_t)i, item)
+                                       : g_axi_analyzer.get_read_by_num(name, id_str.c_str(), (size_t)i, item);
+                    if (!ok || !item) break;
+                    transactions.push_back(axi_transaction_json(*item));
+                }
+                Json out;
+                out["summary"] = {{"name",name},{"direction",dir},{"count",(int)transactions.size()}};
+                out["name"] = name; out["direction"] = dir; out["count"] = (int)transactions.size();
+                out["transactions"] = transactions;
+                return out;
+            }
             else if (last)
                 found = is_write ? g_axi_analyzer.get_write_last(name, id_str.c_str(), txn)
                                  : g_axi_analyzer.get_read_last(name, id_str.c_str(), txn);
         } else if (num >= 0) {
             found = is_write ? g_axi_analyzer.get_write_by_num(name, (size_t)num, txn)
                              : g_axi_analyzer.get_read_by_num(name, (size_t)num, txn);
+        } else if (limit > 0) {
+            Json transactions = Json::array();
+            for (int i = 1; i <= limit; ++i) {
+                const AxiTransaction* item = nullptr;
+                bool ok = is_write ? g_axi_analyzer.get_write_by_num(name, (size_t)i, item)
+                                   : g_axi_analyzer.get_read_by_num(name, (size_t)i, item);
+                if (!ok || !item) break;
+                transactions.push_back(axi_transaction_json(*item));
+            }
+            Json out;
+            out["summary"] = {{"name",name},{"direction",dir},{"count",(int)transactions.size()}};
+            out["name"] = name; out["direction"] = dir; out["count"] = (int)transactions.size();
+            out["transactions"] = transactions;
+            return out;
         } else if (last) {
             found = is_write ? g_axi_analyzer.get_write_last(name, txn)
                              : g_axi_analyzer.get_read_last(name, txn);
@@ -135,13 +212,7 @@ public:
         out["summary"] = {{"name",name},{"direction",dir},{"found",found}};
         out["name"] = name; out["direction"] = dir; out["found"] = found;
         if (found && txn) {
-            Json tj;
-            tj["time"] = txn->addr_time;
-            tj["addr"] = txn->addr; tj["id"] = txn->id;
-            tj["len"] = txn->len; tj["size"] = txn->size;
-            tj["burst"] = txn->burst; tj["is_write"] = txn->is_write;
-            if (!txn->data.empty()) { Json da = Json::array(); for (auto& d : txn->data) da.push_back(d); tj["data"] = da; }
-            out["transaction"] = tj;
+            out["transaction"] = axi_transaction_json(*txn);
             out["summary"]["addr"] = txn->addr;
         }
         return out;

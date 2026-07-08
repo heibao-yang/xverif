@@ -48,6 +48,15 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
     "include_statement_only": {"type": "boolean"},
     "last": {"type": "boolean"},
     "limits": {"type": "object"},
+    "protocol_query": {
+        "type": "object",
+        "properties": {
+            "limit": {"type": "integer", "minimum": 1},
+            "index": {"type": "integer", "minimum": 1},
+        },
+        "additionalProperties": False,
+        "description": "Protocol query controls; use 1-based query.index instead of legacy args.num and query.limit instead of args.limit.",
+    },
     "match": {
         "type": "object",
         "properties": {
@@ -67,7 +76,6 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
     "max_rows": {"type": "integer"},
     "no_statement_only": {"type": "boolean"},
     "note": {"type": "string"},
-    "num": {"type": "integer"},
     "origin": {"type": "string"},
     "output": {
         "type": "object",
@@ -92,7 +100,7 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
 EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "apb.cursor": {"direction"},
     "apb.config.load": {"config", "config_path"},
-    "apb.query": {"direction", "address", "addr", "num", "last"},
+    "apb.query": {"direction", "address", "addr", "query", "last"},
     "apb.transfer_window": {"limit", "time_range"},
     "axi.analysis": {"analysis", "direction"},
     "axi.channel_stall": {"channel", "limit", "rules", "time_range"},
@@ -101,7 +109,7 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "axi.export": {"format", "output", "time_range"},
     "axi.latency_outlier": {"limit", "time_range"},
     "axi.outstanding_timeline": {"limit", "time_range"},
-    "axi.query": {"direction", "address", "addr", "num", "last"},
+    "axi.query": {"direction", "address", "addr", "query", "last"},
     "axi.request_response_pair": {"limit", "time_range"},
     "batch": {"mode"},
     "counter.statistics": {"edge", "limit", "sample_point"},
@@ -168,7 +176,7 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
         "include_parity",
         "limits",
     },
-    "trace.active_driver_chain": {"limits"},
+    "trace.active_driver_chain": set(),
     "trace.driver": {"include_statement_only", "limit", "no_statement_only", "role"},
     "trace.load": {"include_statement_only", "limit", "no_statement_only", "role"},
     "value.at": {"edge", "sample_point", "slice_hint"},
@@ -351,6 +359,29 @@ def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[
         selected_props[key] = copy.deepcopy(arg_schemas[key])
         if key in PARAM_DESCRIPTIONS:
             selected_props[key].setdefault("description", PARAM_DESCRIPTIONS[key])
+    if action in ("apb.query", "axi.query") and "query" in selected_props:
+        selected_props["query"] = copy.deepcopy(arg_schemas["protocol_query"])
+        if "direction" in selected_props:
+            selected_props["direction"] = {"type": "string", "enum": ["write", "read"]}
+    if action == "list.export" and "format" in selected_props:
+        selected_props["format"] = {
+            "type": "string",
+            "enum": ["u64bin"],
+            "description": "list.export input format. The response manifest uses versioned format u64bin.v1.",
+        }
+    if action == "stream.export":
+        if "format" in selected_props:
+            selected_props["format"] = {
+                "type": "string",
+                "enum": ["tsv", "csv", "xout"],
+                "description": "stream.export file format.",
+            }
+        if "kind" in selected_props:
+            selected_props["kind"] = {
+                "type": "string",
+                "enum": ["transfer", "packet", "packet_beats"],
+                "description": "导出或查询的结果类型。",
+            }
     args["properties"] = selected_props
     args["additionalProperties"] = False
     groups = spec.get("required_arg_groups", [])

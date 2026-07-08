@@ -26,7 +26,8 @@ Request fields:
   `args.begin/end`, `args.from/to`.
 - `args.output_dir`: optional output directory. If omitted, xdebug writes under
   the waveform session directory in `list_exports/`.
-- `args.format`: `u64bin` by default, or `hex_tsv` for text audit output.
+- `args.format`: `u64bin` only in the current public contract. The manifest
+  records the versioned output format as `u64bin.v1`.
 
 Behavior:
 
@@ -47,11 +48,9 @@ Default binary format `u64bin.v1`:
 - This format is intended for fast C++ sequential writing and fast Python
   `numpy.memmap` reading.
 
-Optional `hex_tsv` format:
-
-- One TSV file per signal.
-- Columns: `time_ps`, `value_hex`, `known_hex`.
-- Intended for inspection/debugging, not the default fast path.
+The older text-audit TSV idea is not part of the current public
+`list.export` request contract. Use `u64bin` for list export and convert from
+the manifest if a text audit view is needed.
 
 ## Shared Export Component
 

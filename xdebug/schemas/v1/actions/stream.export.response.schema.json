@@ -27,10 +27,20 @@
       ]
     },
     "summary": {
-      "type": "object"
+      "type": "object",
+      "additionalProperties": true
     },
     "data": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "output_file": {"type": "string"},
+        "meta_file": {"type": "string"},
+        "kind": {"type": "string", "enum": ["transfer", "packet", "packet_beats"]},
+        "format": {"type": "string", "enum": ["tsv", "csv", "xout"]},
+        "row_count": {"type": "integer"}
+      },
+      "required": ["output_file", "meta_file", "kind", "format", "row_count"],
+      "additionalProperties": true
     },
     "error": {},
     "warnings": {

@@ -323,6 +323,127 @@ def test_stream_query_match_schema_rejects_legacy_field_shorthand(
 
 
 @pytest.mark.contract
+def test_ai_usability_high_risk_request_shapes_are_strict(
+    xdebug_root: Path,
+) -> None:
+    def schema_for(action: str) -> Dict[str, Any]:
+        return _load_json(
+            xdebug_root
+            / "schemas"
+            / "v1"
+            / "actions"
+            / ("%s.request.schema.json" % action)
+        )
+
+    apb = jsonschema.Draft202012Validator(schema_for("apb.query"))
+    apb.validate({
+        "api_version": "xdebug.v1",
+        "action": "apb.query",
+        "args": {"name": "apb0", "direction": "read", "query": {"index": 1}},
+    })
+    with pytest.raises(jsonschema.ValidationError):
+        apb.validate({
+            "api_version": "xdebug.v1",
+            "action": "apb.query",
+            "args": {"name": "apb0", "direction": "read", "num": 1},
+        })
+    with pytest.raises(jsonschema.ValidationError):
+        apb.validate({
+            "api_version": "xdebug.v1",
+            "action": "apb.query",
+            "args": {"name": "apb0", "direction": "read", "limit": 1},
+        })
+    with pytest.raises(jsonschema.ValidationError):
+        apb.validate({
+            "api_version": "xdebug.v1",
+            "action": "apb.query",
+            "args": {"name": "apb0", "direction": "all"},
+        })
+
+    axi = jsonschema.Draft202012Validator(schema_for("axi.query"))
+    axi.validate({
+        "api_version": "xdebug.v1",
+        "action": "axi.query",
+        "args": {"name": "axi0", "direction": "write", "query": {"index": 1}},
+    })
+    with pytest.raises(jsonschema.ValidationError):
+        axi.validate({
+            "api_version": "xdebug.v1",
+            "action": "axi.query",
+            "args": {"name": "axi0", "direction": "write", "num": 1},
+        })
+    with pytest.raises(jsonschema.ValidationError):
+        axi.validate({
+            "api_version": "xdebug.v1",
+            "action": "axi.query",
+            "args": {"name": "axi0", "direction": "all"},
+        })
+
+    stream_export = jsonschema.Draft202012Validator(schema_for("stream.export"))
+    stream_export.validate({
+        "api_version": "xdebug.v1",
+        "action": "stream.export",
+        "args": {"stream": "ready_stream", "kind": "packet_beats",
+                 "format": "tsv", "output": {"path": "/tmp/ready.tsv"}},
+    })
+    with pytest.raises(jsonschema.ValidationError):
+        stream_export.validate({
+            "api_version": "xdebug.v1",
+            "action": "stream.export",
+            "args": {"stream": "ready_stream", "kind": "beats",
+                     "format": "tsv", "output": {"path": "/tmp/ready.tsv"}},
+        })
+
+    list_export = jsonschema.Draft202012Validator(schema_for("list.export"))
+    with pytest.raises(jsonschema.ValidationError):
+        list_export.validate({
+            "api_version": "xdebug.v1",
+            "action": "list.export",
+            "args": {"name": "basic", "format": "tsv",
+                     "time_range": {"begin": "0ns", "end": "400ns"}},
+        })
+
+    list_delete = jsonschema.Draft202012Validator(schema_for("list.delete"))
+    list_delete.validate({
+        "api_version": "xdebug.v1",
+        "action": "list.delete",
+        "args": {"name": "basic", "index": 2},
+    })
+    list_delete.validate({
+        "api_version": "xdebug.v1",
+        "action": "list.delete",
+        "args": {"name": "basic", "index": "2"},
+    })
+    with pytest.raises(jsonschema.ValidationError):
+        list_delete.validate({
+            "api_version": "xdebug.v1",
+            "action": "list.delete",
+            "args": {"name": "basic", "index": {"bad": 2}},
+        })
+
+    active_chain = jsonschema.Draft202012Validator(schema_for("trace.active_driver_chain"))
+    with pytest.raises(jsonschema.ValidationError):
+        active_chain.validate({
+            "api_version": "xdebug.v1",
+            "action": "trace.active_driver_chain",
+            "args": {"signal": "top.q", "time": "10ns", "depth": 4},
+        })
+    with pytest.raises(jsonschema.ValidationError):
+        active_chain.validate({
+            "api_version": "xdebug.v1",
+            "action": "trace.active_driver_chain",
+            "args": {"signal": "top.q", "time": "10ns",
+                     "limits": {"max_depth": 4}},
+        })
+    active_chain.validate({
+        "api_version": "xdebug.v1",
+        "action": "trace.active_driver_chain",
+        "args": {"signal": "top.q", "time": "10ns"},
+        "limits": {"max_depth": 4},
+    })
+
+
+@pytest.mark.contract
 def test_response_examples_do_not_encode_removed_redundant_payloads(
     xdebug_root: Path,
 ) -> None:

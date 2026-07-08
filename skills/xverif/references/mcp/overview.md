@@ -16,6 +16,7 @@
 - `xverif_debug_raw_request` / `xverif_cov_raw_request` 是 one-shot CLI 路径。
 - raw request 不走 MCP-managed session manager，也不维护 stdio-loop/LSF job。
 - 需要长期 session 时使用 `xverif_debug_session_open` + `xverif_debug_query`。
+- raw request 默认返回 xout 文本；只有脚本读取字段、验证 JSON schema 或调试 envelope 时才显式请求 JSON/envelope。
 
 ## batch
 

@@ -127,7 +127,7 @@ def update_request_schema(schema: dict[str, Any], spec: dict[str, Any], hint: di
     schema["x-purpose"] = hint["purpose"]
     schema["x-how_it_works"] = hint["how_it_works"]
     schema["x-when_to_use"] = hint["when_to_use"]
-    schema["x-arg_contract_notes"] = arg_contract_notes(spec)
+    schema["x-arg_contract_notes"] = hint.get("arg_contract_notes") or arg_contract_notes(spec)
 
     args = schema.get("properties", {}).get("args")
     if not isinstance(args, dict):

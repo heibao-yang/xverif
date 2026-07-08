@@ -52,6 +52,15 @@ static bool parse_user_uint64_literal(const std::string& text,
     }
     return true;
 }
+static Json apb_transaction_json(const xdebug_waveform::ApbTransaction& txn) {
+    Json tj;
+    tj["time"] = txn.time;
+    tj["addr"] = txn.addr;
+    tj["data"] = txn.data;
+    tj["is_write"] = txn.is_write;
+    tj["has_error"] = txn.has_error;
+    return tj;
+}
 
 class ApbQueryHandler : public EngineActionHandler {
 public:
@@ -71,7 +80,9 @@ public:
         std::string dir = a.value("direction", "write");
         bool is_write = (dir != "read");
         std::string addr_str = a.value("address", a.value("addr", ""));
-        int num = a.value("num", -1);
+        Json query = a.value("query", Json::object());
+        int num = query.value("index", -1);
+        int limit = query.value("limit", -1);
         bool last = a.value("last", false);
 
         const ApbTransaction* txn = nullptr;
@@ -84,6 +95,20 @@ public:
             if (num >= 0) {
                 found = is_write ? g_apb_analyzer.get_write_by_addr_num(name, addr, (size_t)num, txn)
                                  : g_apb_analyzer.get_read_by_addr_num(name, addr, (size_t)num, txn);
+            } else if (limit > 0) {
+                Json transactions = Json::array();
+                for (int i = 1; i <= limit; ++i) {
+                    const ApbTransaction* item = nullptr;
+                    bool ok = is_write ? g_apb_analyzer.get_write_by_addr_num(name, addr, (size_t)i, item)
+                                       : g_apb_analyzer.get_read_by_addr_num(name, addr, (size_t)i, item);
+                    if (!ok || !item) break;
+                    transactions.push_back(apb_transaction_json(*item));
+                }
+                Json out;
+                out["summary"] = {{"name",name},{"direction",dir},{"count",(int)transactions.size()}};
+                out["name"] = name; out["direction"] = dir; out["count"] = (int)transactions.size();
+                out["transactions"] = transactions;
+                return out;
             } else if (last) {
                 found = is_write ? g_apb_analyzer.get_write_by_addr_last(name, addr, txn)
                                  : g_apb_analyzer.get_read_by_addr_last(name, addr, txn);
@@ -94,6 +119,20 @@ public:
         } else if (num >= 0) {
             found = is_write ? g_apb_analyzer.get_write_by_num(name, (size_t)num, txn)
                              : g_apb_analyzer.get_read_by_num(name, (size_t)num, txn);
+        } else if (limit > 0) {
+            Json transactions = Json::array();
+            for (int i = 1; i <= limit; ++i) {
+                const ApbTransaction* item = nullptr;
+                bool ok = is_write ? g_apb_analyzer.get_write_by_num(name, (size_t)i, item)
+                                   : g_apb_analyzer.get_read_by_num(name, (size_t)i, item);
+                if (!ok || !item) break;
+                transactions.push_back(apb_transaction_json(*item));
+            }
+            Json out;
+            out["summary"] = {{"name",name},{"direction",dir},{"count",(int)transactions.size()}};
+            out["name"] = name; out["direction"] = dir; out["count"] = (int)transactions.size();
+            out["transactions"] = transactions;
+            return out;
         } else if (last) {
             found = is_write ? g_apb_analyzer.get_write_last(name, txn)
                              : g_apb_analyzer.get_read_last(name, txn);
@@ -111,13 +150,7 @@ public:
         out["summary"] = {{"name",name},{"direction",dir},{"found",found}};
         out["name"] = name; out["direction"] = dir; out["found"] = found;
         if (found && txn) {
-            Json tj;
-            tj["time"] = txn->time;
-            tj["addr"] = txn->addr;
-            tj["data"] = txn->data;
-            tj["is_write"] = txn->is_write;
-            tj["has_error"] = txn->has_error;
-            out["transaction"] = tj;
+            out["transaction"] = apb_transaction_json(*txn);
             out["summary"]["addr"] = txn->addr;
         }
         return out;

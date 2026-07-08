@@ -6,6 +6,9 @@
   },
   "args": {
     "name": "if0",
-    "include_transactions": false
+    "direction": "write",
+    "query": {
+      "index": 1
+    }
   }
 }

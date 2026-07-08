@@ -31,10 +31,25 @@
     },
     "summary": {
       "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "signal_count": {"type": "integer"},
+        "row_count": {"type": "integer"},
+        "format": {"type": "string", "enum": ["u64bin.v1"]}
+      },
+      "required": ["name", "signal_count", "row_count", "format"],
       "additionalProperties": true
     },
     "data": {
       "type": "object",
+      "properties": {
+        "output_dir": {"type": "string"},
+        "manifest_file": {"type": "string"},
+        "signals": {"type": "array"},
+        "begin": {"type": "string"},
+        "end": {"type": "string"}
+      },
+      "required": ["output_dir", "manifest_file", "signals", "begin", "end"],
       "additionalProperties": true
     },
     "warnings": {

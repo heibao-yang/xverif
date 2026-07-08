@@ -40,12 +40,8 @@
           "type": "string",
           "enum": [
             "write",
-            "read",
-            "all"
+            "read"
           ]
-        },
-        "include_accesses": {
-          "type": "boolean"
         },
         "last": {
           "type": "boolean"
@@ -54,8 +50,20 @@
           "type": "string",
           "description": "已保存配置、游标、列表或接口配置名称。"
         },
-        "num": {
-          "type": "integer"
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "index": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false,
+          "description": "Protocol query controls; use 1-based query.index instead of legacy args.num and query.limit instead of args.limit."
         },
         "time_unit": {
           "type": "string",
@@ -100,7 +108,7 @@
   "additionalProperties": false,
   "description": "apb.query: 查询 APB transfer。",
   "x-purpose": "查询 APB transfer。",
-  "x-how_it_works": "按 APB 配置扫描 PSEL/PENABLE/PREADY 等握手和地址数据。",
+  "x-how_it_works": "按 APB 配置扫描 PSEL/PENABLE/PREADY 等握手和地址数据；第 N 个 transfer 用 1-based query.index，多条用 query.limit。",
   "x-when_to_use": "抽取 APB 读写访问。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name; use query.index / query.limit; do not use args.num or args.limit"
 }

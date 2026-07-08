@@ -59,5 +59,5 @@
   "x-purpose": "清理过期 session。",
   "x-how_it_works": "扫描 session 管理状态并回收可释放项。",
   "x-when_to_use": "避免长期运行时积累无用资源。",
-  "x-arg_contract_notes": "no required args"
+  "x-arg_contract_notes": "none"
 }

@@ -323,7 +323,7 @@ def xverif_debug_get_schema(action: str, kind: str = "request") -> dict:
 
 
 @xverif_tool("debug")
-def xverif_debug_raw_request(request: dict, output_format: str = "xout") -> dict:
+def xverif_debug_raw_request(request: dict, output_format: str = "xout") -> Any:
     """Run a complete xdebug JSON request (one-shot, no session).
 
     This tool does NOT use sessions. For session-based queries, use
@@ -331,7 +331,7 @@ def xverif_debug_raw_request(request: dict, output_format: str = "xout") -> dict
 
     Args:
         request: A full xdebug JSON request object with api_version, action, args, etc.
-        output_format: "json" (default), "xout", or "envelope".
+        output_format: "xout" (default), "json", or "envelope".
     """
     if not isinstance(request, dict):
         return _tool_error("INVALID_ARGUMENT", "request must be a JSON object")

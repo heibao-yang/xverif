@@ -45,9 +45,6 @@
           "type": "string",
           "description": "Clock period for half-period value comparison, e.g. '10ns' (default '10ns')"
         },
-        "limits": {
-          "type": "object"
-        },
         "signal": {
           "type": "string",
           "description": "目标信号路径。"
@@ -143,7 +140,7 @@
   "additionalProperties": false,
   "description": "trace.active_driver_chain: 展开 active driver 链。",
   "x-purpose": "展开 active driver 链。",
-  "x-how_it_works": "从 signal/time 递归追溯 active driver。",
+  "x-how_it_works": "从 signal/time 递归追溯 active driver；深度限制写 top-level limits.max_depth。",
   "x-when_to_use": "给出跨级根因链。",
-  "x-arg_contract_notes": "required: signal, time"
+  "x-arg_contract_notes": "required: signal, time; do not use args.depth"
 }

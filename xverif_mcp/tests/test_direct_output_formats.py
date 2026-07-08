@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from xverif_mcp.adapters.xdebug import XverifDebugAdapter
 from xverif_mcp.runner import StatelessCliRunner
 
 
@@ -25,7 +26,12 @@ def _make_fake_xdebug(dirpath: Path,
         f'XOUT_RESPONSE = {json.dumps(xout_response)}\n'
         f'JSON_RESPONSE = {json.dumps(json_response)}\n'
         'args = sys.argv[1:]\n'
-        'if "--json" in args:\n'
+        'stdin = sys.stdin.read()\n'
+        'try:\n'
+        '    req = json.loads(stdin) if stdin.strip() else {}\n'
+        'except Exception:\n'
+        '    req = {}\n'
+        'if "--json" in args or req.get("output", {}).get("format") == "json":\n'
         '    print(JSON_RESPONSE)\n'
         'else:\n'
         '    print(XOUT_RESPONSE, end="")\n'
@@ -106,3 +112,34 @@ class TestXverifOutputFormats:
         assert isinstance(result, dict)
         assert not result.get("ok")
         assert result["error"]["code"] == "XVERIF_CLI_FAILED"
+
+    def test_xdebug_raw_adapter_xout_returns_backend_text(self, tmp_path, monkeypatch):
+        script = _make_fake_xdebug(tmp_path)
+        monkeypatch.setattr(
+            StatelessCliRunner,
+            "tool_path",
+            lambda self, tool: str(script),
+        )
+        adapter = XverifDebugAdapter()
+        result = adapter.request(
+            {"api_version": "xdebug.v1", "action": "actions"},
+            output_format="xout",
+        )
+        assert isinstance(result, str)
+        assert result.startswith("@xdebug.")
+
+    def test_xdebug_raw_adapter_json_returns_dict(self, tmp_path, monkeypatch):
+        script = _make_fake_xdebug(tmp_path)
+        monkeypatch.setattr(
+            StatelessCliRunner,
+            "tool_path",
+            lambda self, tool: str(script),
+        )
+        adapter = XverifDebugAdapter()
+        result = adapter.request(
+            {"api_version": "xdebug.v1", "action": "actions"},
+            output_format="json",
+        )
+        assert isinstance(result, dict)
+        assert result["ok"] is True
+        assert result["summary"]["format"] == "json"

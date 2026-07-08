@@ -58,6 +58,7 @@
 - 所有对象默认收紧 `additionalProperties:false`，除非确实需要透传扩展。
 - enum 值必须和 runtime 分支完全一致。
 - `time_range`、`output.path`、`limit`、`stream`、`direction` 等标准字段按现有词典使用，不引入同义别名。
+- 不要为了 AI 误用保留旧 alias。发现常见误用时，优先通过 action-specific schema、错误提示、最小正确模板和错误反例修复；例如 APB/AXI query 使用 `query.index`，active-driver 链深度使用 top-level `limits.max_depth`。
 - response schema 必须覆盖 summary/data/error 的稳定字段。
 
 ## 编写 examples

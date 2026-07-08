@@ -75,5 +75,5 @@
   "x-purpose": "强制移除指定 session。",
   "x-how_it_works": "按 target.session_id 清理记录和关联资源。",
   "x-when_to_use": "处理异常残留 session。",
-  "x-arg_contract_notes": "no required args"
+  "x-arg_contract_notes": "required: target.session_id"
 }

@@ -40,7 +40,18 @@ public:
         std::string n = a.value("name", "");
         if (n.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
         xdebug_waveform::ListManager lm;
-        std::string signal = a.value("signal", a.value("index", ""));
+        std::string signal;
+        if (a.contains("signal") && a["signal"].is_string()) {
+            signal = a["signal"].get<std::string>();
+        } else if (a.contains("index")) {
+            if (a["index"].is_number_integer()) {
+                signal = std::to_string(a["index"].get<int>());
+            } else if (a["index"].is_string()) {
+                signal = a["index"].get<std::string>();
+            } else {
+                return Json({{"error","INVALID_REQUEST"},{"message","args.index must be integer or string"}});
+            }
+        }
         if (signal.empty())
             return Json({{"error","MISSING_FIELD"},{"message","args.signal or args.index"}});
         if (!lm.del_signal(xdebug_waveform::g_session_id, n, signal))

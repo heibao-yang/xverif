@@ -36,23 +36,19 @@
         "format": {
           "type": "string",
           "enum": [
-            "h",
-            "hex",
-            "b",
-            "bin",
-            "binary",
-            "d",
-            "dec",
-            "decimal",
-            "array_indexed",
-            "json",
             "tsv",
             "csv",
-            "u64bin"
-          ]
+            "xout"
+          ],
+          "description": "stream.export file format."
         },
         "kind": {
           "type": "string",
+          "enum": [
+            "transfer",
+            "packet",
+            "packet_beats"
+          ],
           "description": "导出或查询的结果类型。"
         },
         "limit": {
@@ -139,7 +135,7 @@
   "additionalProperties": false,
   "description": "stream.export: 导出 stream 查询结果。",
   "x-purpose": "导出 stream 查询结果。",
-  "x-how_it_works": "运行 stream query 后按 kind/format 写出。packet_beats 需要 output.path。",
+  "x-how_it_works": "运行 stream query 后按 kind/format 写出；kind 只能是 transfer、packet、packet_beats。",
   "x-when_to_use": "把流数据输出给外部脚本。",
-  "x-arg_contract_notes": "required: stream; when kind=packet_beats: output"
+  "x-arg_contract_notes": "required: stream; kind: transfer / packet / packet_beats; format: tsv / csv / xout; when kind=packet_beats: output"
 }
