@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "protocol_action_helpers.h"
 
 #include "waveform/apb/apb_manager.h"
 #include "waveform/apb/apb_analyzer.h"
@@ -39,7 +40,7 @@ public:
         }
         xdebug_waveform::ApbConfig cfg;
         if (!am.get_apb(xdebug_waveform::g_session_id, name, cfg))
-            return Json({{"error","CONFIG_NOT_FOUND"},{"message",name}});
+            return protocol_config_not_found_error(action_name(), "apb", name);
         Json out; out["name"] = name;
         out["sampling_mode"] = "clock_edge";
         out["clock"] = cfg.clock_sample.clock;

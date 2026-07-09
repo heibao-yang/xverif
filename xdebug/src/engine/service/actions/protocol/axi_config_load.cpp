@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "protocol_action_helpers.h"
 
 #include "waveform/apb/apb_manager.h"
 #include "waveform/apb/apb_analyzer.h"
@@ -26,18 +27,23 @@ public:
         using namespace xdebug_waveform;
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
-        if (name.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
+        if (name.empty()) return protocol_missing_name_error(action_name(), "axi");
 
         nlohmann::json cfg_j; std::string err;
         if (!load_config_from_args(a, cfg_j, err))
-            return Json({{"error","INVALID_REQUEST"},{"message",err}});
+            return protocol_invalid_arg_error(action_name(), "args.config",
+                                              err,
+                                              "inline args.config object or readable args.config_path");
 
         const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", "sample_offset", nullptr};
         for (int i = 0; legacy[i]; ++i) {
             if (cfg_j.contains(legacy[i])) {
-                return Json({{"error","INVALID_REQUEST"},
-                             {"invalid_arg", std::string("config.") + legacy[i]},
-                             {"message","legacy clock sampling field is not supported; use config.clock, config.edge, and config.sample_point"}});
+                return protocol_invalid_arg_error(
+                    action_name(),
+                    std::string("config.") + legacy[i],
+                    "legacy clock sampling field is not supported",
+                    "use config.clock, config.edge, and config.sample_point",
+                    {{"did_you_mean", Json::array({"config.clock", "config.edge", "config.sample_point"})}});
             }
         }
 
@@ -51,8 +57,11 @@ public:
         for (int i = 0; reqs[i]; ++i) {
             if (!cfg_j.contains(reqs[i]) || !cfg_j[reqs[i]].is_string() ||
                 cfg_j[reqs[i]].get<std::string>().empty())
-                return Json({{"error","INVALID_REQUEST"},
-                    {"message",std::string("missing or empty field: ")+reqs[i]}});
+                return protocol_invalid_arg_error(
+                    action_name(),
+                    std::string("config.") + reqs[i],
+                    std::string("missing or empty field: ") + reqs[i],
+                    "non-empty AXI signal path");
         }
 
         AxiConfig cfg; cfg.name = name;
@@ -60,20 +69,31 @@ public:
         if (!parse_clock_edge_kind(cfg_j.value("edge", std::string("negedge")),
                                    cfg.clock_sample.edge,
                                    err)) {
-            return Json({{"error","INVALID_REQUEST"},{"message",err}});
+            return protocol_invalid_enum_error(
+                action_name(), "config.edge", err,
+                Json::array({"posedge", "negedge", "dual"}));
         }
         if (cfg_j.contains("sample_point")) {
             if (!cfg_j["sample_point"].is_string())
-                return Json({{"error","INVALID_REQUEST"},{"message","config.sample_point must be before or after"}});
+                return protocol_invalid_enum_error(
+                    action_name(), "config.sample_point",
+                    "config.sample_point must be before or after",
+                    Json::array({"before", "after"}));
             cfg.clock_sample.has_sample_point = true;
             if (!parse_clock_sample_point_kind(cfg_j["sample_point"].get<std::string>(),
                                                cfg.clock_sample.sample_point,
                                                err))
-                return Json({{"error","INVALID_REQUEST"},{"message",err}});
+                return protocol_invalid_enum_error(
+                    action_name(), "config.sample_point", err,
+                    Json::array({"before", "after"}));
         }
         if (cfg.clock_sample.edge == ClockEdgeKind::Negedge &&
             cfg.clock_sample.has_sample_point)
-            return Json({{"error","INVALID_REQUEST"},{"message","config.sample_point is only valid with edge:posedge or edge:dual"}});
+            return protocol_invalid_arg_error(
+                action_name(),
+                "config.sample_point",
+                "config.sample_point is only valid with edge:posedge or edge:dual",
+                "omit sample_point for negedge, or set config.edge to posedge/dual");
         cfg.rst_n = cfg_j["rst_n"].get<std::string>();
         cfg.awvalid=cfg_j["awvalid"]; cfg.awready=cfg_j["awready"];
         cfg.awaddr=cfg_j["awaddr"]; cfg.awid=cfg_j["awid"];
@@ -91,7 +111,9 @@ public:
 
         AxiManager am;
         if (!am.create_axi(g_session_id, cfg))
-            return Json({{"error","CREATE_FAILED"},{"message","failed to save AXI config"}});
+            return make_handler_error("ACTION_FAILED", "failed to save AXI config",
+                                      {{"cause_code", "CREATE_FAILED"},
+                                       {"correct_example", protocol_action_example(action_name())}});
 
         Json out;
         out["summary"] = {{"name", name}, {"status", "loaded"}};

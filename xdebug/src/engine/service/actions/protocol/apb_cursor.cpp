@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "protocol_action_helpers.h"
 
 #include "waveform/apb/apb_manager.h"
 #include "waveform/apb/apb_analyzer.h"
@@ -44,11 +45,13 @@ public:
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
         std::string op = a.value("op", "begin");
-        if (name.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
+        if (name.empty()) return protocol_missing_name_error(action_name(), "apb");
 
         ApbConfig cfg; std::string err;
         if (!ensure_apb_analyzed(name, cfg, err))
-            return Json({{"error","ANALYZE_FAILED"},{"message",err}});
+            return err.rfind("APB config not found:", 0) == 0
+                ? protocol_config_not_found_error(action_name(), "apb", name)
+                : protocol_analyze_error(action_name(), "apb", name, err);
 
         std::string dir = a.value("direction", "all");
         int filter = (dir == "write") ? 1 : (dir == "read") ? 2 : 0;
@@ -59,7 +62,10 @@ public:
         else if (op == "next") ok = g_apb_analyzer.cursor_next(name, filter, txn);
         else if (op == "prev" || op == "pre") ok = g_apb_analyzer.cursor_prev(name, filter, txn);
         else if (op == "last") ok = g_apb_analyzer.cursor_last(name, filter, txn);
-        else return Json({{"error","INVALID_REQUEST"},{"message","op must be begin/next/prev/last"}});
+        else return protocol_invalid_enum_error(
+            action_name(), "args.op",
+            "op must be begin, next, prev, or last",
+            Json::array({"begin", "next", "prev", "last"}));
 
         Json out;
         out["summary"] = {{"name",name},{"op",op},{"direction",dir},{"found",ok}};

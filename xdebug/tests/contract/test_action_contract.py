@@ -689,6 +689,99 @@ def test_event_handler_errors_include_current_entry_examples(
 
 
 @pytest.mark.contract
+def test_protocol_handler_errors_include_current_entry_examples(
+    cli_runner: CliRunner,
+    xdebug_root: Path,
+) -> None:
+    fsdb = xdebug_root / "testdata" / "waveform" / "ai_complex_wave" / "out" / "waves.fsdb"
+    session_name = "protocol_error_contract"
+    opened = cli_runner.run(
+        {
+            "api_version": "xdebug.v1",
+            "action": "session.open",
+            "target": {"fsdb": str(fsdb)},
+            "args": {"name": session_name},
+        },
+        output_format="json",
+        timeout_sec=120,
+    )
+    assert opened.ok, opened.stdout_raw + opened.stderr_raw
+    session = opened.response.get("session") or opened.response["data"]["session"]
+    target = {"session_id": session.get("id") or session.get("session_id") or session_name}
+    try:
+        cases = [
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "axi.config.list",
+                    "target": target,
+                    "args": {"name": "missing_axi"},
+                },
+                "CONFIG_NOT_FOUND",
+                "args.name",
+                "axi.config.list",
+            ),
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "apb.config.list",
+                    "target": target,
+                    "args": {"name": "missing_apb"},
+                },
+                "CONFIG_NOT_FOUND",
+                "args.name",
+                "apb.config.list",
+            ),
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "axi.config.load",
+                    "target": target,
+                    "args": {"name": "bad_axi", "config": {"clk": "top.clk"}},
+                },
+                "INVALID_ARGUMENT",
+                "config.clk",
+                "axi.config.load",
+            ),
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "axi.export",
+                    "target": target,
+                    "args": {
+                        "name": "missing_axi",
+                        "time_range": {"begin": "0ns", "end": "10ns"},
+                        "output": {"file_format": "tsv"},
+                    },
+                },
+                "CONFIG_NOT_FOUND",
+                "args.name",
+                "axi.export",
+            ),
+        ]
+        for request, code, invalid_arg, example_action in cases:
+            result = cli_runner.run(request, output_format="json", timeout_sec=120)
+            assert not result.ok, result.stdout_raw + result.stderr_raw
+            error = result.response["error"]
+            assert error["code"] == code
+            assert error["error_layer"] == "handler"
+            assert error["invalid_arg"] == invalid_arg
+            assert "expected" in error
+            assert "correct_example" in error
+            assert error["correct_example"]["action"] == example_action
+    finally:
+        cli_runner.run(
+            {
+                "api_version": "xdebug.v1",
+                "action": "session.close",
+                "target": target,
+            },
+            output_format="json",
+            timeout_sec=120,
+        )
+
+
+@pytest.mark.contract
 def test_rc_and_source_handler_errors_include_repair_hints(
     cli_runner: CliRunner,
     xdebug_root: Path,

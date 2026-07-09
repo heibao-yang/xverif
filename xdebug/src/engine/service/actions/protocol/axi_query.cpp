@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "protocol_action_helpers.h"
 
 #include "waveform/apb/apb_manager.h"
 #include "waveform/apb/apb_analyzer.h"
@@ -78,11 +79,13 @@ public:
         using namespace xdebug_waveform;
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
-        if (name.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
+        if (name.empty()) return protocol_missing_name_error(action_name(), "axi");
 
         AxiConfig cfg; std::string err;
         if (!ensure_axi_analyzed(name, cfg, err))
-            return Json({{"error","ANALYZE_FAILED"},{"message",err}});
+            return err.rfind("AXI config not found:", 0) == 0
+                ? protocol_config_not_found_error(action_name(), "axi", name)
+                : protocol_analyze_error(action_name(), "axi", name, err);
 
         std::string dir = a.value("direction", "write");
         bool is_write = (dir != "read");
@@ -99,11 +102,15 @@ public:
             uint64_t addr = 0;
             std::string parse_err;
             if (!parse_user_uint64_literal(addr_str, addr, parse_err))
-                return Json({{"error","VALUE_FORMAT_INVALID"},{"message",parse_err}});
+                return protocol_invalid_arg_error(action_name(), "args.address",
+                                                  parse_err,
+                                                  "known integer or SystemVerilog literal address");
             if (!id_str.empty()) {
                 uint64_t id_value = 0;
                 if (!parse_user_uint64_literal(id_str, id_value, parse_err))
-                    return Json({{"error","VALUE_FORMAT_INVALID"},{"message",parse_err}});
+                    return protocol_invalid_arg_error(action_name(), "args.id",
+                                                      parse_err,
+                                                      "known integer or SystemVerilog literal id");
                 id_str = std::to_string(id_value);
             }
             if (!id_str.empty()) {

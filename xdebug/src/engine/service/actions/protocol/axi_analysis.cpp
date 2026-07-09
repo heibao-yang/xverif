@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "protocol_action_helpers.h"
 
 #include "waveform/apb/apb_manager.h"
 #include "waveform/apb/apb_analyzer.h"
@@ -43,11 +44,13 @@ public:
         using namespace xdebug_waveform;
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
-        if (name.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
+        if (name.empty()) return protocol_missing_name_error(action_name(), "axi");
 
         AxiConfig cfg; std::string err;
         if (!ensure_axi_analyzed(name, cfg, err))
-            return Json({{"error","ANALYZE_FAILED"},{"message",err}});
+            return err.rfind("AXI config not found:", 0) == 0
+                ? protocol_config_not_found_error(action_name(), "axi", name)
+                : protocol_analyze_error(action_name(), "axi", name, err);
 
         std::string analysis = a.value("analysis", "latency");
         std::string dir = a.value("direction", "all");
@@ -59,7 +62,9 @@ public:
             AxiStatResult stat;
             if (!g_axi_analyzer.get_outstanding_stats(name, filter,
                     id_str.empty() ? nullptr : id_str.c_str(), stat))
-                return Json({{"error","ANALYSIS_FAILED"},{"message","outstanding analysis failed"}});
+                return make_handler_error("ACTION_FAILED", "outstanding analysis failed",
+                                          {{"cause_code", "ANALYSIS_FAILED"},
+                                           {"correct_example", protocol_action_example(action_name())}});
             out["summary"] = {{"name",name},{"analysis","osd"},{"max",stat.max},
                 {"min",stat.min},{"avg",stat.avg},{"samples",(int)stat.samples}};
             out["analysis"] = "osd";
@@ -69,7 +74,9 @@ public:
             AxiStatResult stat;
             if (!g_axi_analyzer.get_latency_stats(name, filter,
                     id_str.empty() ? nullptr : id_str.c_str(), stat))
-                return Json({{"error","ANALYSIS_FAILED"},{"message","latency analysis failed"}});
+                return make_handler_error("ACTION_FAILED", "latency analysis failed",
+                                          {{"cause_code", "ANALYSIS_FAILED"},
+                                           {"correct_example", protocol_action_example(action_name())}});
             out["summary"] = {{"name",name},{"analysis","latency"},{"max",stat.max},
                 {"min",stat.min},{"avg",stat.avg},{"samples",(int)stat.samples}};
             out["analysis"] = "latency";

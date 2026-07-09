@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "protocol_action_helpers.h"
 
 #include "waveform/apb/apb_manager.h"
 #include "waveform/apb/apb_analyzer.h"
@@ -27,12 +28,12 @@ public:
         using namespace xdebug_waveform;
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
-        if (name.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
+        if (name.empty()) return protocol_missing_name_error(action_name(), "axi");
 
         AxiManager am;
         AxiConfig cfg;
         if (!am.get_axi(g_session_id, name, cfg))
-            return Json({{"error","CONFIG_NOT_FOUND"},{"message","AXI config not found: " + name}});
+            return protocol_config_not_found_error(action_name(), "axi", name);
 
         Json tr = a.value("time_range", Json::object());
         std::string begin_s;
@@ -42,21 +43,30 @@ public:
             end_s = tr.value("end", std::string());
         }
         if (begin_s.empty() || end_s.empty())
-            return Json({{"error","MISSING_FIELD"},{"message","axi.export requires args.time_range.begin/end"}});
+            return make_handler_error(
+                "MISSING_FIELD",
+                "axi.export requires args.time_range.begin/end",
+                {{"invalid_arg", "args.time_range"},
+                 {"expected", "args.time_range.begin and args.time_range.end"},
+                 {"correct_example", protocol_action_example(action_name())}});
 
         npiFsdbTime begin = 0, end = 0;
         std::string time_err;
         if (!parse_user_time(begin_s.c_str(), false, begin, time_err))
-            return Json({{"error","TIME_SPEC_INVALID"},{"message",time_err}});
+            return protocol_time_error(action_name(), "args.time_range.begin", time_err);
         if (!parse_user_time(end_s.c_str(), true, end, time_err))
-            return Json({{"error","TIME_SPEC_INVALID"},{"message",time_err}});
+            return protocol_time_error(action_name(), "args.time_range.end", time_err);
         if (end < begin)
-            return Json({{"error","TIME_SPEC_INVALID"},{"message","axi.export end time is before begin time"}});
+            return protocol_time_error(action_name(), "args.time_range",
+                                       "axi.export end time is before begin time");
 
         Json output = a.value("output", Json::object());
         std::string format = output.value("file_format", std::string("tsv"));
         if (format != "tsv" && format != "csv")
-            return Json({{"error","INVALID_REQUEST"},{"message","output.file_format must be tsv or csv"}});
+            return protocol_invalid_enum_error(
+                action_name(), "args.output.file_format",
+                "output.file_format must be tsv or csv",
+                Json::array({"tsv", "csv"}));
 
         std::string output_prefix = output.value("path", std::string());
         if (output_prefix.empty()) {
@@ -71,7 +81,9 @@ public:
         result.format = format;
         std::string error;
         if (!exporter.scan(g_fsdb_file, cfg, begin, end, result, error))
-            return Json({{"error","ANALYZE_FAILED"},{"message",error}});
+            return make_handler_error("ACTION_FAILED", error,
+                                      {{"cause_code", "ANALYZE_FAILED"},
+                                       {"correct_example", protocol_action_example(action_name())}});
         result.format = format;
 
         auto txn_json = [](const AxiExportTransaction& txn) {
@@ -127,7 +139,11 @@ public:
 
         std::string write_file, read_file, meta_file;
         if (!exporter.write_files(output_prefix, result, write_file, read_file, meta_file, error))
-            return Json({{"error","EXPORT_FAILED"},{"message",error}});
+            return make_handler_error("ACTION_FAILED", error,
+                                      {{"cause_code", "EXPORT_FAILED"},
+                                       {"invalid_arg", "args.output.path"},
+                                       {"expected", "writable output path prefix"},
+                                       {"correct_example", protocol_action_example(action_name())}});
 
         Json out;
         summary["output"] = {{"path", output_prefix},
