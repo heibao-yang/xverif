@@ -57,7 +57,7 @@
 - 需要资源选择时优先使用 `target`；已打开 session 使用 `target.session_id`。
 - 所有对象默认收紧 `additionalProperties:false`，除非确实需要透传扩展。
 - enum 值必须和 runtime 分支完全一致。
-- `time_range`、`output.path`、`limit`、`stream`、`direction` 等标准字段按现有词典使用，不引入同义别名。
+- `time_range`、`output.path`、`line_limit`、`stream`、`direction` 等标准字段按现有词典使用，不引入同义别名。
 - 不要为了 AI 误用保留旧 alias。发现常见误用时，优先通过 action-specific schema、错误提示、最小正确模板和错误反例修复；例如 APB/AXI query 使用 `query.index`，active-driver 链深度使用 top-level `limits.max_depth`。
 - response schema 必须覆盖 summary/data/error 的稳定字段。
 - 参数错误路径必须设计清楚：schema 层负责结构性错误，handler 层负责语义错误；两层都应返回可恢复字段，尤其是 `invalid_arg` 和 `correct_example`。
@@ -94,7 +94,7 @@
 - 在对应 `register_*_handlers.cpp` 注册。
 - handler 接收已校验 request，但仍要检查业务语义，例如 signal 不存在、时间窗口为空、资源不匹配。
 - 错误返回使用稳定 error code，不用自由文本当机器合同。
-- 大数据默认摘要化，详细数据通过 action-specific include 或 limit 控制。
+- 大数据默认摘要化，详细数据通过 action-specific `line_limit`、`args.output.verbose` 或 export action 控制；不要新增 public `include_*` 或裸 `limit`。
 
 ## 更新 docs 和 skill
 

@@ -99,7 +99,9 @@ common_blocks:
 
 ```text
 MISSING_FIELD
-INVALID_REQUEST
+INVALID_ARGUMENT
+INVALID_ENUM
+INVALID_TIME
 INVALID_TARGET
 RESOURCE_REQUIRED
 SESSION_NOT_FOUND
@@ -107,9 +109,11 @@ SESSION_ID_EXISTS
 SESSION_UNHEALTHY
 SIGNAL_NOT_FOUND
 SOURCE_NOT_FOUND
-TIME_SPEC_INVALID
 TIME_RANGE_INVALID
 TIME_OUT_OF_RANGE
+CONFIG_NOT_FOUND
+LIST_NOT_FOUND
+PRECONDITION_FAILED
 CURSOR_NOT_FOUND
 CLOCK_OFFSET_UNSUPPORTED
 EXPR_PARSE_FAILED
@@ -800,7 +804,7 @@ event config 字段：`name`、`clock`、`rst_n`、`edge`、`sample_point`、`si
 | `summary.last` | string | 最后一条时间 |
 | `summary.aggregate_count` | number | aggregate count |
 | `summary.group_count` | number | group_by 组数 |
-| `summary.limited` | boolean | aggregate 是否受 limit 影响 |
+| `summary.limited` | boolean | aggregate 是否受 `line_limit` 影响 |
 | `data.examples[]` | array | compact 默认 |
 | `data.events[]` | array | preview 或 verbose |
 | `data.aggregate` | object | aggregate 请求时存在 |
@@ -1225,7 +1229,7 @@ finding type：
 | `summary.finding_count` | number | finding 数 |
 | `data.finding_count` | number | finding 数 |
 | `data.findings[]` | array | findings |
-| `data.truncated` | boolean | 是否达到 `limit` |
+| `data.truncated` | boolean | 是否达到 `line_limit` |
 
 finding types：
 

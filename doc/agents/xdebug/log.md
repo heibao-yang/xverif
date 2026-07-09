@@ -10,3 +10,9 @@
 
 - xverif skill 拆分为 `xverif-cli` 和 `xverif-mcp` 后，更新 `action-development.md` 的 skill 同步清单。
 - 新增/修改 xdebug action 时，需要同时检查 CLI JSON envelope 文档和 MCP tool 参数壳文档是否需要同步。
+
+## 2026-07-09
+
+- 执行 xdebug 错误反馈、输出合同与表达式统一计划后，同步更新说明书中的 public 参数词典和错误提示要求。
+- `schema-validation.md`、`coding-standards.md`、`action-development.md` 改为使用 `line_limit`、`args.output.verbose` 和 export action 描述大结果控制，移除旧 public `include_*` / 裸 `limit` 说法。
+- skill 文档同步强调 `INVALID_TIME`、`correct_example`、`next_actions` 等结构化错误字段优先用于修复下一次请求。
