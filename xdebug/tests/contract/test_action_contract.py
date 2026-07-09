@@ -405,10 +405,10 @@ def test_bad_parameter_runtime_errors_include_ai_repair_hints(
                 "target": target,
                 "args": {
                     "clock": "ai_complex_top.clk",
+                    "signals": {"a": "ai_complex_top.sig_a"},
                     "conditions": [
                         {
                             "expr": "a == 8'h22",
-                            "signals": {"a": "ai_complex_top.sig_a"},
                             "mode": "always",
                         }
                     ],

@@ -58,6 +58,23 @@
           ],
           "description": "posedge/dual 时的采样点：before 或 after；posedge 默认推荐 before。"
         },
+        "signals": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "信号列表，或 alias 到信号路径的映射。"
+        },
         "time_range": {
           "type": "object",
           "properties": {
@@ -87,7 +104,8 @@
       "additionalProperties": false,
       "required": [
         "clock",
-        "conditions"
+        "conditions",
+        "signals"
       ]
     },
     "limits": {
@@ -112,7 +130,7 @@
   "additionalProperties": false,
   "description": "window.verify: 按 clock 在窗口内验证条件。",
   "x-purpose": "按 clock 在窗口内验证条件。",
-  "x-how_it_works": "按 clock edge 采样 signals，逐个 condition 统计 pass/fail/unknown。",
+  "x-how_it_works": "按 clock edge 采样 args.signals 中的 alias，逐个 conditions[].expr 统计 pass/fail/unknown。",
   "x-when_to_use": "判断协议或断言类条件是否持续满足。",
-  "x-arg_contract_notes": "required: clock, conditions"
+  "x-arg_contract_notes": "required: clock, conditions, signals"
 }

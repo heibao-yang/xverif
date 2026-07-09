@@ -1421,7 +1421,8 @@
       "required_args": [
         "conditions",
         "time",
-        "clock"
+        "clock",
+        "signals"
       ]
     },
     {
@@ -1444,7 +1445,8 @@
       },
       "required_args": [
         "clock",
-        "conditions"
+        "conditions",
+        "signals"
       ]
     },
     {

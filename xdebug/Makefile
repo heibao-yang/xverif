@@ -183,6 +183,7 @@ WAVEFORM_SRCS = src/waveform/service/action_support.cpp \
                 src/waveform/common/xdebug_waveform_paths.cpp \
                 src/waveform/common/time_spec.cpp \
                 src/waveform/common/clock_sampling.cpp \
+                src/waveform/common/expression.cpp \
                 src/waveform/apb/apb_manager.cpp \
                 src/waveform/apb/apb_analyzer.cpp \
                 src/waveform/axi/axi_manager.cpp \
@@ -194,6 +195,7 @@ WAVEFORM_SRCS = src/waveform/service/action_support.cpp \
                 src/waveform/stream/stream_config.cpp \
                 src/waveform/stream/stream_manager.cpp \
                 src/waveform/stream/stream_expr.cpp \
+                src/waveform/stream/stream_signal_values.cpp \
                 src/waveform/stream/stream_analyzer.cpp \
                 src/waveform/stream/stream_exporter.cpp
 
@@ -229,7 +231,7 @@ $(BUILD)/%.o: %.cpp
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -DXDEBUG_INTERNAL_ENGINE -c -o $@ $<
 
-unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o $(BUILD)/src/waveform/service/rc_generator.o $(BUILD)/src/waveform/value/logic_value.o $(BUILD)/src/waveform/event/event_expr.o $(BUILD)/src/session/session_catalog.o
+unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o $(BUILD)/src/waveform/service/rc_generator.o $(BUILD)/src/waveform/value/logic_value.o $(BUILD)/src/waveform/event/event_expr.o $(BUILD)/src/waveform/common/expression.o $(BUILD)/src/waveform/stream/stream_expr.o $(BUILD)/src/session/session_catalog.o
 	mkdir -p $(BUILD)/tests
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_core_types tests/unit/test_core_types.cpp $(CORE_OBJS) $(LDFLAGS)
 	$(BUILD)/tests/test_core_types
@@ -257,8 +259,10 @@ unit-test: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)
 	$(BUILD)/tests/test_common_blocks
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_logic_value tests/unit/test_logic_value.cpp $(BUILD)/src/waveform/value/logic_value.o
 	$(BUILD)/tests/test_logic_value
-	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_event_expr tests/unit/test_event_expr.cpp $(BUILD)/src/waveform/event/event_expr.o
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_event_expr tests/unit/test_event_expr.cpp $(BUILD)/src/waveform/event/event_expr.o $(BUILD)/src/waveform/common/expression.o $(BUILD)/src/waveform/stream/stream_expr.o $(BUILD)/src/waveform/value/logic_value.o
 	$(BUILD)/tests/test_event_expr
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_expression tests/unit/test_expression.cpp $(BUILD)/src/waveform/common/expression.o $(BUILD)/src/waveform/stream/stream_expr.o $(BUILD)/src/waveform/value/logic_value.o
+	$(BUILD)/tests/test_expression
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_rc_generator tests/unit/test_rc_generator.cpp $(BUILD)/src/waveform/service/rc_generator.o
 	$(BUILD)/tests/test_rc_generator
 

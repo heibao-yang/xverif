@@ -11,6 +11,6 @@
       "begin": "0ns",
       "end": "1us"
     },
-    "max_edges": 256
+    "line_limit": 256
   }
 }

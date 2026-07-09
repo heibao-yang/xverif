@@ -14,6 +14,7 @@ using Json = nlohmann::ordered_json;
 
 struct StreamConfig {
     std::string name;
+    std::map<std::string, std::string> signals;
     ClockSampleSpec clock_sample;
     std::string reset;
     std::string vld;

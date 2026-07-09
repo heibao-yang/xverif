@@ -56,7 +56,7 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
             "index": {"type": "integer", "minimum": 1},
         },
         "additionalProperties": False,
-        "description": "Protocol query controls; use 1-based query.index and query.line_limit; legacy args.num, args.limit, and query.limit are rejected.",
+        "description": "Protocol query controls; use 1-based query.index and query.line_limit; legacy quantity fields are rejected.",
     },
     "match": {
         "type": "object",
@@ -194,8 +194,8 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "value.at": {"edge", "sample_point", "slice_hint"},
     "value.batch_at": {"edge", "sample_point", "slice_hint"},
     "list.value_at": {"edge", "format", "sample_point"},
-    "verify.conditions": {"edge", "sample_point"},
-    "window.verify": {"edge", "line_limit", "sample_point", "time_range"},
+    "verify.conditions": {"edge", "sample_point", "signals"},
+    "window.verify": {"edge", "line_limit", "sample_point", "signals", "time_range"},
 }
 
 

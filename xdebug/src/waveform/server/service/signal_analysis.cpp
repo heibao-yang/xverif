@@ -1,4 +1,5 @@
 #include "../server_internal.h"
+#include "../../common/expression.h"
 
 namespace xdebug_waveform {
 
@@ -319,6 +320,24 @@ std::string counter_bits_from_values(const CounterInput& counter,
     return bits;
 }
 
+bool validate_expression_alias_contract(const std::string& expr, std::string& error) {
+    Expression parsed;
+    std::string parse_error;
+    if (!parsed.parse(expr, parse_error)) {
+        error = parse_error;
+        return false;
+    }
+    std::vector<std::string> bad_aliases =
+        expression_aliases_that_look_like_paths(parsed.aliases());
+    if (!bad_aliases.empty()) {
+        error = "expression operands must be aliases, not direct signal paths: " +
+                bad_aliases.front() +
+                "; put real signal paths in args.signals";
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 Json ai_signal_changes(const Json& args, std::string& error) {
@@ -458,6 +477,7 @@ Json ai_expr_eval_at(const Json& args, std::string& error) {
         error = "expr.eval_at requires args.time/args.at, args.expr and args.signals";
         return Json();
     }
+    if (!validate_expression_alias_contract(expr, error)) return Json();
     ClockSampleSpec clock_sample;
     if (!clock_sample_from_args(args, clock_sample, error)) return Json();
     npiFsdbTime t = 0;
@@ -569,21 +589,20 @@ Json ai_window_verify(const Json& args, std::string& error) {
     }
     npiFsdbTime begin = 0, end = 0;
     if (!json_time_range(args, begin, end, error)) return Json();
-    int max_samples = args.value("max_samples", 1000000);
+    int max_samples = args.value("line_limit", 1000000);
 
-    Json signal_union = Json::object();
+    if (!args.contains("signals") || !args["signals"].is_object()) {
+        error = "window.verify requires args.signals as alias-to-signal-path object";
+        return Json();
+    }
+    Json signal_union = args["signals"];
     for (const auto& cond : args["conditions"]) {
-        if (!cond.contains("expr") || !cond.contains("signals")) {
-            error = "each condition requires expr and signals";
+        if (!cond.contains("expr") || !cond["expr"].is_string()) {
+            error = "each condition requires string expr";
             return Json();
         }
-        for (auto it = cond["signals"].begin(); it != cond["signals"].end(); ++it) {
-            if (signal_union.contains(it.key()) && signal_union[it.key()] != it.value()) {
-                error = "duplicate alias maps to different signals: " + it.key();
-                return Json();
-            }
-            signal_union[it.key()] = it.value();
-        }
+        std::string cond_expr = server_compact_expr_ws(cond.value("expr", std::string()));
+        if (!validate_expression_alias_contract(cond_expr, error)) return Json();
     }
     std::vector<std::string> aliases, paths;
     fsdbSigVec_t handles;
@@ -737,7 +756,7 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
         sample_signals.push_back({aliases[i], paths[i], handles[i]});
     }
 
-    int max_samples = args.value("max_samples", 1000000);
+    int max_samples = args.value("line_limit", 1000000);
     int samples = 0, known = 0, unknown = 0;
     int high_cycles = 0, low_cycles = 0;
     int high_bursts = 0, current_high = 0, max_high_cycles = 0;
@@ -884,7 +903,7 @@ Json ai_counter_statistics(const Json& args, std::string& error) {
         sample_signals.push_back({aliases[i], paths[i], handles[i]});
     }
 
-    int max_samples = args.value("max_samples", 1000000);
+    int max_samples = args.value("line_limit", 1000000);
     int samples = 0;
     bool truncated = false;
     int valid_count = 0, valid_false_count = 0, unknown_count = 0;

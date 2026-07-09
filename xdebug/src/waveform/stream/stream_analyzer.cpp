@@ -146,6 +146,7 @@ struct StreamAnalyzer::Compiled {
     std::map<std::string, StreamExpression> stable_fields;
     std::map<std::string, StreamExpression> beat_fields;
     std::set<std::string> deps;
+    std::map<std::string, std::string> dep_paths;
 };
 
 bool StreamAnalyzer::compile(npiFsdbFileHandle file, const StreamConfig& config, Compiled& c,
@@ -191,8 +192,14 @@ bool StreamAnalyzer::compile(npiFsdbFileHandle file, const StreamConfig& config,
     }
 
     for (const auto& sig : c.deps) {
-        if (!npi_fsdb_sig_by_name(file, sig.c_str(), NULL)) {
-            error = "signal not found: " + sig;
+        auto alias = config.signals.find(sig);
+        if (alias == config.signals.end()) {
+            error = "stream " + config.name + " expression references unknown signal alias: " + sig;
+            return false;
+        }
+        c.dep_paths[sig] = alias->second;
+        if (!npi_fsdb_sig_by_name(file, alias->second.c_str(), NULL)) {
+            error = "signal not found for alias " + sig + ": " + alias->second;
             return false;
         }
     }
@@ -246,21 +253,31 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
     }
     std::vector<ClockSampleSignal> clock_signals;
     for (const auto& sig_name : clock_deps) {
-        npiFsdbSigHandle sig = npi_fsdb_sig_by_name(file, sig_name.c_str(), NULL);
-        if (!sig) {
-            error = "signal not found: " + sig_name;
+        auto path_it = compiled.dep_paths.find(sig_name);
+        if (path_it == compiled.dep_paths.end()) {
+            error = "clock dependency alias missing from stream signals: " + sig_name;
             return false;
         }
-        clock_signals.push_back({sig_name, sig_name, sig});
+        npiFsdbSigHandle sig = npi_fsdb_sig_by_name(file, path_it->second.c_str(), NULL);
+        if (!sig) {
+            error = "signal not found for alias " + sig_name + ": " + path_it->second;
+            return false;
+        }
+        clock_signals.push_back({sig_name, path_it->second, sig});
     }
     std::vector<ClockSampleSignal> sample_signals;
     for (const auto& sig_name : deps) {
-        npiFsdbSigHandle sig = npi_fsdb_sig_by_name(file, sig_name.c_str(), NULL);
-        if (!sig) {
-            error = "signal not found: " + sig_name;
+        auto path_it = compiled.dep_paths.find(sig_name);
+        if (path_it == compiled.dep_paths.end()) {
+            error = "sample dependency alias missing from stream signals: " + sig_name;
             return false;
         }
-        sample_signals.push_back({sig_name, sig_name, sig});
+        npiFsdbSigHandle sig = npi_fsdb_sig_by_name(file, path_it->second.c_str(), NULL);
+        if (!sig) {
+            error = "signal not found for alias " + sig_name + ": " + path_it->second;
+            return false;
+        }
+        sample_signals.push_back({sig_name, path_it->second, sig});
     }
     std::vector<ClockSample> sampled_edges;
     ClockExpressionSampleScanner scanner(file, clock_sample.edge, clock_sample.sample_point);

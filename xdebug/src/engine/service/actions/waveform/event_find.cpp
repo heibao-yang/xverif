@@ -10,6 +10,7 @@
 #include "waveform/list/list_manager.h"
 #include "waveform/list/signal_list.h"
 #include "waveform/export/waveform_exporter.h"
+#include "waveform/common/expression.h"
 #include "waveform/common/xdebug_waveform_paths.h"
 #include "waveform/service/action_support.h"
 #include "waveform/service/rc_generator.h"
@@ -34,6 +35,45 @@ namespace {
 static Json value_object(const std::string& raw) {
     return xdebug_waveform::logic_value_json(
         xdebug_waveform::logic_value_from_fsdb_raw(raw, 'h'));
+}
+
+static Json expression_alias_error(const char* action, const std::string& message) {
+    return {
+        {"error", "INVALID_ARGUMENT"},
+        {"message", message},
+        {"error_layer", "handler"},
+        {"invalid_arg", "args.expr"},
+        {"expected", "use aliases in expr and put real signal paths in args.signals"},
+        {"example_note", "示例仅说明 native xdebug JSON action args 形态；expr 里不要写 top.u.sig 这类真实路径。"},
+        {"correct_example", {
+            {"api_version", "xdebug.v1"},
+            {"action", action},
+            {"target", {{"session_id", "<session_id>"}}},
+            {"args", {
+                {"clock", "top.clk"},
+                {"signals", {{"valid", "top.u.valid"}, {"ready", "top.u.ready"}}},
+                {"expr", "valid && ready"},
+                {"time_range", {{"begin", "0ns"}, {"end", "100ns"}}}
+            }}
+        }}
+    };
+}
+
+static Json validate_expr_aliases(const std::string& action, const std::string& expr) {
+    xdebug_waveform::Expression parsed;
+    std::string error;
+    if (!parsed.parse(expr, error)) {
+        return expression_alias_error(action.c_str(), error);
+    }
+    std::vector<std::string> bad_aliases =
+        xdebug_waveform::expression_aliases_that_look_like_paths(parsed.aliases());
+    if (!bad_aliases.empty()) {
+        return expression_alias_error(
+            action.c_str(),
+            "expression operands must be aliases, not direct signal paths: " +
+            bad_aliases.front() + "; put real signal paths in args.signals");
+    }
+    return Json();
 }
 
 class EventHandler : public EngineActionHandler {
@@ -110,6 +150,8 @@ public:
 
         EventQuery query;
         query.expr = args.value("expr", "");
+        Json expr_error = validate_expr_aliases(action_name(), query.expr);
+        if (!expr_error.is_null()) return expr_error;
         query.begin = tbegin;
         query.end = tend;
         Json limits = request.value("limits", Json::object());

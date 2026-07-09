@@ -717,10 +717,15 @@ def run_nonaxi(xdebug, fsdb):
         checks = r.query("verify.conditions", args={
             "clock": "ai_complex_top.clk",
             "time": "95ns",
+            "signals": {
+                "a": "ai_complex_top.sig_a",
+                "b": "ai_complex_top.sig_b",
+                "xz": "ai_complex_top.xz_bus",
+            },
             "conditions": [
-                {"signal": "ai_complex_top.sig_a", "op": "==", "value": "'h22"},
-                {"signal": "ai_complex_top.sig_b", "op": "==", "value": "'h22"},
-                {"signal": "ai_complex_top.xz_bus", "op": "==", "value": "0"},
+                {"expr": "a == 'h22"},
+                {"expr": "b == 'h22"},
+                {"expr": "xz == 0"},
             ],
         })
         require(checks["summary"]["passed"] == 1 and checks["summary"]["failed"] == 1 and checks["summary"]["unknown"] == 1, "verify.conditions mismatch")
@@ -747,7 +752,8 @@ def run_nonaxi(xdebug, fsdb):
             "edge": "posedge",
             "sample_point": "after",
             "time_range": {"begin": "140ns", "end": "175ns"},
-            "conditions": [{"expr": "valid && !ready", "signals": {"valid": "ai_complex_top.hs_valid", "ready": "ai_complex_top.hs_ready"}, "mode": "always"}],
+            "signals": {"valid": "ai_complex_top.hs_valid", "ready": "ai_complex_top.hs_ready"},
+            "conditions": [{"expr": "valid && !ready", "mode": "always"}],
         })
         require(win["summary"]["all_passed"] is True, "window.verify expected pass")
         require_clock_summary(win, "posedge", "after")
@@ -756,7 +762,8 @@ def run_nonaxi(xdebug, fsdb):
             "edge": "posedge",
             "sample_point": "before",
             "time_range": {"begin": "140ns", "end": "175ns"},
-            "conditions": [{"expr": "valid && !ready", "signals": {"valid": "ai_complex_top.hs_valid", "ready": "ai_complex_top.hs_ready"}, "mode": "eventually"}],
+            "signals": {"valid": "ai_complex_top.hs_valid", "ready": "ai_complex_top.hs_ready"},
+            "conditions": [{"expr": "valid && !ready", "mode": "eventually"}],
         })
         require(offset_win["summary"]["all_passed"] is True,
                 "window.verify positive offset expected eventually pass: {}".format(json.dumps(offset_win, sort_keys=True)))
@@ -765,7 +772,8 @@ def run_nonaxi(xdebug, fsdb):
             "clock": "ai_complex_top.clk",
             "edge": "dual",
             "time_range": {"begin": "140ns", "end": "160ns"},
-            "conditions": [{"expr": "rst", "signals": {"rst": "ai_complex_top.rst_n"}, "mode": "always"}],
+            "signals": {"rst": "ai_complex_top.rst_n"},
+            "conditions": [{"expr": "rst", "mode": "always"}],
         })
         require(dual_win["summary"]["sample_count"] >= 4, "dual edge window should sample both edges")
         require_clock_summary(dual_win, "dual")
@@ -773,7 +781,8 @@ def run_nonaxi(xdebug, fsdb):
             "clock": "ai_complex_top.clk",
             "posedge": True,
             "time_range": {"begin": "140ns", "end": "175ns"},
-            "conditions": [{"expr": "valid", "signals": {"valid": "ai_complex_top.hs_valid"}}],
+            "signals": {"valid": "ai_complex_top.hs_valid"},
+            "conditions": [{"expr": "valid"}],
         }, expect_ok=False)
         require(bad_window_field["error"]["code"] == "INVALID_REQUEST", "legacy posedge should be INVALID_REQUEST")
         require(bad_window_field["data"]["invalid_arg"] == "args.posedge", "legacy posedge should identify args.posedge")

@@ -128,8 +128,8 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
         sample_signals.push_back({aliases[i], paths[i], handles[i]});
     }
 
-    int max_samples = args.value("max_samples", 1000000);
-    int max_events = args.value("max_events", 100000);
+    int max_samples = args.value("line_limit", 1000000);
+    int max_events = args.value("line_limit", 100000);
     int max_findings = args.value("line_limit", 100);
     npiFsdbValType fmt = json_value_format(args);
     char value_prefix = json_value_prefix(fmt);
@@ -338,7 +338,7 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
     std::map<std::string, std::string> stall_data;
     Json findings = Json::array();
     ClockSampleScanner scanner(g_fsdb_file, clock_sample);
-    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', args.value("max_samples", 1000000),
+    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', args.value("line_limit", 1000000),
         [&](const ClockSample& sample) -> bool {
             npiFsdbTime t = sample.time;
             std::map<std::string, std::string> values = clock_sample_value_map(sample_signals, sample.values);
@@ -474,7 +474,7 @@ Json ai_detect_abnormal(const Json& args, std::string& error) {
         parse_user_time("1us", false, stuck_duration, error);
         if (!error.empty()) return Json();
     }
-    int max_findings = args.value("max_findings", 50);
+    int max_findings = args.value("line_limit", 50);
     Json findings = Json::array();
     for (const auto& s : args["signals"]) {
         if (max_findings >= 0 && static_cast<int>(findings.size()) >= max_findings) break;

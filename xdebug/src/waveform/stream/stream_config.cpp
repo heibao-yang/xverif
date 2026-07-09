@@ -52,6 +52,34 @@ bool parse_field_map(const Json& item,
     return true;
 }
 
+bool parse_signal_map(const Json& item,
+                      const std::string& stream_name,
+                      std::map<std::string, std::string>& out,
+                      std::string& error) {
+    auto signals_it = item.find("signals");
+    if (signals_it == item.end() || !signals_it->is_object()) {
+        error = "stream " + stream_name + " requires signals object mapping alias to signal path";
+        return false;
+    }
+    for (auto it = signals_it->begin(); it != signals_it->end(); ++it) {
+        if (!stream_name_valid(it.key())) {
+            error = "invalid signal alias in stream " + stream_name + ": " + it.key();
+            return false;
+        }
+        if (!it.value().is_string() || it.value().get<std::string>().empty()) {
+            error = "stream " + stream_name + " signals." + it.key() +
+                    " must be a non-empty signal path string";
+            return false;
+        }
+        out[it.key()] = it.value().get<std::string>();
+    }
+    if (out.empty()) {
+        error = "stream " + stream_name + " requires at least one signal alias";
+        return false;
+    }
+    return true;
+}
+
 bool is_ident_start(char c) {
     return std::isalpha(static_cast<unsigned char>(c)) || c == '_';
 }
@@ -93,6 +121,11 @@ bool parse_stream_config_json(const Json& item, StreamConfig& config, std::strin
         }
     }
     get_string(item, "name", config.name);
+    if (!stream_name_valid(config.name)) {
+        error = "invalid stream name: " + config.name;
+        return false;
+    }
+    if (!parse_signal_map(item, config.name, config.signals, error)) return false;
     get_string(item, "clock", config.clock_sample.clock);
     get_string(item, "reset", config.reset);
     get_string(item, "vld", config.vld);
@@ -128,10 +161,6 @@ bool parse_stream_config_json(const Json& item, StreamConfig& config, std::strin
         return false;
     }
 
-    if (!stream_name_valid(config.name)) {
-        error = "invalid stream name: " + config.name;
-        return false;
-    }
     if (config.clock_sample.clock.empty()) {
         error = "stream " + config.name + " requires clock";
         return false;
@@ -209,6 +238,8 @@ bool parse_stream_config_json(const Json& item, StreamConfig& config, std::strin
 Json stream_config_json(const StreamConfig& c) {
     Json j;
     j["name"] = c.name;
+    j["signals"] = Json::object();
+    for (const auto& kv : c.signals) j["signals"][kv.first] = kv.second;
     j["clock"] = c.clock_sample.clock;
     j["edge"] = clock_edge_kind_text(c.clock_sample.edge);
     if (c.clock_sample.edge != ClockEdgeKind::Negedge)

@@ -58,7 +58,7 @@
 | `apb.config.list` | stable | waveform | 列出 APB 配置。 | 读取 APB 配置存储；`args:{}` 列全部，`args.name` 显示单个配置详情。 | 查看可用 APB interface 名称。 | args:{} list all; optional name shows one config |
 | `apb.config.load` | stable | waveform | 加载 APB 配置。 | 保存 APB interface 信号映射。 | 定义后续 APB 查询对象。 | required: name; also one of: config / config_path |
 | `apb.cursor` | stable | waveform | 在 APB transfer 间移动游标。 | 基于 APB 查询结果按 op/direction 定位 begin/next/prev 等。 | 交互式浏览 APB 事务。 | required: name, op |
-| `apb.query` | stable | waveform | 查询 APB transfer。 | 按 APB 配置扫描 PSEL/PENABLE/PREADY 等握手和地址数据；第 N 个 transfer 用 1-based `query.index`，多条用 `query.line_limit`。 | 抽取 APB 读写访问。 | required: name<br>use query.index / query.line_limit; do not use args.num, args.limit, or query.limit |
+| `apb.query` | stable | waveform | 查询 APB transfer。 | 按 APB 配置扫描 PSEL/PENABLE/PREADY 等握手和地址数据；第 N 个 transfer 用 1-based `query.index`，多条用 `query.line_limit`。 | 抽取 APB 读写访问。 | required: name<br>use query.index / query.line_limit; do not use legacy quantity fields |
 | `apb.transfer_window` | experimental | waveform | 实验性 APB 窗口分析。 | 围绕指定 APB transfer 返回相关信号窗口。 | 解释单笔 APB 访问现场。 | required: name |
 | `axi.analysis` | stable | waveform | 汇总 AXI 行为。 | 基于 AXI 解析结果统计 channel、latency、stall 等。 | 快速判断 AXI 接口健康度。 | required: name |
 | `axi.export` | stable | waveform | 导出 AXI 数据。 | 按 name 和 time_range 查询 AXI，再按 format/output.path 写出。 | 给外部表格或脚本分析。 | required: name<br>also one of: time_range |
@@ -68,7 +68,7 @@
 | `axi.cursor` | stable | waveform | 在 AXI transfer 间移动游标。 | 基于 AXI 查询结果按 op/direction 定位事务。 | 交互式浏览 AXI 事务。 | required: name, op |
 | `axi.latency_outlier` | experimental | waveform | 实验性 AXI latency 异常。 | 从配对结果中找超过阈值或分布异常的事务。 | 定位慢事务。 | required: name |
 | `axi.outstanding_timeline` | experimental | waveform | 实验性 AXI outstanding 时间线。 | 跟踪请求和响应，统计未完成事务数量随时间变化。 | 发现 outstanding 积压或乱序风险。 | required: name |
-| `axi.query` | stable | waveform | 查询 AXI channel/transaction。 | 按 AXI 配置扫描 valid/ready 和 channel 字段；第 N 个 transaction 用 1-based `query.index`，多条用 `query.line_limit`。 | 抽取 AXI beat/transaction。 | required: name<br>use query.index / query.line_limit; do not use args.num, args.limit, or query.limit |
+| `axi.query` | stable | waveform | 查询 AXI channel/transaction。 | 按 AXI 配置扫描 valid/ready 和 channel 字段；第 N 个 transaction 用 1-based `query.index`，多条用 `query.line_limit`。 | 抽取 AXI beat/transaction。 | required: name<br>use query.index / query.line_limit; do not use legacy quantity fields |
 | `axi.request_response_pair` | experimental | waveform | 实验性 AXI 请求响应配对。 | 用 ID/address/channel 信息把请求与响应关联。 | 分析 latency 和缺失响应。 | required: name |
 | `counter.statistics` | stable | waveform | 统计计数器行为。 | 按 clock/vld/cnt 采样，分析递增、回绕、停顿和异常。 | 判断计数器是否符合预期。 | required: clock, time_range, vld, cnt |
 | `cursor.delete` | stable | waveform | 删除游标。 | 按 name 从 CursorManager 删除记录。 | 清理不再需要的时间标记。 | required: name |
@@ -100,8 +100,11 @@
 | `rc.generate` | stable | waveform | 根据分组生成波形 rc。 | 读取配置并写出 output.path，返回 group/signal 统计。 | 把调试信号集合导入波形工具。 | required: config_path, output |
 | `value.at` | stable | waveform | 读取单个信号在指定时间的值。 | 解析 time/clock，定位 FSDB signal handle，读取该时刻值并格式化。 | 回答某个时间点信号是什么。 | required: signal, time, clock |
 | `value.batch_at` | stable | waveform | 批量读取多个信号值。 | 对 signals 列表按同一 clock/time 执行 FSDB 读取。 | 减少多信号同一时刻检查的开销。 | required: signals, time, clock |
-| `verify.conditions` | stable | waveform | 在单个时间验证条件集合。 | 解析 clock/time，读取条件引用信号并求值。 | 检查某个时间点的多条件事实。 | required: conditions, time, clock |
-| `window.verify` | stable | waveform | 按 clock 在窗口内验证条件。 | 按 clock edge 采样 signals，逐个 condition 统计 pass/fail/unknown。 | 判断协议或断言类条件是否持续满足。 | required: clock, conditions |
+| `verify.conditions` | stable | waveform | 在单个时间验证条件集合。 | 解析 clock/time，按 args.signals 采样 alias，并对 conditions[].expr 求值。 | 检查某个时间点的多条件事实。 | required: conditions, time, clock, signals |
+| `window.verify` | stable | waveform | 按 clock 在窗口内验证条件。 | 按 clock edge 采样 args.signals 中的 alias，逐个 conditions[].expr 统计 pass/fail/unknown。 | 判断协议或断言类条件是否持续满足。 | required: clock, conditions, signals |
+
+Stream 配置必须使用 `signals` map：真实信号路径只写在 `signals` 的 value 里，`clock`、`reset`、`vld`、`rdy`、`bp`、`sop/eop`、`channel_id`、`data`、`*_fields` 只能引用 alias 或 alias 表达式。
+
 | `stream.config.load` | stable | waveform | 加载 stream 配置。 | 把 stream 定义写入 stream manager。 | 定义 valid/ready/data 类流接口。 | also one of: streams / config / config_path / file |
 | `stream.config.list` | stable | waveform | 列出 stream 配置。 | 读取已保存 stream 定义；`args:{}` 列全部，`args.name` 显示单个配置详情。 | 查看可查询的 stream。 | args:{} list all; optional name shows one config |
 | `stream.show` | stable | waveform | 显示 stream 定义和摘要。 | 按 stream 名读取配置并返回字段。 | 确认 stream 绑定了哪些信号。 | required: stream |

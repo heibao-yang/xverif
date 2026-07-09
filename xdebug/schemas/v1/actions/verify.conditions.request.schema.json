@@ -53,6 +53,23 @@
           ],
           "description": "posedge/dual 时的采样点：before 或 after；posedge 默认推荐 before。"
         },
+        "signals": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "信号列表，或 alias 到信号路径的映射。"
+        },
         "time": {
           "type": "string",
           "description": "查询或验证的目标时间点。"
@@ -74,7 +91,8 @@
       "required": [
         "conditions",
         "time",
-        "clock"
+        "clock",
+        "signals"
       ]
     },
     "limits": {
@@ -99,7 +117,7 @@
   "additionalProperties": false,
   "description": "verify.conditions: 在单个时间验证条件集合。",
   "x-purpose": "在单个时间验证条件集合。",
-  "x-how_it_works": "解析 clock/time，读取条件引用信号并求值。",
+  "x-how_it_works": "解析 clock/time，按 args.signals 采样 alias，并对 conditions[].expr 求值。",
   "x-when_to_use": "检查某个时间点的多条件事实。",
-  "x-arg_contract_notes": "required: conditions, time, clock"
+  "x-arg_contract_notes": "required: conditions, time, clock, signals"
 }

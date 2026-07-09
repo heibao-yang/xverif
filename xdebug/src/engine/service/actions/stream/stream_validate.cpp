@@ -112,7 +112,7 @@ public:
             StreamQueryOptions options;
             if (!range_from_args(args, request.value("limits", Json::object()), options, error))
                 return err("TIME_SPEC_INVALID", error);
-            options.limit = args.value("max_edges", 256);
+            options.limit = args.value("line_limit", 256);
             StreamAnalysis analysis;
             if (!analyzer.analyze(g_fsdb_file, config, options, analysis, error))
                 return err(code_for_stream_error(error, "STREAM_ANALYZE_FAILED"), error);

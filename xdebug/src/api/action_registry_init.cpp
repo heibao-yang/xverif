@@ -120,8 +120,8 @@ void apply_arg_contract(ActionSpec& spec) {
         {"trace.load", {"signal"}, 1},
         {"value.at", {"signal", "time", "clock"}, 3},
         {"value.batch_at", {"signals", "time", "clock"}, 3},
-        {"verify.conditions", {"conditions", "time", "clock"}, 3},
-        {"window.verify", {"clock", "conditions"}, 2}
+        {"verify.conditions", {"conditions", "time", "clock", "signals"}, 4},
+        {"window.verify", {"clock", "conditions", "signals"}, 3}
     };
     for (size_t i = 0; i < sizeof(required) / sizeof(required[0]); ++i) {
         if (spec.name == required[i].name) {

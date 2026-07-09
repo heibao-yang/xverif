@@ -30,6 +30,30 @@
 
 namespace xdebug_design {
 namespace {
+
+Json expression_alias_error(const std::string& action, const std::string& message) {
+    Json example_args = {
+        {"clock", "top.clk"},
+        {"time_range", {{"begin", "0ns"}, {"end", "100ns"}}},
+        {"signals", {{"valid", "top.u.valid"}, {"ready", "top.u.ready"}}},
+        {"conditions", Json::array({{{"expr", "valid && ready"}, {"mode", "always"}}})}
+    };
+    return {
+        {"error", "INVALID_ARGUMENT"},
+        {"message", message},
+        {"error_layer", "handler"},
+        {"invalid_arg", "args.conditions[].expr"},
+        {"expected", "use aliases in condition expr and put real signal paths in args.signals"},
+        {"example_note", "示例仅说明 native xdebug JSON action args 形态；expr 里不要写 top.u.sig 这类真实路径。"},
+        {"correct_example", {
+            {"api_version", "xdebug.v1"},
+            {"action", action},
+            {"target", {{"session_id", "<session_id>"}}},
+            {"args", example_args}
+        }}
+    };
+}
+
 class AiActionHandler : public EngineActionHandler {
     std::string name_;
     bool nd_, nw_;
@@ -44,6 +68,9 @@ public:
         Json effective_request = request;
         Json result = xdebug_waveform::ai_dispatch_query(effective_request, error);
         if (!error.empty()) {
+            if (error.find("expression operands must be aliases") != std::string::npos) {
+                return expression_alias_error(name_, error);
+            }
             Json e; e["error"] = "ACTION_FAILED"; e["message"] = error; return e;
         }
         // Fix statistics end time: ai functions may return FSDB max time

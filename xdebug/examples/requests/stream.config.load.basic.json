@@ -9,17 +9,29 @@
     "streams": [
       {
         "name": "req_stream",
-        "clock": "top.clk",
+        "signals": {
+          "clk": "top.clk",
+          "rst_n": "top.rst_n",
+          "req_vld": "top.req_vld",
+          "req_rdy": "top.req_rdy",
+          "req_sop": "top.req_sop",
+          "req_eop": "top.req_eop",
+          "req_data": "top.req_data",
+          "addr_hi": "top.addr_hi",
+          "addr_lo": "top.addr_lo",
+          "req_cmd": "top.req_cmd"
+        },
+        "clock": "clk",
         "edge": "posedge",
-        "reset": "!top.rst_n",
-        "vld": "top.req_vld",
-        "rdy": "top.req_rdy",
-        "sop": "top.req_sop",
-        "eop": "top.req_eop",
+        "reset": "!rst_n",
+        "vld": "req_vld",
+        "rdy": "req_rdy",
+        "sop": "req_sop",
+        "eop": "req_eop",
         "data_fields": {
-          "opcode": "top.req_data[7:0]",
-          "addr": "{top.addr_hi, top.addr_lo}",
-          "is_wr": "top.req_cmd == 2'b01"
+          "opcode": "req_data[7:0]",
+          "addr": "{addr_hi, addr_lo}",
+          "is_wr": "req_cmd == 2'b01"
         }
       }
     ]

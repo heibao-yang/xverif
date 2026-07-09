@@ -1,5 +1,7 @@
 #include "event_expr.h"
 
+#include "../common/expression.h"
+
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -344,8 +346,7 @@ bool eval_event_expression(const std::string& expr,
                            const std::map<std::string, std::string>& values,
                            ExprTri& result,
                            std::string& error) {
-    ExprParser parser(expr, values);
-    return parser.eval(result, error);
+    return expression_evaluate_tri(expr, values, result, error);
 }
 
 } // namespace xdebug_waveform

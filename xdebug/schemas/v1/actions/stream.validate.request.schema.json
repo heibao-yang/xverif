@@ -41,9 +41,6 @@
           "minimum": 1,
           "description": "控制 response/xout 中 item、finding、event、transaction 或 row 的最大返回行数。"
         },
-        "max_edges": {
-          "type": "integer"
-        },
         "stream": {
           "type": "string",
           "description": "已保存 stream 配置名称。"

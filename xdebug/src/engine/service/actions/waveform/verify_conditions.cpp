@@ -12,6 +12,7 @@
 #include "waveform/list/signal_list.h"
 #include "waveform/export/waveform_exporter.h"
 #include "waveform/common/xdebug_waveform_paths.h"
+#include "waveform/common/expression.h"
 #include "waveform/service/action_support.h"
 #include "waveform/service/rc_generator.h"
 #include "waveform/value/logic_value.h"
@@ -41,8 +42,10 @@ public:
         Json args = request.value("args", Json::object());
         Json conditions = args.value("conditions", Json::array());
         std::string time_str = args.value("time", args.value("at", ""));
-        if (time_str.empty() || !conditions.is_array())
-            return err("MISSING_FIELD", "args.conditions[] and args.time are required");
+        if (time_str.empty() || !conditions.is_array() ||
+            !args.contains("signals") || !args["signals"].is_object()) {
+            return err("MISSING_FIELD", "args.conditions[], args.signals and args.time are required");
+        }
         xdebug_waveform::ClockSampleSpec clock_spec;
         Json clock_error;
         if (!parse_point_clock_args(args, clock_spec, clock_error)) return clock_error;
@@ -53,9 +56,30 @@ public:
             return err("TIME_SPEC_INVALID", time_error.empty() ? time_str : time_error);
         std::string formatted_time = xdebug_core::format_time(g_fsdb_file, fsdb_time);
         std::vector<PointSignalSpec> signal_specs;
-        for (auto& cond : conditions) {
-            std::string signal = cond.value("signal", "");
-            if (!signal.empty()) signal_specs.push_back({signal, signal});
+        for (auto it = args["signals"].begin(); it != args["signals"].end(); ++it) {
+            if (!it.value().is_string() || it.value().get<std::string>().empty()) {
+                return invalid_arg("args.signals", "object mapping alias to non-empty signal path");
+            }
+            signal_specs.push_back({it.key(), it.value().get<std::string>()});
+        }
+        std::vector<xdebug_waveform::Expression> parsed_conditions;
+        for (const auto& cond : conditions) {
+            if (!cond.is_object() || !cond.contains("expr") || !cond["expr"].is_string()) {
+                return invalid_arg("args.conditions[].expr", "string expression using args.signals aliases");
+            }
+            xdebug_waveform::Expression expr;
+            std::string parse_error;
+            if (!expr.parse(cond["expr"].get<std::string>(), parse_error)) {
+                return invalid_arg("args.conditions[].expr", parse_error);
+            }
+            std::vector<std::string> bad_aliases =
+                xdebug_waveform::expression_aliases_that_look_like_paths(expr.aliases());
+            if (!bad_aliases.empty()) {
+                return expression_alias_error(
+                    "expression operands must be aliases, not direct signal paths: " +
+                    bad_aliases.front() + "; put real signal paths in args.signals");
+            }
+            parsed_conditions.push_back(std::move(expr));
         }
         ClockPointQueryResult point;
         Json point_error;
@@ -64,73 +88,57 @@ public:
                                      fsdb_time,
                                      formatted_time,
                                      signal_specs,
-                                     npiFsdbHexStrVal,
-                                     'h',
+                                     npiFsdbBinStrVal,
+                                     'b',
                                      point,
                                      point_error)) {
             return point_error;
         }
 
+        std::map<std::string, xdebug_waveform::ExpressionValue> values;
+        Json sample_by_alias = Json::object();
+        for (const auto& row : point.rows) {
+            std::string alias = row.value("signal", std::string());
+            Json middle = row.value("middle", Json::object());
+            sample_by_alias[alias] = middle;
+            if (middle.value("status", std::string()) == "ok") {
+                Json observed_json = middle.value("value", Json::object());
+                std::string bits = observed_json.value("bits", observed_json.value("value", std::string()));
+                bool known = observed_json.value("known", true);
+                values[alias] = xdebug_waveform::ExpressionValue{bits, known};
+            }
+        }
         Json results = Json::array();
         int passed = 0;
         int failed = 0;
         int unknown = 0;
-        for (auto& cond : conditions) {
+        for (size_t i = 0; i < conditions.size(); ++i) {
+            const Json& cond = conditions[i];
             Json r;
-            r["signal"] = cond.value("signal", "");
             r["time"] = formatted_time;
-            r["op"] = cond.value("op", "==");
-            r["expected"] = cond.value("value", "");
-            xdebug_waveform::LogicValue expected_value =
-                xdebug_waveform::parse_user_logic_literal(r["expected"].get<std::string>());
-            if (!expected_value.valid)
-                return err("VALUE_FORMAT_INVALID", expected_value.error);
-            std::string signal = cond.value("signal", "");
-            if (!signal.empty()) {
-                Json sample_row = Json::object();
-                for (const auto& row : point.rows) {
-                    if (row.value("path", std::string()) == signal) {
-                        sample_row = row;
-                        break;
-                    }
-                }
-                Json middle = sample_row.value("middle", Json::object());
-                if (middle.value("status", std::string()) == "ok") {
-                    Json observed_json = middle.value("value", Json::object());
-                    std::string raw = observed_json.value("value", std::string());
-                    xdebug_waveform::LogicValue observed =
-                        xdebug_waveform::logic_value_from_fsdb_raw(raw, 'h');
-                    bool known = !xdebug_waveform::logic_value_has_xz(observed) &&
-                                 !xdebug_waveform::logic_value_has_xz(expected_value);
-                    r["observed"] = observed_json;
-                    r["samples"] = sample_row;
-                    r["known"] = known;
-                    std::string op = cond.value("op", "==");
-                    if (known) {
-                        bool equal = xdebug_waveform::logic_value_compare_key(observed) ==
-                                     xdebug_waveform::logic_value_compare_key(expected_value);
-                        bool pass = op == "!=" ? !equal : equal;
-                        r["status"] = pass ? "pass" : "fail";
-                        r["pass"] = pass;
-                        if (pass) passed++; else failed++;
-                    } else {
-                        r["status"] = "unknown";
-                        r["pass"] = nullptr;
-                        unknown++;
-                    }
-                } else {
-                    r["known"] = false;
-                    r["status"] = "unknown";
-                    r["pass"] = nullptr;
-                    r["error"] = middle.value("status", std::string("signal not found"));
-                    r["samples"] = sample_row;
-                    unknown++;
-                }
-            } else {
+            r["expr"] = cond.value("expr", "");
+            if (cond.contains("name") && cond["name"].is_string()) r["name"] = cond["name"];
+            xdebug_waveform::ExpressionResult evaluated = parsed_conditions[i].evaluate(values);
+            if (!evaluated.ok) {
                 r["known"] = false;
                 r["status"] = "unknown";
                 r["pass"] = nullptr;
+                r["error_code"] = evaluated.error_code;
+                r["error"] = evaluated.message;
                 unknown++;
+            } else if (xdebug_waveform::expression_value_has_xz(evaluated.value)) {
+                r["known"] = false;
+                r["status"] = "unknown";
+                r["pass"] = nullptr;
+                r["value"] = xdebug_waveform::expression_value_json(evaluated.value);
+                unknown++;
+            } else {
+                bool pass = xdebug_waveform::expression_value_truthy(evaluated.value, false);
+                r["known"] = true;
+                r["status"] = pass ? "pass" : "fail";
+                r["pass"] = pass;
+                r["value"] = xdebug_waveform::expression_value_json(evaluated.value);
+                if (pass) passed++; else failed++;
             }
             results.push_back(r);
         }
@@ -151,11 +159,42 @@ public:
         out["checks"] = results;
         out["clock_context"] = point.clock_context;
         out["sample_rows"] = point.rows;
+        out["samples"] = sample_by_alias;
         return out;
     }
 private:
     static Json err(const char* c, const std::string& m) {
         Json e; e["error"] = c; e["message"] = m; return e;
+    }
+    static Json invalid_arg(const std::string& invalid_arg, const std::string& expected) {
+        Json e;
+        e["error"] = "INVALID_ARGUMENT";
+        e["message"] = "invalid parameter " + invalid_arg + ": " + expected;
+        e["error_layer"] = "handler";
+        e["invalid_arg"] = invalid_arg;
+        e["expected"] = expected;
+        e["correct_example"] = correct_example();
+        return e;
+    }
+    static Json expression_alias_error(const std::string& message) {
+        Json e = invalid_arg("args.conditions[].expr",
+                             "use aliases in expr and put real signal paths in args.signals");
+        e["message"] = message;
+        e["example_note"] = "示例仅说明 native xdebug JSON action args 形态；expr 里不要写 top.u.sig 这类真实路径。";
+        return e;
+    }
+    static Json correct_example() {
+        return {
+            {"api_version", "xdebug.v1"},
+            {"action", "verify.conditions"},
+            {"target", {{"session_id", "<session_id>"}}},
+            {"args", {
+                {"clock", "top.clk"},
+                {"time", "10ns"},
+                {"signals", {{"valid", "top.u.valid"}, {"ready", "top.u.ready"}}},
+                {"conditions", Json::array({{{"expr", "valid && ready"}}})}
+            }}
+        };
     }
 };
 

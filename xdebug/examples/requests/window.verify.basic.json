@@ -6,12 +6,12 @@
   },
   "args": {
     "clock": "top.u.clk",
+    "signals": {
+      "valid": "top.u.valid"
+    },
     "conditions": [
       {
         "expr": "valid == 1",
-        "signals": {
-          "valid": "top.u.valid"
-        },
         "mode": "always"
       }
     ],

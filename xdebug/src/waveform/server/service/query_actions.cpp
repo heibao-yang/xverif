@@ -241,7 +241,7 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
 
     Json rules = args.value("rules", Json::object());
     int max_wait = rules.value("max_wait_cycles", 100);
-    int max_samples = args.value("max_samples", 1000000);
+    int max_samples = args.value("line_limit", 1000000);
     int sample_count = 0, transfers = 0, ready_only = 0, max_stall = 0;
     bool truncated = false;
     Json findings = Json::array();
