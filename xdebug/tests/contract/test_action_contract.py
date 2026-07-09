@@ -282,6 +282,21 @@ def test_bad_parameter_schema_errors_include_ai_repair_hints(
             None,
             None,
         ),
+        (
+            {
+                "api_version": "xdebug.v1",
+                "action": "event.find",
+                "args": {
+                    "expr": "valid",
+                    "clock": "top.clk",
+                    "signals": {"valid": "top.valid"},
+                    "time_range": {"start": "0ns", "end": "10ns"},
+                },
+            },
+            "args.time_range.start",
+            "args.time_range.begin",
+            None,
+        ),
     ]
     for request, invalid_arg, did_you_mean, required_any_of in cases:
         result = cli_runner.run(request, output_format="json")

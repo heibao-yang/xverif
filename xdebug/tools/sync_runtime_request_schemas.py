@@ -95,6 +95,14 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
     "slice_hint": {"type": "object"},
     "source": {"type": "string"},
     "symbol": {"type": "string"},
+    "time_range": {
+        "type": "object",
+        "properties": {
+            "begin": {"type": "string"},
+            "end": {"type": "string"},
+        },
+        "additionalProperties": False,
+    },
     "time_unit": {"type": "string", "enum": ["auto", "fs", "ps", "ns", "us", "ms", "s"]},
     "transport": {"type": "string", "enum": ["uds", "tcp", "file"]},
     "verbose": {"type": "boolean"},
@@ -272,6 +280,7 @@ def collect_arg_schemas(specs: list[dict[str, Any]]) -> dict[str, dict[str, Any]
     arg_schemas["channel"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["channel"])
     arg_schemas["match"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["match"])
     arg_schemas["output"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["output"])
+    arg_schemas["time_range"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["time_range"])
 
     arg_schemas["checks"] = {
         "type": "array",

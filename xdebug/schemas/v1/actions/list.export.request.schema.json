@@ -61,6 +61,15 @@
         },
         "time_range": {
           "type": "object",
+          "properties": {
+            "begin": {
+              "type": "string"
+            },
+            "end": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
           "description": "查询或分析的时间窗口。"
         },
         "time_unit": {

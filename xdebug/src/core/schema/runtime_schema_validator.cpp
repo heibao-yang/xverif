@@ -326,11 +326,13 @@ std::string did_you_mean_for(const std::string& action,
     if (invalid_arg == "args.signal" && (action == "value.batch_at" || action == "detect_abnormal"))
         return "args.signals";
     if (invalid_arg == "args.checks" && action == "verify.conditions") return "args.conditions";
-    if (extra_property == "begin" || extra_property == "from" || invalid_arg == "args.begin" ||
-        invalid_arg == "args.from")
+    if (extra_property == "begin" || extra_property == "start" || extra_property == "from" ||
+        invalid_arg == "args.begin" || invalid_arg == "args.start" ||
+        invalid_arg == "args.start_time" || invalid_arg == "args.from" ||
+        invalid_arg == "args.time_range.start" || invalid_arg == "args.time_range.from")
         return "args.time_range.begin";
     if (extra_property == "end" || extra_property == "to" || invalid_arg == "args.end" ||
-        invalid_arg == "args.to")
+        invalid_arg == "args.to" || invalid_arg == "args.time_range.to")
         return "args.time_range.end";
     return "";
 }

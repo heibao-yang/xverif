@@ -53,8 +53,8 @@ bool range_from_args(const Json& args, const Json& limits, StreamQueryOptions& o
     npi_fsdb_min_time(g_fsdb_file, &min_t);
     npi_fsdb_max_time(g_fsdb_file, &max_t);
     Json tr = args.value("time_range", Json::object());
-    std::string start = args.value("start", args.value("begin", tr.value("begin", std::string())));
-    std::string end = args.value("end", tr.value("end", std::string("max")));
+    std::string start = tr.value("begin", std::string());
+    std::string end = tr.value("end", std::string("max"));
     if (start.empty()) options.begin = min_t;
     else if (!parse_time_arg(start, false, options.begin, error)) return false;
     if (end.empty() || end == "max") options.end = max_t;

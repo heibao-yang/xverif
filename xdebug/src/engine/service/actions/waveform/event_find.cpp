@@ -103,7 +103,7 @@ public:
             return xdebug_core::parse_time(g_fsdb_file, s, options, t, error);
         };
         std::string time_error;
-        if (!parse_t(time_range.value("start", time_range.value("begin", "")), false, tbegin, time_error) ||
+        if (!parse_t(time_range.value("begin", ""), false, tbegin, time_error) ||
             !parse_t(time_range.value("end", ""), true, tend, time_error)) {
             return Json({{"error","TIME_SPEC_INVALID"},{"message",time_error}});
         }
