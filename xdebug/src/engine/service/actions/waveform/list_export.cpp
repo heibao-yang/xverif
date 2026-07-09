@@ -88,10 +88,10 @@ public:
             {"name", n},
             {"signal_count", result.signal_count},
             {"row_count", result.row_count},
-            {"format", result.format}
+            {"format", result.format},
+            {"output", {{"path", result.output_dir}, {"manifest_path", result.manifest_file}}}
         };
-        out["output_dir"] = result.output_dir;
-        out["manifest_file"] = result.manifest_file;
+        out["output"] = {{"path", result.output_dir}, {"manifest_path", result.manifest_file}};
         out["signals"] = result.signals;
         auto range = xdebug_core::format_time_range(xdebug_waveform::g_fsdb_file, begin, end);
         out["begin"] = range.first;

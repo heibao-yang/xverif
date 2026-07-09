@@ -119,9 +119,10 @@ public:
         else if (kind == "transfer") ok = exporter.export_transfer_file(output, format, config, analysis, meta, error);
         else return err("INVALID_REQUEST", "kind must be transfer, packet, or packet_beats");
         if (!ok) return err("EXPORT_FAILED", error);
+        Json output_info = {{"path", output}, {"meta_path", meta}, {"file_format", format}};
         return Json{{"summary", xdebug_waveform::stream_summary_json(config, analysis)},
-                    {"output_file", output}, {"meta_file", meta}, {"kind", kind},
-                    {"format", format}, {"row_count", kind == "transfer" ? analysis.transfers.size() :
+                    {"output", output_info}, {"kind", kind},
+                    {"row_count", kind == "transfer" ? analysis.transfers.size() :
                         kind == "packet" ? analysis.packets.size() : analysis.transfer_count}};
     }
 };

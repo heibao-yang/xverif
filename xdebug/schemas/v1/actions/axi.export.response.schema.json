@@ -31,10 +31,39 @@
     },
     "summary": {
       "type": "object",
+      "properties": {
+        "output": {
+          "type": "object",
+          "properties": {
+            "path": {"type": "string"},
+            "write_path": {"type": "string"},
+            "read_path": {"type": "string"},
+            "meta_path": {"type": "string"},
+            "file_format": {"type": "string", "enum": ["tsv", "csv"]}
+          },
+          "additionalProperties": true
+        }
+      },
       "additionalProperties": true
     },
     "data": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "object",
+          "properties": {
+            "path": {"type": "string"},
+            "write_path": {"type": "string"},
+            "read_path": {"type": "string"},
+            "meta_path": {"type": "string"},
+            "file_format": {"type": "string", "enum": ["tsv", "csv"]}
+          },
+          "required": ["path", "write_path", "read_path", "meta_path", "file_format"],
+          "additionalProperties": true
+        }
+      },
+      "required": ["output"],
+      "additionalProperties": true
     },
     "warnings": {
       "type": "array"

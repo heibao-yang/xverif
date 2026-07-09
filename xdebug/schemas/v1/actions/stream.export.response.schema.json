@@ -33,13 +33,20 @@
     "data": {
       "type": "object",
       "properties": {
-        "output_file": {"type": "string"},
-        "meta_file": {"type": "string"},
+        "output": {
+          "type": "object",
+          "properties": {
+            "path": {"type": "string"},
+            "meta_path": {"type": "string"},
+            "file_format": {"type": "string", "enum": ["tsv", "csv", "xout"]}
+          },
+          "required": ["path", "meta_path", "file_format"],
+          "additionalProperties": true
+        },
         "kind": {"type": "string", "enum": ["transfer", "packet", "packet_beats"]},
-        "format": {"type": "string", "enum": ["tsv", "csv", "xout"]},
         "row_count": {"type": "integer"}
       },
-      "required": ["output_file", "meta_file", "kind", "format", "row_count"],
+      "required": ["output", "kind", "row_count"],
       "additionalProperties": true
     },
     "error": {},

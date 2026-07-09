@@ -564,8 +564,8 @@ def test_stream_v1_real_waveform_actions(
             case_name="stream-v1-export-transfer",
             artifact_root=artifact_root,
         )
-        assert Path(exported["data"]["output_file"]).is_file()
-        assert Path(exported["data"]["meta_file"]).is_file()
+        assert Path(exported["data"]["output"]["path"]).is_file()
+        assert Path(exported["data"]["output"]["meta_path"]).is_file()
         assert exported["data"]["row_count"] == expected["ready_stream"]["transfer_count"]
 
         packet_out = tmp_path / "ready_packet.tsv"
@@ -585,8 +585,8 @@ def test_stream_v1_real_waveform_actions(
             case_name="stream-v1-export-packet",
             artifact_root=artifact_root,
         )
-        assert Path(packet_exported["data"]["output_file"]).is_file()
-        assert Path(packet_exported["data"]["meta_file"]).is_file()
+        assert Path(packet_exported["data"]["output"]["path"]).is_file()
+        assert Path(packet_exported["data"]["output"]["meta_path"]).is_file()
         assert packet_exported["data"]["row_count"] == expected["ready_packet"]["packet_count"]
 
         packet_beats_out = tmp_path / "ready_packet_beats.tsv"
@@ -606,8 +606,8 @@ def test_stream_v1_real_waveform_actions(
             case_name="stream-v1-export-packet-beats",
             artifact_root=artifact_root,
         )
-        assert Path(packet_beats_exported["data"]["output_file"]).is_file()
-        assert Path(packet_beats_exported["data"]["meta_file"]).is_file()
+        assert Path(packet_beats_exported["data"]["output"]["path"]).is_file()
+        assert Path(packet_beats_exported["data"]["output"]["meta_path"]).is_file()
         assert packet_beats_exported["data"]["row_count"] == expected["ready_packet"]["transfer_count"]
         assert "packet_index\tchannel_id\tbeat_index" in packet_beats_out.read_text(encoding="utf-8").splitlines()[0]
     finally:

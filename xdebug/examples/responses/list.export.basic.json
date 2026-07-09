@@ -6,11 +6,17 @@
     "name": "if0",
     "signal_count": 2,
     "row_count": 16,
-    "format": "u64bin.v1"
+    "format": "u64bin.v1",
+    "output": {
+      "path": "/tmp/if0_list_export",
+      "manifest_path": "/tmp/if0_list_export/manifest.json"
+    }
   },
   "data": {
-    "output_dir": "/tmp/if0_list_export",
-    "manifest_file": "/tmp/if0_list_export/manifest.json",
+    "output": {
+      "path": "/tmp/if0_list_export",
+      "manifest_path": "/tmp/if0_list_export/manifest.json"
+    },
     "begin": "0ns",
     "end": "1000ns",
     "signals": [

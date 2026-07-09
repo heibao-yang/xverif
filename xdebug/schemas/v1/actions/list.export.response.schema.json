@@ -35,7 +35,15 @@
         "name": {"type": "string"},
         "signal_count": {"type": "integer"},
         "row_count": {"type": "integer"},
-        "format": {"type": "string", "enum": ["u64bin.v1"]}
+        "format": {"type": "string", "enum": ["u64bin.v1"]},
+        "output": {
+          "type": "object",
+          "properties": {
+            "path": {"type": "string"},
+            "manifest_path": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
       },
       "required": ["name", "signal_count", "row_count", "format"],
       "additionalProperties": true
@@ -43,13 +51,20 @@
     "data": {
       "type": "object",
       "properties": {
-        "output_dir": {"type": "string"},
-        "manifest_file": {"type": "string"},
+        "output": {
+          "type": "object",
+          "properties": {
+            "path": {"type": "string"},
+            "manifest_path": {"type": "string"}
+          },
+          "required": ["path", "manifest_path"],
+          "additionalProperties": true
+        },
         "signals": {"type": "array"},
         "begin": {"type": "string"},
         "end": {"type": "string"}
       },
-      "required": ["output_dir", "manifest_file", "signals", "begin", "end"],
+      "required": ["output", "signals", "begin", "end"],
       "additionalProperties": true
     },
     "warnings": {

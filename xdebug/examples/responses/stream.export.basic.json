@@ -8,10 +8,12 @@
     "truncated": false
   },
   "data": {
-    "output_file": "/tmp/req_stream.tsv",
-    "meta_file": "/tmp/req_stream.tsv.meta.json",
+    "output": {
+      "path": "/tmp/req_stream.tsv",
+      "meta_path": "/tmp/req_stream.tsv.meta.json",
+      "file_format": "tsv"
+    },
     "kind": "transfer",
-    "format": "tsv",
     "row_count": 128
   }
 }

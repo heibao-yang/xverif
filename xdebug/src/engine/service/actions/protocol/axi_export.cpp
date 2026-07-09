@@ -82,16 +82,22 @@ public:
                           {"write_count", result.writes.size()},
                           {"read_count", result.reads.size()},
                           {"total_count", result.writes.size() + result.reads.size()},
-                          {"format", format}};
+                          {"format", format},
+                          {"output", {{"path", output_prefix},
+                                       {"write_path", write_file},
+                                       {"read_path", read_file},
+                                       {"meta_path", meta_file},
+                                       {"file_format", format}}}};
         out["name"] = name;
-        out["format"] = format;
         out["begin"] = format_time(begin);
         out["end"] = format_time(end);
         out["scan_begin"] = format_time(result.scan_begin);
         out["scan_end"] = format_time(result.scan_end);
-        out["write_file"] = write_file;
-        out["read_file"] = read_file;
-        out["meta_file"] = meta_file;
+        out["output"] = {{"path", output_prefix},
+                         {"write_path", write_file},
+                         {"read_path", read_file},
+                         {"meta_path", meta_file},
+                         {"file_format", format}};
         out["write_count"] = result.writes.size();
         out["read_count"] = result.reads.size();
         out["total_count"] = result.writes.size() + result.reads.size();

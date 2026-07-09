@@ -7,15 +7,26 @@
     "write_count": 12,
     "read_count": 12,
     "total_count": 24,
-    "format": "tsv"
+    "format": "tsv",
+    "output": {
+      "path": "/tmp/if0_axi",
+      "write_path": "/tmp/if0_axi.write.tsv",
+      "read_path": "/tmp/if0_axi.read.tsv",
+      "meta_path": "/tmp/if0_axi.meta.json",
+      "file_format": "tsv"
+    }
   },
   "data": {
     "begin": "0ns",
     "end": "1us",
     "scan_begin": "0ns",
     "scan_end": "1us",
-    "write_file": "/tmp/if0_axi.write.tsv",
-    "read_file": "/tmp/if0_axi.read.tsv",
-    "meta_file": "/tmp/if0_axi.meta.json"
+    "output": {
+      "path": "/tmp/if0_axi",
+      "write_path": "/tmp/if0_axi.write.tsv",
+      "read_path": "/tmp/if0_axi.read.tsv",
+      "meta_path": "/tmp/if0_axi.meta.json",
+      "file_format": "tsv"
+    }
   }
 }
