@@ -45,7 +45,7 @@ public:
         int max_rows = limits.value("max_rows", -1);
 
         FILE* fp = tmpfile();
-        if (!fp) return err("INTERNAL_ERROR", "tmpfile failed");
+        if (!fp) return make_handler_error("INTERNAL_ERROR", "tmpfile failed");
         npi_fsdb_hier_tree_dump_sig(g_fsdb_file, fp, path.c_str(),
                                      recursive ? max_depth : 1);
         fflush(fp); rewind(fp);
@@ -88,10 +88,6 @@ public:
         return out;
     }
 
-private:
-    static Json err(const char* code, const std::string& msg) {
-        Json e; e["error"] = code; e["message"] = msg; return e;
-    }
 };
 
 }  // namespace

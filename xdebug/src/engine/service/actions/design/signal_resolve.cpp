@@ -3,6 +3,7 @@
 #include "service/engine_globals.h"
 #include "service/design_postprocess.h"
 #include "service/trace_bfs_engine.h"
+#include "design_action_helpers.h"
 
 #include "core/ai/common_blocks.h"
 
@@ -43,15 +44,10 @@ public:
     Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string signal = args.value("signal", std::string());
-        if (signal.empty()) return err("MISSING_FIELD", "args.signal is required");
+        if (signal.empty()) return design_missing_signal_error(action_name());
         SignalFinder finder;
         SignalResolveResult result = finder.resolve(signal);
         return with_scalar_summary(Json::parse(finder.render_json(result)));
-    }
-
-private:
-    static Json err(const char* code, const std::string& msg) {
-        Json e; e["error"] = code; e["message"] = msg; return e;
     }
 };
 

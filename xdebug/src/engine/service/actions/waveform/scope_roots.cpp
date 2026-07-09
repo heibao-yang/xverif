@@ -312,9 +312,6 @@ private:
         return roots;
     }
 
-    static Json err(const char* code, const std::string& msg) {
-        Json e; e["error"] = code; e["message"] = msg; return e;
-    }
 };
 
 }  // namespace
