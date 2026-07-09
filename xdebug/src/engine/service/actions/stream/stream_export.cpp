@@ -29,7 +29,34 @@ using xdebug_waveform::StreamMatch;
 using xdebug_waveform::StreamQueryOptions;
 
 Json err(const std::string& code, const std::string& message) {
-    return Json{{"error", code}, {"message", message}};
+    return make_handler_error(code, message);
+}
+Json err(const std::string& code, const std::string& message, const Json& details) {
+    return make_handler_error(code, message, details);
+}
+Json stream_export_example(const std::string& stream = "req_stream",
+                           const std::string& kind = "transfer") {
+    return Json{{"api_version", "xdebug.v1"},
+                {"action", "stream.export"},
+                {"target", {{"session_id", "case_a"}}},
+                {"args", {{"stream", stream},
+                          {"kind", kind},
+                          {"output", {{"path", "/tmp/stream.tsv"}, {"file_format", "tsv"}}}}}};
+}
+Json stream_name_error(const std::string& name) {
+    Json details = {{"invalid_arg", "args.stream"},
+                    {"expected", "name of a previously loaded stream config"},
+                    {"correct_example", stream_export_example()},
+                    {"example_note", "Example only; replace target.session_id, args.stream, and output.path with the active case values."},
+                    {"next_actions", Json::array({"Call stream.config.list to inspect loaded stream names.",
+                                                   "Call stream.config.load before exporting a stream."})}};
+    if (!name.empty()) {
+        details["missing_name"] = name;
+        details["missing_resource"] = "stream config";
+    }
+    return err(name.empty() ? "MISSING_FIELD" : "CONFIG_NOT_FOUND",
+               name.empty() ? "args.stream is required" : "stream config not found: " + name,
+               details);
 }
 size_t row_count_for_kind(const StreamAnalysis& analysis, const std::string& kind) {
     if (kind == "packet") return analysis.packets.size();
@@ -84,12 +111,12 @@ bool range_from_args(const Json& args, const Json& limits, StreamQueryOptions& o
 bool get_config(const Json& args, StreamConfig& config, Json& fail) {
     std::string name = args.value("stream", args.value("name", std::string()));
     if (name.empty()) {
-        fail = err("MISSING_FIELD", "args.stream is required");
+        fail = stream_name_error(name);
         return false;
     }
     StreamManager manager;
     if (!manager.get_stream(xdebug_waveform::g_session_id, name, config)) {
-        fail = err("STREAM_NOT_FOUND", "stream config not found: " + name);
+        fail = stream_name_error(name);
         return false;
     }
     return true;
@@ -118,7 +145,12 @@ public:
         Json output_arg = args.value("output", Json::object());
         std::string format = output_arg.value("file_format", std::string("tsv"));
         if (format != "tsv" && format != "csv" && format != "xout")
-            return err("INVALID_REQUEST", "output.file_format must be tsv, csv, or xout");
+            return err("INVALID_ENUM", "output.file_format must be tsv, csv, or xout",
+                       {{"invalid_arg", "args.output.file_format"},
+                        {"expected", "one of tsv, csv, xout"},
+                        {"allowed_values", Json::array({"tsv", "csv", "xout"})},
+                        {"correct_example", stream_export_example(config.name)},
+                        {"example_note", "Example only; output.file_format controls exported file content, not MCP output_format."}});
         std::string output = output_arg.value("path", std::string());
         size_t row_count = row_count_for_kind(analysis, kind);
         Json summary = xdebug_waveform::stream_summary_json(config, analysis);
@@ -139,8 +171,13 @@ public:
         if (kind == "packet") ok = exporter.export_packet_file(output, format, config, analysis, meta, error);
         else if (kind == "packet_beats") ok = exporter.export_packet_beats_file(output, format, config, analysis, meta, error);
         else if (kind == "transfer") ok = exporter.export_transfer_file(output, format, config, analysis, meta, error);
-        else return err("INVALID_REQUEST", "kind must be transfer, packet, or packet_beats");
-        if (!ok) return err("EXPORT_FAILED", error);
+        else return err("INVALID_ENUM", "kind must be transfer, packet, or packet_beats",
+                        {{"invalid_arg", "args.kind"},
+                         {"expected", "one of transfer, packet, packet_beats"},
+                         {"allowed_values", Json::array({"transfer", "packet", "packet_beats"})},
+                         {"correct_example", stream_export_example(config.name, "transfer")},
+                         {"example_note", "Example only; choose kind from allowed_values."}});
+        if (!ok) return err("ACTION_FAILED", error, {{"cause_code", "EXPORT_FAILED"}});
         Json output_info = {{"path", output}, {"meta_path", meta}, {"file_format", format}};
         summary["output"] = output_info;
         return Json{{"summary", summary}};

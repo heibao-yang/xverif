@@ -1,5 +1,6 @@
 #include "engine_action_handler.h"
 
+#include "../../api/diagnostic_error.h"
 #include "../../api/text_response_builder.h"
 
 #include <algorithm>
@@ -64,9 +65,18 @@ std::string code_for_handler_message(const std::string& message) {
 } // namespace
 
 Json make_handler_error(const std::string& code, const std::string& message) {
-    return Json{{"error", code},
-                {"message", message},
-                {"error_layer", "handler"}};
+    return make_handler_error(code, message, Json::object());
+}
+
+Json make_handler_error(const std::string& code, const std::string& message,
+                        const Json& details) {
+    Json error = xdebug::ErrorBuilder::handler(code, message).to_json();
+    if (details.is_object()) {
+        for (auto it = details.begin(); it != details.end(); ++it) {
+            error[it.key()] = it.value();
+        }
+    }
+    return Json{{"error", error}, {"message", message}};
 }
 
 Json make_handler_error_from_message(const std::string& message) {

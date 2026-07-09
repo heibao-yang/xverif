@@ -447,6 +447,72 @@ def test_bad_parameter_runtime_errors_include_ai_repair_hints(
 
 
 @pytest.mark.contract
+def test_stream_handler_errors_include_current_entry_examples(
+    cli_runner: CliRunner,
+    xdebug_root: Path,
+) -> None:
+    fsdb = xdebug_root / "testdata" / "waveform" / "stream_v1" / "out" / "waves.fsdb"
+    session_name = "stream_error_contract"
+    opened = cli_runner.run(
+        {
+            "api_version": "xdebug.v1",
+            "action": "session.open",
+            "target": {"fsdb": str(fsdb)},
+            "args": {"name": session_name},
+        },
+        output_format="json",
+        timeout_sec=120,
+    )
+    assert opened.ok, opened.stdout_raw + opened.stderr_raw
+    session = opened.response.get("session") or opened.response["data"]["session"]
+    target = {"session_id": session.get("id") or session.get("session_id") or session_name}
+    try:
+        cases = [
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "stream.config.list",
+                    "target": target,
+                    "args": {"name": "missing_stream"},
+                },
+                "args.name",
+                "stream.config.list",
+            ),
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "stream.show",
+                    "target": target,
+                    "args": {"stream": "missing_stream"},
+                },
+                "args.stream",
+                "stream.show",
+            ),
+        ]
+        for request, invalid_arg, example_action in cases:
+            result = cli_runner.run(request, output_format="json", timeout_sec=120)
+            assert not result.ok, result.stdout_raw + result.stderr_raw
+            error = result.response["error"]
+            assert error["code"] == "CONFIG_NOT_FOUND"
+            assert error["error_layer"] == "handler"
+            assert error["invalid_arg"] == invalid_arg
+            assert error["missing_resource"] == "stream config"
+            assert "next_actions" in error
+            assert "example_note" in error
+            assert error["correct_example"]["action"] == example_action
+    finally:
+        cli_runner.run(
+            {
+                "api_version": "xdebug.v1",
+                "action": "session.close",
+                "target": target,
+            },
+            output_format="json",
+            timeout_sec=120,
+        )
+
+
+@pytest.mark.contract
 def test_action_schemas_explain_purpose_and_required_args(xdebug_root: Path) -> None:
     specs = _load_json(xdebug_root / "specs" / "actions" / "actions.yaml")[
         "actions"

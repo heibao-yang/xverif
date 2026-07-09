@@ -28,8 +28,29 @@ using xdebug_waveform::StreamManager;
 using xdebug_waveform::StreamMatch;
 using xdebug_waveform::StreamQueryOptions;
 
-Json err(const std::string& code, const std::string& message) {
-    return Json{{"error", code}, {"message", message}};
+Json err(const std::string& code, const std::string& message, const Json& details) {
+    return make_handler_error(code, message, details);
+}
+Json stream_show_example(const std::string& stream = "req_stream") {
+    return Json{{"api_version", "xdebug.v1"},
+                {"action", "stream.show"},
+                {"target", {{"session_id", "case_a"}}},
+                {"args", {{"stream", stream}}}};
+}
+Json stream_name_error(const std::string& name) {
+    Json details = {{"invalid_arg", "args.stream"},
+                    {"expected", "name of a previously loaded stream config"},
+                    {"correct_example", stream_show_example()},
+                    {"example_note", "Example only; replace target.session_id and args.stream with active case values."},
+                    {"next_actions", Json::array({"Call stream.config.list to inspect loaded stream names.",
+                                                   "Call stream.config.load before showing a stream."})}};
+    if (!name.empty()) {
+        details["missing_name"] = name;
+        details["missing_resource"] = "stream config";
+    }
+    return err(name.empty() ? "MISSING_FIELD" : "CONFIG_NOT_FOUND",
+               name.empty() ? "args.stream is required" : "stream config not found: " + name,
+               details);
 }
 Json issue_json(const std::vector<xdebug_waveform::StreamValidationIssue>& issues) {
     Json arr = Json::array();
@@ -41,12 +62,12 @@ Json issue_json(const std::vector<xdebug_waveform::StreamValidationIssue>& issue
 bool get_config(const Json& args, StreamConfig& config, Json& fail) {
     std::string name = args.value("stream", args.value("name", std::string()));
     if (name.empty()) {
-        fail = err("MISSING_FIELD", "args.stream is required");
+        fail = stream_name_error(name);
         return false;
     }
     StreamManager manager;
     if (!manager.get_stream(xdebug_waveform::g_session_id, name, config)) {
-        fail = err("STREAM_NOT_FOUND", "stream config not found: " + name);
+        fail = stream_name_error(name);
         return false;
     }
     return true;

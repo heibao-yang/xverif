@@ -29,7 +29,34 @@ using xdebug_waveform::StreamMatch;
 using xdebug_waveform::StreamQueryOptions;
 
 Json err(const std::string& code, const std::string& message) {
-    return Json{{"error", code}, {"message", message}};
+    return make_handler_error(code, message);
+}
+Json err(const std::string& code, const std::string& message, const Json& details) {
+    return make_handler_error(code, message, details);
+}
+Json stream_query_example(const std::string& stream = "req_stream",
+                          const std::string& query = "summary") {
+    return Json{{"api_version", "xdebug.v1"},
+                {"action", "stream.query"},
+                {"target", {{"session_id", "case_a"}}},
+                {"args", {{"stream", stream}, {"query", query}}}};
+}
+Json stream_name_error(const std::string& action, const std::string& name) {
+    Json example = stream_query_example();
+    example["action"] = action;
+    Json details = {{"invalid_arg", "args.stream"},
+                    {"expected", "name of a previously loaded stream config"},
+                    {"correct_example", example},
+                    {"example_note", "Example only; replace target.session_id and args.stream with the active session and loaded stream name."},
+                    {"next_actions", Json::array({"Call stream.config.list to inspect loaded stream names.",
+                                                   "Call stream.config.load before querying a stream."})}};
+    if (!name.empty()) {
+        details["missing_name"] = name;
+        details["missing_resource"] = "stream config";
+    }
+    return err(name.empty() ? "MISSING_FIELD" : "CONFIG_NOT_FOUND",
+               name.empty() ? "args.stream is required" : "stream config not found: " + name,
+               details);
 }
 std::string code_for_stream_error(const std::string& message, const std::string& fallback) {
     return message.find("0x prefix is not accepted") != std::string::npos ||
@@ -88,12 +115,12 @@ Json packets_limited(const std::vector<xdebug_waveform::StreamPacket>& packets, 
 bool get_config(const Json& args, StreamConfig& config, Json& fail) {
     std::string name = args.value("stream", args.value("name", std::string()));
     if (name.empty()) {
-        fail = err("MISSING_FIELD", "args.stream is required");
+        fail = stream_name_error("stream.query", name);
         return false;
     }
     StreamManager manager;
     if (!manager.get_stream(xdebug_waveform::g_session_id, name, config)) {
-        fail = err("STREAM_NOT_FOUND", "stream config not found: " + name);
+        fail = stream_name_error("stream.query", name);
         return false;
     }
     return true;
@@ -161,7 +188,16 @@ public:
             int packet_index = args.value("packet_index", -1);
             out["found"] = false;
             out["packet"] = nullptr;
-            if (packet_index < 0) return err("INVALID_REQUEST", "packet_index must be >= 0");
+            if (packet_index < 0) {
+                Json example = stream_query_example(config.name, "packet_at");
+                example["args"]["packet_index"] = 0;
+                return err("INVALID_ARGUMENT", "packet_index must be >= 0",
+                           {{"invalid_arg", "args.packet_index"},
+                            {"expected", "integer >= 0"},
+                            {"received", packet_index},
+                            {"correct_example", example},
+                            {"example_note", "Example only; replace stream name and packet_index with the target packet."}});
+            }
             for (const auto& packet : analysis.packets) {
                 if (packet.packet_index == packet_index) {
                     out["found"] = true;
@@ -191,8 +227,22 @@ public:
             match.field_scope = m.value("field_scope", args.value("field_scope", std::string("any")));
             if (match.field_scope.empty()) match.field_scope = "any";
             if (match.field_scope != "beat" && match.field_scope != "stable" && match.field_scope != "any")
-                return err("INVALID_REQUEST", "field_scope must be beat, stable, or any");
-            if (match.field.empty()) return err("MISSING_FIELD", "match.field is required");
+                return err("INVALID_ENUM", "field_scope must be beat, stable, or any",
+                           {{"invalid_arg", m.contains("field_scope") ? "args.match.field_scope" : "args.field_scope"},
+                            {"expected", "one of beat, stable, any"},
+                            {"allowed_values", Json::array({"beat", "stable", "any"})},
+                            {"correct_example", stream_query_example(config.name, "match_field")},
+                            {"example_note", "Example only; put field_scope under args.match for match_field queries."}});
+            if (match.field.empty()) {
+                Json example = stream_query_example(config.name, "match_field");
+                example["args"]["match"] = {{"field", "opcode"}, {"op", "=="}, {"value", "8'h5a"}};
+                return err("MISSING_FIELD", "match.field is required",
+                           {{"invalid_arg", "args.match.field"},
+                            {"expected", "field name defined by the loaded stream config"},
+                            {"correct_example", example},
+                            {"example_note", "Example only; replace opcode/value with a field from stream.show."},
+                            {"next_actions", Json::array({"Call stream.show to inspect available fields."})}});
+            }
             if (match.field_scope == "stable") {
                 Json packets = Json::array();
                 for (const auto& packet : analysis.packets) {
@@ -222,7 +272,14 @@ public:
             out["summary"]["field_scope"] = match.field_scope;
             return out;
         }
-        return err("INVALID_REQUEST", "unsupported stream.query type: " + query);
+        return err("INVALID_ENUM", "unsupported stream.query type: " + query,
+                   {{"invalid_arg", "args.query"},
+                    {"expected", "one of summary, first_transfer, last_transfer, transfer_window, first_stall, last_stall, stall_window, first_packet, last_packet, packet_at, packet_window, match_field"},
+                    {"allowed_values", Json::array({"summary", "first_transfer", "last_transfer", "transfer_window",
+                                                     "first_stall", "last_stall", "stall_window", "first_packet",
+                                                     "last_packet", "packet_at", "packet_window", "match_field"})},
+                    {"correct_example", stream_query_example(config.name, "summary")},
+                    {"example_note", "Example only; choose one query kind from allowed_values."}});
     }
 };
 

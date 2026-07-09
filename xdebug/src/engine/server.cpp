@@ -380,6 +380,15 @@ static Json action_error_response(const Json& request, const Json& data) {
         if (error.contains("recoverable")) response["error"]["recoverable"] = error["recoverable"];
         if (error.contains("error_layer")) response["error"]["error_layer"] = error["error_layer"];
         if (error.contains("suggested_actions")) response["error"]["suggested_actions"] = error["suggested_actions"];
+        static const char* error_detail_keys[] = {
+            "invalid_arg", "expected", "allowed_types", "allowed_values", "example",
+            "received", "received_type", "required_any_of", "did_you_mean",
+            "correct_example", "example_note", "next_actions", "missing_name",
+            "missing_resource", "available_values", "cause_code"
+        };
+        for (const char* key : error_detail_keys) {
+            if (error.contains(key)) response["error"][key] = error[key];
+        }
     }
     enrich_runtime_parameter_error(request, response["error"], mutable_data);
     static const char* detail_keys[] = {

@@ -28,8 +28,21 @@ using xdebug_waveform::StreamManager;
 using xdebug_waveform::StreamMatch;
 using xdebug_waveform::StreamQueryOptions;
 
-Json err(const std::string& code, const std::string& message) {
-    return Json{{"error", code}, {"message", message}};
+Json err(const std::string& code, const std::string& message, const Json& details) {
+    return make_handler_error(code, message, details);
+}
+Json stream_config_load_example() {
+    return Json{{"api_version", "xdebug.v1"},
+                {"action", "stream.config.load"},
+                {"target", {{"session_id", "case_a"}}},
+                {"args", {{"streams", Json::array({Json{
+                    {"name", "req_stream"},
+                    {"signals", {{"clk", "top.u.clk"},
+                                  {"req_vld", "top.u.req_vld"},
+                                  {"req_data", "top.u.req_data"}}},
+                    {"clock", "clk"},
+                    {"vld", "req_vld"},
+                    {"data", "req_data"}}})}}}};
 }
 
 class StreamConfigLoadHandler : public EngineActionHandler {
@@ -41,9 +54,20 @@ public:
         Json args = request.value("args", Json::object());
         Json root;
         std::string error;
-        if (!xdebug_waveform::load_stream_config_arg(args, root, error)) return err("INVALID_REQUEST", error);
+        if (!xdebug_waveform::load_stream_config_arg(args, root, error))
+            return err("INVALID_ARGUMENT", error,
+                       {{"invalid_arg", "args"},
+                        {"expected", "one of args.streams, args.config, args.config_path, or args.file"},
+                        {"required_any_of", Json::array({"args.streams", "args.config", "args.config_path", "args.file"})},
+                        {"correct_example", stream_config_load_example()},
+                        {"example_note", "Example only; use aliases in stream fields and real paths only in signals map."}});
         std::vector<StreamConfig> streams;
-        if (!xdebug_waveform::parse_stream_config_list(root, streams, error)) return err("INVALID_REQUEST", error);
+        if (!xdebug_waveform::parse_stream_config_list(root, streams, error))
+            return err("INVALID_ARGUMENT", error,
+                       {{"invalid_arg", "args.streams"},
+                        {"expected", "stream config with signals map and alias-based clock/vld/data fields"},
+                        {"correct_example", stream_config_load_example()},
+                        {"example_note", "Example only; stream config fields must reference aliases, not raw signal paths."}});
 
         StreamAnalyzer analyzer;
         Json validation = Json::array();
@@ -55,14 +79,24 @@ public:
                 {{"stream", stream.name}, {"severity", issue.severity},
                  {"code", issue.code}, {"message", issue.message}});
             for (const auto& issue : issues) {
-                if (issue.severity == "ERROR") return err("INVALID_REQUEST", issue.message);
+                if (issue.severity == "ERROR")
+                    return err("INVALID_ARGUMENT", issue.message,
+                               {{"invalid_arg", "args.streams"},
+                                {"expected", "stream config whose aliases resolve to existing waveform signals"},
+                                {"correct_example", stream_config_load_example()},
+                                {"example_note", "Example only; inspect issue message and fix the referenced alias/path."},
+                                {"next_actions", Json::array({"Use value.at on candidate leaf signals to confirm paths.",
+                                                               "Keep real signal paths only in signals map values."})}});
             }
         }
 
         std::string mode = args.value("mode", std::string("replace"));
         StreamManager manager;
         if (!manager.load_configs(xdebug_waveform::g_session_id, streams, mode, error))
-            return err("INVALID_REQUEST", error);
+            return err("INVALID_ARGUMENT", error,
+                       {{"invalid_arg", "args.mode"},
+                        {"expected", "replace or merge mode accepted by stream config manager"},
+                        {"correct_example", stream_config_load_example()}});
         Json out;
         out["summary"] = {{"loaded", streams.size()}, {"mode", mode}};
         out["streams"] = Json::array();

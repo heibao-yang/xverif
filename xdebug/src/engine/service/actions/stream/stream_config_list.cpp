@@ -27,6 +27,13 @@ using xdebug_waveform::StreamExporter;
 using xdebug_waveform::StreamManager;
 using xdebug_waveform::StreamMatch;
 using xdebug_waveform::StreamQueryOptions;
+
+Json stream_config_list_example() {
+    return Json{{"api_version", "xdebug.v1"},
+                {"action", "stream.config.list"},
+                {"target", {{"session_id", "case_a"}}},
+                {"args", Json::object()}};
+}
 class StreamConfigListHandler : public EngineActionHandler {
 public:
     const char* action_name() const override { return "stream.config.list"; }
@@ -41,7 +48,19 @@ public:
         if (!name.empty()) {
             StreamConfig config;
             if (!manager.get_stream(xdebug_waveform::g_session_id, name, config)) {
-                return Json{{"error", "CONFIG_NOT_FOUND"}, {"message", name}};
+                Json example = stream_config_list_example();
+                example["args"] = {{"name", "req_stream"}};
+                return make_handler_error(
+                    "CONFIG_NOT_FOUND",
+                    "stream config not found: " + name,
+                    {{"invalid_arg", "args.name"},
+                     {"expected", "name of a previously loaded stream config"},
+                     {"missing_name", name},
+                     {"missing_resource", "stream config"},
+                     {"correct_example", example},
+                     {"example_note", "Example only; omit args.name to list all loaded stream configs."},
+                     {"next_actions", Json::array({"Call stream.config.list with args:{} to list loaded stream names.",
+                                                    "Call stream.config.load before showing a named stream config."})}});
             }
             return Json{{"summary", {{"name", name}}},
                         {"stream", xdebug_waveform::stream_config_json(config)}};
