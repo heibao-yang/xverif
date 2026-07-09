@@ -44,7 +44,7 @@ public:
         Json effective_request = request;
         Json result = xdebug_waveform::ai_dispatch_query(effective_request, error);
         if (!error.empty()) {
-            Json e; e["error"] = "ACTION_FAILED"; e["message"] = error; return e;
+            return make_handler_error_from_message(error);
         }
         // Fix statistics end time: ai functions may return FSDB max time
         // instead of the requested window end.

@@ -81,7 +81,7 @@ public:
             if (error.find("expression operands must be aliases") != std::string::npos) {
                 return expression_alias_error(name_, error);
             }
-            Json e; e["error"] = "ACTION_FAILED"; e["message"] = error; return e;
+            return make_handler_error_from_message(error);
         }
         // Fix statistics end time: ai functions may return FSDB max time
         // instead of the requested window end.

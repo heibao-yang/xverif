@@ -43,7 +43,7 @@ public:
         std::string error;
         Json result = xdebug_waveform::ai_cursor_action(action, args, error);
         if (!error.empty()) {
-            Json e; e["error"] = "ACTION_FAILED"; e["message"] = error; return e;
+            return make_handler_error_from_message(error);
         }
         return result;
     }

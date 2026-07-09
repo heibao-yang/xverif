@@ -2,6 +2,8 @@
 
 #include "../../api/text_response_builder.h"
 
+#include <algorithm>
+#include <cctype>
 #include <set>
 #include <vector>
 
@@ -21,7 +23,55 @@ std::string scalar_text(const Json& object, const char* key) {
     return xdebug::json_to_xout_value(value);
 }
 
+std::string lowercase(std::string text) {
+    std::transform(text.begin(), text.end(), text.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return text;
+}
+
+bool contains_text(const std::string& haystack, const char* needle) {
+    return haystack.find(needle) != std::string::npos;
+}
+
+std::string code_for_handler_message(const std::string& message) {
+    std::string lower = lowercase(message);
+    if (contains_text(lower, "signal not found") ||
+        contains_text(lower, "failed to read value for signal")) {
+        return "SIGNAL_NOT_FOUND";
+    }
+    if (contains_text(lower, "clock") && contains_text(lower, "not found")) {
+        return "CLOCK_NOT_FOUND";
+    }
+    if (contains_text(lower, "config not found") ||
+        contains_text(lower, "configuration not found")) {
+        return "CONFIG_NOT_FOUND";
+    }
+    if (contains_text(lower, "list not found")) return "LIST_NOT_FOUND";
+    if (contains_text(lower, "file not found") ||
+        contains_text(lower, "no such file")) {
+        return "FILE_NOT_FOUND";
+    }
+    if (contains_text(lower, "requires") ||
+        contains_text(lower, "must ") ||
+        contains_text(lower, "invalid") ||
+        contains_text(lower, "unsupported") ||
+        contains_text(lower, "unknown")) {
+        return "INVALID_ARGUMENT";
+    }
+    return "PRECONDITION_FAILED";
+}
+
 } // namespace
+
+Json make_handler_error(const std::string& code, const std::string& message) {
+    return Json{{"error", code},
+                {"message", message},
+                {"error_layer", "handler"}};
+}
+
+Json make_handler_error_from_message(const std::string& message) {
+    return make_handler_error(code_for_handler_message(message), message);
+}
 
 std::string append_common_blocks_xout(std::string text, const Json& response) {
     const Json data = response.value("data", Json::object());
