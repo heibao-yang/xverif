@@ -57,7 +57,7 @@ public:
         if (!xdebug_waveform::parse_user_time(bs.c_str(), false, bt, time_error) ||
             !xdebug_waveform::parse_user_time(es.c_str(), false, et, time_error))
             return make_handler_error(
-                "TIME_SPEC_INVALID",
+                "INVALID_TIME",
                 time_error,
                 {{"invalid_arg", "args.time_range"},
                  {"expected", "time_range.begin/end strings such as 0ns and 500ns"},

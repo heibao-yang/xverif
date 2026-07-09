@@ -59,7 +59,7 @@ public:
         if (!xdebug_waveform::parse_user_time(bs.c_str(), false, begin, time_error) ||
             !xdebug_waveform::parse_user_time(es.c_str(), true, end, time_error))
             return make_handler_error(
-                "TIME_SPEC_INVALID",
+                "INVALID_TIME",
                 time_error.empty() ? "failed to parse list.export time range" : time_error,
                 {{"invalid_arg", "args.time_range"},
                  {"expected", "time_range.begin/end strings such as 0ns and 500ns"},

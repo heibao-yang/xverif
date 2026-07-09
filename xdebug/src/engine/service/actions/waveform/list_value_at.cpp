@@ -55,7 +55,7 @@ public:
         std::string time_error;
         if (!xdebug_waveform::parse_user_time(ts.c_str(), false, ft, time_error))
             return make_handler_error(
-                "TIME_SPEC_INVALID",
+                "INVALID_TIME",
                 time_error,
                 {{"invalid_arg", "args.time"},
                  {"expected", "time string such as 10ns"},

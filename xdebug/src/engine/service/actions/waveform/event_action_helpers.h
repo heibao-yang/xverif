@@ -77,7 +77,7 @@ inline Json event_invalid_enum_error(const std::string& action,
 inline Json event_time_error(const std::string& action,
                              const std::string& message) {
     return make_handler_error(
-        "TIME_SPEC_INVALID",
+        "INVALID_TIME",
         message,
         {{"invalid_arg", "args.time_range"},
          {"expected", "time_range.begin/end strings such as 0ns and 100ns"},

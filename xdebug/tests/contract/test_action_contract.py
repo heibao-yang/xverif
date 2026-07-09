@@ -431,7 +431,7 @@ def test_bad_parameter_runtime_errors_include_ai_repair_hints(
             result = cli_runner.run(request, output_format="json", timeout_sec=120)
             assert not result.ok, result.stdout_raw + result.stderr_raw
             error = result.response["error"]
-            assert error["code"] in ("TIME_RANGE_INVALID", "TIME_SPEC_INVALID")
+            assert error["code"] == "TIME_RANGE_INVALID"
             assert error["invalid_arg"] == "args.time_range.end"
             assert "correct_example" in error
     finally:
