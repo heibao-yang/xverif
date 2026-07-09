@@ -121,12 +121,16 @@ compact xout 要统一第一屏 summary，表格 section 只放 rows，metadata 
 
 删除所有 public `include_*` 参数，统一由 `args.output.verbose` 控制详细输出。
 
+不引入 `output.max_bits`。超长 bit、payload 或 evidence 的展示通过 action 默认截断、`truncated:true`、`args.output.verbose` 和必要时 export 处理，不新增公共 bit 宽度参数。
+
 MCP/tool 层 `output_format` 和 action 导出文件格式彻底区分：
 
 - MCP/tool 顶层 `output_format`：工具返回格式，取值 `xout | json`。
 - xdebug action 层 `args.output.file_format`：导出文件内容格式，取值按 action schema 限定。
 
 禁止 `args.output.format`，错误提示应给 `did_you_mean:"args.output.file_format"`。
+
+文档和 skill 示例应避免无解释地同时出现 `output_format` 与 `args.output.file_format`。只有专门解释二者区别的段落才允许并列展示。
 
 统一 `output` 对象：
 
@@ -172,6 +176,8 @@ MCP 入口内所有 session 生命周期只能通过 MCP session tools。
 - `session.list`
 
 返回 `error_layer:"wrapper"`，`correct_example` 给 MCP session tool 形态，例如 `xverif_debug_session_open`、`xverif_debug_session_close`、`xverif_debug_session_list`。
+
+不提供 `allow_native_session_action`、opt-in flag 或 raw_request 绕行入口。MCP 入口内所有 session 生命周期必须使用 MCP session tools。
 
 ### 12. config.list 统一
 
@@ -489,6 +495,400 @@ commit 边界：
 commit 边界：
 
 - 文档与 skill mirror 单独提交。
+
+## 全阶段任务书
+
+### 阶段 1 任务：冻结计划和证据
+
+目标：把本轮破坏性 API 决策、证据来源和阶段边界固化为 repo 内文档，作为后续实现的 source of truth。
+
+任务：
+
+- 保留逐项评审报告 `doc/xdebug_mcp_action_return_review_2026-07-09.md`。
+- 保留共性问题报告 `doc/xdebug_mcp_action_return_common_issues_2026-07-09.md`。
+- 新增本计划书 `doc/xdebug_error_output_expression_unification_plan_2026-07-09.md`。
+- 计划书覆盖错误合同、MCP/native 入口差异、输出合同、表达式 alias 合同、分阶段回归和 commit 边界。
+- 文档阶段不修改源码、不修改 schema、不同步 skill mirror。
+
+验收：
+
+- `git diff --check`
+- `git status --short` 只包含本阶段文档。
+- 文档单独 commit。
+
+当前状态：
+
+- 已完成并提交：`f2c6550 文档：记录 xdebug MCP action 返回评审与统一修复计划`。
+
+### 阶段 2 任务：公共错误合同垂直切片
+
+目标：先把统一错误对象从 schema 层、handler 层、response builder、xout renderer 到测试跑通，证明公共抽象可用。
+
+任务：
+
+- 新增公共错误类型：
+  - `DiagnosticError` 或等价结构。
+  - `ErrorBuilder` helper。
+  - 支持 `code`、`message`、`recoverable`、`error_layer`、`invalid_arg`、`expected`、`received`、`allowed_values`、`did_you_mean`、`missing_name`、`missing_resource`、`available_values`、`next_actions`、`example_note`、`correct_example`、`cause_code`。
+- 更新 response/error schema：
+  - 错误诊断字段统一位于 `error`。
+  - `data` 不再承载错误提示。
+  - `error_layer` 为必填枚举。
+- 更新 response builder：
+  - `make_error` 支持结构化 error object。
+  - `ResponseBuilder::error` 支持 `DiagnosticError`。
+  - 保持成功 response 不受影响。
+- 更新 schema validator 接入：
+  - schema 校验失败填 `error_layer:"schema"`。
+  - schema 旧 `data.invalid_arg/correct_example` 迁移到 `error`。
+  - additionalProperties、required、enum、conditional required 继续给 `invalid_arg/did_you_mean/correct_example`。
+- 更新 xout renderer：
+  - xout error 展示 `code/message/recoverable/error_layer`。
+  - 展示 `invalid_arg/expected/received/allowed_values/did_you_mean`。
+  - 先展示 `example_note`，再展示 `correct_example`。
+  - 展示 `next_actions`。
+- 迁移代表 action：
+  - `schema`：`args.kind` 非法 enum 走 handler 层 `INVALID_ENUM`。
+  - `value.at`：缺字段、非法 time、signal not found、clock not found 至少覆盖一种 handler 错误。
+  - `list.add` 或 `stream.config.load`：覆盖状态对象或 config 类错误。
+- 禁止代表 action 继续返回弱 `ACTION_FAILED + message`。
+
+验收：
+
+- 新增/更新 unit test：ErrorBuilder 字段生成。
+- 新增/更新 contract test：schema 层错误字段位于 `error`。
+- 新增/更新 handler negative test：代表 action handler 错误有 `error_layer:"handler"`。
+- 新增/更新 xout test：错误 xout 可见 example note、correct example、next actions。
+- `make -C xdebug schema-test`
+- `make -C xdebug contract-test`
+- 若触发真实 FSDB/NPI，按 AGENTS.md 在沙箱外运行关联测试。
+
+commit 边界：
+
+- 只提交公共错误合同、代表 action 迁移和对应测试。
+
+### 阶段 3 任务：MCP 入口错误合同
+
+目标：让 MCP 入口在成功和失败路径都遵循当前入口心智模型，消除 native envelope 泄漏和 session 生命周期混淆。
+
+任务：
+
+- `xverif_debug_query(output_format:"xout")` 下 backend `ok:false` 渲染为 xout error。
+- 保留结构化错误字段，便于 AI 自动修复。
+- MCP wrapper 将 backend native `correct_example` 翻译为当前 MCP tool 参数形态。
+- MCP wrapper 替换 `example_note`，明确不要把 native `api_version/target` 写进 MCP args。
+- `xverif_debug_raw_request` 对 backend 参数错误进行结构化提升，不再只包进 `stdout_tail`。
+- `xverif_debug_query` 禁止 native `session.*`。
+- `xverif_debug_raw_request` 禁止 native `session.*`。
+- 禁止 action 列表：
+  - `session.open`
+  - `session.close`
+  - `session.kill`
+  - `session.gc`
+  - `session.doctor`
+  - `session.list`
+- session 禁止错误返回 `error_layer:"wrapper"`，`correct_example` 给 MCP session tool。
+- MCP tool help / skill 文档同步说明 MCP session tools 是唯一生命周期入口。
+
+验收：
+
+- MCP unit tests 覆盖 query 错误 xout。
+- MCP unit tests 覆盖 native example 翻译为 MCP example。
+- MCP negative tests 覆盖 `session.open/close/list` 被拒绝。
+- raw_request negative tests 覆盖 backend error 提升。
+- `make -C xdebug mcp-test`
+- 若 MCP stdio-loop/UDS 涉及 sandbox 差异，按 AGENTS.md 做沙箱外验证。
+
+commit 边界：
+
+- 只提交 MCP wrapper、MCP tests、相关 help/skill 小范围说明。
+
+### 阶段 4 任务：参数词典与输出合同迁移
+
+目标：统一全 action 的公共参数命名、输出对象、时间对象、config.list/export 语义，消除 AI 最常猜错的旧字段和同义字段。
+
+任务：
+
+- 全仓库 request schema 删除或拒绝 `limit`，迁移为 `line_limit`。
+- 删除或拒绝旧数量字段：
+  - `max_items`
+  - `max_events`
+  - `max_samples`
+  - `max_findings`
+  - `max_examples`
+- 所有错误提示指向 `args.line_limit`。
+- 统一 response summary：
+  - `returned_count`
+  - `line_limit`
+  - `truncated`
+  - `total_count` 或 `estimated_total_count` 如可得。
+- 删除 public `include_*` 参数。
+- 确认全体系只剩 `args.output.verbose` 一个 verbose。
+- 统一 `args.output`：
+  - `path`
+  - `file_format`
+  - `verbose`
+- 拒绝旧输出字段：
+  - `output.format`
+  - `output_file`
+  - `output_dir`
+  - `output_prefix`
+  - `rc_path`
+  - 顶层输出 `path`
+- 所有 export action 支持：
+  - 有 `args.output.path`：写文件或目录。
+  - 无 `args.output.path`：返回 response preview。
+- 所有 export response summary 包含：
+  - `status`
+  - `output_written`
+  - `output.path` 如适用
+  - `row_count`
+  - `truncated`
+- 所有 `*.config.list` 支持：
+  - `args:{}` 列全部。
+  - `args.name` 展示单个详情。
+  - 不存在返回结构化 `CONFIG_NOT_FOUND`。
+- 时间合同统一：
+  - request 单点只用 `args.time`。
+  - request 窗口只用 `args.time_range.begin/end`。
+  - 拒绝 `at/requested_time/start_time/begin/end/from/to` 请求别名。
+  - xout 时间带单位，裸 tick 字段改名 `*_ticks`。
+- query 形态统一：
+  - `*.query` kind 可枚举。
+  - object query 使用 `kind` 或 `type`。
+  - schema 完整约束 `required` 和 `additionalProperties:false`。
+  - 同协议族同名字段 enum 尽量统一。
+
+验收：
+
+- schema-test 覆盖新字段。
+- contract-test 覆盖旧字段拒绝和 `did_you_mean`。
+- runtime focused probes 覆盖代表 export/config.list/time/query。
+- docs/examples 更新到新字段。
+- `make -C xdebug schema-test`
+- `make -C xdebug contract-test`
+- 根据触及 action 选择 `make -C xdebug test-fast` 或更小 focused probes。
+
+commit 边界：
+
+- 参数词典和输出合同可拆为多个 commit，但每个 commit 必须包含 schema/runtime/tests/docs 的闭环。
+
+### 阶段 5 任务：统一表达式组件和 alias 合同
+
+目标：用一套表达式 evaluator 覆盖 stream/event/expr/window/verify/handshake，统一 alias、错误提示和 X/Z 语义。
+
+任务：
+
+- 从当前 stream `StreamExpression` 抽取或重构统一 evaluator。
+- 能力基线：
+  - signal / literal
+  - bit select
+  - concat
+  - unary `!` / `~`
+  - logical `&&` / `||`
+  - bitwise `&` / `|` / `^`
+  - compare `==` / `!=` / `>` / `>=` / `<` / `<=`
+- 定义统一 expression result：
+  - bits/value
+  - known
+  - width
+  - status: `ok | unknown | error`
+- 定义统一 expression error：
+  - unknown alias
+  - parse error
+  - select out of range
+  - unsupported operator
+  - missing sampled value
+- 通用 action 表达式只允许 alias。
+- 真实 signal path 只出现在 `signals` map 或 config 绑定中。
+- 迁移 `expr.eval_at`：
+  - 输入 `args.signals + args.expr`。
+  - 输出统一 expression result。
+- 迁移 `event.find/export`：
+  - 使用统一 evaluator。
+  - inline 和 config mode 都使用 alias。
+- 迁移 `verify.conditions`：
+  - 输入 `args.signals + conditions[].expr`。
+  - 拒绝旧 `conditions[].signal/op/value`。
+- 迁移 `window.verify`：
+  - 输入 `args.signals + conditions[].expr`。
+  - 使用统一 pass/fail/unknown 语义。
+- 迁移 `stream.*`：
+  - stream config 加 `signals` map。
+  - `clock/reset/vld/rdy/bp/sop/eop/data/channel_id/*_fields` 都引用 alias/expression。
+  - `clock` 必须是 alias。
+  - 拒绝旧直接 path config。
+- 迁移 `handshake.inspect` 表达式入口，如存在 inline vld/rdy/data 表达式。
+- `event.config.load` alias 化。
+- AXI/APB config 不纳入 alias 化改造。
+
+验收：
+
+- expression unit tests 覆盖全部操作符。
+- expression unit tests 覆盖 literal、select、concat、X/Z。
+- expression negative tests 覆盖 unknown alias、parse error、select out of range。
+- schema tests 覆盖 `verify.conditions/window.verify/stream.config.load/event.config.load` 新形态。
+- runtime focused probes 覆盖：
+  - `expr.eval_at`
+  - `event.find`
+  - `event.export`
+  - `verify.conditions`
+  - `window.verify`
+  - `stream.config.load`
+  - `stream.query`
+  - `handshake.inspect` 如适用。
+- `make -C xdebug schema-test`
+- `make -C xdebug contract-test`
+- `make -C xdebug test-fast` 或按真实 FSDB/NPI 规则沙箱外运行。
+
+commit 边界：
+
+- 表达式组件可先单独 commit。
+- 全 action 迁移必须在同阶段完成后 commit，不留下双轨公共合同。
+
+### 阶段 6 任务：action family 全面迁移
+
+目标：把剩余 action 的 handler 层错误、empty/partial summary、xout 信息分层和必要 debug evidence 全部迁移到新合同。
+
+批次 A：value/list/scope/signal
+
+- `value.at` / `value.batch_at` / `list.value_at`：
+  - signal/clock/time 错误使用 ErrorBuilder。
+  - batch partial summary 统一计数。
+  - correct_example 不回显坏 signal/clock/time。
+- `list.create/add/delete/show/validate/export/diff`：
+  - list not found 统一 `LIST_NOT_FOUND`。
+  - index base 明确。
+  - delete response 使用 `removed_index/removed_signal/count_after`。
+  - export index 与 list index 避免冲突。
+- `scope.roots/list`：
+  - 空结果给 `empty_reason`。
+  - 旧字段 `depth` 指向新字段或按最新合同拒绝。
+- `signal.resolve/canonicalize/changes/statistics/stability`：
+  - no-result 和 not-found 区分。
+  - summary 第一屏统一。
+
+批次 B：event/expr/window/verify
+
+- 完成表达式统一后的错误和 response polish。
+- event 表格 metadata 移出 row section。
+- unknown alias 提供 `available_aliases`。
+- malformed condition 不允许变成 pass/unknown。
+
+批次 C：stream/handshake
+
+- stream config/list/show/query/export/validate 统一错误。
+- query kind enum 化。
+- `match` 形态严格约束。
+- verbose 输出避免超宽 union table。
+- handshake rules 形态与 schema 对齐。
+
+批次 D：trace/rc/source
+
+- trace driver/load/active_driver/active_driver_chain：
+  - signal not found 语义统一。
+  - no path/no active evidence 用 `empty_reason`。
+  - time 字段统一。
+- rc.generate：
+  - request/response 使用 `args.output.path` / `output.path`。
+  - 删除 `rc_path/include_preview`。
+- source.context：
+  - 路径脱敏或 verbose 才显示绝对路径。
+  - context 参数如支持则 schema 化，不支持则给明确错误。
+
+批次 E：AXI/APB
+
+- AXI/APB query/analysis/export/cursor/config list 等：
+  - direction enum 统一或显式说明差异。
+  - 重型 query 给缩窄建议。
+  - xout time 带单位。
+  - payload 默认截断，必要信息不丢。
+  - config not found 不回显坏 name。
+  - line_limit 控制返回行数。
+
+验收：
+
+- 每个批次至少跑对应 schema/contract/focused runtime tests。
+- 每个批次更新 action-specific negative tests。
+- 每个批次检查 xout golden 或 snapshot。
+- 涉及真实 FSDB/NPI/VCS/VIP 的动作沙箱外执行。
+
+commit 边界：
+
+- 每个批次一个或多个 commit。
+- commit message 写清 family、合同变化和验证命令。
+
+### 阶段 7 任务：skill、架构文档和 mirror 收敛
+
+目标：所有 agent-facing 文档都只描述新合同，避免 AI 从旧示例学习错误字段。
+
+任务：
+
+- 更新 `skills/xverif-cli`：
+  - native envelope 示例全部使用新字段。
+  - 不出现旧 `limit/include_*/output.format/rc_path/from/to/conditions[].signal/op/value`。
+  - 表达式示例使用 alias map。
+  - stream/event config 示例使用 alias map。
+- 更新 `skills/xverif-mcp`：
+  - MCP 示例使用 tool 壳。
+  - `correct_example` 说明当前入口唯一。
+  - MCP session 生命周期只能使用 MCP session tools。
+  - 默认强调 xout；错误 xout 仍可读。
+- 更新 `doc/agents/xdebug/`：
+  - error contract。
+  - output contract。
+  - expression evaluator 架构。
+  - 如何添加 action 时接入 ErrorBuilder 和 expression evaluator。
+- 更新 README/help/json-api/action-reference/response-fields。
+- 同步安装版 skill mirror：
+  - `~/.codex/skills/xverif-cli`
+  - `~/.codex/skills/xverif-mcp`
+  - 如存在 Claude mirror，也同步。
+
+验收：
+
+- skill 文档 grep 检查旧字段不残留。
+- 文档 JSON 示例 schema 校验。
+- `git diff --check`
+- mirror `diff -qr`。
+
+commit 边界：
+
+- 文档和 skill mirror 单独 commit。
+
+### 阶段 8 任务：全量回归与远端交付
+
+目标：在所有阶段完成后，用全量回归和 live MCP smoke 确认新合同闭环，然后推送远端。
+
+任务：
+
+- 清理本轮 disposable MCP session。
+- 检查无本轮 xdebug-engine 残留。
+- 跑源码关联测试：
+  - `make -C xdebug schema-test`
+  - `make -C xdebug contract-test`
+  - `make -C xdebug unit-test`
+  - `make -C xdebug test-fast`
+  - `make -C xdebug mcp-test`
+- 视修改范围跑更大回归：
+  - `make -C xdebug test-regression`
+  - VIP/NPI/VCS/LSF 相关目标按 AGENTS.md 沙箱外执行。
+- 抽样 live MCP 调用：
+  - 成功路径 xout。
+  - schema 错误 xout。
+  - handler 错误 xout。
+  - session.* 禁止错误。
+  - expression alias 错误。
+- 检查 skill mirror。
+- `git status --short` 确认干净。
+- 按阶段 commit 全部完成后推送当前分支。
+
+验收：
+
+- 所有关联测试通过，或清楚记录环境阻塞。
+- live MCP 错误提示能直接告诉 AI 正确入口和示例。
+- 无 session/engine 残留。
+- 远端 push 成功。
 
 ## 测试总要求
 
