@@ -34,9 +34,6 @@
           "type": "string",
           "description": "需要求值或匹配的布尔表达式。"
         },
-        "include_statement_only": {
-          "type": "boolean"
-        },
         "line_limit": {
           "type": "integer",
           "minimum": 1,

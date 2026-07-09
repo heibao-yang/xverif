@@ -151,13 +151,11 @@ def test_active_trace_semantic_branches_and_gates(
         signal: str,
         requested_time: str,
         *,
-        include_trace: bool = True,
         limits: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         args: dict[str, Any] = {
             "signal": signal,
             "time": requested_time,
-            "include_trace": include_trace,
         }
         if limits is not None:
             args["limits"] = limits
@@ -210,7 +208,6 @@ def test_active_trace_semantic_branches_and_gates(
             "args": {
                 "signal": signal,
                 "time": requested_time,
-                "include_trace": True,
             },
             "output": {"verbosity": "compact"},
         }

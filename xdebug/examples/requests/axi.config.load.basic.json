@@ -39,7 +39,6 @@
       "rlast": "axi_vip_fixture_top.axi_vip_if.master_if[0].rlast",
       "rvalid": "axi_vip_fixture_top.axi_vip_if.master_if[0].rvalid",
       "rready": "axi_vip_fixture_top.axi_vip_if.master_if[0].rready"
-    },
-    "include_transactions": false
+    }
   }
 }

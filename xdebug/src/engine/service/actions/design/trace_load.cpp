@@ -28,8 +28,6 @@ static TraceOptions parse_trace_opts(const Json& args) {
     opts.limit = args.value("line_limit", 0);
     opts.role = args.value("role", std::string());
     opts.no_statement_only = args.value("no_statement_only", false);
-    if (args.contains("include_statement_only") && args["include_statement_only"].is_boolean())
-        opts.no_statement_only = !args["include_statement_only"].get<bool>();
     return opts;
 }
 

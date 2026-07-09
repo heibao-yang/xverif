@@ -502,7 +502,7 @@ def main():
     # ── Test 5: if_sink_observed_q_30ns (interface alias join) ──
     check("if_sink_observed_q_30ns: alias resolution to line 23",
           if_sid, "if_root_tb.u_sink.observed_q", "30ns",
-          extra_args={"include_trace": True},
+          extra_args={},
           checks=[
               path_line(23),
               signal_path_contains("if_root_tb.u_sink.observed_q"),
@@ -525,10 +525,10 @@ def main():
               no_legacy_active_fields(),
           ])
 
-    # ── Test 8: include_trace_false ──
-    check("include_trace_false: no data.trace.nodes",
+    # ── Test 8: compact output does not expose internal trace nodes ──
+    check("compact_output: no data.trace.nodes",
           ad_sid, "active_driver_tb.u_dut.q", "20ns",
-          extra_args={"include_trace": False},
+          extra_args={},
           checks=[
               active_time_present(),
               path_line(18),

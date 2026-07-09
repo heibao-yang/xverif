@@ -30,9 +30,6 @@
     "args": {
       "type": "object",
       "properties": {
-        "include_accesses": {
-          "type": "boolean"
-        },
         "name": {
           "type": "string",
           "description": "已保存配置、游标、列表或接口配置名称。"

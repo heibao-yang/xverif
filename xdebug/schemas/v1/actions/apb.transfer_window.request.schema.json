@@ -30,9 +30,6 @@
     "args": {
       "type": "object",
       "properties": {
-        "include_accesses": {
-          "type": "boolean"
-        },
         "line_limit": {
           "type": "integer",
           "minimum": 1,

@@ -5,7 +5,6 @@
     "session_id": "case_a"
   },
   "args": {
-    "name": "if0",
-    "include_accesses": false
+    "name": "if0"
   }
 }

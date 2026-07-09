@@ -262,6 +262,26 @@ def test_bad_parameter_schema_errors_include_ai_repair_hints(
             None,
             None,
         ),
+        (
+            {
+                "api_version": "xdebug.v1",
+                "action": "trace.active_driver",
+                "args": {"signal": "top.q", "time": "10ns", "include_trace": True},
+            },
+            "args.include_trace",
+            None,
+            None,
+        ),
+        (
+            {
+                "api_version": "xdebug.v1",
+                "action": "source.context",
+                "args": {"file": "rtl/foo.sv", "line": 1, "include_source": True},
+            },
+            "args.include_source",
+            None,
+            None,
+        ),
     ]
     for request, invalid_arg, did_you_mean, required_any_of in cases:
         result = cli_runner.run(request, output_format="json")

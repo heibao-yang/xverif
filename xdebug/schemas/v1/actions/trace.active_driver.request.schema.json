@@ -41,25 +41,6 @@
     "args": {
       "type": "object",
       "properties": {
-        "include_alias_candidates": {
-          "type": "boolean",
-          "description": "Include alias_candidates even when a unique alias was resolved"
-        },
-        "include_compat_fields": {
-          "type": "boolean"
-        },
-        "include_control": {
-          "type": "boolean",
-          "description": "Report control context (if/case) when no assignment confirmed (default true)"
-        },
-        "include_parity": {
-          "type": "boolean",
-          "description": "Run parity check: compare active trace vs static driver candidates"
-        },
-        "include_trace": {
-          "type": "boolean",
-          "description": "Allow internal trace evidence collection; public output remains source_context plus signal_path."
-        },
         "limits": {
           "type": "object"
         },

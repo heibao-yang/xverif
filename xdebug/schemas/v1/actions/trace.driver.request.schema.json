@@ -30,13 +30,6 @@
     "args": {
       "type": "object",
       "properties": {
-        "include_statement_only": {
-          "type": "boolean"
-        },
-        "include_trace": {
-          "type": "boolean",
-          "description": "Allow internal trace evidence collection; public output remains source_context plus signal_path."
-        },
         "line_limit": {
           "type": "integer",
           "minimum": 1,

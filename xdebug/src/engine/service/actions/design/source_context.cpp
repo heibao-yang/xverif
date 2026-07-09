@@ -34,8 +34,7 @@ public:
             return Json({{"error","MISSING_FIELD"},{"message","args.file and args.line"}});
 
         bool compact = request.value("output", Json::object()).value("verbosity", "") == "compact";
-        bool include_src = args.value("include_source", false);
-        int ctx_lines = args.value("context_lines", compact && !include_src ? 3 : 8);
+        int ctx_lines = args.value("context_lines", compact ? 3 : 8);
 
         std::ifstream in(file);
         if (!in) return Json({{"error","SOURCE_NOT_FOUND"},{"message",file}});
@@ -56,7 +55,7 @@ public:
         out["symbol"] = args.value("symbol", "");
         out["context_kind"] = enclosing.value("type", "unknown");
         out["enclosing"] = Json::parse(enclosing.dump());
-        if (!compact || include_src) {
+        if (!compact) {
             nlohmann::json ctx = nlohmann::json::array();
             for (int i = begin; i <= end; ++i)
                 ctx.push_back({{"line",i},{"text",lines[i-1]},{"hit",i == line}});

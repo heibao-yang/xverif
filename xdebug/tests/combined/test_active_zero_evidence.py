@@ -117,7 +117,6 @@ def _query(
     args: dict[str, Any] = {
         "signal": signal,
         "time": requested_time,
-        "include_trace": True,
         "clk_period": "10ns",
     }
     return _require_success(

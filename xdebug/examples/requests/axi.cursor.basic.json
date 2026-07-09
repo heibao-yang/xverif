@@ -6,7 +6,6 @@
   },
   "args": {
     "name": "if0",
-    "op": "begin",
-    "include_transactions": false
+    "op": "begin"
   }
 }

@@ -5,7 +5,6 @@
     "daidir": "simv.daidir"
   },
   "args": {
-    "signal": "top.u.ready",
-    "include_trace": false
+    "signal": "top.u.ready"
   }
 }

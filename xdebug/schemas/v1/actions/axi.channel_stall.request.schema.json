@@ -41,9 +41,6 @@
           ],
           "description": "AXI channel to inspect."
         },
-        "include_transactions": {
-          "type": "boolean"
-        },
         "line_limit": {
           "type": "integer",
           "minimum": 1,
