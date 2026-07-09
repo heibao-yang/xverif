@@ -474,7 +474,7 @@ Json simplify_active_driver_payload(const Json& raw,
     Json out;
     out["summary"] = {
         {"signal", signal},
-        {"requested_time", requested_time},
+        {"time", requested_time},
         {"active_time", active_time},
         {"path_count", static_cast<int>(paths.size())},
         {"truncated", truncated}
@@ -519,7 +519,7 @@ Json simplify_active_driver_chain_payload(const Json& raw,
     Json out;
     out["summary"] = {
         {"signal", signal},
-        {"start_time", start_time},
+        {"time", start_time},
         {"hop_count", static_cast<int>(hops.size())},
         {"termination", summary.value("termination", raw.value("termination", std::string("unresolved")))},
         {"truncated", truncated}

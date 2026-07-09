@@ -4,7 +4,7 @@
   "action": "trace.active_driver",
   "summary": {
     "signal": "top.u.ready",
-    "requested_time": "100ns",
+    "time": "100ns",
     "active_time": "95ns",
     "path_count": 1,
     "truncated": false

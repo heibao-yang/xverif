@@ -1238,7 +1238,7 @@ nlohmann::ordered_json build_active_driver_payload(const Json& request,
     nlohmann::ordered_json resp;
     resp["summary"] = {
         {"signal", signal_name},
-        {"requested_time", requested_time},
+        {"time", requested_time},
         {"active_time", first_active_time},
         {"driver_status", driver_status},
         {"evidence_source", trace_result.evidence_source.empty()

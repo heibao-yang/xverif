@@ -42,7 +42,7 @@
       "type": "object",
       "required": [
         "signal",
-        "start_time",
+        "time",
         "hop_count",
         "termination",
         "truncated"
@@ -51,7 +51,7 @@
         "signal": {
           "type": "string"
         },
-        "start_time": {
+        "time": {
           "type": "string"
         },
         "hop_count": {

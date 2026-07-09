@@ -409,7 +409,7 @@ nlohmann::ordered_json build_active_driver_chain_payload(const Json& request,
     nlohmann::ordered_json resp;
     resp["summary"] = {
         {"signal", signal},
-        {"start_time", req_time},
+        {"time", req_time},
         {"chain_length", static_cast<int>(result.chain.size())},
         {"termination", result.termination},
         {"evidence_source", result.evidence_source.empty()

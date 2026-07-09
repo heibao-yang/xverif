@@ -4,7 +4,7 @@
   "action": "trace.active_driver_chain",
   "summary": {
     "signal": "top.u.out",
-    "start_time": "26ns",
+    "time": "26ns",
     "hop_count": 2,
     "termination": "primary_input",
     "truncated": false

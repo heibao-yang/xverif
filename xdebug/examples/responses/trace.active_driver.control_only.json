@@ -14,7 +14,7 @@
   },
   "summary": {
     "signal": "top.u.state",
-    "requested_time": "100ns",
+    "time": "100ns",
     "active_time": "100ns",
     "path_count": 1,
     "truncated": false
