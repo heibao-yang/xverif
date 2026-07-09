@@ -725,6 +725,18 @@ def test_ai_usability_high_risk_request_shapes_are_strict(
                      "format": "tsv", "output": {"path": "/tmp/axi0"}},
         })
 
+    for action in ("apb.config.list", "axi.config.list", "event.config.list", "stream.config.list"):
+        config_list = jsonschema.Draft202012Validator(schema_for(action))
+        config_list.validate({
+            "api_version": "xdebug.v1",
+            "action": action,
+        })
+        config_list.validate({
+            "api_version": "xdebug.v1",
+            "action": action,
+            "args": {"name": "if0"},
+        })
+
     list_delete = jsonschema.Draft202012Validator(schema_for("list.delete"))
     list_delete.validate({
         "api_version": "xdebug.v1",

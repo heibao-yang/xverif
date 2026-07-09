@@ -5,8 +5,7 @@
   "type": "object",
   "required": [
     "api_version",
-    "action",
-    "args"
+    "action"
   ],
   "properties": {
     "api_version": {
@@ -48,9 +47,7 @@
         }
       },
       "additionalProperties": false,
-      "required": [
-        "name"
-      ]
+      "required": []
     },
     "limits": {
       "type": "object"
@@ -77,7 +74,7 @@
   "additionalProperties": false,
   "description": "axi.config.list: 列出 AXI 配置。",
   "x-purpose": "列出 AXI 配置。",
-  "x-how_it_works": "读取 AXI 配置存储。",
+  "x-how_it_works": "读取 AXI 配置存储；args:{} 列全部，args.name 显示单个配置详情。",
   "x-when_to_use": "查看可用 AXI interface 名称。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "args:{} list all; optional name shows one config"
 }

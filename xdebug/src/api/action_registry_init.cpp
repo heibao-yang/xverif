@@ -69,7 +69,6 @@ void apply_arg_contract(ActionSpec& spec) {
     };
     const RequiredEntry required[] = {
         {"apb.config.load", {"name"}, 1},
-        {"apb.config.list", {"name"}, 1},
         {"apb.cursor", {"name", "op"}, 2},
         {"apb.query", {"name"}, 1},
         {"apb.transfer_window", {"name"}, 1},
@@ -77,7 +76,6 @@ void apply_arg_contract(ActionSpec& spec) {
         {"axi.export", {"name"}, 1},
         {"axi.channel_stall", {"name"}, 1},
         {"axi.config.load", {"name"}, 1},
-        {"axi.config.list", {"name"}, 1},
         {"axi.cursor", {"name", "op"}, 2},
         {"axi.latency_outlier", {"name"}, 1},
         {"axi.outstanding_timeline", {"name"}, 1},

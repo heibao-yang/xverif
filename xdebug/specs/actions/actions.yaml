@@ -37,10 +37,7 @@
         "response": [
           "examples/responses/apb.config.list.basic.json"
         ]
-      },
-      "required_args": [
-        "name"
-      ]
+      }
     },
     {
       "name": "apb.config.load",
@@ -227,10 +224,7 @@
         "response": [
           "examples/responses/axi.config.list.basic.json"
         ]
-      },
-      "required_args": [
-        "name"
-      ]
+      }
     },
     {
       "name": "axi.config.load",

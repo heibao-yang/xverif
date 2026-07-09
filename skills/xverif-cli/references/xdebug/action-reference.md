@@ -55,7 +55,7 @@
 ## Waveform Actions
 | action | status | resource | purpose | how it works | objective | args contract |
 | --- | --- | --- | --- | --- | --- | --- |
-| `apb.config.list` | stable | waveform | 列出 APB 配置。 | 读取 APB 配置存储。 | 查看可用 APB interface 名称。 | required: name |
+| `apb.config.list` | stable | waveform | 列出 APB 配置。 | 读取 APB 配置存储；`args:{}` 列全部，`args.name` 显示单个配置详情。 | 查看可用 APB interface 名称。 | args:{} list all; optional name shows one config |
 | `apb.config.load` | stable | waveform | 加载 APB 配置。 | 保存 APB interface 信号映射。 | 定义后续 APB 查询对象。 | required: name; also one of: config / config_path |
 | `apb.cursor` | stable | waveform | 在 APB transfer 间移动游标。 | 基于 APB 查询结果按 op/direction 定位 begin/next/prev 等。 | 交互式浏览 APB 事务。 | required: name, op |
 | `apb.query` | stable | waveform | 查询 APB transfer。 | 按 APB 配置扫描 PSEL/PENABLE/PREADY 等握手和地址数据；第 N 个 transfer 用 1-based `query.index`，多条用 `query.line_limit`。 | 抽取 APB 读写访问。 | required: name<br>use query.index / query.line_limit; do not use args.num, args.limit, or query.limit |
@@ -63,7 +63,7 @@
 | `axi.analysis` | stable | waveform | 汇总 AXI 行为。 | 基于 AXI 解析结果统计 channel、latency、stall 等。 | 快速判断 AXI 接口健康度。 | required: name |
 | `axi.export` | stable | waveform | 导出 AXI 数据。 | 按 name 和 time_range 查询 AXI，再按 format/output.path 写出。 | 给外部表格或脚本分析。 | required: name<br>also one of: time_range |
 | `axi.channel_stall` | experimental | waveform | 实验性 AXI stall 分析。 | 按 channel 检查 valid 高 ready 低的持续窗口。 | 定位背压和阻塞。 | required: name |
-| `axi.config.list` | stable | waveform | 列出 AXI 配置。 | 读取 AXI 配置存储。 | 查看可用 AXI interface 名称。 | required: name |
+| `axi.config.list` | stable | waveform | 列出 AXI 配置。 | 读取 AXI 配置存储；`args:{}` 列全部，`args.name` 显示单个配置详情。 | 查看可用 AXI interface 名称。 | args:{} list all; optional name shows one config |
 | `axi.config.load` | stable | waveform | 加载 AXI 配置。 | 保存 AXI channel 信号映射。 | 定义后续 AXI 查询对象。 | required: name; also one of: config / config_path |
 | `axi.cursor` | stable | waveform | 在 AXI transfer 间移动游标。 | 基于 AXI 查询结果按 op/direction 定位事务。 | 交互式浏览 AXI 事务。 | required: name, op |
 | `axi.latency_outlier` | experimental | waveform | 实验性 AXI latency 异常。 | 从配对结果中找超过阈值或分布异常的事务。 | 定位慢事务。 | required: name |
@@ -77,7 +77,7 @@
 | `cursor.set` | stable | waveform | 保存命名时间游标。 | 解析 time/at 为 FSDB 时间，写入 CursorManager，可设 active。 | 给后续窗口、比较和人工定位复用时间点。 | required: name, time |
 | `cursor.use` | stable | waveform | 激活游标。 | 按 name 取游标并设为当前 active。 | 让后续交互默认围绕该时间点。 | required: name |
 | `detect_abnormal` | stable | waveform | 扫描常见波形异常。 | 对 signals 执行 glitch/stuck/unknown 等检查并返回 findings；valid/ready 协议里的合法 idle/backpressure 不应只凭 stuck finding 判为 bug。 | 快速发现值得展开的异常窗口。 | required: signals |
-| `event.config.list` | stable | waveform | 列出事件配置。 | 读取 EventManager 中保存的配置名和摘要。 | 查看可用事件查询模板。 | none |
+| `event.config.list` | stable | waveform | 列出事件配置。 | 读取 EventManager 中保存的配置；`args:{}` 列全部，`args.name` 显示单个配置详情。 | 查看可用事件查询模板。 | args:{} list all; optional name shows one config |
 | `event.config.load` | stable | waveform | 保存事件查询配置。 | request args 只传 name 和可选 config_path/time_unit；clock/edge/sample_point/signals/reset 来自配置文件内容。 | 复用常见事件查询上下文。 | required: name |
 | `event.export` | stable | waveform | 导出满足表达式的事件。 | 与 event.find 同样分析，但按 export 模式返回/写出更多命中数据；表达式支持布尔组合、相等比较和大小比较。 | 把事件列表交给后处理或报告。 | required: expr<br>also one of: name / clock + signals |
 | `event.find` | stable | waveform | 查找满足表达式的事件样例。 | 用 name 配置或 inline clock/signals 构建 EventQuery，按 clock sampling 模式扫描表达式命中；表达式支持布尔组合、相等比较和大小比较。 | 快速找到协议条件发生的时间。 | required: expr<br>also one of: name / clock + signals |
@@ -103,7 +103,7 @@
 | `verify.conditions` | stable | waveform | 在单个时间验证条件集合。 | 解析 clock/time，读取条件引用信号并求值。 | 检查某个时间点的多条件事实。 | required: conditions, time, clock |
 | `window.verify` | stable | waveform | 按 clock 在窗口内验证条件。 | 按 clock edge 采样 signals，逐个 condition 统计 pass/fail/unknown。 | 判断协议或断言类条件是否持续满足。 | required: clock, conditions |
 | `stream.config.load` | stable | waveform | 加载 stream 配置。 | 把 stream 定义写入 stream manager。 | 定义 valid/ready/data 类流接口。 | also one of: streams / config / config_path / file |
-| `stream.config.list` | stable | waveform | 列出 stream 配置。 | 读取已保存 stream 定义。 | 查看可查询的 stream。 | none |
+| `stream.config.list` | stable | waveform | 列出 stream 配置。 | 读取已保存 stream 定义；`args:{}` 列全部，`args.name` 显示单个配置详情。 | 查看可查询的 stream。 | args:{} list all; optional name shows one config |
 | `stream.show` | stable | waveform | 显示 stream 定义和摘要。 | 按 stream 名读取配置并返回字段。 | 确认 stream 绑定了哪些信号。 | required: stream |
 | `stream.validate` | stable | waveform | 验证 stream 配置。 | 检查 stream 信号在 FSDB 中是否可解析。 | 提前发现错误信号路径。 | required: stream |
 | `stream.query` | stable | waveform | 查询 stream transfer。 | 按 stream 配置和 query 条件扫描握手/beat。 | 抽取流事务或 beats。 | required: stream, query |

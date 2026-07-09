@@ -26,6 +26,10 @@
     "args": {
       "type": "object",
       "properties": {
+        "name": {
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
+        },
         "output": {
           "type": "object",
           "properties": {
@@ -86,7 +90,7 @@
   "additionalProperties": false,
   "description": "stream.config.list: 列出 stream 配置。",
   "x-purpose": "列出 stream 配置。",
-  "x-how_it_works": "读取已保存 stream 定义。",
+  "x-how_it_works": "读取已保存 stream 定义；args:{} 列全部，args.name 显示单个配置详情。",
   "x-when_to_use": "查看可查询的 stream。",
-  "x-arg_contract_notes": "none"
+  "x-arg_contract_notes": "args:{} list all; optional name shows one config"
 }

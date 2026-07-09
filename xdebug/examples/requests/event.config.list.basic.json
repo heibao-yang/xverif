@@ -4,7 +4,5 @@
   "target": {
     "session_id": "case_a"
   },
-  "args": {
-    "line_limit": 5
-  }
+  "args": {}
 }

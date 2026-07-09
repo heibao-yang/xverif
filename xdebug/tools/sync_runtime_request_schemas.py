@@ -111,11 +111,13 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
 
 EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "apb.cursor": {"direction"},
+    "apb.config.list": {"name"},
     "apb.config.load": {"config", "config_path"},
     "apb.query": {"direction", "address", "addr", "query", "last"},
     "apb.transfer_window": {"line_limit", "time_range"},
     "axi.analysis": {"analysis", "direction"},
     "axi.channel_stall": {"channel", "line_limit", "rules", "time_range"},
+    "axi.config.list": {"name"},
     "axi.config.load": {"config", "config_path"},
     "axi.cursor": {"direction"},
     "axi.export": {"output", "time_range"},
@@ -177,6 +179,7 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "signal.statistics": {"clock", "conditions", "edge", "line_limit", "mode", "sample_point", "signals", "time_range"},
     "source.context": {"context_lines", "symbol"},
     "stream.config.load": {"config", "config_path", "file", "mode"},
+    "stream.config.list": {"name", "output"},
     "stream.export": {"channel", "line_limit", "output", "time_range"},
     "stream.query": {"channel", "field_scope", "line_limit", "match", "packet_index", "time_range"},
     "stream.show": set(),

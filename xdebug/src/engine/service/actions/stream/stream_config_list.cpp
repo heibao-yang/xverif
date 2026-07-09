@@ -36,7 +36,16 @@ public:
         Json args = request.value("args", Json::object());
         Json output = args.value("output", Json::object());
         bool verbose = output.value("verbose", false);
+        std::string name = args.value("name", std::string());
         StreamManager manager;
+        if (!name.empty()) {
+            StreamConfig config;
+            if (!manager.get_stream(xdebug_waveform::g_session_id, name, config)) {
+                return Json{{"error", "CONFIG_NOT_FOUND"}, {"message", name}};
+            }
+            return Json{{"summary", {{"name", name}}},
+                        {"stream", xdebug_waveform::stream_config_json(config)}};
+        }
         auto streams = manager.list_streams(xdebug_waveform::g_session_id);
         Json arr = Json::array();
         for (const auto& stream : streams) {

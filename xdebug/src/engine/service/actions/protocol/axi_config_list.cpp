@@ -25,11 +25,21 @@ public:
     Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string name = a.value("name", "");
-        if (name.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
         xdebug_waveform::AxiManager am;
+        if (name.empty()) {
+            auto configs = am.list_all(xdebug_waveform::g_session_id);
+            Json arr = Json::array();
+            for (const auto& cfg : configs) {
+                arr.push_back({{"name", cfg.name},
+                               {"sampling_mode", "clock_edge"},
+                               {"clock", cfg.clock_sample.clock},
+                               {"edge", xdebug_waveform::clock_edge_kind_text(cfg.clock_sample.edge)}});
+            }
+            return Json{{"summary", {{"count", configs.size()}}}, {"configs", arr}};
+        }
         xdebug_waveform::AxiConfig cfg;
         if (!am.get_axi(xdebug_waveform::g_session_id, name, cfg))
-            return Json({{"error","CONFIG_NOT_FOUND"}});
+            return Json({{"error","CONFIG_NOT_FOUND"},{"message",name}});
         Json out; out["name"] = name;
         out["sampling_mode"] = "clock_edge";
         out["clock"] = cfg.clock_sample.clock;
