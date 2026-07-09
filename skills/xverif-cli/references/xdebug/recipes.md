@@ -113,7 +113,7 @@ inline 配置示例：
 2. `signal.changes` 查 `ready` 首次卡住或最后变化时间。
 3. 有 `daidir + fsdb + time` 时用 `trace.active_driver` 查当前生效 driver。
 4. 若 driver 指向 `full`、state 或 grant 条件，补 `value.at` / `value.batch_at` 查控制信号值。
-5. 用 `source.context include_source:true` 获取最终源码 evidence。
+5. 用 `source.context` 获取最终源码 evidence；需要更多上下文时使用 action-specific `context_lines` 或 `args.output.verbose:true`，不要传旧 include 参数。
 
 请求骨架：
 
@@ -237,9 +237,7 @@ inline 配置示例：
   "target": {"session_id": "case_a"},
   "args": {
     "signal": "top.u.ready",
-    "time": "@stall",
-    "include_control": true,
-    "include_parity": true
+    "time": "@stall"
   }
 }
 ```

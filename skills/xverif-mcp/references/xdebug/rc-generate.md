@@ -221,4 +221,4 @@ addExprSig -b 1 -n UUU aw_fire "/top/u_axi/awvalid" & "/top/u_axi/awready"
 - `RC_VALIDATION_FAILED`
 - `RC_WRITE_FAILED`
 
-默认不要把完整 rc 文本粘给用户。需要证明生成内容时使用 `include_preview:true` 和合理的 `max_preview_lines`。
+默认不要把完整 rc 文本粘给用户。需要证明生成内容时使用 `args.output.verbose:true` 或读取生成的 rc 文件摘要；不要传旧 include 参数。
