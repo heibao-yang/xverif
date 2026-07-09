@@ -178,6 +178,49 @@ def test_runtime_request_schemas_are_strict_and_synced(xdebug_root: Path) -> Non
 
 
 @pytest.mark.contract
+def test_waveform_expression_contract_schemas_are_strict(xdebug_root: Path) -> None:
+    value_batch_schema = _load_json(
+        xdebug_root / "schemas" / "v1" / "actions" / "value.batch_at.request.schema.json"
+    )
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(
+            {
+                "api_version": "xdebug.v1",
+                "action": "value.batch_at",
+                "args": {
+                    "signals": {"a": "top.u.a"},
+                    "time": "10ns",
+                    "clock": "top.u.clk",
+                },
+            },
+            value_batch_schema,
+        )
+
+    for action in ("verify.conditions", "window.verify"):
+        schema = _load_json(
+            xdebug_root / "schemas" / "v1" / "actions" / f"{action}.request.schema.json"
+        )
+        args = {
+            "clock": "top.u.clk",
+            "signals": {"a": "top.u.a"},
+            "conditions": [{}],
+        }
+        if action == "verify.conditions":
+            args["time"] = "10ns"
+        else:
+            args["time_range"] = {"begin": "0ns", "end": "10ns"}
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                {
+                    "api_version": "xdebug.v1",
+                    "action": action,
+                    "args": args,
+                },
+                schema,
+            )
+
+
+@pytest.mark.contract
 def test_bad_parameter_schema_errors_include_ai_repair_hints(
     cli_runner: CliRunner,
 ) -> None:

@@ -65,21 +65,11 @@
           "description": "posedge/dual 时的采样点：before 或 after；posedge 默认推荐 before。"
         },
         "signals": {
-          "oneOf": [
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            }
-          ],
-          "description": "信号列表，或 alias 到信号路径的映射。"
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Signal paths to sample at the same clock/time point."
         },
         "slice_hint": {
           "type": "object"

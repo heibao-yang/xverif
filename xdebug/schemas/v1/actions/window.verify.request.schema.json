@@ -37,9 +37,30 @@
         "conditions": {
           "type": "array",
           "items": {
-            "type": "object"
+            "type": "object",
+            "required": [
+              "expr"
+            ],
+            "properties": {
+              "expr": {
+                "type": "string",
+                "description": "Expression using aliases from args.signals."
+              },
+              "name": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "always",
+                  "eventually",
+                  "never"
+                ]
+              }
+            },
+            "additionalProperties": false
           },
-          "description": "需要验证的条件列表。"
+          "description": "Conditions to evaluate. Each item must include expr."
         },
         "edge": {
           "type": "string",

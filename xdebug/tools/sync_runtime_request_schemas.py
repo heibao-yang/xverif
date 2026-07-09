@@ -416,6 +416,33 @@ def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[
                 "enum": ["transfer", "packet", "packet_beats"],
                 "description": "导出或查询的结果类型。",
             }
+    if action == "value.batch_at" and "signals" in selected_props:
+        selected_props["signals"] = {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Signal paths to sample at the same clock/time point.",
+        }
+    if action in {"verify.conditions", "window.verify"} and "conditions" in selected_props:
+        selected_props["conditions"] = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["expr"],
+                "properties": {
+                    "expr": {
+                        "type": "string",
+                        "description": "Expression using aliases from args.signals.",
+                    },
+                    "name": {"type": "string"},
+                    "mode": {
+                        "type": "string",
+                        "enum": ["always", "eventually", "never"],
+                    },
+                },
+                "additionalProperties": False,
+            },
+            "description": "Conditions to evaluate. Each item must include expr.",
+        }
     if action == "axi.channel_stall" and "channel" in selected_props:
         selected_props["channel"] = {
             "type": "string",
