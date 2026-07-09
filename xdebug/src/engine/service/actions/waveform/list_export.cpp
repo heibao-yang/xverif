@@ -67,9 +67,32 @@ public:
                          {"message","list.export output.file_format must be u64bin; response manifest uses versioned format u64bin.v1"}});
         std::string output_dir = output.value("path", std::string());
         if (output_dir.empty()) {
-            output_dir = xdebug_waveform::xdebug_waveform_list_exports_dir(xdebug_waveform::g_session_id)
-                + "/" + n + "_" + std::to_string(begin) + "_" + std::to_string(end)
-                + "_" + std::to_string(static_cast<long long>(time(nullptr)));
+            Json signal_preview = Json::array();
+            int line_limit = a.value("line_limit", 16);
+            int index = 0;
+            for (const auto& signal : lst.signals) {
+                if (index >= line_limit) break;
+                signal_preview.push_back({{"index", index}, {"signal", signal}});
+                ++index;
+            }
+            auto range = xdebug_core::format_time_range(xdebug_waveform::g_fsdb_file, begin, end);
+            Json out;
+            out["summary"] = {
+                {"name", n},
+                {"signal_count", lst.signals.size()},
+                {"row_count", 0},
+                {"format", "u64bin.v1"},
+                {"status", "preview"},
+                {"output_written", false},
+                {"line_limit", line_limit},
+                {"truncated", static_cast<int>(lst.signals.size()) > line_limit}
+            };
+            out["preview"] = signal_preview;
+            out["signals"] = signal_preview;
+            out["begin"] = range.first;
+            out["end"] = range.second;
+            out["truncated"] = out["summary"]["truncated"];
+            return out;
         }
         xdebug_waveform::ListExportOptions options;
         options.session_id = xdebug_waveform::g_session_id;
@@ -89,6 +112,9 @@ public:
             {"signal_count", result.signal_count},
             {"row_count", result.row_count},
             {"format", result.format},
+            {"status", "written"},
+            {"output_written", true},
+            {"truncated", false},
             {"output", {{"path", result.output_dir}, {"manifest_path", result.manifest_file}}}
         };
         out["output"] = {{"path", result.output_dir}, {"manifest_path", result.manifest_file}};

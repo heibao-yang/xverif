@@ -96,9 +96,6 @@
     "limits": {
       "type": "object"
     },
-    "output": {
-      "type": "object"
-    },
     "auth_token": {
       "type": "string"
     },

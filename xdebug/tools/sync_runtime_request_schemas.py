@@ -138,6 +138,7 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
         "line_limit",
         "mode",
         "name",
+        "output",
         "rst_n",
         "sample_point",
         "time_range",
@@ -227,7 +228,6 @@ TOP_LEVEL_PROPERTIES: dict[str, dict[str, Any]] = {
     "target": {"type": "object"},
     "args": {"type": "object"},
     "limits": {"type": "object"},
-    "output": {"type": "object"},
     "auth_token": {"type": "string"},
 }
 
@@ -396,6 +396,12 @@ def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[
             "type": "string",
             "enum": ["tsv", "csv"],
             "description": "axi.export file format.",
+        }
+    if action == "event.export" and "output" in selected_props:
+        selected_props["output"]["properties"]["file_format"] = {
+            "type": "string",
+            "enum": ["json"],
+            "description": "event.export file format.",
         }
     if action == "stream.export":
         if "output" in selected_props:

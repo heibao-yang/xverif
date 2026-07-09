@@ -99,28 +99,9 @@
           ]
         }
       },
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "packet_beats"
-              }
-            }
-          },
-          "then": {
-            "required": [
-              "output"
-            ]
-          }
-        }
-      ]
+      "additionalProperties": false
     },
     "limits": {
-      "type": "object"
-    },
-    "output": {
       "type": "object"
     },
     "request_id": {

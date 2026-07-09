@@ -62,7 +62,6 @@
           "additionalProperties": true
         }
       },
-      "required": ["output"],
       "additionalProperties": true
     },
     "warnings": {

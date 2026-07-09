@@ -1586,16 +1586,6 @@
       },
       "required_args": [
         "stream"
-      ],
-      "conditional_required_args": [
-        {
-          "when": {
-            "kind": "packet_beats"
-          },
-          "required": [
-            "output"
-          ]
-        }
       ]
     },
     {

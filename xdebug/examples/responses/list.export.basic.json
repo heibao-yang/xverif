@@ -7,6 +7,9 @@
     "signal_count": 2,
     "row_count": 16,
     "format": "u64bin.v1",
+    "status": "written",
+    "output_written": true,
+    "truncated": false,
     "output": {
       "path": "/tmp/if0_list_export",
       "manifest_path": "/tmp/if0_list_export/manifest.json"

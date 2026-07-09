@@ -14,6 +14,7 @@
 #include <memory>
 #include <ctime>
 #include <sstream>
+#include <algorithm>
 
 namespace xdebug_design {
 namespace {
@@ -73,21 +74,70 @@ public:
             return Json({{"error","ANALYZE_FAILED"},{"message",error}});
         result.format = format;
 
+        auto txn_json = [](const AxiExportTransaction& txn) {
+            npiFsdbTime latency = txn.completion_time >= txn.addr_time ? txn.completion_time - txn.addr_time : 0;
+            return Json{{"seq", txn.seq},
+                        {"direction", txn.is_write ? "write" : "read"},
+                        {"completion_time", format_time(txn.completion_time)},
+                        {"addr_time", format_time(txn.addr_time)},
+                        {"first_data_time", format_time(txn.first_data_time)},
+                        {"last_data_time", format_time(txn.last_data_time)},
+                        {"latency", format_duration(latency)},
+                        {"id", txn.id},
+                        {"addr", txn.addr},
+                        {"len", txn.len},
+                        {"size", txn.size},
+                        {"burst", txn.burst},
+                        {"resp", txn.resp},
+                        {"beat_count", txn.beat_count},
+                        {"expected_beat_count", txn.expected_beat_count}};
+        };
+
+        Json summary = {{"name", name},
+                        {"write_count", result.writes.size()},
+                        {"read_count", result.reads.size()},
+                        {"total_count", result.writes.size() + result.reads.size()},
+                        {"row_count", result.writes.size() + result.reads.size()},
+                        {"format", format},
+                        {"status", output_prefix.empty() ? "preview" : "written"},
+                        {"output_written", !output_prefix.empty()},
+                        {"truncated", false}};
+
+        if (output_prefix.empty()) {
+            Json preview;
+            preview["writes"] = Json::array();
+            preview["reads"] = Json::array();
+            size_t wlimit = std::min<size_t>(result.writes.size(), 8);
+            size_t rlimit = std::min<size_t>(result.reads.size(), 8);
+            for (size_t i = 0; i < wlimit; ++i) preview["writes"].push_back(txn_json(result.writes[i]));
+            for (size_t i = 0; i < rlimit; ++i) preview["reads"].push_back(txn_json(result.reads[i]));
+            Json out;
+            out["summary"] = summary;
+            out["name"] = name;
+            out["begin"] = format_time(begin);
+            out["end"] = format_time(end);
+            out["scan_begin"] = format_time(result.scan_begin);
+            out["scan_end"] = format_time(result.scan_end);
+            out["preview"] = preview;
+            out["write_count"] = result.writes.size();
+            out["read_count"] = result.reads.size();
+            out["total_count"] = result.writes.size() + result.reads.size();
+            out["row_count"] = result.writes.size() + result.reads.size();
+            out["truncated"] = false;
+            return out;
+        }
+
         std::string write_file, read_file, meta_file;
         if (!exporter.write_files(output_prefix, result, write_file, read_file, meta_file, error))
             return Json({{"error","EXPORT_FAILED"},{"message",error}});
 
         Json out;
-        out["summary"] = {{"name", name},
-                          {"write_count", result.writes.size()},
-                          {"read_count", result.reads.size()},
-                          {"total_count", result.writes.size() + result.reads.size()},
-                          {"format", format},
-                          {"output", {{"path", output_prefix},
-                                       {"write_path", write_file},
-                                       {"read_path", read_file},
-                                       {"meta_path", meta_file},
-                                       {"file_format", format}}}};
+        summary["output"] = {{"path", output_prefix},
+                             {"write_path", write_file},
+                             {"read_path", read_file},
+                             {"meta_path", meta_file},
+                             {"file_format", format}};
+        out["summary"] = summary;
         out["name"] = name;
         out["begin"] = format_time(begin);
         out["end"] = format_time(end);

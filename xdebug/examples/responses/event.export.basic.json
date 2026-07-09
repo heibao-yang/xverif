@@ -6,10 +6,25 @@
     "event_count": 1,
     "mode": "all",
     "inline": false,
-    "truncated": false
+    "truncated": false,
+    "status": "preview",
+    "output_written": false,
+    "row_count": 1,
+    "line_limit": 5
   },
   "data": {
     "events": [
+      {
+        "time": "100ns",
+        "signals": {
+          "valid": {
+            "value": "1'b1",
+            "known": true
+          }
+        }
+      }
+    ],
+    "preview": [
       {
         "time": "100ns",
         "signals": {

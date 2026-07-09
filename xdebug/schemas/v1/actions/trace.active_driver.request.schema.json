@@ -98,28 +98,6 @@
       },
       "additionalProperties": false
     },
-    "output": {
-      "type": "object",
-      "description": "Output format controls. verbosity=full|debug does not restore legacy trace internals.",
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "json",
-            "xout"
-          ]
-        },
-        "verbosity": {
-          "type": "string",
-          "enum": [
-            "compact",
-            "full",
-            "debug"
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
     "auth_token": {
       "type": "string"
     },

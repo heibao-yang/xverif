@@ -218,6 +218,26 @@ public:
         if (config.clock_sample.edge != ClockEdgeKind::Negedge)
             out["sample_point"] = clock_sample_point_text(config.clock_sample.sample_point);
         out["sample_time_semantics"] = "time is sample_time";
+        Json output = args.value("output", Json::object());
+        std::string output_path = output.value("path", std::string());
+        std::string file_format = output.value("file_format", std::string("json"));
+        if (file_format != "json")
+            return Json({{"error","INVALID_REQUEST"},{"message","event.export output.file_format must be json"}});
+        out["summary"]["status"] = output_path.empty() ? "preview" : "written";
+        out["summary"]["output_written"] = !output_path.empty();
+        out["summary"]["row_count"] = static_cast<int>(arr.size());
+        out["summary"]["line_limit"] = query.limit;
+        out["summary"]["truncated"] = false;
+        if (!output_path.empty()) {
+            std::string write_error;
+            if (!xdebug_waveform::write_text_file_creating_dirs(output_path, out.dump(2) + "\n", write_error))
+                return Json({{"error","EXPORT_FAILED"},{"message",write_error}});
+            Json output_info = {{"path", output_path}, {"file_format", file_format}};
+            out["summary"]["output"] = output_info;
+            out["output"] = output_info;
+        } else {
+            out["preview"] = arr;
+        }
         return out;
     }
 };

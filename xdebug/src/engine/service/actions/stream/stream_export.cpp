@@ -31,6 +31,23 @@ using xdebug_waveform::StreamQueryOptions;
 Json err(const std::string& code, const std::string& message) {
     return Json{{"error", code}, {"message", message}};
 }
+size_t row_count_for_kind(const StreamAnalysis& analysis, const std::string& kind) {
+    if (kind == "packet") return analysis.packets.size();
+    if (kind == "packet_beats") return analysis.transfer_count;
+    return analysis.transfers.size();
+}
+Json preview_for_kind(const StreamAnalysis& analysis, const std::string& kind, int line_limit) {
+    Json rows = Json::array();
+    int limit = line_limit > 0 ? line_limit : 16;
+    if (kind == "packet") {
+        for (size_t i = 0; i < analysis.packets.size() && static_cast<int>(i) < limit; ++i)
+            rows.push_back(xdebug_waveform::stream_packet_json(analysis.packets[i]));
+    } else {
+        for (size_t i = 0; i < analysis.transfers.size() && static_cast<int>(i) < limit; ++i)
+            rows.push_back(xdebug_waveform::stream_row_json(analysis.transfers[i]));
+    }
+    return rows;
+}
 std::string code_for_stream_error(const std::string& message, const std::string& fallback) {
     return message.find("0x prefix is not accepted") != std::string::npos ||
            message.find("invalid value literal") != std::string::npos
@@ -103,13 +120,21 @@ public:
         if (format != "tsv" && format != "csv" && format != "xout")
             return err("INVALID_REQUEST", "output.file_format must be tsv, csv, or xout");
         std::string output = output_arg.value("path", std::string());
-        if (kind == "packet_beats" && output.empty()) return err("MISSING_FIELD", "packet_beats export requires output.path");
+        size_t row_count = row_count_for_kind(analysis, kind);
+        Json summary = xdebug_waveform::stream_summary_json(config, analysis);
+        summary["status"] = output.empty() ? "preview" : "written";
+        summary["output_written"] = !output.empty();
+        summary["row_count"] = row_count;
+        summary["line_limit"] = args.value("line_limit", 16);
+        summary["truncated"] = analysis.truncated ||
+            (output.empty() && static_cast<int>(row_count) > summary["line_limit"].get<int>());
+        summary["kind"] = kind;
         if (output.empty()) {
-            std::ostringstream oss;
-            oss << xdebug_waveform::xdebug_waveform_stream_exports_dir(xdebug_waveform::g_session_id)
-                << "/" << config.name << "_" << kind << "_" << std::time(nullptr)
-                << (format == "csv" ? ".csv" : ".tsv");
-            output = oss.str();
+            return Json{{"summary", summary},
+                        {"preview", preview_for_kind(analysis, kind, summary["line_limit"].get<int>())},
+                        {"kind", kind},
+                        {"row_count", row_count},
+                        {"truncated", summary["truncated"]}};
         }
         std::string meta;
         StreamExporter exporter;
@@ -120,10 +145,11 @@ public:
         else return err("INVALID_REQUEST", "kind must be transfer, packet, or packet_beats");
         if (!ok) return err("EXPORT_FAILED", error);
         Json output_info = {{"path", output}, {"meta_path", meta}, {"file_format", format}};
-        return Json{{"summary", xdebug_waveform::stream_summary_json(config, analysis)},
+        summary["output"] = output_info;
+        return Json{{"summary", summary},
                     {"output", output_info}, {"kind", kind},
-                    {"row_count", kind == "transfer" ? analysis.transfers.size() :
-                        kind == "packet" ? analysis.packets.size() : analysis.transfer_count}};
+                    {"row_count", row_count},
+                    {"truncated", summary["truncated"]}};
     }
 };
 

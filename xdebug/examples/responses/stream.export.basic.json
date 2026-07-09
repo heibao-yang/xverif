@@ -5,7 +5,17 @@
   "summary": {
     "stream": "req_stream",
     "transfer_count": 128,
-    "truncated": false
+    "truncated": false,
+    "status": "written",
+    "output_written": true,
+    "row_count": 128,
+    "line_limit": 16,
+    "kind": "transfer",
+    "output": {
+      "path": "/tmp/req_stream.tsv",
+      "meta_path": "/tmp/req_stream.tsv.meta.json",
+      "file_format": "tsv"
+    }
   },
   "data": {
     "output": {

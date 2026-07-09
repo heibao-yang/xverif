@@ -65,9 +65,6 @@
     "limits": {
       "type": "object"
     },
-    "output": {
-      "type": "object"
-    },
     "request_id": {
       "type": "string"
     },
