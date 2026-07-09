@@ -2,6 +2,7 @@
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
 #include "waveform_action_support.h"
+#include "list_action_helpers.h"
 #include "clock_point_query.h"
 
 #include "api/text_response_builder.h"
@@ -40,18 +41,25 @@ public:
     Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", ""), ts = a.value("time", "");
-        if (n.empty() || ts.empty())
-            return Json({{"error","MISSING_FIELD"},{"message","args.name+time"}});
+        if (n.empty())
+            return list_missing_field_error("list.value_at", "args.name", "name of a list created in this session");
+        if (ts.empty())
+            return list_missing_field_error("list.value_at", "args.time", "time string such as 10ns");
         xdebug_waveform::ClockSampleSpec clock_spec;
         Json clock_error;
         if (!parse_point_clock_args(a, clock_spec, clock_error)) return clock_error;
         xdebug_waveform::SignalList lst;
         if (!read_list_storage(n, lst))
-            return Json({{"error","LIST_NOT_FOUND"},{"message",n}});
+            return list_not_found_error("list.value_at", n);
         npiFsdbTime ft = 0;
         std::string time_error;
         if (!xdebug_waveform::parse_user_time(ts.c_str(), false, ft, time_error))
-            return Json({{"error","TIME_SPEC_INVALID"},{"message",time_error}});
+            return make_handler_error(
+                "TIME_SPEC_INVALID",
+                time_error,
+                {{"invalid_arg", "args.time"},
+                 {"expected", "time string such as 10ns"},
+                 {"correct_example", list_action_example("list.value_at")}});
         std::string formatted_time = xdebug_core::format_time(xdebug_waveform::g_fsdb_file, ft);
         std::vector<PointSignalSpec> specs;
         for (const auto& sig : lst.signals) specs.push_back({sig, sig});

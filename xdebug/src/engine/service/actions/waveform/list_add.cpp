@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "list_action_helpers.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -38,13 +39,15 @@ public:
     Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", ""), sig = a.value("signal", "");
-        if (n.empty() || sig.empty())
-            return Json({{"error","MISSING_FIELD"},{"message","args.name+signal"}});
+        if (n.empty())
+            return list_missing_field_error("list.add", "args.name", "name of a list created in this session");
+        if (sig.empty())
+            return list_missing_field_error("list.add", "args.signal", "existing waveform signal path");
         if (!npi_fsdb_sig_by_name(xdebug_waveform::g_fsdb_file, sig.c_str(), NULL))
-            return Json({{"error","SIGNAL_NOT_FOUND"},{"message",sig}});
+            return list_signal_not_found_error("list.add", sig);
         xdebug_waveform::ListManager lm;
         if (!lm.add_signal(xdebug_waveform::g_session_id, n, sig))
-            return Json({{"error","ADD_FAILED"},{"message",sig}});
+            return list_not_found_error("list.add", n);
         Json out;
         out["summary"] = {{"name", n}, {"signal", sig}, {"status", "added"}, {"added", true}};
         return out;

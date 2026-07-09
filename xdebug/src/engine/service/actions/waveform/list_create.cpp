@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "list_action_helpers.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -38,10 +39,18 @@ public:
     Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", "");
-        if (n.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
+        if (n.empty())
+            return list_missing_field_error("list.create", "args.name", "non-empty list name");
         xdebug_waveform::ListManager lm;
         if (!lm.create_list(xdebug_waveform::g_session_id, n))
-            return Json({{"error","CREATE_FAILED"},{"message",n}});
+            return make_handler_error(
+                "PRECONDITION_FAILED",
+                "failed to create list: " + n,
+                {{"invalid_arg", "args.name"},
+                 {"expected", "new list name not already used in this session"},
+                 {"missing_name", n},
+                 {"correct_example", list_action_example("list.create")},
+                 {"cause_code", "CREATE_FAILED"}});
         Json out;
         out["summary"] = {{"name", n}, {"status", "created"}, {"created", true}};
         // Optionally add initial signals

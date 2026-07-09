@@ -2,6 +2,7 @@
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
 #include "waveform_action_support.h"
+#include "list_action_helpers.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -39,32 +40,56 @@ public:
     Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", a.value("list", ""));
-        if (n.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
+        if (n.empty())
+            return list_missing_field_error("list.export", "args.name", "name of a list created in this session");
         xdebug_waveform::SignalList lst;
         if (!read_list_storage(n, lst))
-            return Json({{"error","LIST_NOT_FOUND"},{"message",n}});
+            return list_not_found_error("list.export", n);
 
         Json tr = a.value("time_range", Json::object());
         std::string bs = tr.value("begin", std::string());
         std::string es = tr.value("end", std::string());
-        if (bs.empty() || es.empty())
-            return Json({{"error","MISSING_FIELD"},{"message","list.export requires args.time_range.begin/end"}});
+        if (bs.empty())
+            return list_missing_field_error("list.export", "args.time_range.begin", "time range begin such as 0ns");
+        if (es.empty())
+            return list_missing_field_error("list.export", "args.time_range.end", "time range end such as 500ns");
 
         npiFsdbTime begin = 0, end = 0;
         std::string time_error;
         if (!xdebug_waveform::parse_user_time(bs.c_str(), false, begin, time_error) ||
             !xdebug_waveform::parse_user_time(es.c_str(), true, end, time_error))
-            return Json({{"error","TIME_SPEC_INVALID"},{"message",time_error.empty() ? "failed to parse list.export time range" : time_error}});
+            return make_handler_error(
+                "TIME_SPEC_INVALID",
+                time_error.empty() ? "failed to parse list.export time range" : time_error,
+                {{"invalid_arg", "args.time_range"},
+                 {"expected", "time_range.begin/end strings such as 0ns and 500ns"},
+                 {"correct_example", list_action_example("list.export")}});
         if (end < begin)
-            return Json({{"error","TIME_SPEC_INVALID"},{"message","end time is before begin time"}});
+            return make_handler_error(
+                "TIME_RANGE_INVALID",
+                "end time is before begin time",
+                {{"invalid_arg", "args.time_range.end"},
+                 {"expected", "end must be greater than or equal to begin"},
+                 {"correct_example", list_action_example("list.export")}});
         if (end - begin < 256000ULL)
-            return Json({{"error","TIME_RANGE_TOO_SMALL"},{"message","list.export requires at least 256ns; use list.value_at or value.batch_at for point reads"}});
+            return make_handler_error(
+                "TIME_RANGE_TOO_SMALL",
+                "list.export requires at least 256ns; use list.value_at or value.batch_at for point reads",
+                {{"invalid_arg", "args.time_range"},
+                 {"expected", "time range at least 256ns for export"},
+                 {"correct_example", list_action_example("list.export")},
+                 {"next_actions", Json::array({"Use list.value_at or value.batch_at for point reads."})}});
 
         Json output = a.value("output", Json::object());
         std::string format = output.value("file_format", std::string("u64bin"));
         if (format != "u64bin")
-            return Json({{"error","INVALID_REQUEST"},
-                         {"message","list.export output.file_format must be u64bin; response manifest uses versioned format u64bin.v1"}});
+            return make_handler_error(
+                "INVALID_ENUM",
+                "list.export output.file_format must be u64bin; response manifest uses versioned format u64bin.v1",
+                {{"invalid_arg", "args.output.file_format"},
+                 {"expected", "u64bin"},
+                 {"allowed_values", Json::array({"u64bin"})},
+                 {"correct_example", list_action_example("list.export")}});
         std::string output_dir = output.value("path", std::string());
         if (output_dir.empty()) {
             Json signal_preview = Json::array();
@@ -103,7 +128,7 @@ public:
         xdebug_waveform::ListExportResult result;
         std::string error;
         if (!xdebug_waveform::export_signal_list(xdebug_waveform::g_fsdb_file, lst, options, result, error))
-            return Json({{"error","EXPORT_FAILED"},{"message",error}});
+            return make_handler_error("ACTION_FAILED", error, {{"cause_code", "EXPORT_FAILED"}});
 
         Json out;
         out["summary"] = {

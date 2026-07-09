@@ -2,6 +2,7 @@
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
 #include "waveform_action_support.h"
+#include "list_action_helpers.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -39,10 +40,11 @@ public:
     Json run(const Json& r, EngineActionContext& ctx) const override {
         Json a = r.value("args", Json::object());
         std::string n = a.value("name", "");
-        if (n.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.name"}});
+        if (n.empty())
+            return list_missing_field_error("list.validate", "args.name", "name of a list created in this session");
         xdebug_waveform::SignalList lst;
         if (!read_list_storage(n, lst))
-            return Json({{"error","LIST_NOT_FOUND"},{"message",n}});
+            return list_not_found_error("list.validate", n);
         Json arr = Json::array();
         for (auto& sig : lst.signals) {
             Json item; item["signal"] = sig;

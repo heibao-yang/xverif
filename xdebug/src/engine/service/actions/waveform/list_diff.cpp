@@ -2,6 +2,7 @@
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
 #include "waveform_action_support.h"
+#include "list_action_helpers.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -42,16 +43,25 @@ public:
         std::string n = a.value("name", "");
         std::string bs = tr.value("begin", "");
         std::string es = tr.value("end", "");
-        if (n.empty() || bs.empty() || es.empty())
-            return Json({{"error","MISSING_FIELD"},{"message","args.name and args.time_range.begin/end"}});
+        if (n.empty())
+            return list_missing_field_error("list.diff", "args.name", "name of a list created in this session");
+        if (bs.empty())
+            return list_missing_field_error("list.diff", "args.time_range.begin", "time range begin such as 0ns");
+        if (es.empty())
+            return list_missing_field_error("list.diff", "args.time_range.end", "time range end such as 500ns");
         xdebug_waveform::SignalList lst;
         if (!read_list_storage(n, lst))
-            return Json({{"error","LIST_NOT_FOUND"},{"message",n}});
+            return list_not_found_error("list.diff", n);
         npiFsdbTime bt = 0, et = 0;
         std::string time_error;
         if (!xdebug_waveform::parse_user_time(bs.c_str(), false, bt, time_error) ||
             !xdebug_waveform::parse_user_time(es.c_str(), false, et, time_error))
-            return Json({{"error","TIME_SPEC_INVALID"},{"message",time_error}});
+            return make_handler_error(
+                "TIME_SPEC_INVALID",
+                time_error,
+                {{"invalid_arg", "args.time_range"},
+                 {"expected", "time_range.begin/end strings such as 0ns and 500ns"},
+                 {"correct_example", list_action_example("list.diff")}});
         npiFsdbTime dt = 0;
         bool found = xdebug_waveform::find_list_diff(
             xdebug_waveform::g_fsdb_file, lst.signals, bt, et, dt);

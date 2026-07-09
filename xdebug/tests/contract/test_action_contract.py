@@ -513,6 +513,95 @@ def test_stream_handler_errors_include_current_entry_examples(
 
 
 @pytest.mark.contract
+def test_list_handler_errors_include_current_entry_examples(
+    cli_runner: CliRunner,
+    xdebug_root: Path,
+) -> None:
+    fsdb = xdebug_root / "testdata" / "waveform" / "ai_complex_wave" / "out" / "waves.fsdb"
+    session_name = "list_error_contract"
+    opened = cli_runner.run(
+        {
+            "api_version": "xdebug.v1",
+            "action": "session.open",
+            "target": {"fsdb": str(fsdb)},
+            "args": {"name": session_name},
+        },
+        output_format="json",
+        timeout_sec=120,
+    )
+    assert opened.ok, opened.stdout_raw + opened.stderr_raw
+    session = opened.response.get("session") or opened.response["data"]["session"]
+    target = {"session_id": session.get("id") or session.get("session_id") or session_name}
+    try:
+        create = cli_runner.run(
+            {
+                "api_version": "xdebug.v1",
+                "action": "list.create",
+                "target": target,
+                "args": {"name": "list_contract"},
+            },
+            output_format="json",
+            timeout_sec=120,
+        )
+        assert create.ok, create.stdout_raw + create.stderr_raw
+        cases = [
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "list.show",
+                    "target": target,
+                    "args": {"name": "missing_list"},
+                },
+                "LIST_NOT_FOUND",
+                "args.name",
+                "list.show",
+            ),
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "list.add",
+                    "target": target,
+                    "args": {"name": "list_contract", "signal": "ai_complex_top.no_such"},
+                },
+                "SIGNAL_NOT_FOUND",
+                "args.signal",
+                "list.add",
+            ),
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "list.delete",
+                    "target": target,
+                    "args": {"name": "list_contract", "index": 1},
+                },
+                "PRECONDITION_FAILED",
+                "args.index",
+                "list.delete",
+            ),
+        ]
+        for request, code, invalid_arg, example_action in cases:
+            result = cli_runner.run(request, output_format="json", timeout_sec=120)
+            assert not result.ok, result.stdout_raw + result.stderr_raw
+            error = result.response["error"]
+            assert error["code"] == code
+            assert error["error_layer"] == "handler"
+            assert error["invalid_arg"] == invalid_arg
+            assert "expected" in error
+            assert "example_note" in error
+            assert error["correct_example"]["action"] == example_action
+    finally:
+        cli_runner.run(
+            {
+                "api_version": "xdebug.v1",
+                "action": "session.close",
+                "target": target,
+            },
+            output_format="json",
+            timeout_sec=120,
+        )
+
+
+@pytest.mark.contract
 def test_action_schemas_explain_purpose_and_required_args(xdebug_root: Path) -> None:
     specs = _load_json(xdebug_root / "specs" / "actions" / "actions.yaml")[
         "actions"
