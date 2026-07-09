@@ -62,7 +62,15 @@ public:
             return out;
         }
         std::string expr = args.value("expr", "");
-        if (expr.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.expr or args.signal"}});
+        if (expr.empty()) return make_handler_error(
+            "MISSING_FIELD",
+            "args.expr or args.signal is required",
+            {{"invalid_arg", "args.expr"},
+             {"expected", "either args.expr or args.signal"},
+             {"required_any_of", Json::array({"args.expr", "args.signal"})},
+             {"correct_example", {{"api_version", "xdebug.v1"},
+                                  {"action", "expr.normalize"},
+                                  {"args", {{"expr", "valid && ready"}}}}}});
         out["summary"] = {{"expr",expr},{"source","string_fallback"},{"confidence","low"}};
         out["expr"] = Json::parse(parse_expr_ast(expr).dump());
         out["confidence"] = "low";

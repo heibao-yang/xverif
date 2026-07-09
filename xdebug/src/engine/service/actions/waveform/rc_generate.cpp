@@ -42,20 +42,46 @@ public:
         std::string rc_path = output.value("path", "");
         bool allow_invalid = a.value("allow_invalid", false);
         if (config_path.empty() || rc_path.empty())
-            return Json({{"error","MISSING_FIELD"},{"message","args.config_path and args.output.path required"}});
+            return make_handler_error(
+                "MISSING_FIELD",
+                "args.config_path and args.output.path are required",
+                {{"invalid_arg", config_path.empty() ? "args.config_path" : "args.output.path"},
+                 {"expected", "input config_path and output.path"},
+                 {"required_any_of", Json::array({"args.config_path", "args.output.path"})},
+                 {"correct_example", {{"api_version", "xdebug.v1"},
+                                      {"action", "rc.generate"},
+                                      {"target", {{"session_id", "case_a"}}},
+                                      {"args", {{"config_path", "xdebug/configs/wave.rc.json"},
+                                                {"output", {{"path", "/tmp/wave.rc"}}}}}}},
+                 {"example_note", "Example only; replace config_path and output.path with project paths."}});
 
         // Read config file
         std::ifstream in(config_path);
-        if (!in) return Json({{"error","CONFIG_NOT_FOUND"},{"message",config_path}});
+        if (!in) return make_handler_error(
+            "CONFIG_NOT_FOUND",
+            "config file not found: " + config_path,
+            {{"invalid_arg", "args.config_path"},
+             {"missing_name", config_path},
+             {"missing_resource", "rc config file"},
+             {"expected", "readable rc config JSON file"}});
         std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
         nlohmann::json doc;
         try { doc = nlohmann::json::parse(content); }
-        catch (...) { return Json({{"error","INVALID_JSON"},{"message","failed to parse config file"}}); }
+        catch (...) { return make_handler_error(
+            "INVALID_JSON",
+            "failed to parse config file",
+            {{"invalid_arg", "args.config_path"},
+             {"expected", "valid JSON rc config file"}}); }
 
         xdebug_waveform::RcConfig cfg;
         std::string err;
         if (!xdebug_waveform::parse_rc_config_json(doc, cfg, err))
-            return Json({{"error","PARSE_FAILED"},{"message",err}});
+            return make_handler_error(
+                "INVALID_ARGUMENT",
+                err,
+                {{"invalid_arg", "args.config_path"},
+                 {"expected", "rc config JSON matching rc.generate schema"},
+                 {"cause_code", "PARSE_FAILED"}});
 
         // Validate signals exist in FSDB
         if (!allow_invalid) {
@@ -63,15 +89,20 @@ public:
             for (auto& ref : refs) {
                 if (ref.kind != "signal") continue;
                 if (!npi_fsdb_sig_by_name(g_fsdb_file, ref.input_path.c_str(), NULL)) {
-                    return Json({{"error","SIGNAL_NOT_FOUND"},
-                        {"message","signal not in FSDB: " + ref.input_path}});
+                    return make_handler_error(
+                        "SIGNAL_NOT_FOUND",
+                        "signal not in FSDB: " + ref.input_path,
+                        {{"invalid_arg", "args.config_path"},
+                         {"missing_name", ref.input_path},
+                         {"missing_resource", "signal"},
+                         {"expected", "rc config signals that exist in the active FSDB"}});
                 }
             }
         }
 
         std::string rc_text = xdebug_waveform::render_signal_rc(cfg);
         if (!xdebug_waveform::write_text_file_creating_dirs(rc_path, rc_text, err))
-            return Json({{"error","WRITE_FAILED"},{"message",err}});
+            return make_handler_error("ACTION_FAILED", err, {{"cause_code", "WRITE_FAILED"}});
 
         Json counts = Json::parse(xdebug_waveform::rc_config_counts(cfg).dump());
         Json out;

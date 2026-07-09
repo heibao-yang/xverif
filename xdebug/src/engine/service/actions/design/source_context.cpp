@@ -31,18 +31,38 @@ public:
         std::string file = args.value("file", "");
         int line = args.value("line", 0);
         if (file.empty() || line <= 0)
-            return Json({{"error","MISSING_FIELD"},{"message","args.file and args.line"}});
+            return make_handler_error(
+                "MISSING_FIELD",
+                "args.file and args.line are required",
+                {{"invalid_arg", file.empty() ? "args.file" : "args.line"},
+                 {"expected", "readable source file and positive line number"},
+                 {"correct_example", {{"api_version", "xdebug.v1"},
+                                      {"action", "source.context"},
+                                      {"args", {{"file", "rtl/top.sv"}, {"line", 42}, {"context_lines", 8}}}}},
+                 {"example_note", "Example only; use the file and line returned by trace/source actions."}});
 
-        bool compact = request.value("output", Json::object()).value("verbosity", "") == "compact";
+        Json output = args.value("output", Json::object());
+        bool compact = !output.value("verbose", false);
         int ctx_lines = args.value("context_lines", compact ? 3 : 8);
 
         std::ifstream in(file);
-        if (!in) return Json({{"error","SOURCE_NOT_FOUND"},{"message",file}});
+        if (!in) return make_handler_error(
+            "SOURCE_NOT_FOUND",
+            "source file not found: " + file,
+            {{"invalid_arg", "args.file"},
+             {"missing_name", file},
+             {"missing_resource", "source file"},
+             {"expected", "readable source file path"}});
         std::vector<std::string> lines;
         std::string s;
         while (std::getline(in, s)) lines.push_back(s);
         if (line > (int)lines.size())
-            return Json({{"error","INVALID_REQUEST"},{"message","line out of range"}});
+            return make_handler_error(
+                "INVALID_ARGUMENT",
+                "line out of range",
+                {{"invalid_arg", "args.line"},
+                 {"expected", "line number within source file"},
+                 {"received", line}});
 
         int begin = std::max(1, line - ctx_lines);
         int end = std::min((int)lines.size(), line + ctx_lines);

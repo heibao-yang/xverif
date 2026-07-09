@@ -29,7 +29,14 @@ public:
     Json run(const Json& request, EngineActionContext& ctx) const override {
         Json args = request.value("args", Json::object());
         std::string query = args.value("signal", "");
-        if (query.empty()) return Json({{"error","MISSING_FIELD"},{"message","args.signal"}});
+        if (query.empty()) return make_handler_error(
+            "MISSING_FIELD",
+            "args.signal is required",
+            {{"invalid_arg", "args.signal"},
+             {"expected", "signal path or signal-like query"},
+             {"correct_example", {{"api_version", "xdebug.v1"},
+                                  {"action", "signal.canonicalize"},
+                                  {"args", {{"signal", "top.u.valid"}}}}}});
 
         SignalFinder finder;
         SignalResolveResult result = finder.resolve(query);

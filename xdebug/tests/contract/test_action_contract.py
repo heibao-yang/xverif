@@ -689,6 +689,71 @@ def test_event_handler_errors_include_current_entry_examples(
 
 
 @pytest.mark.contract
+def test_rc_and_source_handler_errors_include_repair_hints(
+    cli_runner: CliRunner,
+    xdebug_root: Path,
+) -> None:
+    source_result = cli_runner.run(
+        {
+            "api_version": "xdebug.v1",
+            "action": "source.context",
+            "args": {"file": "/tmp/xdebug_missing_source_for_contract.sv", "line": 1},
+        },
+        output_format="json",
+    )
+    assert not source_result.ok
+    source_error = source_result.response["error"]
+    assert source_error["code"] == "SOURCE_NOT_FOUND"
+    assert source_error["error_layer"] == "handler"
+    assert source_error["invalid_arg"] == "args.file"
+    assert source_error["missing_resource"] == "source file"
+
+    fsdb = xdebug_root / "testdata" / "waveform" / "ai_complex_wave" / "out" / "waves.fsdb"
+    session_name = "rc_error_contract"
+    opened = cli_runner.run(
+        {
+            "api_version": "xdebug.v1",
+            "action": "session.open",
+            "target": {"fsdb": str(fsdb)},
+            "args": {"name": session_name},
+        },
+        output_format="json",
+        timeout_sec=120,
+    )
+    assert opened.ok, opened.stdout_raw + opened.stderr_raw
+    session = opened.response.get("session") or opened.response["data"]["session"]
+    target = {"session_id": session.get("id") or session.get("session_id") or session_name}
+    try:
+        rc_result = cli_runner.run(
+            {
+                "api_version": "xdebug.v1",
+                "action": "rc.generate",
+                "target": target,
+                "args": {"config_path": "/tmp/xdebug_missing_rc_config.json", "output": {}},
+            },
+            output_format="json",
+            timeout_sec=120,
+        )
+        assert not rc_result.ok
+        rc_error = rc_result.response["error"]
+        assert rc_error["code"] == "MISSING_FIELD"
+        assert rc_error["error_layer"] == "handler"
+        assert rc_error["invalid_arg"] == "args.output.path"
+        assert "correct_example" in rc_error
+        assert "example_note" in rc_error
+    finally:
+        cli_runner.run(
+            {
+                "api_version": "xdebug.v1",
+                "action": "session.close",
+                "target": target,
+            },
+            output_format="json",
+            timeout_sec=120,
+        )
+
+
+@pytest.mark.contract
 def test_action_schemas_explain_purpose_and_required_args(xdebug_root: Path) -> None:
     specs = _load_json(xdebug_root / "specs" / "actions" / "actions.yaml")[
         "actions"

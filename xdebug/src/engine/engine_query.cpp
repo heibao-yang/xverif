@@ -64,14 +64,21 @@ OrderedJson make_error(const OrderedJson& request,
                        const std::string& action,
                        const std::string& code,
                        const std::string& message,
-                       bool recoverable = true) {
+                       bool recoverable = true,
+                       const OrderedJson& details = OrderedJson::object()) {
     OrderedJson response = make_response(request, action, false);
     response["data"] = nullptr;
     response["error"] = {
         {"code", code},
         {"message", message},
-        {"recoverable", recoverable}
+        {"recoverable", recoverable},
+        {"error_layer", "handler"}
     };
+    if (details.is_object()) {
+        for (auto it = details.begin(); it != details.end(); ++it) {
+            response["error"][it.key()] = it.value();
+        }
+    }
     return response;
 }
 
@@ -184,22 +191,38 @@ OrderedJson handle_local_zero_resource_action(const OrderedJson& request,
         std::string file = args.value("file", std::string());
         int line = args.value("line", 0);
         if (file.empty() || line <= 0) {
-            return make_error(request, action, "MISSING_FIELD", "args.file and args.line");
+            OrderedJson example = {{"api_version", "xdebug.v1"},
+                                   {"action", "source.context"},
+                                   {"args", {{"file", "rtl/top.sv"}, {"line", 42}, {"context_lines", 8}}}};
+            return make_error(
+                request, action, "MISSING_FIELD", "args.file and args.line are required", true,
+                {{"invalid_arg", file.empty() ? "args.file" : "args.line"},
+                 {"expected", "readable source file and positive line number"},
+                 {"correct_example", example},
+                 {"example_note", "Example only; use the file and line returned by trace/source actions."}});
         }
 
         std::ifstream in(file.c_str());
-        if (!in) return make_error(request, action, "SOURCE_NOT_FOUND", file);
+        if (!in) return make_error(
+            request, action, "SOURCE_NOT_FOUND", "source file not found: " + file, true,
+            {{"invalid_arg", "args.file"},
+             {"missing_name", file},
+             {"missing_resource", "source file"},
+             {"expected", "readable source file path"}});
         std::vector<std::string> lines;
         std::string line_text;
         while (std::getline(in, line_text)) lines.push_back(line_text);
         if (line > static_cast<int>(lines.size())) {
-            return make_error(request, action, "INVALID_REQUEST", "line out of range");
+            return make_error(
+                request, action, "INVALID_ARGUMENT", "line out of range", true,
+                {{"invalid_arg", "args.line"},
+                 {"expected", "line number within source file"},
+                 {"received", line}});
         }
 
-        bool compact = request.value("output", OrderedJson::object())
-            .value("verbosity", std::string()) == "compact";
-        bool include_src = args.value("include_source", false);
-        int ctx_lines = args.value("context_lines", compact && !include_src ? 3 : 8);
+        OrderedJson output = args.value("output", OrderedJson::object());
+        bool compact = !output.value("verbose", false);
+        int ctx_lines = args.value("context_lines", compact ? 3 : 8);
         int begin = std::max(1, line - ctx_lines);
         int end = std::min(static_cast<int>(lines.size()), line + ctx_lines);
         nlohmann::json enclosing = detail::infer_enclosing_block(lines, line);
@@ -209,7 +232,7 @@ OrderedJson handle_local_zero_resource_action(const OrderedJson& request,
         data["symbol"] = args.value("symbol", std::string());
         data["context_kind"] = enclosing.value("type", "unknown");
         data["enclosing"] = OrderedJson::parse(enclosing.dump());
-        if (!compact || include_src) {
+        if (!compact) {
             OrderedJson context = OrderedJson::array();
             for (int i = begin; i <= end; ++i) {
                 context.push_back({{"line", i}, {"text", lines[i - 1]}, {"hit", i == line}});
