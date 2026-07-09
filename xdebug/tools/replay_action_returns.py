@@ -612,14 +612,26 @@ def _run_mcp_tool(
     timeout_sec: float,
 ) -> tuple[Any, dict[str, Any]]:
     started = time.monotonic()
-    response = asyncio.run(asyncio.wait_for(_mcp_call(server, tool, args), timeout=timeout_sec))
+    try:
+        response = asyncio.run(asyncio.wait_for(_mcp_call(server, tool, args), timeout=timeout_sec))
+        returncode = 0
+    except Exception as exc:
+        response = {
+            "ok": False,
+            "error": {
+                "code": "MCP_TOOL_ERROR",
+                "message": str(exc),
+                "error_layer": "wrapper",
+            },
+        }
+        returncode = 1
     elapsed_ms = int((time.monotonic() - started) * 1000)
     return response, {
         "command": ["mcp.call_tool", tool],
         "entry": "mcp_direct",
         "output_format": output_format,
         "elapsed_ms": elapsed_ms,
-        "returncode": 0,
+        "returncode": returncode,
     }
 
 
@@ -754,7 +766,15 @@ def _run_native_negative_case(
             and bool(response["error"].get("code"))
         )
     else:
-        ok = isinstance(response, str) and response.startswith("@xdebug.error.v1")
+        ok = (
+            isinstance(response, str)
+            and response.startswith("@xdebug.error.v1")
+        ) or (
+            isinstance(response, dict)
+            and response.get("ok") is False
+            and isinstance(response.get("error"), dict)
+            and bool(response["error"].get("code"))
+        )
     return {
         "case_id": evidence_id,
         "action": case.action,
@@ -870,6 +890,81 @@ def _run_mcp_case(
     }
 
 
+def _run_mcp_negative_case(
+    server: Any,
+    case: ReplayCase,
+    registry: dict[str, Any],
+    out_root: Path,
+    output_format: str,
+    kind: str,
+    timeout_sec: float,
+) -> dict[str, Any]:
+    placeholders = _repo_values(out_root)
+    session_name = f"replay_mcp_l3_{os.getpid()}_{case.id}_{kind}_{output_format}"
+    placeholders.update(
+        {
+            "wave_session": session_name,
+            "design_session": session_name,
+            "combined_session": session_name,
+        }
+    )
+    request = _load_request(case, placeholders)
+    setup_steps: list[dict[str, Any]] = []
+    mcp_profile = case.setup_profile if case.setup_profile != "none" else "waveform"
+    if case.action == "expr.normalize":
+        mcp_profile = "design"
+    open_args = _mcp_open_args(mcp_profile, registry, placeholders, session_name)
+    open_response, open_meta = _run_mcp_tool(server, "xverif_debug_session_open", open_args, "json", timeout_sec)
+    setup_steps.append({"tool": "xverif_debug_session_open", "args": open_args, "response": open_response, "metadata": open_meta})
+    tool_args = {
+        "session_id": session_name,
+        "action": case.action,
+        "args": request.get("args", {}),
+        "output_format": output_format,
+    }
+    if kind == "schema_error":
+        tool_args["args"] = dict(tool_args["args"])
+        tool_args["args"]["__replay_bad_arg"] = True
+    else:
+        tool_args["session_id"] = "no_such_session"
+    response, meta = _run_mcp_tool(server, "xverif_debug_query", tool_args, output_format, timeout_sec)
+    meta["fixture"] = "negative"
+    meta["setup_steps"] = setup_steps
+    evidence_id = f"{case.id}.mcp.{kind}.{output_format}"
+    _write_evidence(out_root, evidence_id, {"tool": "xverif_debug_query", "args": tool_args}, response, meta)
+    try:
+        _run_mcp_tool(server, "xverif_debug_session_close", {"name": session_name}, "json", timeout_sec)
+    except Exception:
+        pass
+    if output_format == "json":
+        ok = (
+            isinstance(response, dict)
+            and response.get("ok") is False
+            and isinstance(response.get("error"), dict)
+            and bool(response["error"].get("code"))
+        )
+    else:
+        ok = (
+            isinstance(response, str)
+            and response.startswith("@xdebug.error.v1")
+        ) or (
+            isinstance(response, dict)
+            and response.get("ok") is False
+            and isinstance(response.get("error"), dict)
+            and bool(response["error"].get("code"))
+        )
+    return {
+        "case_id": evidence_id,
+        "action": case.action,
+        "entry": "mcp_direct",
+        "output_format": output_format,
+        "negative_kind": kind,
+        "ok": ok,
+        "returncode": meta["returncode"],
+        "evidence": str(out_root / "evidence" / evidence_id),
+    }
+
+
 def render_matrix(cases: list[ReplayCase], static_rows: list[dict[str, Any]] | None = None) -> str:
     static_by_action = {row["action"]: row for row in static_rows or []}
     lines = [
@@ -961,7 +1056,23 @@ def main() -> int:
         try:
             for case in selected:
                 for output_format in formats:
-                    rows.append(_run_mcp_case(server, case, registry, out_root, output_format, args.timeout_sec))
+                    if args.layer == "L3":
+                        if case.data.get("mcp_tool"):
+                            continue
+                        for kind in ("schema_error", "handler_error"):
+                            rows.append(
+                                _run_mcp_negative_case(
+                                    server,
+                                    case,
+                                    registry,
+                                    out_root,
+                                    output_format,
+                                    kind,
+                                    args.timeout_sec,
+                                )
+                            )
+                    else:
+                        rows.append(_run_mcp_case(server, case, registry, out_root, output_format, args.timeout_sec))
         finally:
             _close_mcp_server(server)
     else:

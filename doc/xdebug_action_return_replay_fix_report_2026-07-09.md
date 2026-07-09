@@ -6,6 +6,7 @@
 - Native L2 成功路径：70 action x JSON/xout 共 140/140 通过。
 - MCP direct L2 成功路径：66 个 MCP 可调用入口 x JSON/xout 共 132/132 通过。
 - Native L3 负例路径：schema/handler error 共 274/274 通过。
+- MCP direct L3 负例路径：query action schema/handler error 共 244/244 通过。
 - Runtime 真缺陷修复：`axi.analysis` 空统计结果不再返回 `ACTION_FAILED`，改为 `ok:true`、`samples:0`、`status:empty`。
 
 `actions`、`session.list`、`session.gc` 没有独立 handler/domain error 面：它们的 target/session_id 不参与 handler 失败判定，因此 L3 只保留 schema_error replay。
@@ -24,11 +25,12 @@ After:
 - `/tmp/xdebug_action_return_replay_20260709_235032`：native L2 140/140 通过。
 - `/tmp/xdebug_action_return_replay_20260709_235659`：MCP direct L2 132/132 通过。
 - `/tmp/xdebug_action_return_replay_20260710_000004`：native L3 274/274 通过。
+- `/tmp/xdebug_action_return_replay_20260710_000451`：MCP direct L3 244/244 通过。
 
 ## 修复内容
 
 1. 新增 `xdebug/tools/replay_action_returns.py`。
-   - 支持 L0 静态合同、native JSON/xout、MCP direct JSON/xout、native L3 schema/handler error。
+   - 支持 L0 静态合同、native JSON/xout、MCP direct JSON/xout、native L3 schema/handler error、MCP direct L3 query error。
    - 每个 case 写入 `/tmp/xdebug_action_return_replay_<timestamp>/evidence/<case_id>/request.json`、`response.json` 或 `response.xout`、`metadata.json`。
    - metadata 记录 command、entry、output_format、elapsed_ms、returncode、fixture 和 setup steps。
 
@@ -57,6 +59,7 @@ python xdebug/tools/replay_action_returns.py --layer L0 --write-matrix
 python xdebug/tools/replay_action_returns.py --layer L2 --entry native-all --timeout-sec 180
 python xdebug/tools/replay_action_returns.py --layer L2 --entry mcp-all --timeout-sec 180
 python xdebug/tools/replay_action_returns.py --layer L3 --entry native-all --timeout-sec 120
+python xdebug/tools/replay_action_returns.py --layer L3 --entry mcp-all --timeout-sec 120
 ```
 
 涉及 FSDB/daidir/NPI/MCP direct 的 replay 均在沙箱外执行。
