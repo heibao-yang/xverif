@@ -35,8 +35,14 @@
         "config_path": {
           "type": "string"
         },
-        "rc_path": {
-          "type": "string"
+        "output": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
         },
         "group_count": {
           "type": "integer"
@@ -65,8 +71,14 @@
         "config_path": {
           "type": "string"
         },
-        "rc_path": {
-          "type": "string"
+        "output": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
         },
         "validation": {
           "type": "object"

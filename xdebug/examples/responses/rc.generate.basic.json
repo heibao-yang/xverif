@@ -4,7 +4,9 @@
   "action": "rc.generate",
   "summary": {
     "config_path": "wave_view.json",
-    "rc_path": "signal.rc",
+    "output": {
+      "path": "signal.rc"
+    },
     "group_count": 2,
     "signal_count": 4,
     "expr_signal_count": 1,

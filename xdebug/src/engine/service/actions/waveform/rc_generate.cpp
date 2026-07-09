@@ -76,11 +76,11 @@ public:
         Json counts = Json::parse(xdebug_waveform::rc_config_counts(cfg).dump());
         Json out;
         out["summary"] = {{"written", true}, {"config_path", config_path},
-            {"rc_path", rc_path}, {"valid", true}};
+            {"output", {{"path", rc_path}}}, {"valid", true}};
         if (counts.contains("group_count")) out["summary"]["group_count"] = counts["group_count"];
         if (counts.contains("signal_count")) out["summary"]["signal_count"] = counts["signal_count"];
         out["config_path"] = config_path;
-        out["rc_path"] = rc_path;
+        out["output"] = {{"path", rc_path}};
         out["written"] = true;
         return out;
     }
