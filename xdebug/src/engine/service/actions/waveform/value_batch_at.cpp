@@ -2,6 +2,7 @@
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
 #include "clock_point_query.h"
+#include "waveform_action_error_helpers.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -87,7 +88,10 @@ public:
         std::string time_str = args.value("time", args.value("at", std::string()));
         std::string fmt_str = args.value("format", std::string("h"));
         if (!signals_j.is_array() || signals_j.empty() || time_str.empty())
-            return err("MISSING_FIELD", "args.signals[] and args.time are required");
+            return waveform_missing_field_error(
+                action_name(),
+                (!signals_j.is_array() || signals_j.empty()) ? "args.signals" : "args.time",
+                "args.signals[] and args.time are required");
 
         xdebug_waveform::ClockSampleSpec clock_spec;
         Json clock_error;
@@ -100,7 +104,8 @@ public:
         npiFsdbTime fsdb_time = 0;
         std::string time_error;
         if (!xdebug_waveform::parse_user_time(time_str.c_str(), false, fsdb_time, time_error))
-            return err("TIME_SPEC_INVALID", time_error.empty() ? "failed to parse time: " + time_str : time_error);
+            return waveform_time_error(action_name(), "args.time",
+                                       time_error.empty() ? "failed to parse time: " + time_str : time_error);
 
         std::vector<std::string> names;
         for (const auto& s : signals_j)
@@ -168,9 +173,6 @@ public:
     }
 
 private:
-    static Json err(const char* code, const std::string& msg) {
-        Json e; e["error"] = code; e["message"] = msg; return e;
-    }
     std::string render_xout(const Json& r) const override {
         xdebug::TextResponseBuilder out("xdebug");
         out.emit_header(action_name());

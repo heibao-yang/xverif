@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "waveform_action_error_helpers.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -32,26 +33,7 @@ namespace xdebug_design {
 namespace {
 
 Json expression_alias_error(const std::string& action, const std::string& message) {
-    Json example_args = {
-        {"clock", "top.clk"},
-        {"time_range", {{"begin", "0ns"}, {"end", "100ns"}}},
-        {"signals", {{"valid", "top.u.valid"}, {"ready", "top.u.ready"}}},
-        {"conditions", Json::array({{{"expr", "valid && ready"}, {"mode", "always"}}})}
-    };
-    return {
-        {"error", "INVALID_ARGUMENT"},
-        {"message", message},
-        {"error_layer", "handler"},
-        {"invalid_arg", "args.conditions[].expr"},
-        {"expected", "use aliases in condition expr and put real signal paths in args.signals"},
-        {"example_note", "示例仅说明 native xdebug JSON action args 形态；expr 里不要写 top.u.sig 这类真实路径。"},
-        {"correct_example", {
-            {"api_version", "xdebug.v1"},
-            {"action", action},
-            {"target", {{"session_id", "<session_id>"}}},
-            {"args", example_args}
-        }}
-    };
+    return waveform_expression_alias_error(action, "args.conditions[].expr", message);
 }
 
 class AiActionHandler : public EngineActionHandler {

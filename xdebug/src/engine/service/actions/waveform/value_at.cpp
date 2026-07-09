@@ -2,6 +2,7 @@
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
 #include "clock_point_query.h"
+#include "waveform_action_error_helpers.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -87,7 +88,10 @@ public:
         std::string time_str = args.value("time", args.value("at", std::string()));
         std::string fmt_str = args.value("format", std::string("h"));
         if (signal.empty() || time_str.empty())
-            return err("MISSING_FIELD", "args.signal and args.time are required");
+            return waveform_missing_field_error(
+                action_name(),
+                signal.empty() ? "args.signal" : "args.time",
+                "args.signal and args.time are required");
 
         xdebug_waveform::ClockSampleSpec clock_spec;
         Json clock_error;
@@ -100,7 +104,8 @@ public:
         npiFsdbTime fsdb_time = 0;
         std::string time_error;
         if (!xdebug_waveform::parse_user_time(time_str.c_str(), false, fsdb_time, time_error))
-            return err("TIME_SPEC_INVALID", time_error.empty() ? "failed to parse time: " + time_str : time_error);
+            return waveform_time_error(action_name(), "args.time",
+                                       time_error.empty() ? "failed to parse time: " + time_str : time_error);
 
         npiFsdbValType vtype = xdebug_waveform::parse_format(fmt);
 
@@ -123,7 +128,7 @@ public:
         }
         Json middle_cell = point.rows.empty() ? Json() : point.rows[0].value("middle", Json::object());
         if (middle_cell.value("status", std::string()) == "signal_not_found")
-            return err("SIGNAL_NOT_FOUND", "failed to read value: " + signal);
+            return waveform_signal_not_found_error(action_name(), signal);
         Json middle_value = middle_cell.value("value", Json());
         std::string requested_format = args.value("format", "");
         out["status"] = middle_cell.value("status", std::string("unknown"));
@@ -152,9 +157,6 @@ public:
     }
 
 private:
-    static Json err(const char* code, const std::string& msg) {
-        Json e; e["error"] = code; e["message"] = msg; return e;
-    }
     std::string render_xout(const Json& r) const override {
         xdebug::TextResponseBuilder out("xdebug");
         out.emit_header(action_name());
