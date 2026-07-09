@@ -61,10 +61,16 @@ public:
         if (analysis == "osd" || analysis == "outstanding") {
             AxiStatResult stat;
             if (!g_axi_analyzer.get_outstanding_stats(name, filter,
-                    id_str.empty() ? nullptr : id_str.c_str(), stat))
-                return make_handler_error("ACTION_FAILED", "outstanding analysis failed",
-                                          {{"cause_code", "ANALYSIS_FAILED"},
-                                           {"correct_example", protocol_action_example(action_name())}});
+                    id_str.empty() ? nullptr : id_str.c_str(), stat)) {
+                out["summary"] = {{"name",name},{"analysis","osd"},{"max",0},
+                    {"min",0},{"avg",0.0},{"samples",0},{"status","empty"}};
+                out["analysis"] = "osd";
+                out["max"] = 0; out["min"] = 0; out["avg"] = 0.0;
+                out["samples"] = 0;
+                out["status"] = "empty";
+                out["name"] = name;
+                return out;
+            }
             out["summary"] = {{"name",name},{"analysis","osd"},{"max",stat.max},
                 {"min",stat.min},{"avg",stat.avg},{"samples",(int)stat.samples}};
             out["analysis"] = "osd";
@@ -73,10 +79,16 @@ public:
         } else {
             AxiStatResult stat;
             if (!g_axi_analyzer.get_latency_stats(name, filter,
-                    id_str.empty() ? nullptr : id_str.c_str(), stat))
-                return make_handler_error("ACTION_FAILED", "latency analysis failed",
-                                          {{"cause_code", "ANALYSIS_FAILED"},
-                                           {"correct_example", protocol_action_example(action_name())}});
+                    id_str.empty() ? nullptr : id_str.c_str(), stat)) {
+                out["summary"] = {{"name",name},{"analysis","latency"},{"max",0},
+                    {"min",0},{"avg",0.0},{"samples",0},{"status","empty"}};
+                out["analysis"] = "latency";
+                out["max"] = 0; out["min"] = 0; out["avg"] = 0.0;
+                out["samples"] = 0;
+                out["status"] = "empty";
+                out["name"] = name;
+                return out;
+            }
             out["summary"] = {{"name",name},{"analysis","latency"},{"max",stat.max},
                 {"min",stat.min},{"avg",stat.avg},{"samples",(int)stat.samples}};
             out["analysis"] = "latency";

@@ -183,11 +183,207 @@ def _static_check(cases: list[ReplayCase], xdebug: Path, timeout_sec: float) -> 
 def _load_request(case: ReplayCase, placeholders: dict[str, str]) -> dict[str, Any]:
     request = _json_load(REQUEST_DIR / case.example)
     request = _substitute(request, placeholders)
+    request = _normalize_seed_request(case, request, placeholders)
     if isinstance(case.data.get("success"), dict):
         request = _deep_merge(request, case.data["success"])
     if request.get("action") != case.action:
         raise SystemExit(f"{case.example} action mismatch: {request.get('action')} != {case.action}")
     return request
+
+
+def _normalize_seed_request(
+    case: ReplayCase,
+    request: dict[str, Any],
+    placeholders: dict[str, str],
+) -> dict[str, Any]:
+    """Map documentation seed examples to the replay fixture signals.
+
+    The existing examples are useful as schema-shaped seeds, but many still use
+    placeholder paths such as top.u.valid.  Replay needs deterministic fixture
+    signals; action-specific behavior remains in runtime, not here.
+    """
+    request = copy.deepcopy(request)
+    text = json.dumps(request)
+    replacements = {
+        "top.u.clk": "ai_complex_top.clk",
+        "top.u.valid": "ai_complex_top.hs_valid",
+        "top.u.ready": "ai_complex_top.hs_ready",
+        "top.u.dbg_wait_count": "ai_complex_top.counter_inc",
+        "top.valid": "ai_complex_top.event_vld",
+        "top.clk": "stream_v1_top.clk" if case.setup_profile == "stream" else "ai_complex_top.clk",
+        "top.rst_n": "stream_v1_top.rst_n" if case.setup_profile == "stream" else "ai_complex_top.rst_n",
+        "top.req_vld": "stream_v1_top.ready_vld",
+        "top.req_rdy": "stream_v1_top.ready_rdy",
+        "top.req_sop": "stream_v1_top.rpkt_sop",
+        "top.req_eop": "stream_v1_top.rpkt_eop",
+        "top.req_data": "stream_v1_top.ready_data",
+        "top.addr_hi": "stream_v1_top.ready_addr_hi",
+        "top.addr_lo": "stream_v1_top.ready_addr_lo",
+        "top.req_cmd": "stream_v1_top.ready_cmd",
+        "top.data_out": "active_driver_tb.u_dut.q",
+        "waves.fsdb": placeholders["combined_fsdb"] if case.setup_profile == "combined" else placeholders["ai_complex_fsdb"],
+        "simv.daidir": placeholders["combined_daidir"] if case.setup_profile == "combined" else placeholders["design_daidir"],
+        "events.json": placeholders["event_config"],
+        "wave_view.json": placeholders["event_config"],
+        "xdebug/testdata/waveform/ai_complex_wave/config/apb0.json": placeholders["apb_config"],
+        "/tmp/if0_list_export": str(Path(placeholders["tmpdir"]) / "if0_list_export"),
+        "/tmp/if0_axi": str(Path(placeholders["tmpdir"]) / "if0_axi"),
+        "signal.rc": str(Path(placeholders["tmpdir"]) / "signal.rc"),
+    }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    request = json.loads(text)
+    action = case.action
+    args = request.setdefault("args", {})
+    if action == "source.context":
+        args.update({"file": str(XDEBUG_ROOT / "testdata" / "waveform" / "ai_complex_wave" / "tb" / "ai_complex_top.sv"), "line": 20})
+    if action == "value.at":
+        args.update({"signal": "ai_complex_top.sig_a", "clock": "ai_complex_top.clk", "time": "75ns"})
+    if action == "value.batch_at":
+        args.update({"signals": ["ai_complex_top.sig_a", "ai_complex_top.sig_b"], "clock": "ai_complex_top.clk", "time": "75ns"})
+    if action == "expr.eval_at":
+        args.update({"expr": "valid && ready", "signals": {"valid": "ai_complex_top.hs_valid", "ready": "ai_complex_top.hs_ready"}, "clock": "ai_complex_top.clk", "time": "100ns"})
+    if action == "counter.statistics":
+        args.clear()
+        args.update(
+            {
+                "clock": "ai_complex_top.clk",
+                "edge": "posedge",
+                "time_range": {"begin": "55ns", "end": "95ns"},
+                "vld": "ai_complex_top.rst_n",
+                "cnt": "ai_complex_top.counter_inc",
+            }
+        )
+    if action in ("signal.changes", "signal.stability", "signal.statistics"):
+        args.update({"signal": "ai_complex_top.sig_a"})
+    if action == "detect_abnormal":
+        args.update({"signals": ["ai_complex_top.xz_bus", "ai_complex_top.glitch_sig"], "time_range": {"begin": "0ns", "end": "200ns"}})
+    if action == "handshake.inspect":
+        args.update({"clock": "ai_complex_top.clk", "valid": "ai_complex_top.hs_valid", "ready": "ai_complex_top.hs_ready"})
+    if action == "verify.conditions":
+        args.update({"clock": "ai_complex_top.clk", "signals": {"valid": "ai_complex_top.hs_valid"}, "conditions": [{"expr": "valid == 1"}], "time": "100ns"})
+    if action == "window.verify":
+        args.update({"clock": "ai_complex_top.clk", "signals": {"valid": "ai_complex_top.hs_valid"}, "conditions": [{"expr": "valid == 1", "mode": "always"}], "time_range": {"begin": "70ns", "end": "100ns"}})
+    if action == "event.find":
+        args.update({"clock": "ai_complex_top.clk", "signals": {"valid": "ai_complex_top.event_vld", "ready": "ai_complex_top.event_rdy"}, "expr": "valid && !ready", "line_limit": 5})
+    if action == "event.export":
+        args.update({"clock": "ai_complex_top.clk", "signals": {"valid": "ai_complex_top.event_vld", "ready": "ai_complex_top.event_rdy"}, "expr": "valid && !ready", "line_limit": 5})
+    if action == "event.config.load":
+        args.update({"name": "if0", "config_path": placeholders["event_config"]})
+    if action == "sampled_pulse.inspect":
+        args.update(
+            {
+                "clock": "ai_complex_top.clk",
+                "valid": "ai_complex_top.glitch_sig",
+                "payload": "ai_complex_top.hs_data",
+                "time_range": {"begin": "0ns", "end": "200ns"},
+                "edge": "posedge",
+                "line_limit": 5,
+            }
+        )
+    if action == "trace.active_driver":
+        args.update({"signal": "active_driver_tb.u_dut.q", "time": "40ns"})
+    if action == "trace.active_driver_chain":
+        args.update({"signal": "active_driver_tb.u_dut.q", "time": "40ns", "clk_period": "10ns"})
+    if action == "rc.generate":
+        rc_path = Path(placeholders["tmpdir"]) / f"{_action_slug(action)}.rc.json"
+        _write_rc_config(rc_path)
+        args.update(
+            {
+                "config_path": str(rc_path),
+                "output": {"path": str(Path(placeholders["tmpdir"]) / "signal.rc")},
+            }
+        )
+    if action == "apb.config.load":
+        args.update({"name": "if0", "config_path": placeholders["apb_config"]})
+    if action.startswith("apb.") and action not in ("apb.config.list", "apb.config.load"):
+        args["name"] = "if0"
+    if action.startswith("axi.") and action not in ("axi.config.list", "axi.config.load"):
+        args["name"] = "if0"
+    if action.startswith("stream.") and action not in ("stream.config.list", "stream.config.load"):
+        args["stream"] = "ready_stream"
+    if action in ("cursor.get", "cursor.delete", "cursor.use"):
+        args["name"] = "mark_a"
+    if action.startswith("list."):
+        args.setdefault("name", "if0")
+        if action in ("list.create", "list.add", "list.delete"):
+            args["signal"] = "ai_complex_top.hs_valid"
+        if action == "list.create":
+            args["signals"] = ["ai_complex_top.hs_valid", "ai_complex_top.hs_ready"]
+            args.pop("signal", None)
+        if action == "list.value_at":
+            args.update({"clock": "ai_complex_top.clk", "time": "100ns"})
+    if action == "stream.config.load":
+        cfg = _json_load(Path(placeholders["stream_config"]))
+        args.clear()
+        args.update({"mode": "replace", "streams": cfg["streams"]})
+    if action == "axi.config.load":
+        args.clear()
+        args.update({"name": "if0", "config": _synthetic_axi_config()})
+    return request
+
+
+def _synthetic_axi_config() -> dict[str, Any]:
+    return {
+        "clock": "ai_complex_top.clk",
+        "rst_n": "ai_complex_top.rst_n",
+        "edge": "posedge",
+        "awaddr": "ai_complex_top.paddr",
+        "awid": "ai_complex_top.sig_a",
+        "awlen": "ai_complex_top.sig_a",
+        "awsize": "ai_complex_top.sig_a",
+        "awburst": "ai_complex_top.sig_a",
+        "awvalid": "ai_complex_top.psel",
+        "awready": "ai_complex_top.penable",
+        "wdata": "ai_complex_top.pwdata",
+        "wstrb": "ai_complex_top.sig_a",
+        "wlast": "ai_complex_top.penable",
+        "wvalid": "ai_complex_top.psel",
+        "wready": "ai_complex_top.penable",
+        "bid": "ai_complex_top.sig_a",
+        "bresp": "ai_complex_top.sig_a",
+        "bvalid": "ai_complex_top.penable",
+        "bready": "ai_complex_top.psel",
+        "araddr": "ai_complex_top.paddr",
+        "arid": "ai_complex_top.sig_a",
+        "arlen": "ai_complex_top.sig_a",
+        "arsize": "ai_complex_top.sig_a",
+        "arburst": "ai_complex_top.sig_a",
+        "arvalid": "ai_complex_top.psel",
+        "arready": "ai_complex_top.penable",
+        "rid": "ai_complex_top.sig_a",
+        "rdata": "ai_complex_top.prdata",
+        "rresp": "ai_complex_top.sig_a",
+        "rlast": "ai_complex_top.penable",
+        "rvalid": "ai_complex_top.penable",
+        "rready": "ai_complex_top.psel",
+    }
+
+
+def _write_rc_config(path: Path) -> None:
+    _json_write(
+        path,
+        {
+            "timescale": "1ns",
+            "groups": [
+                {
+                    "name": "ClockReset",
+                    "signals": [
+                        {"path": "ai_complex_top.clk"},
+                        {"path": "ai_complex_top.rst_n"},
+                    ],
+                },
+                {
+                    "name": "Handshake",
+                    "signals": [
+                        {"path": "ai_complex_top.hs_valid"},
+                        {"path": "ai_complex_top.hs_ready"},
+                    ],
+                },
+            ],
+            "user_markers": [{"name": "cursor", "time": "120ns"}],
+        },
+    )
 
 
 def _run_cli(xdebug: Path, request: dict[str, Any], output_format: str, timeout_sec: float) -> tuple[Any, dict[str, Any]]:
@@ -254,10 +450,72 @@ def _open_native_session(
     return {"request": request, "response": response, "metadata": meta}
 
 
+def _native_setup_requests(case: ReplayCase, session_name: str, placeholders: dict[str, str]) -> list[dict[str, Any]]:
+    target = {"session_id": session_name}
+    action = case.action
+    requests: list[dict[str, Any]] = []
+    if action.startswith("apb.") and action not in ("apb.config.list", "apb.config.load"):
+        requests.append(
+            {
+                "api_version": "xdebug.v1",
+                "action": "apb.config.load",
+                "target": target,
+                "args": {"name": "if0", "config_path": placeholders["apb_config"]},
+            }
+        )
+    if action.startswith("axi.") and action not in ("axi.config.list", "axi.config.load"):
+        requests.append(
+            {
+                "api_version": "xdebug.v1",
+                "action": "axi.config.load",
+                "target": target,
+                "args": {"name": "if0", "config": _synthetic_axi_config()},
+            }
+        )
+    if action.startswith("stream.") and action not in ("stream.config.list", "stream.config.load"):
+        cfg = _json_load(Path(placeholders["stream_config"]))
+        requests.append(
+            {
+                "api_version": "xdebug.v1",
+                "action": "stream.config.load",
+                "target": target,
+                "args": {"mode": "replace", "streams": cfg["streams"]},
+            }
+        )
+    if action in ("cursor.get", "cursor.delete", "cursor.use"):
+        requests.append(
+            {
+                "api_version": "xdebug.v1",
+                "action": "cursor.set",
+                "target": target,
+                "args": {"name": "mark_a", "time": "100ns"},
+            }
+        )
+    if action in ("list.add", "list.show", "list.delete", "list.diff", "list.validate", "list.value_at", "list.export"):
+        requests.append(
+            {
+                "api_version": "xdebug.v1",
+                "action": "list.create",
+                "target": target,
+                "args": {"name": "if0", "signals": ["ai_complex_top.hs_valid", "ai_complex_top.hs_ready"]},
+            }
+        )
+    return requests
+
+
 def _close_native_session(xdebug: Path, name: str, timeout_sec: float) -> None:
     request = {
         "api_version": "xdebug.v1",
         "action": "session.close",
+        "target": {"session_id": name},
+    }
+    _run_cli(xdebug, request, "json", timeout_sec)
+
+
+def _kill_native_session(xdebug: Path, name: str, timeout_sec: float) -> None:
+    request = {
+        "api_version": "xdebug.v1",
+        "action": "session.kill",
         "target": {"session_id": name},
     }
     _run_cli(xdebug, request, "json", timeout_sec)
@@ -272,6 +530,12 @@ def _prepare_native_request(
     request = copy.deepcopy(request)
     action = case.action
     if action == "session.open":
+        if profile != "none":
+            request["target"] = {
+                key: value
+                for key, value in request.get("target", {}).items()
+                if key in ("fsdb", "daidir")
+            }
         request["args"] = _deep_merge(request.get("args", {}), {"name": session_name})
         return request
     if action in ("session.list", "session.gc", "actions", "schema", "batch", "expr.normalize"):
@@ -317,7 +581,7 @@ def _run_native_case(
     timeout_sec: float,
 ) -> dict[str, Any]:
     placeholders = _repo_values(out_root)
-    session_name = f"replay_{os.getpid()}_{case.id}"
+    session_name = f"replay_{os.getpid()}_{case.id}_{output_format}"
     placeholders.update(
         {
             "wave_session": session_name,
@@ -326,15 +590,45 @@ def _run_native_case(
         }
     )
     setup = None
-    if case.setup_profile != "none" and not case.action.startswith("session."):
+    should_open_setup_session = (
+        case.setup_profile != "none" and case.action != "session.open"
+    ) or case.action == "session.kill"
+    if case.action == "session.open":
+        _kill_native_session(xdebug, session_name, timeout_sec)
+    if case.action == "session.kill":
+        case = ReplayCase(
+            action=case.action,
+            family=case.family,
+            requires=case.requires,
+            setup_profile="combined",
+            example=case.example,
+            mcp_applicable=case.mcp_applicable,
+            data=case.data,
+        )
+    if should_open_setup_session:
         setup = _open_native_session(xdebug, session_name, case.setup_profile, registry, placeholders, timeout_sec)
+    setup_steps: list[dict[str, Any]] = []
+    if should_open_setup_session:
+        for setup_request in _native_setup_requests(case, session_name, placeholders):
+            setup_response, setup_meta = _run_cli(xdebug, setup_request, "json", timeout_sec)
+            setup_steps.append(
+                {
+                    "request": setup_request,
+                    "response": setup_response,
+                    "metadata": setup_meta,
+                }
+            )
     request = _prepare_native_request(case, _load_request(case, placeholders), session_name, case.setup_profile)
     response, meta = _run_cli(xdebug, request, output_format, timeout_sec)
     meta["fixture"] = case.setup_profile
     if setup is not None:
         meta["setup"] = setup
+    if setup_steps:
+        meta["setup_steps"] = setup_steps
     _write_evidence(out_root, f"{case.id}.native.{output_format}", request, response, meta)
-    if case.setup_profile != "none" and not case.action.startswith("session."):
+    if should_open_setup_session:
+        _close_native_session(xdebug, session_name, timeout_sec)
+    if case.action == "session.open" and isinstance(response, dict) and response.get("ok") is True:
         _close_native_session(xdebug, session_name, timeout_sec)
     ok = _ok_from_response(response, output_format, int(meta["returncode"]))
     return {
