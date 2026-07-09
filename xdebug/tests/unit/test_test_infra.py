@@ -105,7 +105,7 @@ def test_cli_runner_xout(tmp_path: Path) -> None:
 
 @pytest.mark.unit
 def test_stdio_loop_json_and_quit(tmp_path: Path) -> None:
-    loop = StdioLoopRunner(_fake_xdebug(tmp_path), cwd=tmp_path)
+    loop = StdioLoopRunner(_fake_xdebug(tmp_path), cwd=tmp_path, default_json=True)
     ready = loop.start()
     assert ready["protocol"] == "xdebug-stdio-loop"
     result = loop.request(
@@ -113,7 +113,6 @@ def test_stdio_loop_json_and_quit(tmp_path: Path) -> None:
             "api_version": "xdebug.v1",
             "action": "value.at",
             "args": {"signal": "top.clk", "clock": "top.clk", "time": "0ns"},
-            "output": {"format": "json"},
         }
     )
     assert result.ok
@@ -161,7 +160,7 @@ def test_stdio_loop_detects_stdout_pollution_after_ready(tmp_path: Path) -> None
 def test_stdio_loop_drains_large_stderr_without_polluting_stdout(
     tmp_path: Path,
 ) -> None:
-    loop = StdioLoopRunner(_fake_xdebug(tmp_path), cwd=tmp_path)
+    loop = StdioLoopRunner(_fake_xdebug(tmp_path), cwd=tmp_path, default_json=True)
     try:
         loop.start()
         result = loop.request(
@@ -169,7 +168,6 @@ def test_stdio_loop_drains_large_stderr_without_polluting_stdout(
                 "api_version": "xdebug.v1",
                 "action": "actions",
                 "args": {"stderr_lines": 1000},
-                "output": {"format": "json"},
             }
         )
         assert result.ok

@@ -70,12 +70,11 @@ def test_stdio_loop_recovers_after_blank_malformed_and_invalid_request(
             "request_id": "after-errors",
             "api_version": "xdebug.v1",
             "action": "actions",
-            "output": {"format": "json"},
         }
     )
     assert recovered.ok
     assert recovered.envelope["id"] == "after-errors"
-    assert recovered.envelope["payload_format"] == "json"
+    assert recovered.envelope["payload_format"] == "xout"
 
     events = _stdio_events(isolated_home)
     phases = [event["phase"] for event in events]
@@ -92,15 +91,14 @@ def test_stdio_loop_recovers_after_blank_malformed_and_invalid_request(
 
 @pytest.mark.session
 @pytest.mark.stdio_loop
-def test_stdio_loop_multiple_requests_keep_ids_and_output_modes(
+def test_stdio_loop_multiple_requests_keep_ids_and_xout_mode(
     stdio_loop: StdioLoopRunner,
 ) -> None:
     first = stdio_loop.request(
         {
-            "request_id": "json-1",
+            "request_id": "xout-1",
             "api_version": "xdebug.v1",
             "action": "actions",
-            "output": {"format": "json"},
         }
     )
     second = stdio_loop.request(
@@ -113,21 +111,47 @@ def test_stdio_loop_multiple_requests_keep_ids_and_output_modes(
     )
     third = stdio_loop.request(
         {
-            "request_id": "json-3",
+            "request_id": "xout-3",
             "api_version": "xdebug.v1",
             "action": "schema",
             "args": {"action": "actions", "kind": "response"},
-            "output": {"format": "json"},
         }
     )
 
-    assert first.envelope["id"] == "json-1"
-    assert first.envelope["payload_format"] == "json"
+    assert first.envelope["id"] == "xout-1"
+    assert first.envelope["payload_format"] == "xout"
     assert second.envelope["id"] == "xout-2"
     assert second.envelope["payload_format"] == "xout"
     assert second.response.startswith("@xdebug.schema.v1")
-    assert third.envelope["id"] == "json-3"
-    assert third.envelope["payload_format"] == "json"
+    assert third.envelope["id"] == "xout-3"
+    assert third.envelope["payload_format"] == "xout"
+
+
+@pytest.mark.session
+@pytest.mark.stdio_loop
+def test_stdio_loop_default_json_uses_outer_mode(
+    xdebug_bin, repo_root, isolated_home
+) -> None:
+    loop = StdioLoopRunner(
+        xdebug_bin,
+        cwd=repo_root,
+        env={"HOME": str(isolated_home), "XVERIF_HOME": str(repo_root)},
+        default_json=True,
+    )
+    try:
+        loop.start()
+        result = loop.request(
+            {
+                "request_id": "outer-json",
+                "api_version": "xdebug.v1",
+                "action": "actions",
+            }
+        )
+        assert result.ok
+        assert result.envelope["id"] == "outer-json"
+        assert result.envelope["payload_format"] == "json"
+    finally:
+        loop.terminate()
 
 
 @pytest.mark.session
@@ -155,7 +179,6 @@ def test_stdio_loop_stdout_is_jsonl_only(
             "request_id": "clean-stdout",
             "api_version": "xdebug.v1",
             "action": "actions",
-            "output": {"format": "json"},
         }
     )
     assert result.ok
@@ -164,4 +187,5 @@ def test_stdio_loop_stdout_is_jsonl_only(
         for item in stdio_loop.transcript
         if item.get("direction") == "stdout-noise"
     ]
-    json.loads(result.stdout_raw)
+    assert result.envelope["payload_format"] == "xout"
+    assert result.envelope["xout"] == result.stdout_raw

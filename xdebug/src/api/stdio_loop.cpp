@@ -94,14 +94,8 @@ void log_stdout_write_failed(const std::string& session_id, const Json& context)
 }
 
 bool request_wants_json(const Json& req, bool default_json) {
+    (void)req;
     if (default_json) return true;
-    auto it = req.find("output");
-    if (it != req.end() && it->is_object()) {
-        auto fmt = it->find("format");
-        if (fmt != it->end() && fmt->is_string()) {
-            return fmt->get<std::string>() == "json";
-        }
-    }
     return false;
 }
 

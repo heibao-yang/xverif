@@ -362,7 +362,6 @@ def test_mcp_direct_matches_cli_normalized_json_response(
                     "time": "75ns",
                     "format": "hex",
                 },
-                "output": {"format": "json"},
             },
             output_format="json",
             env={"HOME": str(isolated_home), "XVERIF_HOME": str(REPO_ROOT)},

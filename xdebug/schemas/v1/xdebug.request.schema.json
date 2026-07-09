@@ -10,8 +10,7 @@
     "action": {"type": "string"},
     "target": {"type": "object"},
     "args": {"type": "object"},
-    "limits": {"type": "object"},
-    "output": {"type": "object"}
+    "limits": {"type": "object"}
   },
   "additionalProperties": true
 }

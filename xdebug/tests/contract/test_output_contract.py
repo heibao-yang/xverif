@@ -14,13 +14,13 @@ def test_cli_and_stdio_loop_json_are_equivalent(
         "request_id": "equivalence-actions",
         "api_version": "xdebug.v1",
         "action": "actions",
-        "output": {"format": "json"},
     }
     cli_result = cli_runner.run(request, output_format="json")
     loop = StdioLoopRunner(
         xdebug_bin,
         cwd=repo_root,
         env={"HOME": str(isolated_home), "XVERIF_HOME": str(repo_root)},
+        default_json=True,
     )
     try:
         loop.start()

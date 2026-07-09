@@ -98,7 +98,6 @@ def open_session(name: str, daidir: str, fsdb: str) -> "tuple[str, str]":
         "action": "session.open",
         "target": {"daidir": daidir, "fsdb": fsdb},
         "args": {"name": name},
-        "output": {"format": "json", "verbosity": "compact"},
     })
     _, out = run_xdebug(req)
 
@@ -173,7 +172,6 @@ def do_active_driver(session_id: str, signal: str, requested_time: str,
         "action": "trace.active_driver",
         "target": {"session_id": session_id},
         "args": args,
-        "output": {"format": "json", "verbosity": "compact"},
     })
     rc, out = run_xdebug(req)
     resp = None

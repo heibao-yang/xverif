@@ -35,11 +35,15 @@ bool validate_request(const Json& request, std::string& action, std::string& err
         error = "action is required";
         return false;
     }
-    for (const char* field : {"target", "args", "limits", "output"}) {
+    for (const char* field : {"target", "args", "limits"}) {
         if (request.contains(field) && !request[field].is_object()) {
             error = std::string(field) + " must be an object";
             return false;
         }
+    }
+    if (request.contains("output")) {
+        error = "top-level output is not supported; use CLI --json for JSON responses, MCP tool output_format for MCP responses, and args.output.file_format for action export files";
+        return false;
     }
     return true;
 }

@@ -35,13 +35,16 @@ def test_default_output_is_xout(cli_runner: CliRunner) -> None:
 
 
 @pytest.mark.contract
-def test_request_output_format_overrides_cli_default(cli_runner: CliRunner) -> None:
+def test_top_level_output_is_rejected(cli_runner: CliRunner) -> None:
     request = dict(VALID_ACTIONS)
     request["output"] = {"format": "json"}
-    result = cli_runner.run(request, output_format="xout")
-    assert result.returncode == 0
-    assert result.metadata["actual_output_format"] == "json"
-    assert result.response["ok"] is True
+    result = cli_runner.run(request, output_format="json")
+    assert result.returncode == 1
+    assert result.response["ok"] is False
+    assert result.response["error"]["code"] == "INVALID_REQUEST"
+    assert "top-level output is not supported" in result.response["error"]["message"]
+    assert "CLI --json" in result.response["error"]["message"]
+    assert "args.output.file_format" in result.response["error"]["message"]
 
 
 @pytest.mark.contract

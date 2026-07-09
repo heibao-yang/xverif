@@ -38,12 +38,6 @@ bool env_wants_json() {
     return xdebug_core::env_raw_string("XVERIF_OUTPUT") == "json";
 }
 
-bool request_wants_json(const xdebug::Json& request) {
-    if (!request.contains("output") || !request["output"].is_object()) return false;
-    if (!request["output"].contains("format") || !request["output"]["format"].is_string()) return false;
-    return request["output"]["format"].get<std::string>() == "json";
-}
-
 void print_response(const xdebug::Json& response, OutputFormat format) {
     if (format == OutputFormat::Json) {
         std::cout << response.dump(2) << "\n";
@@ -361,7 +355,6 @@ int main(int argc, char** argv) {
         print_response(response, options.format);
         return 1;
     }
-    if (request_wants_json(request)) options.format = OutputFormat::Json;
     std::string action;
     if (!xdebug::validate_request(request, action, error)) {
         const std::string code = request.value("api_version", std::string()) == xdebug::kApiVersion
