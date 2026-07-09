@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "event_action_helpers.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -38,25 +39,7 @@ static Json value_object(const std::string& raw) {
 }
 
 static Json expression_alias_error(const char* action, const std::string& message) {
-    return {
-        {"error", "INVALID_ARGUMENT"},
-        {"message", message},
-        {"error_layer", "handler"},
-        {"invalid_arg", "args.expr"},
-        {"expected", "use aliases in expr and put real signal paths in args.signals"},
-        {"example_note", "示例仅说明 native xdebug JSON action args 形态；expr 里不要写 top.u.sig 这类真实路径。"},
-        {"correct_example", {
-            {"api_version", "xdebug.v1"},
-            {"action", action},
-            {"target", {{"session_id", "<session_id>"}}},
-            {"args", {
-                {"clock", "top.clk"},
-                {"signals", {{"valid", "top.u.valid"}, {"ready", "top.u.ready"}}},
-                {"expr", "valid && ready"},
-                {"time_range", {{"begin", "0ns"}, {"end", "100ns"}}}
-            }}
-        }}
-    };
+    return event_expression_alias_error(action, message);
 }
 
 static Json validate_expr_aliases(const std::string& action, const std::string& expr) {
@@ -92,45 +75,54 @@ public:
         if (!name.empty()) {
             EventManager em;
             if (!em.get_event(g_session_id, g_fsdb_file_path, name, config))
-                return Json({{"error","CONFIG_NOT_FOUND"},{"message",name}});
+                return event_config_not_found_error(action_name(), name);
         } else {
             static const char* legacy[] = {"clk", "sampling", "clock_edge", "posedge", "sample_offset", nullptr};
             for (int i = 0; legacy[i]; ++i) {
                 if (args.contains(legacy[i])) {
-                    return Json({{"error","INVALID_REQUEST"},
-                                 {"invalid_arg", std::string("args.") + legacy[i]},
-                                 {"message","legacy clock sampling field is not supported; use args.clock, args.edge, and args.sample_point"}});
+                    return event_invalid_arg_error(
+                        action_name(),
+                        std::string("args.") + legacy[i],
+                        "legacy clock sampling field is not supported; use args.clock, args.edge, and args.sample_point",
+                        "args.clock, args.edge, and args.sample_point");
                 }
             }
             std::string clock = args.value("clock", "");
             if (clock.empty())
-                return Json({{"error","MISSING_FIELD"},{"message","args.clock is required for inline event config"}});
+                return event_missing_field_error(action_name(), "args.clock", "clock alias or signal path for inline event config");
             config.clock_sample.clock = clock;
             config.rst_n = args.value("rst_n", "");
             std::string edge_error;
             if (!parse_clock_edge_kind(args.value("edge", std::string("negedge")),
                                        config.clock_sample.edge,
                                        edge_error)) {
-                return Json({{"error","INVALID_REQUEST"},{"message",edge_error}});
+                return event_invalid_enum_error(action_name(), "args.edge", edge_error,
+                                                Json::array({"posedge", "negedge", "dual"}));
             }
             if (args.contains("sample_point")) {
                 if (!args["sample_point"].is_string())
-                    return Json({{"error","INVALID_REQUEST"},{"message","args.sample_point must be before or after"}});
+                    return event_invalid_arg_error(action_name(), "args.sample_point",
+                                                   "args.sample_point must be before or after",
+                                                   "before or after",
+                                                   Json::array({"before", "after"}));
                 config.clock_sample.has_sample_point = true;
                 if (!parse_clock_sample_point_kind(args["sample_point"].get<std::string>(),
                                                    config.clock_sample.sample_point,
                                                    edge_error))
-                    return Json({{"error","INVALID_REQUEST"},{"message",edge_error}});
+                    return event_invalid_enum_error(action_name(), "args.sample_point", edge_error,
+                                                    Json::array({"before", "after"}));
             }
             if (config.clock_sample.edge == ClockEdgeKind::Negedge &&
                 config.clock_sample.has_sample_point)
-                return Json({{"error","INVALID_REQUEST"},{"message","args.sample_point is only valid with edge:posedge or edge:dual"}});
+                return event_invalid_arg_error(action_name(), "args.sample_point",
+                                               "args.sample_point is only valid with edge:posedge or edge:dual",
+                                               "omit sample_point for negedge, or use edge posedge/dual");
             Json sigs = args.value("signals", Json::object());
             for (auto it = sigs.begin(); it != sigs.end(); ++it) {
                 if (it->is_string()) config.signals[it.key()] = it->get<std::string>();
             }
             if (config.signals.empty())
-                return Json({{"error","MISSING_FIELD"},{"message","args.signals is required for inline event config"}});
+                return event_missing_field_error(action_name(), "args.signals", "alias to real signal path map");
         }
 
         npiFsdbTime tbegin = 0, tend = ~0ULL;
@@ -145,7 +137,7 @@ public:
         std::string time_error;
         if (!parse_t(time_range.value("begin", ""), false, tbegin, time_error) ||
             !parse_t(time_range.value("end", ""), true, tend, time_error)) {
-            return Json({{"error","TIME_SPEC_INVALID"},{"message",time_error}});
+            return event_time_error(action_name(), time_error);
         }
 
         EventQuery query;
@@ -159,8 +151,9 @@ public:
         if (mode == "head") mode = "first";
         if (mode == "tail") mode = "last";
         if (!export_mode_ && mode != "first" && mode != "last" && mode != "all") {
-            return Json({{"error","INVALID_REQUEST"},
-                         {"message","args.mode must be first, last, or all"}});
+            return event_invalid_enum_error(action_name(), "args.mode",
+                                            "args.mode must be first, last, or all",
+                                            Json::array({"first", "last", "all"}));
         }
 
         if (export_mode_) {
@@ -183,7 +176,7 @@ public:
         std::vector<EventRecord> records;
         std::string error;
         if (!g_event_analyzer.analyze(g_fsdb_file, config, query, records, error))
-            return Json({{"error","EVENT_FAILED"},{"message",error}});
+            return make_handler_error("ACTION_FAILED", error, {{"cause_code", "EVENT_FAILED"}});
         if (!export_mode_ && mode == "last" && records.size() > 1) {
             EventRecord last = records.back();
             records.assign(1, last);

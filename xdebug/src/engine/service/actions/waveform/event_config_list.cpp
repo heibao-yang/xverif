@@ -1,6 +1,7 @@
 #include "service/engine_action_handler.h"
 #include "service/engine_action_registry.h"
 #include "service/engine_globals.h"
+#include "event_action_helpers.h"
 
 #include "api/text_response_builder.h"
 #include "design/protocol/protocol.h"
@@ -48,7 +49,7 @@ public:
         }
         EventConfig cfg;
         if (!em.get_event(g_session_id, g_fsdb_file_path, name, cfg))
-            return Json({{"error","CONFIG_NOT_FOUND"},{"message",name}});
+            return event_config_not_found_error("event.config.list", name);
         Json out; out["name"] = name;
         out["sampling_mode"] = "clock_edge";
         out["clock"] = cfg.clock_sample.clock;

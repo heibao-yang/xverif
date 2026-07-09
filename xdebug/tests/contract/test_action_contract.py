@@ -602,6 +602,93 @@ def test_list_handler_errors_include_current_entry_examples(
 
 
 @pytest.mark.contract
+def test_event_handler_errors_include_current_entry_examples(
+    cli_runner: CliRunner,
+    xdebug_root: Path,
+) -> None:
+    fsdb = xdebug_root / "testdata" / "waveform" / "ai_complex_wave" / "out" / "waves.fsdb"
+    session_name = "event_error_contract"
+    opened = cli_runner.run(
+        {
+            "api_version": "xdebug.v1",
+            "action": "session.open",
+            "target": {"fsdb": str(fsdb)},
+            "args": {"name": session_name},
+        },
+        output_format="json",
+        timeout_sec=120,
+    )
+    assert opened.ok, opened.stdout_raw + opened.stderr_raw
+    session = opened.response.get("session") or opened.response["data"]["session"]
+    target = {"session_id": session.get("id") or session.get("session_id") or session_name}
+    try:
+        cases = [
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "event.find",
+                    "target": target,
+                    "args": {"name": "missing_event", "expr": "valid"},
+                },
+                "CONFIG_NOT_FOUND",
+                "args.name",
+                "event.find",
+            ),
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "event.find",
+                    "target": target,
+                    "args": {
+                        "clock": "ai_complex_top.clk",
+                        "signals": {"valid": "ai_complex_top.sig_valid"},
+                        "expr": "ai_complex_top.sig_valid",
+                    },
+                },
+                "INVALID_ARGUMENT",
+                "args.expr",
+                "event.find",
+            ),
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "event.find",
+                    "target": target,
+                    "args": {
+                        "clock": "ai_complex_top.clk",
+                        "signals": {"valid": "ai_complex_top.sig_valid"},
+                        "expr": "valid",
+                        "mode": "middle",
+                    },
+                },
+                "INVALID_ENUM",
+                "args.mode",
+                "event.find",
+            ),
+        ]
+        for request, code, invalid_arg, example_action in cases:
+            result = cli_runner.run(request, output_format="json", timeout_sec=120)
+            assert not result.ok, result.stdout_raw + result.stderr_raw
+            error = result.response["error"]
+            assert error["code"] == code
+            assert error["error_layer"] == "handler"
+            assert error["invalid_arg"] == invalid_arg
+            assert "expected" in error
+            assert "example_note" in error
+            assert error["correct_example"]["action"] == example_action
+    finally:
+        cli_runner.run(
+            {
+                "api_version": "xdebug.v1",
+                "action": "session.close",
+                "target": target,
+            },
+            output_format="json",
+            timeout_sec=120,
+        )
+
+
+@pytest.mark.contract
 def test_action_schemas_explain_purpose_and_required_args(xdebug_root: Path) -> None:
     specs = _load_json(xdebug_root / "specs" / "actions" / "actions.yaml")[
         "actions"
