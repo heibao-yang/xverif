@@ -531,8 +531,7 @@ def run_nonaxi(xdebug, fsdb):
         list_export = r.query("list.export", args={
             "name": "basic",
             "time_range": {"begin": "0ns", "end": "400ns"},
-            "format": "u64bin",
-            "output": {"path": list_export_dir},
+            "output": {"path": list_export_dir, "file_format": "u64bin"},
         })
         require("summary" not in list_export["data"], "list.export generated nested data.summary")
         manifest_file = list_export["data"]["manifest_file"]
@@ -894,8 +893,7 @@ def run_axi(xdebug, fsdb):
             args={
                 "name": "axi0",
                 "time_range": tr,
-                "format": "tsv",
-                "output": {"path": export_prefix},
+                "output": {"path": export_prefix, "file_format": "tsv"},
             },
             timeout=240,
         )
@@ -906,8 +904,7 @@ def run_axi(xdebug, fsdb):
             args={
                 "name": "axi0",
                 "time_range": {"begin": "1us", "end": "200ms"},
-                "format": "tsv",
-                "output": {"path": os.path.join(export_dir, "axi0_windowed")},
+                "output": {"path": os.path.join(export_dir, "axi0_windowed"), "file_format": "tsv"},
             },
             timeout=240,
         )

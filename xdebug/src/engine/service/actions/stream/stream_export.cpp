@@ -98,9 +98,10 @@ public:
         if (!analyzer.analyze(g_fsdb_file, config, options, analysis, error))
             return err(code_for_stream_error(error, "STREAM_ANALYZE_FAILED"), error);
         std::string kind = args.value("kind", std::string("transfer"));
-        std::string format = args.value("format", std::string("tsv"));
-        if (format != "tsv" && format != "csv" && format != "xout") return err("INVALID_REQUEST", "format must be tsv, csv, or xout");
         Json output_arg = args.value("output", Json::object());
+        std::string format = output_arg.value("file_format", std::string("tsv"));
+        if (format != "tsv" && format != "csv" && format != "xout")
+            return err("INVALID_REQUEST", "output.file_format must be tsv, csv, or xout");
         std::string output = output_arg.value("path", std::string());
         if (kind == "packet_beats" && output.empty()) return err("MISSING_FIELD", "packet_beats export requires output.path");
         if (output.empty()) {

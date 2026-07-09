@@ -33,15 +33,6 @@
         "channel": {
           "type": "string"
         },
-        "format": {
-          "type": "string",
-          "enum": [
-            "tsv",
-            "csv",
-            "xout"
-          ],
-          "description": "stream.export file format."
-        },
         "kind": {
           "type": "string",
           "enum": [
@@ -63,7 +54,13 @@
               "type": "string"
             },
             "file_format": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "tsv",
+                "csv",
+                "xout"
+              ],
+              "description": "stream.export file format."
             },
             "verbose": {
               "type": "boolean"

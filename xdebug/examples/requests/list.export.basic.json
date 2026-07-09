@@ -10,9 +10,9 @@
       "begin": "0ns",
       "end": "1us"
     },
-    "format": "u64bin",
     "output": {
-      "path": "/tmp/if0_list_export"
+      "path": "/tmp/if0_list_export",
+      "file_format": "u64bin"
     }
   }
 }

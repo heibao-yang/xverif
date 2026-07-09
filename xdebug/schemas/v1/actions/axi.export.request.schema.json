@@ -33,24 +33,6 @@
         "name"
       ],
       "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "h",
-            "hex",
-            "b",
-            "bin",
-            "binary",
-            "d",
-            "dec",
-            "decimal",
-            "array_indexed",
-            "json",
-            "tsv",
-            "csv",
-            "u64bin"
-          ]
-        },
         "name": {
           "type": "string",
           "description": "已保存配置、游标、列表或接口配置名称。"
@@ -62,7 +44,12 @@
               "type": "string"
             },
             "file_format": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "tsv",
+                "csv"
+              ],
+              "description": "axi.export file format."
             },
             "verbose": {
               "type": "boolean"

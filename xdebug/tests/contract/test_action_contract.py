@@ -630,14 +630,21 @@ def test_ai_usability_high_risk_request_shapes_are_strict(
         "api_version": "xdebug.v1",
         "action": "stream.export",
         "args": {"stream": "ready_stream", "kind": "packet_beats",
-                 "format": "tsv", "output": {"path": "/tmp/ready.tsv"}},
+                 "output": {"path": "/tmp/ready.tsv", "file_format": "tsv"}},
     })
     with pytest.raises(jsonschema.ValidationError):
         stream_export.validate({
             "api_version": "xdebug.v1",
             "action": "stream.export",
-            "args": {"stream": "ready_stream", "kind": "beats",
+            "args": {"stream": "ready_stream", "kind": "packet_beats",
                      "format": "tsv", "output": {"path": "/tmp/ready.tsv"}},
+        })
+    with pytest.raises(jsonschema.ValidationError):
+        stream_export.validate({
+            "api_version": "xdebug.v1",
+            "action": "stream.export",
+            "args": {"stream": "ready_stream", "kind": "beats",
+                     "output": {"path": "/tmp/ready.tsv", "file_format": "tsv"}},
         })
 
     stream_config_list = jsonschema.Draft202012Validator(schema_for("stream.config.list"))
@@ -654,12 +661,33 @@ def test_ai_usability_high_risk_request_shapes_are_strict(
         })
 
     list_export = jsonschema.Draft202012Validator(schema_for("list.export"))
+    list_export.validate({
+        "api_version": "xdebug.v1",
+        "action": "list.export",
+        "args": {"name": "basic", "time_range": {"begin": "0ns", "end": "400ns"},
+                 "output": {"path": "/tmp/basic", "file_format": "u64bin"}},
+    })
     with pytest.raises(jsonschema.ValidationError):
         list_export.validate({
             "api_version": "xdebug.v1",
             "action": "list.export",
             "args": {"name": "basic", "format": "tsv",
                      "time_range": {"begin": "0ns", "end": "400ns"}},
+        })
+
+    axi_export = jsonschema.Draft202012Validator(schema_for("axi.export"))
+    axi_export.validate({
+        "api_version": "xdebug.v1",
+        "action": "axi.export",
+        "args": {"name": "axi0", "time_range": {"begin": "0ns", "end": "400ns"},
+                 "output": {"path": "/tmp/axi0", "file_format": "tsv"}},
+    })
+    with pytest.raises(jsonschema.ValidationError):
+        axi_export.validate({
+            "api_version": "xdebug.v1",
+            "action": "axi.export",
+            "args": {"name": "axi0", "time_range": {"begin": "0ns", "end": "400ns"},
+                     "format": "tsv", "output": {"path": "/tmp/axi0"}},
         })
 
     list_delete = jsonschema.Draft202012Validator(schema_for("list.delete"))

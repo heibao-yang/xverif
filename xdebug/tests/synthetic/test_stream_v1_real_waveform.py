@@ -557,9 +557,8 @@ def test_stream_v1_real_waveform_actions(
                 "args": {
                     "stream": "ready_stream",
                     "kind": "transfer",
-                    "format": "tsv",
                     "time_range": {"begin": "0ns", "end": "250us"},
-                    "output": {"path": str(transfer_out)},
+                    "output": {"path": str(transfer_out), "file_format": "tsv"},
                 },
             },
             case_name="stream-v1-export-transfer",
@@ -579,9 +578,8 @@ def test_stream_v1_real_waveform_actions(
                 "args": {
                     "stream": "ready_packet",
                     "kind": "packet",
-                    "format": "tsv",
                     "time_range": {"begin": "0ns", "end": "250us"},
-                    "output": {"path": str(packet_out)},
+                    "output": {"path": str(packet_out), "file_format": "tsv"},
                 },
             },
             case_name="stream-v1-export-packet",
@@ -601,9 +599,8 @@ def test_stream_v1_real_waveform_actions(
                 "args": {
                     "stream": "ready_packet",
                     "kind": "packet_beats",
-                    "format": "tsv",
                     "time_range": {"begin": "0ns", "end": "250us"},
-                    "output": {"path": str(packet_beats_out)},
+                    "output": {"path": str(packet_beats_out), "file_format": "tsv"},
                 },
             },
             case_name="stream-v1-export-packet-beats",

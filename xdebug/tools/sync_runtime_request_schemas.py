@@ -110,7 +110,7 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "axi.channel_stall": {"channel", "line_limit", "rules", "time_range"},
     "axi.config.load": {"config", "config_path"},
     "axi.cursor": {"direction"},
-    "axi.export": {"format", "output", "time_range"},
+    "axi.export": {"output", "time_range"},
     "axi.latency_outlier": {"line_limit", "time_range"},
     "axi.outstanding_timeline": {"line_limit", "time_range"},
     "axi.query": {"direction", "address", "addr", "query", "last"},
@@ -377,9 +377,21 @@ def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[
             "enum": ["u64bin"],
             "description": "list.export input format. The response manifest uses versioned format u64bin.v1.",
         }
+    if action == "list.export" and "output" in selected_props:
+        selected_props["output"]["properties"]["file_format"] = {
+            "type": "string",
+            "enum": ["u64bin"],
+            "description": "list.export file format; response manifest uses versioned format u64bin.v1.",
+        }
+    if action == "axi.export" and "output" in selected_props:
+        selected_props["output"]["properties"]["file_format"] = {
+            "type": "string",
+            "enum": ["tsv", "csv"],
+            "description": "axi.export file format.",
+        }
     if action == "stream.export":
-        if "format" in selected_props:
-            selected_props["format"] = {
+        if "output" in selected_props:
+            selected_props["output"]["properties"]["file_format"] = {
                 "type": "string",
                 "enum": ["tsv", "csv", "xout"],
                 "description": "stream.export file format.",

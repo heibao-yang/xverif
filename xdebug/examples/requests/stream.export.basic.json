@@ -7,13 +7,13 @@
   "args": {
     "stream": "req_stream",
     "kind": "transfer",
-    "format": "tsv",
     "time_range": {
       "begin": "0ns",
       "end": "1us"
     },
     "output": {
-      "path": "/tmp/req_stream.tsv"
+      "path": "/tmp/req_stream.tsv",
+      "file_format": "tsv"
     }
   }
 }

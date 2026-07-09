@@ -52,11 +52,11 @@ public:
         if (end < begin)
             return Json({{"error","TIME_SPEC_INVALID"},{"message","axi.export end time is before begin time"}});
 
-        std::string format = a.value("format", std::string("tsv"));
-        if (format != "tsv" && format != "csv")
-            return Json({{"error","INVALID_REQUEST"},{"message","format must be tsv or csv"}});
-
         Json output = a.value("output", Json::object());
+        std::string format = output.value("file_format", std::string("tsv"));
+        if (format != "tsv" && format != "csv")
+            return Json({{"error","INVALID_REQUEST"},{"message","output.file_format must be tsv or csv"}});
+
         std::string output_prefix = output.value("path", std::string());
         if (output_prefix.empty()) {
             std::ostringstream oss;

@@ -60,11 +60,11 @@ public:
         if (end - begin < 256000ULL)
             return Json({{"error","TIME_RANGE_TOO_SMALL"},{"message","list.export requires at least 256ns; use list.value_at or value.batch_at for point reads"}});
 
-        std::string format = a.value("format", std::string("u64bin"));
+        Json output = a.value("output", Json::object());
+        std::string format = output.value("file_format", std::string("u64bin"));
         if (format != "u64bin")
             return Json({{"error","INVALID_REQUEST"},
-                         {"message","list.export format must be u64bin; response manifest uses versioned format u64bin.v1"}});
-        Json output = a.value("output", Json::object());
+                         {"message","list.export output.file_format must be u64bin; response manifest uses versioned format u64bin.v1"}});
         std::string output_dir = output.value("path", std::string());
         if (output_dir.empty()) {
             output_dir = xdebug_waveform::xdebug_waveform_list_exports_dir(xdebug_waveform::g_session_id)

@@ -30,13 +30,6 @@
     "args": {
       "type": "object",
       "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "u64bin"
-          ],
-          "description": "list.export input format. The response manifest uses versioned format u64bin.v1."
-        },
         "line_limit": {
           "type": "integer",
           "minimum": 1,
@@ -53,7 +46,11 @@
               "type": "string"
             },
             "file_format": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "u64bin"
+              ],
+              "description": "list.export file format; response manifest uses versioned format u64bin.v1."
             },
             "verbose": {
               "type": "boolean"
