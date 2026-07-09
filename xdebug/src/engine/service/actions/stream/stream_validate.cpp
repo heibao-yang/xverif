@@ -28,9 +28,6 @@ using xdebug_waveform::StreamManager;
 using xdebug_waveform::StreamMatch;
 using xdebug_waveform::StreamQueryOptions;
 
-Json err(const std::string& code, const std::string& message) {
-    return make_handler_error(code, message);
-}
 Json err(const std::string& code, const std::string& message, const Json& details) {
     return make_handler_error(code, message, details);
 }
@@ -60,6 +57,23 @@ std::string code_for_stream_error(const std::string& message, const std::string&
            message.find("invalid value literal") != std::string::npos
         ? "VALUE_FORMAT_INVALID"
         : fallback;
+}
+Json stream_time_error(const std::string& message) {
+    return err("INVALID_TIME", message,
+               {{"invalid_arg", "args.time_range"},
+                {"expected", "args.time_range.begin/end time strings such as 0ns and 100ns"},
+                {"correct_example", stream_validate_example()},
+                {"example_note", "Example only; omit time_range for full waveform or use begin/end strings with units."},
+                {"next_actions", Json::array({"Fix args.time_range.begin/end to include a valid unit.",
+                                               "Omit args.time_range to validate the whole waveform window."})}});
+}
+Json stream_analyze_error(const std::string& message) {
+    return err(code_for_stream_error(message, "ACTION_FAILED"), message,
+               {{"cause_code", "STREAM_ANALYZE_FAILED"},
+                {"expected", "loaded stream config whose aliased signal paths exist in the active FSDB"},
+                {"correct_example", stream_validate_example()},
+                {"next_actions", Json::array({"Call stream.show to inspect config signal aliases.",
+                                               "Call stream.config.load again after fixing signal paths."})}});
 }
 bool parse_time_arg(const std::string& text, bool allow_max, npiFsdbTime& out, std::string& error) {
     if (text.empty()) {
@@ -135,11 +149,11 @@ public:
         if (static_ok && dynamic) {
             StreamQueryOptions options;
             if (!range_from_args(args, request.value("limits", Json::object()), options, error))
-                return err("TIME_SPEC_INVALID", error);
+                return stream_time_error(error);
             options.limit = args.value("line_limit", 256);
             StreamAnalysis analysis;
             if (!analyzer.analyze(g_fsdb_file, config, options, analysis, error))
-                return err(code_for_stream_error(error, "STREAM_ANALYZE_FAILED"), error);
+                return stream_analyze_error(error);
             if (analysis.vld_cycles == 0) add_issue(issues, "WARNING", "VLD_NEVER_TRUE", "vld was never true in validation window");
             if (analysis.transfer_count == 0) add_issue(issues, "WARNING", "NO_TRANSFER", "no transfer observed in validation window");
             if (analysis.ready_bp_conflict_count > 0) add_issue(issues, "WARNING", "READY_BP_CONFLICT", "observed vld=1,rdy=1,bp=1");

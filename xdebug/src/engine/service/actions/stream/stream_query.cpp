@@ -28,9 +28,6 @@ using xdebug_waveform::StreamManager;
 using xdebug_waveform::StreamMatch;
 using xdebug_waveform::StreamQueryOptions;
 
-Json err(const std::string& code, const std::string& message) {
-    return make_handler_error(code, message);
-}
 Json err(const std::string& code, const std::string& message, const Json& details) {
     return make_handler_error(code, message, details);
 }
@@ -63,6 +60,34 @@ std::string code_for_stream_error(const std::string& message, const std::string&
            message.find("invalid value literal") != std::string::npos
         ? "VALUE_FORMAT_INVALID"
         : fallback;
+}
+Json stream_time_error(const std::string& message) {
+    return err("INVALID_TIME", message,
+               {{"invalid_arg", "args.time_range"},
+                {"expected", "args.time_range.begin/end time strings such as 0ns and 100ns"},
+                {"correct_example", stream_query_example()},
+                {"example_note", "Example only; omit time_range for full waveform or use begin/end strings with units."},
+                {"next_actions", Json::array({"Fix args.time_range.begin/end to include a valid unit.",
+                                               "Omit args.time_range to query the whole waveform."})}});
+}
+Json stream_analyze_error(const std::string& message) {
+    return err(code_for_stream_error(message, "ACTION_FAILED"), message,
+               {{"cause_code", "STREAM_ANALYZE_FAILED"},
+                {"expected", "loaded stream config whose aliased signal paths exist in the active FSDB"},
+                {"correct_example", stream_query_example()},
+                {"next_actions", Json::array({"Call stream.show to inspect config signal aliases.",
+                                               "Call stream.validate to check static and dynamic stream issues."})}});
+}
+Json stream_match_error(const std::string& stream,
+                        const std::string& query,
+                        const std::string& message) {
+    Json example = stream_query_example(stream, query);
+    example["args"]["match"] = {{"field", "opcode"}, {"op", "=="}, {"value", "8'h5a"}};
+    return err(code_for_stream_error(message, "INVALID_ARGUMENT"), message,
+               {{"invalid_arg", "args.match.value"},
+                {"expected", "match literal compatible with the selected stream field"},
+                {"correct_example", example},
+                {"example_note", "Example only; choose a field from stream.show and use a SystemVerilog-style value literal."}});
 }
 bool parse_time_arg(const std::string& text, bool allow_max, npiFsdbTime& out, std::string& error) {
     if (text.empty()) {
@@ -139,11 +164,11 @@ public:
         StreamQueryOptions options;
         std::string error;
         if (!range_from_args(args, request.value("limits", Json::object()), options, error))
-            return err("TIME_SPEC_INVALID", error);
+            return stream_time_error(error);
         StreamAnalyzer analyzer;
         StreamAnalysis analysis;
         if (!analyzer.analyze(g_fsdb_file, config, options, analysis, error))
-            return err(code_for_stream_error(error, "STREAM_ANALYZE_FAILED"), error);
+            return stream_analyze_error(error);
 
         std::string query = args.value("query", std::string("summary"));
         Json out;
@@ -251,7 +276,7 @@ public:
                     std::string match_error;
                     if (analyzer.match_row(pseudo, match, match_error)) packets.push_back(xdebug_waveform::stream_packet_json(packet));
                     else if (!match_error.empty())
-                        return err(code_for_stream_error(match_error, "INVALID_REQUEST"), match_error);
+                        return stream_match_error(config.name, "match_field", match_error);
                     if (static_cast<int>(packets.size()) >= options.limit) break;
                 }
                 out["packets"] = packets;
@@ -264,7 +289,7 @@ public:
                 std::string match_error;
                 if (analyzer.match_row(row, match, match_error)) rows.push_back(xdebug_waveform::stream_row_json(row));
                 else if (!match_error.empty())
-                    return err(code_for_stream_error(match_error, "INVALID_REQUEST"), match_error);
+                    return stream_match_error(config.name, "match_field", match_error);
                 if (static_cast<int>(rows.size()) >= options.limit) break;
             }
             out["rows"] = rows;

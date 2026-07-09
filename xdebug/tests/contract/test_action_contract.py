@@ -467,6 +467,18 @@ def test_stream_handler_errors_include_current_entry_examples(
     session = opened.response.get("session") or opened.response["data"]["session"]
     target = {"session_id": session.get("id") or session.get("session_id") or session_name}
     try:
+        config_path = xdebug_root / "testdata" / "waveform" / "stream_v1" / "config" / "streams.json"
+        loaded = cli_runner.run(
+            {
+                "api_version": "xdebug.v1",
+                "action": "stream.config.load",
+                "target": target,
+                "args": {"config_path": str(config_path)},
+            },
+            output_format="json",
+            timeout_sec=120,
+        )
+        assert loaded.ok, loaded.stdout_raw + loaded.stderr_raw
         cases = [
             (
                 {
@@ -488,15 +500,36 @@ def test_stream_handler_errors_include_current_entry_examples(
                 "args.stream",
                 "stream.show",
             ),
+            (
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "stream.query",
+                    "target": target,
+                    "args": {
+                        "stream": "ready_stream",
+                        "query": "summary",
+                        "time_range": {"begin": "not_time", "end": "100ns"},
+                    },
+                },
+                "args.time_range.begin",
+                "stream.query",
+                "INVALID_TIME",
+            ),
         ]
-        for request, invalid_arg, example_action in cases:
+        for case in cases:
+            if len(case) == 3:
+                request, invalid_arg, example_action = case
+                code = "CONFIG_NOT_FOUND"
+            else:
+                request, invalid_arg, example_action, code = case
             result = cli_runner.run(request, output_format="json", timeout_sec=120)
             assert not result.ok, result.stdout_raw + result.stderr_raw
             error = result.response["error"]
-            assert error["code"] == "CONFIG_NOT_FOUND"
+            assert error["code"] == code
             assert error["error_layer"] == "handler"
             assert error["invalid_arg"] == invalid_arg
-            assert error["missing_resource"] == "stream config"
+            if code == "CONFIG_NOT_FOUND":
+                assert error["missing_resource"] == "stream config"
             assert "next_actions" in error
             assert "example_note" in error
             assert error["correct_example"]["action"] == example_action
