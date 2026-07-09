@@ -11,6 +11,7 @@ proof without checking bulky FSDB-derived output into git.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import copy
 import importlib
 import json
@@ -30,6 +31,8 @@ REQUEST_DIR = XDEBUG_ROOT / "examples" / "requests"
 SCHEMA_DIR = XDEBUG_ROOT / "schemas" / "v1" / "actions"
 DEFAULT_REGISTRY = XDEBUG_ROOT / "testdata" / "action_return_replay" / "cases.json"
 DEFAULT_MATRIX = REPO_ROOT / "doc" / "xdebug_action_return_replay_matrix_2026-07-09.md"
+MCP_SRC = REPO_ROOT / "xverif_mcp" / "src"
+NO_HANDLER_ERROR_ACTIONS = {"actions", "session.list", "session.gc"}
 
 
 def _json_load(path: Path) -> Any:
@@ -564,10 +567,76 @@ def _write_evidence(
     _json_write(evidence / "metadata.json", metadata)
 
 
+def _load_mcp_server():
+    sys.path = [
+        path
+        for path in sys.path
+        if Path(path or os.getcwd()).resolve() != XDEBUG_ROOT
+    ]
+    if str(MCP_SRC) not in sys.path:
+        sys.path.insert(0, str(MCP_SRC))
+    os.environ.setdefault("XVERIF_HOME", str(REPO_ROOT))
+    os.environ.setdefault("XVERIF_MCP_BACKEND", "direct")
+    os.environ.setdefault("XVERIF_MCP_STARTUP_TIMEOUT_SEC", "30")
+    os.environ.setdefault("XVERIF_MCP_REQUEST_TIMEOUT_SEC", "120")
+    if "xverif_mcp.server" in sys.modules:
+        return importlib.reload(sys.modules["xverif_mcp.server"])
+    return importlib.import_module("xverif_mcp.server")
+
+
+def _close_mcp_server(server: Any) -> None:
+    for adapter_name in ("debug", "cov"):
+        adapter = getattr(server, adapter_name, None)
+        sessions = getattr(adapter, "_sessions", None)
+        if sessions is not None:
+            sessions.close_all()
+
+
+async def _mcp_call(server: Any, tool: str, args: dict[str, Any] | None) -> Any:
+    result = await server.mcp.call_tool(tool, args or {})
+    content = result[0] if isinstance(result, tuple) else result
+    if not content:
+        return ""
+    text = content[0].text
+    try:
+        return json.loads(text)
+    except Exception:
+        return text
+
+
+def _run_mcp_tool(
+    server: Any,
+    tool: str,
+    args: dict[str, Any],
+    output_format: str,
+    timeout_sec: float,
+) -> tuple[Any, dict[str, Any]]:
+    started = time.monotonic()
+    response = asyncio.run(asyncio.wait_for(_mcp_call(server, tool, args), timeout=timeout_sec))
+    elapsed_ms = int((time.monotonic() - started) * 1000)
+    return response, {
+        "command": ["mcp.call_tool", tool],
+        "entry": "mcp_direct",
+        "output_format": output_format,
+        "elapsed_ms": elapsed_ms,
+        "returncode": 0,
+    }
+
+
 def _ok_from_response(response: Any, output_format: str, returncode: int) -> bool:
     if returncode != 0:
         return False
     if output_format == "json":
+        return isinstance(response, dict) and response.get("ok") is True
+    return isinstance(response, str) and response.startswith("@xdebug.")
+
+
+def _ok_from_mcp_response(response: Any, output_format: str, returncode: int, *, tool: str) -> bool:
+    if returncode != 0:
+        return False
+    if output_format == "json":
+        return isinstance(response, dict) and response.get("ok") is True
+    if tool != "xverif_debug_query":
         return isinstance(response, dict) and response.get("ok") is True
     return isinstance(response, str) and response.startswith("@xdebug.")
 
@@ -642,6 +711,165 @@ def _run_native_case(
     }
 
 
+def _negative_request(case: ReplayCase, placeholders: dict[str, str], kind: str) -> dict[str, Any]:
+    request = _load_request(case, placeholders)
+    if kind == "schema_error":
+        request.setdefault("args", {})["__replay_bad_arg"] = True
+        return request
+    if case.action == "session.open":
+        request["target"] = {"fsdb": str(Path(placeholders["tmpdir"]) / "missing.fsdb")}
+        request["args"] = {"name": "replay_missing"}
+        return request
+    if case.action in ("actions", "schema"):
+        request["action"] = case.action
+        request["args"] = {"action": "no.such.action"} if case.action == "schema" else {}
+        request["target"] = {"session_id": "no_such_session"}
+        return request
+    if case.action == "batch":
+        request["args"] = {"requests": [{"api_version": "xdebug.v1", "action": "no.such.action"}]}
+        return request
+    request["target"] = {"session_id": "no_such_session"}
+    return request
+
+
+def _run_native_negative_case(
+    case: ReplayCase,
+    xdebug: Path,
+    out_root: Path,
+    output_format: str,
+    kind: str,
+    timeout_sec: float,
+) -> dict[str, Any]:
+    placeholders = _repo_values(out_root)
+    request = _negative_request(case, placeholders, kind)
+    response, meta = _run_cli(xdebug, request, output_format, timeout_sec)
+    meta["fixture"] = "negative"
+    evidence_id = f"{case.id}.native.{kind}.{output_format}"
+    _write_evidence(out_root, evidence_id, request, response, meta)
+    if output_format == "json":
+        ok = (
+            isinstance(response, dict)
+            and response.get("ok") is False
+            and isinstance(response.get("error"), dict)
+            and bool(response["error"].get("code"))
+        )
+    else:
+        ok = isinstance(response, str) and response.startswith("@xdebug.error.v1")
+    return {
+        "case_id": evidence_id,
+        "action": case.action,
+        "entry": "native_cli",
+        "output_format": output_format,
+        "negative_kind": kind,
+        "ok": ok,
+        "returncode": meta["returncode"],
+        "evidence": str(out_root / "evidence" / evidence_id),
+    }
+
+
+def _mcp_open_args(profile: str, registry: dict[str, Any], placeholders: dict[str, str], name: str) -> dict[str, Any]:
+    fixture = _substitute(registry.get("fixture_profiles", {}).get(profile, {}), placeholders)
+    args: dict[str, Any] = {"name": name}
+    if "fsdb" in fixture:
+        args["fsdb"] = fixture["fsdb"]
+    if "daidir" in fixture:
+        args["daidir"] = fixture["daidir"]
+    return args
+
+
+def _run_mcp_case(
+    server: Any,
+    case: ReplayCase,
+    registry: dict[str, Any],
+    out_root: Path,
+    output_format: str,
+    timeout_sec: float,
+) -> dict[str, Any]:
+    placeholders = _repo_values(out_root)
+    session_name = f"replay_mcp_{os.getpid()}_{case.id}_{output_format}"
+    placeholders.update(
+        {
+            "wave_session": session_name,
+            "design_session": session_name,
+            "combined_session": session_name,
+        }
+    )
+    request = _load_request(case, placeholders)
+    evidence_id = f"{case.id}.mcp.{output_format}"
+    setup_steps: list[dict[str, Any]] = []
+
+    tool = "xverif_debug_query"
+    tool_args: dict[str, Any]
+    if case.data.get("mcp_tool") == "xverif_debug_list_actions":
+        tool = "xverif_debug_list_actions"
+        tool_args = {}
+    elif case.data.get("mcp_tool") == "xverif_debug_get_schema":
+        tool = "xverif_debug_get_schema"
+        tool_args = dict(case.data.get("mcp_args", {}))
+    elif case.data.get("mcp_tool") == "xverif_debug_session_open":
+        tool = "xverif_debug_session_open"
+        tool_args = _mcp_open_args(case.setup_profile, registry, placeholders, session_name)
+    elif case.data.get("mcp_tool") == "xverif_debug_session_list":
+        tool = "xverif_debug_session_list"
+        tool_args = {}
+    elif case.data.get("mcp_tool") == "xverif_debug_session_close":
+        open_args = _mcp_open_args(case.setup_profile, registry, placeholders, session_name)
+        open_response, open_meta = _run_mcp_tool(server, "xverif_debug_session_open", open_args, "json", timeout_sec)
+        setup_steps.append({"tool": "xverif_debug_session_open", "args": open_args, "response": open_response, "metadata": open_meta})
+        tool = "xverif_debug_session_close"
+        tool_args = {"name": session_name}
+    else:
+        mcp_profile = case.setup_profile if case.setup_profile != "none" else "waveform"
+        if case.action == "expr.normalize":
+            mcp_profile = "design"
+        open_args = _mcp_open_args(case.setup_profile, registry, placeholders, session_name)
+        if mcp_profile != "none":
+            open_args = _mcp_open_args(mcp_profile, registry, placeholders, session_name)
+            open_response, open_meta = _run_mcp_tool(server, "xverif_debug_session_open", open_args, "json", timeout_sec)
+            setup_steps.append({"tool": "xverif_debug_session_open", "args": open_args, "response": open_response, "metadata": open_meta})
+            for setup_request in _native_setup_requests(case, session_name, placeholders):
+                setup_args = {
+                    "session_id": session_name,
+                    "action": setup_request["action"],
+                    "args": setup_request.get("args", {}),
+                    "output_format": "json",
+                }
+                setup_response, setup_meta = _run_mcp_tool(server, "xverif_debug_query", setup_args, "json", timeout_sec)
+                setup_steps.append({"tool": "xverif_debug_query", "args": setup_args, "response": setup_response, "metadata": setup_meta})
+        tool_args = {
+            "session_id": session_name,
+            "action": case.action,
+            "args": request.get("args", {}),
+            "output_format": output_format,
+        }
+
+    response, meta = _run_mcp_tool(server, tool, tool_args, output_format, timeout_sec)
+    meta["fixture"] = case.setup_profile
+    if setup_steps:
+        meta["setup_steps"] = setup_steps
+    _write_evidence(out_root, evidence_id, {"tool": tool, "args": tool_args}, response, meta)
+    if tool == "xverif_debug_query" and tool != "xverif_debug_session_close":
+        try:
+            _run_mcp_tool(server, "xverif_debug_session_close", {"name": session_name}, "json", timeout_sec)
+        except Exception:
+            pass
+    if tool == "xverif_debug_session_open" and isinstance(response, dict) and response.get("ok") is True:
+        try:
+            _run_mcp_tool(server, "xverif_debug_session_close", {"name": session_name}, "json", timeout_sec)
+        except Exception:
+            pass
+    ok = _ok_from_mcp_response(response, output_format, int(meta["returncode"]), tool=tool)
+    return {
+        "case_id": evidence_id,
+        "action": case.action,
+        "entry": "mcp_direct",
+        "output_format": output_format,
+        "ok": ok,
+        "returncode": meta["returncode"],
+        "evidence": str(out_root / "evidence" / evidence_id),
+    }
+
+
 def render_matrix(cases: list[ReplayCase], static_rows: list[dict[str, Any]] | None = None) -> str:
     static_by_action = {row["action"]: row for row in static_rows or []}
     lines = [
@@ -693,7 +921,11 @@ def main() -> int:
     parser.add_argument("--out-root", type=Path)
     parser.add_argument("--timeout-sec", type=float, default=120.0)
     parser.add_argument("--layer", choices=["L0", "L1", "L2", "L3"], default="L0")
-    parser.add_argument("--entry", choices=["native-json", "native-xout", "native-all"], default="native-all")
+    parser.add_argument(
+        "--entry",
+        choices=["native-json", "native-xout", "native-all", "mcp-json", "mcp-xout", "mcp-all"],
+        default="native-all",
+    )
     parser.add_argument("--action", action="append", help="Limit to one action; may be repeated.")
     parser.add_argument("--write-matrix", type=Path, nargs="?", const=DEFAULT_MATRIX)
     args = parser.parse_args()
@@ -720,11 +952,38 @@ def main() -> int:
         return 0 if not summary["failed"] else 1
 
     selected = _case_filter(cases, args.action)
-    formats = ["json", "xout"] if args.entry == "native-all" else [args.entry.removeprefix("native-")]
+    if args.entry.startswith("mcp"):
+        selected = [case for case in selected if case.mcp_applicable]
+    formats = ["json", "xout"] if args.entry.endswith("-all") else [args.entry.split("-", 1)[1]]
     rows: list[dict[str, Any]] = []
-    for case in selected:
-        for output_format in formats:
-            rows.append(_run_native_case(case, registry, args.xdebug, out_root, output_format, args.timeout_sec))
+    if args.entry.startswith("mcp"):
+        server = _load_mcp_server()
+        try:
+            for case in selected:
+                for output_format in formats:
+                    rows.append(_run_mcp_case(server, case, registry, out_root, output_format, args.timeout_sec))
+        finally:
+            _close_mcp_server(server)
+    else:
+        for case in selected:
+            for output_format in formats:
+                if args.layer == "L3":
+                    kinds = ["schema_error"]
+                    if case.action not in NO_HANDLER_ERROR_ACTIONS:
+                        kinds.append("handler_error")
+                    for kind in kinds:
+                        rows.append(
+                            _run_native_negative_case(
+                                case,
+                                args.xdebug,
+                                out_root,
+                                output_format,
+                                kind,
+                                args.timeout_sec,
+                            )
+                        )
+                else:
+                    rows.append(_run_native_case(case, registry, args.xdebug, out_root, output_format, args.timeout_sec))
     summary = {
         "layer": args.layer,
         "entry": args.entry,
