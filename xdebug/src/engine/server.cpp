@@ -374,6 +374,7 @@ static Json action_error_response(const Json& request, const Json& data) {
         }
     }
     Json response = error_response(code, message);
+    response["error"]["error_layer"] = "handler";
     Json mutable_data = data;
     if (error.is_object()) {
         if (error.contains("recoverable")) response["error"]["recoverable"] = error["recoverable"];
