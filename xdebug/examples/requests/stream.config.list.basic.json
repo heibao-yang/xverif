@@ -5,6 +5,8 @@
     "session_id": "wave0"
   },
   "args": {
-    "verbose": false
+    "output": {
+      "verbose": false
+    }
   }
 }

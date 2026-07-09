@@ -640,6 +640,19 @@ def test_ai_usability_high_risk_request_shapes_are_strict(
                      "format": "tsv", "output": {"path": "/tmp/ready.tsv"}},
         })
 
+    stream_config_list = jsonschema.Draft202012Validator(schema_for("stream.config.list"))
+    stream_config_list.validate({
+        "api_version": "xdebug.v1",
+        "action": "stream.config.list",
+        "args": {"output": {"verbose": True}},
+    })
+    with pytest.raises(jsonschema.ValidationError):
+        stream_config_list.validate({
+            "api_version": "xdebug.v1",
+            "action": "stream.config.list",
+            "args": {"verbose": True},
+        })
+
     list_export = jsonschema.Draft202012Validator(schema_for("list.export"))
     with pytest.raises(jsonschema.ValidationError):
         list_export.validate({

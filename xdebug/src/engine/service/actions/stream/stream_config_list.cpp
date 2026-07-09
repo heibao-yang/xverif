@@ -33,7 +33,9 @@ public:
     bool needs_design() const override { return false; }
     bool needs_waveform() const override { return true; }
     Json run(const Json& request, EngineActionContext& ctx) const override {
-        bool verbose = request.value("args", Json::object()).value("verbose", false);
+        Json args = request.value("args", Json::object());
+        Json output = args.value("output", Json::object());
+        bool verbose = output.value("verbose", false);
         StreamManager manager;
         auto streams = manager.list_streams(xdebug_waveform::g_session_id);
         Json arr = Json::array();

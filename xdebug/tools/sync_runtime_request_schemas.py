@@ -80,8 +80,11 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
     "origin": {"type": "string"},
     "output": {
         "type": "object",
-        "required": ["path"],
-        "properties": {"path": {"type": "string"}},
+        "properties": {
+            "path": {"type": "string"},
+            "file_format": {"type": "string"},
+            "verbose": {"type": "boolean"},
+        },
         "additionalProperties": False,
     },
     "packet_index": {"type": "integer"},
@@ -272,6 +275,7 @@ def collect_arg_schemas(specs: list[dict[str, Any]]) -> dict[str, dict[str, Any]
     # channel enums are applied in sync_schema().
     arg_schemas["channel"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["channel"])
     arg_schemas["match"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["match"])
+    arg_schemas["output"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["output"])
 
     arg_schemas["checks"] = {
         "type": "array",

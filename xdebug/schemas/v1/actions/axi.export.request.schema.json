@@ -57,12 +57,15 @@
         },
         "output": {
           "type": "object",
-          "required": [
-            "path"
-          ],
           "properties": {
             "path": {
               "type": "string"
+            },
+            "file_format": {
+              "type": "string"
+            },
+            "verbose": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
