@@ -39,6 +39,20 @@ suites:
     deterministic: true
     cost: {class: fast, estimate_sec: 2}
 
+  - id: xloc.vim
+    owner: xloc
+    level: component
+    intent: [smoke]
+    domains: [source-location, editor]
+    runner:
+      kind: command
+      argv: [make, -C, xloc, vim-test]
+    capabilities: [child_process, vim]
+    hermetic: false
+    deterministic: true
+    cost: {class: medium, estimate_sec: 5}
+    timeouts: {execute_sec: 30, cleanup_sec: 5}
+
   - id: xcov.unit
     owner: xcov
     level: unit
@@ -138,6 +152,21 @@ suites:
     hermetic: false
     deterministic: true
     cost: {class: fast, estimate_sec: 3}
+
+  - id: xdebug.cpp_unit
+    owner: xdebug
+    level: unit
+    intent: [contract]
+    domains: [core, action, waveform]
+    runner:
+      kind: command
+      argv: [make, -C, xdebug, unit-test]
+    capabilities: [child_process]
+    hermetic: false
+    deterministic: true
+    cost: {class: medium, estimate_sec: 90}
+    resources: {cpu: 1, memory_mb: 2048, tokens: [xdebug_build]}
+    timeouts: {execute_sec: 600, cleanup_sec: 20}
 
   - id: xdebug.contract
     owner: xdebug

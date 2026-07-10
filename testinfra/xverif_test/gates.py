@@ -30,6 +30,22 @@ def build_plan(catalog: Catalog, gate: str) -> ExecutionPlan:
     return ExecutionPlan(gate=gate, suites=catalog.select_gate(gate))
 
 
+def filter_plan(plan: ExecutionPlan, suite_ids: list[str]) -> ExecutionPlan:
+    if not suite_ids:
+        return plan
+    requested = set(suite_ids)
+    available = plan.selected_ids()
+    missing = sorted(requested - available)
+    if missing:
+        raise ValueError(
+            f"suite selection is not part of gate {plan.gate}: {', '.join(missing)}"
+        )
+    return ExecutionPlan(
+        gate=plan.gate,
+        suites=tuple(item for item in plan.suites if item.suite.id in requested),
+    )
+
+
 def changed_paths(repo_root: Path, base: str) -> tuple[str, ...]:
     # Implemented in the changed-only migration stage. Keeping the operation
     # explicit prevents a silent broad/narrow fallback before impact data exists.

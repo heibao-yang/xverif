@@ -6,16 +6,21 @@ from typing import Any
 import pytest
 
 from .catalog import Catalog, CatalogError
-from .gates import ExecutionPlan, build_plan
+from .gates import ExecutionPlan, build_plan, filter_plan
+from .items import ExternalSuiteItem
+from .reports import ResultManager
+from .resources import apply_xdist_resource_group
 
 
 DEFAULT_CATALOG = Path("testinfra/catalog.v1.yaml")
 DEFAULT_SCHEMA = Path("testinfra/schemas/catalog.v1.schema.json")
+_RESULT_MANAGER: ResultManager | None = None
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("xverif", "catalog-driven xverif test orchestration")
     group.addoption("--xverif-gate", choices=("fast", "regression", "nightly"))
+    group.addoption("--xverif-suite", action="append", default=[])
     group.addoption("--xverif-plan", action="store_true", default=False)
     group.addoption("--xverif-catalog", default=str(DEFAULT_CATALOG))
     group.addoption("--xverif-prepare", action="append", default=[])
@@ -74,14 +79,23 @@ def _ensure_xverif_state(config: pytest.Config) -> str | None:
     config._xverif_catalog = catalog  # type: ignore[attr-defined]
     if operation == "gate":
         gate = config.getoption("--xverif-gate")
-        config._xverif_plan = build_plan(catalog, gate)  # type: ignore[attr-defined]
+        try:
+            plan = filter_plan(
+                build_plan(catalog, gate),
+                list(config.getoption("--xverif-suite")),
+            )
+        except ValueError as exc:
+            raise pytest.UsageError(str(exc)) from exc
+        config._xverif_plan = plan  # type: ignore[attr-defined]
     elif config.getoption("--xverif-plan"):
         raise pytest.UsageError("--xverif-plan requires --xverif-gate")
     config._xverif_operation = operation  # type: ignore[attr-defined]
     return operation
 
 
+@pytest.hookimpl(tryfirst=True)
 def pytest_configure(config: pytest.Config) -> None:
+    global _RESULT_MANAGER
     operation = _ensure_xverif_state(config)
     if operation is None:
         raise pytest.UsageError(
@@ -89,6 +103,24 @@ def pytest_configure(config: pytest.Config) -> None:
             "fast|regression|nightly, --xverif-plan with a gate, or an explicit "
             "fixture/results operation"
         )
+    if (
+        operation == "gate"
+        and not config.getoption("--xverif-plan")
+        and not config.getoption("collectonly")
+        and not hasattr(config, "workerinput")
+    ):
+        plan: ExecutionPlan = config._xverif_plan  # type: ignore[attr-defined]
+        catalog: Catalog = config._xverif_catalog  # type: ignore[attr-defined]
+        _RESULT_MANAGER = ResultManager(_repo_root(config), plan.gate, catalog.version)
+        config._xverif_results = _RESULT_MANAGER  # type: ignore[attr-defined]
+        if getattr(config.option, "xmlpath", None) is None:
+            config.option.xmlpath = str(_RESULT_MANAGER.run_dir / "junit.xml")
+    elif operation == "gate" and hasattr(config, "workerinput"):
+        worker_run_dir = config.workerinput.get("xverif_run_dir")  # type: ignore[attr-defined]
+        if worker_run_dir:
+            config._xverif_results = ResultManager.attach(  # type: ignore[attr-defined]
+                _repo_root(config), Path(worker_run_dir)
+            )
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -113,6 +145,11 @@ def pytest_collection_modifyitems(
     catalog: Catalog = config._xverif_catalog  # type: ignore[attr-defined]
     plan: ExecutionPlan = config._xverif_plan  # type: ignore[attr-defined]
     selected_ids = plan.selected_ids()
+    selected_commands = [
+        selected.suite
+        for selected in plan.suites
+        if selected.suite.runner.get("kind") == "command"
+    ]
     repo_root = _repo_root(config)
     kept: list[pytest.Item] = []
     deselected: list[pytest.Item] = []
@@ -125,6 +162,7 @@ def pytest_collection_modifyitems(
         item.user_properties.append(("xverif_suite", suite.id))
         setattr(item, "_xverif_suite_id", suite.id)
         if suite.id in selected_ids:
+            apply_xdist_resource_group(item, suite)
             kept.append(item)
         else:
             deselected.append(item)
@@ -133,6 +171,39 @@ def pytest_collection_modifyitems(
             "collected pytest items are missing catalog ownership:\n  "
             + "\n  ".join(sorted(unmapped))
         )
+    if selected_commands:
+        if not items:
+            raise pytest.UsageError("cannot attach external suite items without a pytest session")
+        parent = items[0].session
+        for suite in selected_commands:
+            external = ExternalSuiteItem.from_suite(parent, suite)
+            apply_xdist_resource_group(external, suite)
+            kept.append(external)
     items[:] = kept
     if deselected:
         config.hook.pytest_deselected(items=deselected)
+
+
+def pytest_runtest_logreport(report: pytest.TestReport) -> None:
+    if _RESULT_MANAGER is not None:
+        _RESULT_MANAGER.record_report(report)
+
+
+def pytest_configure_node(node: Any) -> None:
+    if _RESULT_MANAGER is not None:
+        node.workerinput["xverif_run_dir"] = str(_RESULT_MANAGER.run_dir)
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    if _RESULT_MANAGER is not None and not hasattr(session.config, "workerinput"):
+        _RESULT_MANAGER.finish(exitstatus)
+
+
+def pytest_terminal_summary(
+    terminalreporter: Any, exitstatus: int, config: pytest.Config
+) -> None:
+    if _RESULT_MANAGER is not None and not hasattr(config, "workerinput"):
+        terminalreporter.write_line(
+            "xverif results: "
+            + _RESULT_MANAGER.run_dir.relative_to(_repo_root(config)).as_posix()
+        )

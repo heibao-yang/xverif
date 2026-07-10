@@ -32,7 +32,17 @@
             "paths": {"type": "array", "items": {"type": "string"}, "minItems": 1},
             "argv": {"type": "array", "items": {"type": "string"}, "minItems": 1},
             "cwd": {"type": "string"}
-          }
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"kind": {"const": "pytest"}}},
+              "then": {"anyOf": [{"required": ["path"]}, {"required": ["paths"]}]}
+            },
+            {
+              "if": {"properties": {"kind": {"const": "command"}}},
+              "then": {"required": ["argv"]}
+            }
+          ]
         },
         "fixtures": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
         "capabilities": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
