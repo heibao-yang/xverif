@@ -1182,7 +1182,7 @@ change item：`time`、`time_ps`、`value`。
 | `data.end` | string | end |
 | `data.valid_false_count` | number | valid 为 false 的 sample 数 |
 | `data.unknown_count` | number | unknown sample 数 |
-| `meta.truncated` | boolean | 是否因 `line_limit` 截断 |
+| `meta.truncated` | boolean | 仅在因 `line_limit` 截断时出现，值为 `true` |
 | `data.cnt` | string/object | counter 表达式或信号 |
 | `data.vld` | string/object | valid 表达式或信号 |
 | `data.min_count` | number | 最小值出现次数 |

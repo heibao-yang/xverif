@@ -368,17 +368,19 @@ OrderedJson handle_engine_forward(const OrderedJson& request, const std::string&
     if (have_session_info) response["session"] = session_to_json(session_info);
     response["summary"] = scalar_summary(ordered_data);
     if (ordered_data.is_object() && ordered_data.contains("summary")) ordered_data.erase("summary");
+    bool truncated = false;
     if (ordered_data.is_object() && ordered_data.contains("truncated") &&
         ordered_data["truncated"].is_boolean()) {
-        response["meta"] = {{"truncated", ordered_data["truncated"].get<bool>()}};
+        truncated = ordered_data["truncated"].get<bool>();
         ordered_data.erase("truncated");
     }
-    if (!response.contains("meta") && response["summary"].is_object() &&
+    if (response["summary"].is_object() &&
         response["summary"].contains("truncated") &&
-        response["summary"]["truncated"].is_boolean() &&
-        response["summary"]["truncated"].get<bool>()) {
-        response["meta"] = {{"truncated", true}};
+        response["summary"]["truncated"].is_boolean()) {
+        truncated = truncated || response["summary"]["truncated"].get<bool>();
+        response["summary"].erase("truncated");
     }
+    if (truncated) response["meta"] = {{"truncated", true}};
     response["data"] = ordered_data;
     return response;
 }

@@ -848,16 +848,19 @@ bool Dispatcher::send_to_socket(const std::string& session_id,
     if (data_payload.is_object() && data_payload.contains("summary")) {
         data_payload.erase("summary");
     }
-    if (result_summary.is_object() && !result_summary.empty()) response["summary"] = result_summary;
+    bool truncated = false;
     if (data_payload.is_object() && data_payload.contains("truncated") &&
         data_payload["truncated"].is_boolean()) {
-        response["meta"] = {{"truncated", data_payload["truncated"].get<bool>()}};
+        truncated = data_payload["truncated"].get<bool>();
         data_payload.erase("truncated");
     }
-    if (!response.contains("meta") && result_summary.is_object() &&
+    if (result_summary.is_object() &&
         result_summary.contains("truncated") && result_summary["truncated"].is_boolean()) {
-        response["meta"] = {{"truncated", result_summary["truncated"].get<bool>()}};
+        truncated = truncated || result_summary["truncated"].get<bool>();
+        result_summary.erase("truncated");
     }
+    if (result_summary.is_object() && !result_summary.empty()) response["summary"] = result_summary;
+    if (truncated) response["meta"] = {{"truncated", true}};
     if (engine_resp.contains("text") && engine_resp["text"].is_string()) {
         response["text"] = engine_resp["text"];
     }

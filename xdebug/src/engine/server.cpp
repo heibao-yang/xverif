@@ -598,8 +598,9 @@ static bool handle_client(int client_fd, bool& should_quit) {
         return send_response(client_fd, action_error_response(request, data));
     Json resp = ok_response(data);
     // Propagate truncation flag from handler to response envelope.
-    if (data.contains("truncated") && data["truncated"].is_boolean())
-        resp["meta"] = {{"truncated", data["truncated"].get<bool>()}};
+    if (data.contains("truncated") && data["truncated"].is_boolean() &&
+        data["truncated"].get<bool>())
+        resp["meta"] = {{"truncated", true}};
     // Let handler generate XOUT text
     Json xout_resp;
     xout_resp["data"] = data;

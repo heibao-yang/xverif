@@ -30,6 +30,8 @@ def run_counter_statistics(xdebug, fsdb):
             "cnt": "ai_complex_top.counter_inc",
         })
         require(direct["summary"]["valid_count"] >= 4, "counter.statistics valid_count too small")
+        require("truncated" not in direct.get("meta", {}),
+                "counter.statistics must omit default meta.truncated=false")
         require(direct["summary"]["min_value"] == "0", "counter.statistics min mismatch")
         require(direct["summary"]["max_value"] == "4", "counter.statistics max mismatch")
         require(direct["data"]["min_count"] == 1 and direct["data"]["max_count"] == 1, "counter.statistics min/max count mismatch")

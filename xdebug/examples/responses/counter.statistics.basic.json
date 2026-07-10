@@ -28,6 +28,5 @@
     "max_count": 1,
     "min_first_time": "120ns",
     "max_first_time": "180ns"
-  },
-  "meta": {"truncated": false}
+  }
 }
