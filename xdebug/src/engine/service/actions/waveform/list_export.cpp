@@ -110,12 +110,11 @@ public:
                 {"status", "preview"},
                 {"output_written", false},
                 {"line_limit", line_limit},
-                {"truncated", static_cast<int>(lst.signals.size()) > line_limit}
+                {"truncated", static_cast<int>(lst.signals.size()) > line_limit},
+                {"begin", range.first},
+                {"end", range.second}
             };
-            out["preview"] = signal_preview;
             out["signals"] = signal_preview;
-            out["begin"] = range.first;
-            out["end"] = range.second;
             return out;
         }
         xdebug_waveform::ListExportOptions options;
@@ -139,12 +138,10 @@ public:
             {"status", "written"},
             {"output_written", true},
             {"truncated", false},
+            {"begin", xdebug_core::format_time(xdebug_waveform::g_fsdb_file, begin)},
+            {"end", xdebug_core::format_time(xdebug_waveform::g_fsdb_file, end)},
             {"output", {{"path", result.output_dir}, {"manifest_path", result.manifest_file}}}
         };
-        out["signals"] = result.signals;
-        auto range = xdebug_core::format_time_range(xdebug_waveform::g_fsdb_file, begin, end);
-        out["begin"] = range.first;
-        out["end"] = range.second;
         return out;
     }
 };

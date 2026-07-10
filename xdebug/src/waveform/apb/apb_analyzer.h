@@ -62,6 +62,8 @@ public:
     bool cursor_next(const std::string& name, int filter, const ApbTransaction*& out);
     bool cursor_prev(const std::string& name, int filter, const ApbTransaction*& out);
     bool cursor_last(const std::string& name, int filter, const ApbTransaction*& out);
+    bool cursor_state(const std::string& name, int filter, size_t& one_based_index,
+                      size_t& total_count) const;
 
     bool get_transactions_in_range(const std::string& name,
                                    npiFsdbTime begin,

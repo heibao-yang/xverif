@@ -10,6 +10,7 @@
 #include "waveform/axi/axi_exporter.h"
 #include "waveform/common/xdebug_waveform_paths.h"
 #include "waveform/value/logic_value.h"
+#include "core/npi/time_contract.h"
 
 #include <fstream>
 #include <memory>
@@ -55,7 +56,7 @@ static bool parse_user_uint64_literal(const std::string& text,
 }
 static Json apb_transaction_json(const xdebug_waveform::ApbTransaction& txn) {
     Json tj;
-    tj["time"] = txn.time;
+    tj["time"] = xdebug_core::format_time(xdebug_waveform::g_fsdb_file, txn.time);
     tj["addr"] = txn.addr;
     tj["data"] = txn.data;
     tj["is_write"] = txn.is_write;
@@ -111,7 +112,6 @@ public:
                 }
                 Json out;
                 out["summary"] = {{"name",name},{"direction",dir},{"count",(int)transactions.size()}};
-                out["name"] = name; out["direction"] = dir; out["count"] = (int)transactions.size();
                 out["transactions"] = transactions;
                 return out;
             } else if (last) {
@@ -135,7 +135,6 @@ public:
             }
             Json out;
             out["summary"] = {{"name",name},{"direction",dir},{"count",(int)transactions.size()}};
-            out["name"] = name; out["direction"] = dir; out["count"] = (int)transactions.size();
             out["transactions"] = transactions;
             return out;
         } else if (last) {
@@ -147,16 +146,13 @@ public:
                                   : g_apb_analyzer.get_read_count(name);
             Json out;
             out["summary"] = {{"name",name},{"direction",dir},{"count",(int)cnt}};
-            out["name"] = name; out["direction"] = dir; out["count"] = (int)cnt;
             return out;
         }
 
         Json out;
         out["summary"] = {{"name",name},{"direction",dir},{"found",found}};
-        out["name"] = name; out["direction"] = dir; out["found"] = found;
         if (found && txn) {
             out["transaction"] = apb_transaction_json(*txn);
-            out["summary"]["addr"] = txn->addr;
         }
         return out;
     }

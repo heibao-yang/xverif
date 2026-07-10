@@ -91,8 +91,6 @@ public:
             signals = limited;
         }
         Json out;
-        out["path"] = path;
-        out["recursive"] = recursive;
         out["summary"] = {
             {"path", path},
             {"recursive", recursive},

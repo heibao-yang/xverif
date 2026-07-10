@@ -146,6 +146,7 @@ public:
 
         bool dynamic = args.value("dynamic", true);
         Json dyn = Json::object();
+        bool dynamic_complete = !dynamic;
         if (static_ok && dynamic) {
             StreamQueryOptions options;
             if (!range_from_args(args, request.value("limits", Json::object()), options, error))
@@ -159,10 +160,14 @@ public:
             if (analysis.ready_bp_conflict_count > 0) add_issue(issues, "WARNING", "READY_BP_CONFLICT", "observed vld=1,rdy=1,bp=1");
             if (analysis.stable_mismatch_count > 0) add_issue(issues, "WARNING", "STABLE_FIELD_MISMATCH", "observed stable_fields changing within packet");
             dyn = xdebug_waveform::stream_summary_json(config, analysis);
+            dynamic_complete = analysis.analysis_complete;
         }
         bool has_error = false;
         for (const auto& issue : issues) if (issue.severity == "ERROR") has_error = true;
-        return Json{{"summary", {{"stream", config.name}, {"ok", !has_error}}},
+        return Json{{"summary", {{"stream", config.name}, {"ok", !has_error},
+                                  {"static_validation_complete", true},
+                                  {"dynamic_requested", dynamic},
+                                  {"validation_complete", static_ok && dynamic_complete}}},
                     {"issues", issue_json(issues)}, {"dynamic", dyn}};
     }
 };

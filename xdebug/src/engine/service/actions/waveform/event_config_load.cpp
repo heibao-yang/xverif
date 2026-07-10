@@ -70,7 +70,6 @@ public:
 
         Json out;
         out["summary"] = {{"name", name}, {"status", "loaded"}};
-        out["name"] = name; out["status"] = "loaded";
         out["config"] = event_config_json(cfg);
         return out;
     }

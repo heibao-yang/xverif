@@ -825,14 +825,6 @@ bool Dispatcher::send_to_socket(const std::string& session_id,
     if (data_payload.is_object() && data_payload.contains("summary")) {
         data_payload.erase("summary");
     }
-    if (category != "design" && result_summary.is_object() && data_payload.is_object()) {
-        for (auto it = result_summary.begin(); it != result_summary.end(); ++it) {
-            auto data_it = data_payload.find(it.key());
-            if (data_it != data_payload.end() && *data_it == it.value()) {
-                data_payload.erase(data_it);
-            }
-        }
-    }
     if (result_summary.is_object() && !result_summary.empty()) response["summary"] = result_summary;
     if (data_payload.is_object() && data_payload.contains("truncated") &&
         data_payload["truncated"].is_boolean()) {

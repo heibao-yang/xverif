@@ -160,48 +160,44 @@ Json ai_axi_outstanding_timeline(const Json& args, std::string& error) {
     ClockSampleSpec clock_sample = cfg.clock_sample;
     if (!normalize_clock_sample_spec(g_fsdb_file, clock_sample, error)) return Json();
     if (!ensure_axi_analyzed_for_ai(name, error)) return Json();
-    std::vector<xdebug_waveform::AxiOutstandingSample> samples;
     int limit = args.value("line_limit", 1000);
-    int fetch_limit = limit >= 0 ? limit + 1 : -1;
-    if (!g_axi_analyzer.get_outstanding_samples_in_range(name, begin, end, samples, fetch_limit)) {
+    int filter = direction_filter(args);
+    xdebug_waveform::AxiOutstandingSummary result;
+    if (!g_axi_analyzer.summarize_outstanding_in_range(name, begin, end, filter, limit, result)) {
         error = "AXI config not analyzed: " + name;
         return Json();
     }
-    int filter = direction_filter(args);
-    Json arr = Json::array();
-    bool truncated = false;
-    for (const auto& s : samples) {
-        if (limit >= 0 && static_cast<int>(arr.size()) >= limit) {
-            truncated = true;
-            break;
-        }
+    Json change_points = Json::array();
+    for (const auto& s : result.change_points) {
         Json item;
         item["time"] = format_time(s.time);
         if (filter == 0 || filter == 2) item["read"] = s.read;
         if (filter == 0 || filter == 1) item["write"] = s.write;
-        arr.push_back(item);
+        change_points.push_back(item);
     }
+    bool truncated = result.change_point_count > result.change_points.size();
     Json data;
     data["summary"] = {
+        {"name", name},
         {"sampling_mode", "clock_edge"},
         {"clock", clock_sample.clock},
         {"edge", clock_edge_kind_text(clock_sample.edge)},
         {"sample_time_semantics", "time is sample_time"},
-        {"sample_count", static_cast<int>(arr.size())},
-        {"truncated", truncated}
+        {"sample_count", result.sample_count},
+        {"change_point_count", result.change_point_count},
+        {"returned_change_point_count", change_points.size()},
+        {"peak_read", result.peak_read}, {"peak_write", result.peak_write},
+        {"peak_read_time", result.peak_read > 0 ? Json(format_time(result.peak_read_time)) : Json(nullptr)},
+        {"peak_write_time", result.peak_write > 0 ? Json(format_time(result.peak_write_time)) : Json(nullptr)},
+        {"first_nonzero_time", result.has_first_nonzero
+            ? Json(format_time(result.first_nonzero_time)) : Json(nullptr)},
+        {"analysis_complete", true},
+        {"truncated", truncated},
+        {"truncation_scope", truncated ? Json("response_change_points") : Json(nullptr)}
     };
     if (clock_sample.edge != ClockEdgeKind::Negedge)
         data["summary"]["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
-    data["name"] = name;
-    data["sample_count"] = arr.size();
-    data["truncated"] = truncated;
-    data["samples"] = arr;
-    data["sampling_mode"] = "clock_edge";
-    data["clock"] = clock_sample.clock;
-    data["edge"] = clock_edge_kind_text(clock_sample.edge);
-    if (clock_sample.edge != ClockEdgeKind::Negedge)
-        data["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
-    data["sample_time_semantics"] = "time is sample_time";
+    data["change_points"] = change_points;
     return data;
 }
 
@@ -241,10 +237,18 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
 
     Json rules = args.value("rules", Json::object());
     int max_wait = rules.value("max_wait_cycles", 100);
-    int max_samples = args.value("line_limit", 1000000);
+    int finding_limit = args.value("line_limit", 100);
     int sample_count = 0, transfers = 0, ready_only = 0, max_stall = 0;
     bool truncated = false;
     Json findings = Json::array();
+    int finding_count = 0;
+    bool have_activity = false;
+    npiFsdbTime first_activity_time = 0;
+    auto add_finding = [&](const Json& finding) {
+        ++finding_count;
+        if (finding_limit < 0 || static_cast<int>(findings.size()) < finding_limit)
+            findings.push_back(finding);
+    };
     int stall_cycles = 0;
     npiFsdbTime stall_begin = 0;
     std::vector<ClockSampleSignal> sample_signals = {
@@ -252,19 +256,23 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
         {"ready", ready, ready_h}
     };
     ClockSampleScanner scanner(g_fsdb_file, clock_sample);
-    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', max_samples,
+    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', -1,
         [&](const ClockSample& sample) -> bool {
             if (sample.values.size() < 2) return true;
             ExprTri v = xdebug_waveform::expr_truth_value(sample.values[0]);
             ExprTri r = xdebug_waveform::expr_truth_value(sample.values[1]);
+            if (!have_activity && (v == ExprTri::True || r == ExprTri::True)) {
+                have_activity = true;
+                first_activity_time = sample.time;
+            }
             if (v == ExprTri::True && r == ExprTri::True) {
                 ++transfers;
                 if (stall_cycles > 0) {
                     if (stall_cycles > max_stall) max_stall = stall_cycles;
                     if (stall_cycles > max_wait) {
-                        findings.push_back({{"type", "long_stall"}, {"severity", "warning"},
-                                            {"begin", format_time(stall_begin)}, {"end", format_time(sample.time)},
-                                            {"cycles", stall_cycles}});
+                        add_finding({{"type", "long_stall"}, {"severity", "warning"},
+                                     {"begin", format_time(stall_begin)}, {"end", format_time(sample.time)},
+                                     {"cycles", stall_cycles}});
                     }
                     stall_cycles = 0;
                 }
@@ -281,14 +289,15 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
     if (stall_cycles > 0) {
         if (stall_cycles > max_stall) max_stall = stall_cycles;
         if (stall_cycles > max_wait) {
-            findings.push_back({{"type", "long_stall"}, {"severity", "warning"},
-                                {"begin", format_time(stall_begin)}, {"end", format_time(end)},
-                                {"cycles", stall_cycles}});
+            add_finding({{"type", "long_stall"}, {"severity", "warning"},
+                         {"begin", format_time(stall_begin)}, {"end", format_time(end)},
+                         {"cycles", stall_cycles}, {"open_at_window_end", true}});
         }
     }
 
     Json data;
     data["summary"] = {
+        {"name", name}, {"channel", channel},
         {"sampling_mode", "clock_edge"},
         {"clock", clock_sample.clock},
         {"edge", clock_edge_kind_text(clock_sample.edge)},
@@ -296,25 +305,19 @@ Json ai_axi_channel_stall(const Json& args, std::string& error) {
         {"sample_count", sample_count},
         {"transfer_count", transfers},
         {"max_stall_cycles", max_stall},
-        {"truncated", truncated}
+        {"ready_without_valid_cycles", ready_only},
+        {"finding_count", finding_count},
+        {"returned_finding_count", findings.size()},
+        {"first_activity_time", have_activity ? Json(format_time(first_activity_time)) : Json(nullptr)},
+        {"scanned_range", {{"begin", format_time(begin)}, {"end", format_time(end)}}},
+        {"analysis_complete", !truncated},
+        {"truncated", finding_limit >= 0 && finding_count > finding_limit},
+        {"truncation_scope", finding_limit >= 0 && finding_count > finding_limit
+            ? Json("response_findings") : Json(nullptr)}
     };
     if (clock_sample.edge != ClockEdgeKind::Negedge)
         data["summary"]["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
-    data["sample_count"] = sample_count;
-    data["transfer_count"] = transfers;
-    data["max_stall_cycles"] = max_stall;
-    data["ready_without_valid_cycles"] = ready_only;
-    data["data_stability_violations"] = 0;
-    data["truncated"] = truncated;
     data["findings"] = findings;
-    data["name"] = name;
-    data["channel"] = channel;
-    data["sampling_mode"] = "clock_edge";
-    data["clock"] = clock_sample.clock;
-    data["edge"] = clock_edge_kind_text(clock_sample.edge);
-    if (clock_sample.edge != ClockEdgeKind::Negedge)
-        data["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
-    data["sample_time_semantics"] = "time is sample_time";
     return data;
 }
 
@@ -361,9 +364,10 @@ Json ai_cursor_action(const std::string& action, const Json& args, std::string& 
         Cursor saved;
         cm.get_cursor(g_session_id, name, saved);
         Json data;
-        data["cursor"] = cursor_to_json(saved);
+        data["summary"] = {{"name", name}, {"time", format_time(t)},
+                           {"status", "set"}, {"active", args.value("active", true)}};
         data["resolved_time"] = resolved_time_json(spec, t);
-        data["status"] = "set";
+        data["metadata"] = {{"note", saved.note}, {"origin", saved.origin}, {"clock", saved.clock}};
         return data;
     }
     if (action == "cursor.get") {
@@ -378,7 +382,8 @@ Json ai_cursor_action(const std::string& action, const Json& args, std::string& 
             return Json();
         }
         Json data;
-        data["cursor"] = cursor_to_json(c);
+        data["summary"] = {{"name", c.name}, {"time", format_time(c.time)}, {"status", "found"}};
+        data["metadata"] = {{"note", c.note}, {"origin", c.origin}, {"clock", c.clock}};
         return data;
     }
     if (action == "cursor.list") {
@@ -387,9 +392,9 @@ Json ai_cursor_action(const std::string& action, const Json& args, std::string& 
         std::string active;
         cm.get_active_cursor(g_session_id, active);
         Json data;
+        data["summary"] = {{"cursor_count", arr.size()},
+                           {"active_cursor", active.empty() ? Json(nullptr) : Json(active)}};
         data["cursors"] = arr;
-        data["active_cursor"] = active;
-        data["cursor_count"] = arr.size();
         return data;
     }
     if (action == "cursor.delete") {
@@ -403,8 +408,7 @@ Json ai_cursor_action(const std::string& action, const Json& args, std::string& 
             return Json();
         }
         Json data;
-        data["status"] = "deleted";
-        data["name"] = name;
+        data["summary"] = {{"status", "deleted"}, {"name", name}, {"deleted", true}};
         return data;
     }
     if (action == "cursor.use") {
@@ -420,9 +424,9 @@ Json ai_cursor_action(const std::string& action, const Json& args, std::string& 
         Cursor c;
         cm.get_cursor(g_session_id, name, c);
         Json data;
-        data["status"] = "active";
-        data["active_cursor"] = name;
-        data["cursor"] = cursor_to_json(c);
+        data["summary"] = {{"status", "active"}, {"active_cursor", name},
+                           {"time", format_time(c.time)}};
+        data["metadata"] = {{"note", c.note}, {"origin", c.origin}, {"clock", c.clock}};
         return data;
     }
     error = "Unsupported cursor action: " + action;

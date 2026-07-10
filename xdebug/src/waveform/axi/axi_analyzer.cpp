@@ -741,6 +741,25 @@ bool AxiAnalyzer::cursor_last(const std::string& name, int filter, const AxiTran
     return false;
 }
 
+bool AxiAnalyzer::cursor_state(const std::string& name, int filter,
+                               size_t& one_based_index, size_t& total_count) const {
+    const AxiResult* result = get_result(name);
+    auto cursor_it = cursors_.find(name);
+    if (!result || cursor_it == cursors_.end()) return false;
+    const AxiCursor& cursor = cursor_it->second;
+    if (filter == 1) {
+        total_count = result->writes.size();
+        one_based_index = total_count == 0 ? 0 : cursor.wr_idx + 1;
+    } else if (filter == 2) {
+        total_count = result->reads.size();
+        one_based_index = total_count == 0 ? 0 : cursor.rd_idx + 1;
+    } else {
+        total_count = result->all.size();
+        one_based_index = total_count == 0 ? 0 : cursor.all_idx + 1;
+    }
+    return true;
+}
+
 bool AxiAnalyzer::get_latency_stats(const std::string& name, bool is_write,
                                     const AxiTransaction*& max_txn,
                                     const AxiTransaction*& min_txn,
@@ -922,6 +941,50 @@ bool AxiAnalyzer::get_outstanding_samples_in_range(const std::string& name,
     for (; it != r->outstanding_samples.end() && it->time <= end; ++it) {
         if (max_results >= 0 && static_cast<int>(out.size()) >= max_results) break;
         out.push_back(*it);
+    }
+    return true;
+}
+
+bool AxiAnalyzer::summarize_outstanding_in_range(const std::string& name,
+                                                  npiFsdbTime begin,
+                                                  npiFsdbTime end,
+                                                  int filter,
+                                                  int max_change_points,
+                                                  AxiOutstandingSummary& out) const {
+    out = AxiOutstandingSummary();
+    const AxiResult* result = get_result(name);
+    if (!result) return false;
+    auto it = std::lower_bound(result->outstanding_samples.begin(),
+                               result->outstanding_samples.end(), begin,
+        [](const AxiOutstandingSample& sample, npiFsdbTime time) {
+            return sample.time < time;
+        });
+    int previous_read = -1;
+    int previous_write = -1;
+    for (; it != result->outstanding_samples.end() && it->time <= end; ++it) {
+        ++out.sample_count;
+        if (it->read > out.peak_read) {
+            out.peak_read = it->read;
+            out.peak_read_time = it->time;
+        }
+        if (it->write > out.peak_write) {
+            out.peak_write = it->write;
+            out.peak_write_time = it->time;
+        }
+        if (!out.has_first_nonzero && (it->read > 0 || it->write > 0)) {
+            out.has_first_nonzero = true;
+            out.first_nonzero_time = it->time;
+        }
+        const int visible_read = filter == 1 ? 0 : it->read;
+        const int visible_write = filter == 2 ? 0 : it->write;
+        if (visible_read == previous_read && visible_write == previous_write) continue;
+        ++out.change_point_count;
+        if (max_change_points < 0 ||
+            static_cast<int>(out.change_points.size()) < max_change_points) {
+            out.change_points.push_back(*it);
+        }
+        previous_read = visible_read;
+        previous_write = visible_write;
     }
     return true;
 }

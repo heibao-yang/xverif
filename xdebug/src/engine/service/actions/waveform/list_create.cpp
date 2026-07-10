@@ -51,12 +51,16 @@ public:
                  {"missing_name", n},
                  {"correct_example", list_action_example("list.create")},
                  {"cause_code", "CREATE_FAILED"}});
-        Json out;
-        out["summary"] = {{"name", n}, {"status", "created"}, {"created", true}};
         // Optionally add initial signals
         Json sigs = a.value("signals", Json::array());
+        Json added = Json::array();
         for (auto& s : sigs) if (s.is_string())
-            lm.add_signal(xdebug_waveform::g_session_id, n, s.get<std::string>());
+            if (lm.add_signal(xdebug_waveform::g_session_id, n, s.get<std::string>()))
+                added.push_back(s);
+        Json out;
+        out["summary"] = {{"name", n}, {"status", "created"}, {"created", true},
+                          {"signal_count", added.size()}};
+        out["signals"] = added;
         return out;
     }
 };

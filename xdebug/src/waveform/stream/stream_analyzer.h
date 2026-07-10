@@ -87,6 +87,12 @@ struct StreamAnalysis {
     int ready_bp_conflict_count = 0;
     int stable_mismatch_count = 0;
     bool truncated = false;
+    bool analysis_complete = true;
+    npiFsdbTime requested_begin = 0;
+    npiFsdbTime requested_end = 0;
+    npiFsdbTime scanned_begin = 0;
+    npiFsdbTime scanned_end = 0;
+    bool has_scanned_samples = false;
 };
 
 struct StreamValidationIssue {

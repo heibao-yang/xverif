@@ -10,6 +10,7 @@
 #include "waveform/axi/axi_exporter.h"
 #include "waveform/common/xdebug_waveform_paths.h"
 #include "waveform/value/logic_value.h"
+#include "core/npi/time_contract.h"
 
 #include <fstream>
 #include <memory>
@@ -64,38 +65,30 @@ public:
                     id_str.empty() ? nullptr : id_str.c_str(), stat)) {
                 out["summary"] = {{"name",name},{"analysis","osd"},{"max",0},
                     {"min",0},{"avg",0.0},{"samples",0},{"status","empty"}};
-                out["analysis"] = "osd";
-                out["max"] = 0; out["min"] = 0; out["avg"] = 0.0;
-                out["samples"] = 0;
-                out["status"] = "empty";
-                out["name"] = name;
                 return out;
             }
             out["summary"] = {{"name",name},{"analysis","osd"},{"max",stat.max},
                 {"min",stat.min},{"avg",stat.avg},{"samples",(int)stat.samples}};
-            out["analysis"] = "osd";
-            out["max"] = stat.max; out["min"] = stat.min; out["avg"] = stat.avg;
-            out["samples"] = (int)stat.samples;
         } else {
             AxiStatResult stat;
             if (!g_axi_analyzer.get_latency_stats(name, filter,
                     id_str.empty() ? nullptr : id_str.c_str(), stat)) {
-                out["summary"] = {{"name",name},{"analysis","latency"},{"max",0},
-                    {"min",0},{"avg",0.0},{"samples",0},{"status","empty"}};
-                out["analysis"] = "latency";
-                out["max"] = 0; out["min"] = 0; out["avg"] = 0.0;
-                out["samples"] = 0;
-                out["status"] = "empty";
-                out["name"] = name;
+                out["summary"] = {{"name",name},{"analysis","latency"},
+                    {"max",nullptr},{"min",nullptr},{"avg",nullptr},{"samples",0},{"status","empty"}};
                 return out;
             }
-            out["summary"] = {{"name",name},{"analysis","latency"},{"max",stat.max},
-                {"min",stat.min},{"avg",stat.avg},{"samples",(int)stat.samples}};
-            out["analysis"] = "latency";
-            out["max"] = stat.max; out["min"] = stat.min; out["avg"] = stat.avg;
-            out["samples"] = (int)stat.samples;
+            out["summary"] = {{"name",name},{"analysis","latency"},
+                {"max", xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.max))},
+                {"min", xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.min))},
+                {"avg", xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.avg))},
+                {"samples",(int)stat.samples}};
+            if (stat.max_txn) {
+                out["slowest"] = {{"time", xdebug_core::format_time(g_fsdb_file, stat.max_txn->addr_time)},
+                                  {"response_time", xdebug_core::format_time(g_fsdb_file, stat.max_txn->resp_time)},
+                                  {"addr", stat.max_txn->addr}, {"id", stat.max_txn->id},
+                                  {"is_write", stat.max_txn->is_write}};
+            }
         }
-        out["name"] = name;
         return out;
     }
 };

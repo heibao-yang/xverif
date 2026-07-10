@@ -45,17 +45,18 @@ public:
             auto names = em.list_events(g_session_id, g_fsdb_file_path);
             Json arr = Json::array();
             for (size_t i = 0; i < names.size(); i++) arr.push_back(names[i]);
-            return Json({{"count",static_cast<int>(arr.size())},{"events",arr}});
+            return Json({{"summary", {{"event_count", static_cast<int>(arr.size())}}},
+                         {"events", arr}});
         }
         EventConfig cfg;
         if (!em.get_event(g_session_id, g_fsdb_file_path, name, cfg))
             return event_config_not_found_error("event.config.list", name);
-        Json out; out["name"] = name;
-        out["sampling_mode"] = "clock_edge";
-        out["clock"] = cfg.clock_sample.clock;
-        out["edge"] = xdebug_waveform::clock_edge_kind_text(cfg.clock_sample.edge);
+        Json out;
+        out["summary"] = {{"name", name}, {"sampling_mode", "clock_edge"},
+                          {"clock", cfg.clock_sample.clock},
+                          {"edge", xdebug_waveform::clock_edge_kind_text(cfg.clock_sample.edge)}};
         if (cfg.clock_sample.edge != xdebug_waveform::ClockEdgeKind::Negedge)
-            out["sample_point"] = xdebug_waveform::clock_sample_point_text(cfg.clock_sample.sample_point);
+            out["summary"]["sample_point"] = xdebug_waveform::clock_sample_point_text(cfg.clock_sample.sample_point);
         out["signals"] = cfg.signals;
         return out;
     }

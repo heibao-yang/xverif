@@ -69,8 +69,30 @@ public:
         if (found) {
             std::string formatted = xdebug_core::format_time(xdebug_waveform::g_fsdb_file, dt);
             out["summary"] = {{"name", n}, {"diff_found", true}, {"diff_time", formatted}};
+            Json changed = Json::array();
+            for (const auto& signal : lst.signals) {
+                std::string before_raw;
+                std::string after_raw;
+                const npiFsdbTime before_time = dt == 0 ? 0 : dt - 1;
+                if (!npi_fsdb_sig_value_at(xdebug_waveform::g_fsdb_file, signal.c_str(),
+                                           before_time, before_raw, npiFsdbHexStrVal) ||
+                    !npi_fsdb_sig_value_at(xdebug_waveform::g_fsdb_file, signal.c_str(),
+                                           dt, after_raw, npiFsdbHexStrVal) ||
+                    before_raw == after_raw) {
+                    continue;
+                }
+                changed.push_back({{"signal", signal},
+                                   {"before", xdebug_waveform::logic_value_json(
+                                       xdebug_waveform::logic_value_from_fsdb_raw(before_raw, 'h'))},
+                                   {"after", xdebug_waveform::logic_value_json(
+                                       xdebug_waveform::logic_value_from_fsdb_raw(after_raw, 'h'))}});
+            }
+            out["summary"]["changed_signal_count"] = changed.size();
+            out["changed_signals"] = changed;
         } else {
-            out["summary"] = {{"name", n}, {"diff_found", false}, {"diff_time", ""}};
+            out["summary"] = {{"name", n}, {"diff_found", false}, {"diff_time", nullptr},
+                              {"changed_signal_count", 0}};
+            out["changed_signals"] = Json::array();
         }
         return out;
     }

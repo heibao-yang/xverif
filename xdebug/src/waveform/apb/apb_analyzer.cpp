@@ -393,6 +393,25 @@ bool ApbAnalyzer::cursor_last(const std::string& name, int filter, const ApbTran
     return false;
 }
 
+bool ApbAnalyzer::cursor_state(const std::string& name, int filter,
+                               size_t& one_based_index, size_t& total_count) const {
+    const ApbResult* result = get_result(name);
+    auto cursor_it = cursors_.find(name);
+    if (!result || cursor_it == cursors_.end()) return false;
+    const ApbCursor& cursor = cursor_it->second;
+    if (filter == 1) {
+        total_count = result->writes.size();
+        one_based_index = total_count == 0 ? 0 : cursor.wr_idx + 1;
+    } else if (filter == 2) {
+        total_count = result->reads.size();
+        one_based_index = total_count == 0 ? 0 : cursor.rd_idx + 1;
+    } else {
+        total_count = result->all.size();
+        one_based_index = total_count == 0 ? 0 : cursor.all_idx + 1;
+    }
+    return true;
+}
+
 bool ApbAnalyzer::get_transactions_in_range(const std::string& name,
                                             npiFsdbTime begin,
                                             npiFsdbTime end,

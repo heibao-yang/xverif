@@ -167,11 +167,11 @@ bool build_clock_point_query(npiFsdbFileHandle fsdb,
     context["clock"] = spec.clock;
     context["edge"] = xdebug_waveform::clock_edge_kind_text(spec.edge);
     context["requested_time"] = xdebug_core::format_time(fsdb, point_result.context.requested_time);
-    context["clock_edge_hit"] = point_result.context.clock_edge_hit;
+    context["requested_any_edge_hit"] = point_result.context.clock_edge_hit;
     context["clock_edge_kind"] = point_result.context.has_clock_edge_kind
         ? Json(xdebug_waveform::clock_edge_kind_text(point_result.context.clock_edge_kind))
         : Json(nullptr);
-    context["target_edge_hit"] = point_result.context.target_edge_hit;
+    context["requested_target_edge_hit"] = point_result.context.target_edge_hit;
     context["sample_point_applied"] =
         point_result.context.target_edge_hit && spec.edge != ClockEdgeKind::Negedge
         ? Json(xdebug_waveform::clock_sample_point_text(spec.sample_point))

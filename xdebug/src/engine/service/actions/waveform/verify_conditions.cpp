@@ -116,11 +116,9 @@ public:
         }
 
         std::map<std::string, xdebug_waveform::ExpressionValue> values;
-        Json sample_by_alias = Json::object();
         for (const auto& row : point.rows) {
             std::string alias = row.value("signal", std::string());
             Json middle = row.value("middle", Json::object());
-            sample_by_alias[alias] = middle;
             if (middle.value("status", std::string()) == "ok") {
                 Json observed_json = middle.value("value", Json::object());
                 std::string bits = observed_json.value("bits", observed_json.value("value", std::string()));
@@ -166,6 +164,7 @@ public:
         bool all_passed = failed == 0 && unknown == 0;
         out["summary"] = {
             {"time", formatted_time},
+            {"execution_ok", true},
             {"verdict", all_passed ? "pass" : "fail"},
             {"condition_count", results.size()},
             {"all_passed", all_passed},
@@ -173,13 +172,8 @@ public:
             {"failed", failed},
             {"unknown", unknown}
         };
-        out["summary"]["clock_edge_hit"] = point.clock_context["clock_edge_hit"];
-        out["summary"]["target_edge_hit"] = point.clock_context["target_edge_hit"];
-        out["summary"]["bracket_complete"] = point.clock_context["bracket_complete"];
         out["checks"] = results;
         out["clock_context"] = point.clock_context;
-        out["sample_rows"] = point.rows;
-        out["samples"] = sample_by_alias;
         return out;
     }
 };

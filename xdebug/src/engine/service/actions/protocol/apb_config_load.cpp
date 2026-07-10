@@ -106,18 +106,7 @@ public:
 
         Json out;
         out["summary"] = {{"name", name}, {"status", "loaded"}};
-        out["name"] = name; out["status"] = "loaded";
-        Json cinfo;
-        cinfo["name"] = name;
-        cinfo["sampling_mode"] = "clock_edge";
-        cinfo["clock"] = cfg.clock_sample.clock;
-        cinfo["edge"] = clock_edge_kind_text(cfg.clock_sample.edge);
-        if (cfg.clock_sample.edge != ClockEdgeKind::Negedge)
-            cinfo["sample_point"] = clock_sample_point_text(cfg.clock_sample.sample_point);
-        cinfo["rst_n"] = cfg.rst_n;
-        if (!cfg.pready.empty()) cinfo["pready"] = cfg.pready;
-        if (!cfg.pslverr.empty()) cinfo["pslverr"] = cfg.pslverr;
-        out["config"] = cinfo;
+        out["config"] = apb_config_json(cfg);
         return out;
     }
 };

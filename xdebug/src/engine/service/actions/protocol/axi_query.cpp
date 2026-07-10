@@ -10,6 +10,7 @@
 #include "waveform/axi/axi_exporter.h"
 #include "waveform/common/xdebug_waveform_paths.h"
 #include "waveform/value/logic_value.h"
+#include "core/npi/time_contract.h"
 
 #include <fstream>
 #include <memory>
@@ -55,7 +56,11 @@ static bool parse_user_uint64_literal(const std::string& text,
 }
 static Json axi_transaction_json(const xdebug_waveform::AxiTransaction& txn) {
     Json tj;
-    tj["time"] = txn.addr_time;
+    tj["time"] = xdebug_core::format_time(xdebug_waveform::g_fsdb_file, txn.addr_time);
+    tj["response_time"] = xdebug_core::format_time(xdebug_waveform::g_fsdb_file, txn.resp_time);
+    tj["latency"] = xdebug_core::format_duration(
+        xdebug_waveform::g_fsdb_file,
+        txn.resp_time >= txn.addr_time ? txn.resp_time - txn.addr_time : 0);
     tj["addr"] = txn.addr;
     tj["id"] = txn.id;
     tj["len"] = txn.len;
@@ -128,7 +133,6 @@ public:
                     }
                     Json out;
                     out["summary"] = {{"name",name},{"direction",dir},{"count",(int)transactions.size()}};
-                    out["name"] = name; out["direction"] = dir; out["count"] = (int)transactions.size();
                     out["transactions"] = transactions;
                     return out;
                 }
@@ -153,7 +157,6 @@ public:
                     }
                     Json out;
                     out["summary"] = {{"name",name},{"direction",dir},{"count",(int)transactions.size()}};
-                    out["name"] = name; out["direction"] = dir; out["count"] = (int)transactions.size();
                     out["transactions"] = transactions;
                     return out;
                 }
@@ -179,7 +182,6 @@ public:
                 }
                 Json out;
                 out["summary"] = {{"name",name},{"direction",dir},{"count",(int)transactions.size()}};
-                out["name"] = name; out["direction"] = dir; out["count"] = (int)transactions.size();
                 out["transactions"] = transactions;
                 return out;
             }
@@ -200,7 +202,6 @@ public:
             }
             Json out;
             out["summary"] = {{"name",name},{"direction",dir},{"count",(int)transactions.size()}};
-            out["name"] = name; out["direction"] = dir; out["count"] = (int)transactions.size();
             out["transactions"] = transactions;
             return out;
         } else if (last) {
@@ -211,16 +212,13 @@ public:
                                   : g_axi_analyzer.get_read_count(name);
             Json out;
             out["summary"] = {{"name",name},{"direction",dir},{"count",(int)cnt}};
-            out["name"] = name; out["direction"] = dir; out["count"] = (int)cnt;
             return out;
         }
 
         Json out;
         out["summary"] = {{"name",name},{"direction",dir},{"found",found}};
-        out["name"] = name; out["direction"] = dir; out["found"] = found;
         if (found && txn) {
             out["transaction"] = axi_transaction_json(*txn);
-            out["summary"]["addr"] = txn->addr;
         }
         return out;
     }

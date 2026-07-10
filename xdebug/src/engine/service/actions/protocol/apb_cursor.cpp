@@ -10,6 +10,7 @@
 #include "waveform/axi/axi_exporter.h"
 #include "waveform/common/xdebug_waveform_paths.h"
 #include "waveform/value/logic_value.h"
+#include "core/npi/time_contract.h"
 
 #include <fstream>
 #include <memory>
@@ -68,15 +69,19 @@ public:
             Json::array({"begin", "next", "prev", "last"}));
 
         Json out;
-        out["summary"] = {{"name",name},{"op",op},{"direction",dir},{"found",ok}};
-        out["name"] = name; out["op"] = op; out["direction"] = dir; out["found"] = ok;
+        size_t index = 0;
+        size_t total = 0;
+        g_apb_analyzer.cursor_state(name, filter, index, total);
+        out["summary"] = {{"name",name},{"op",op},{"direction",dir},{"found",ok},
+                          {"index", ok ? Json(index) : Json(nullptr)}, {"index_base", 1},
+                          {"total_count", total}, {"at_begin", ok && index == 1},
+                          {"at_end", ok && index == total}};
         if (ok && txn) {
             Json tj;
-            tj["time"] = txn->time; tj["addr"] = txn->addr;
+            tj["time"] = xdebug_core::format_time(g_fsdb_file, txn->time); tj["addr"] = txn->addr;
             tj["data"] = txn->data; tj["is_write"] = txn->is_write;
             tj["has_error"] = txn->has_error;
             out["transaction"] = tj;
-            if (txn->is_write) out["summary"]["addr"] = txn->addr;
         }
         return out;
     }

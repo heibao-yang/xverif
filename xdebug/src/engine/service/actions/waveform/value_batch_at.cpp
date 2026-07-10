@@ -113,7 +113,6 @@ public:
 
         Json out;
         std::string formatted_time = xdebug_core::format_time(g_fsdb_file, fsdb_time);
-        out["time"] = formatted_time;
         std::vector<PointSignalSpec> specs;
         for (const auto& name : names) specs.push_back({name, name});
         ClockPointQueryResult point;
@@ -136,7 +135,6 @@ public:
         for (size_t i = 0; i < names.size() && i < point.rows.size(); ++i) {
             Json item;
             item["signal"] = names[i];
-            item["time"] = formatted_time;
             Json middle = point.rows[i].value("middle", Json::object());
             if (middle.value("status", std::string()) == "ok") {
                 item["status"] = "ok";
@@ -159,16 +157,11 @@ public:
             batch.push_back(item);
         }
         out["values"] = batch;
-        out["sample_rows"] = point.rows;
-        out["samples"] = point.samples;
         out["clock_context"] = point.clock_context;
         out["summary"] = {{"time", formatted_time}, {"signal_count", batch.size()},
-                          {"x_or_z_count", unknown_count}, {"unknown_count", unknown_count},
+                          {"unknown_count", unknown_count},
                           {"missing_count", missing_count},
-                          {"missing_by_reason", missing_by_reason},
-                          {"clock_edge_hit", point.clock_context["clock_edge_hit"]},
-                          {"target_edge_hit", point.clock_context["target_edge_hit"]},
-                          {"bracket_complete", point.clock_context["bracket_complete"]}};
+                          {"missing_by_reason", missing_by_reason}};
         return out;
     }
 

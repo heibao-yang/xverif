@@ -78,10 +78,7 @@ public:
         }
         Json out;
         out["summary"] = {{"name", n}, {"time", formatted_time},
-                          {"signal_count", static_cast<int>(lst.signals.size())},
-                          {"clock_edge_hit", point.clock_context["clock_edge_hit"]},
-                          {"target_edge_hit", point.clock_context["target_edge_hit"]},
-                          {"bracket_complete", point.clock_context["bracket_complete"]}};
+                          {"signal_count", static_cast<int>(lst.signals.size())}};
         Json sv = Json::object();
         for (size_t i = 0; i < lst.signals.size() && i < point.rows.size(); i++) {
             Json middle = point.rows[i].value("middle", Json::object());
@@ -89,8 +86,6 @@ public:
                 ? middle.value("value", Json()) : Json(middle.value("status", std::string("NOT_FOUND")));
         }
         out["values"] = sv;
-        out["sample_rows"] = point.rows;
-        out["samples"] = point.samples;
         out["clock_context"] = point.clock_context;
         return out;
     }
@@ -104,15 +99,11 @@ public:
         if (s.contains("time")) out.emit_kv("time", s["time"]);
         out.emit_section("values");
         std::vector<std::vector<std::string>> rows;
-        if (d.contains("sample_rows") && d["sample_rows"].is_array()) {
-            for (const auto& row : d["sample_rows"]) {
-                rows.push_back({row.value("signal", std::string()),
-                                xdebug::json_to_xout_value(point_cell_value(row, "before")),
-                                xdebug::json_to_xout_value(point_cell_value(row, "middle")),
-                                xdebug::json_to_xout_value(point_cell_value(row, "after"))});
-            }
+        if (d.contains("values") && d["values"].is_object()) {
+            for (auto it = d["values"].begin(); it != d["values"].end(); ++it)
+                rows.push_back({it.key(), xdebug::json_to_xout_value(it.value())});
         }
-        out.emit_table({"signal", "before", "middle", "after"}, rows);
+        out.emit_table({"signal", "value"}, rows);
         return out.str();
     }
 };

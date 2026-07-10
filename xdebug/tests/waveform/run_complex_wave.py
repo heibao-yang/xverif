@@ -384,11 +384,14 @@ class AiRunner(object):
         self.env["HOME"] = self.home
         self.sid = None
         self.rows = []
+        self.duplicate_contract_violations = []
 
     def cleanup(self):
         if self.sid:
             self.query("session.kill", target={"session_id": self.sid}, expect_ok=True, allow_no_sid=True)
         shutil.rmtree(self.home, ignore_errors=True)
+        require(not self.duplicate_contract_violations,
+                "summary/data duplicate facts remain: {}".format(self.duplicate_contract_violations))
 
     def query(self, action, args=None, target=None, limits=None, expect_ok=True, allow_no_sid=False, timeout=60):
         req = {
@@ -421,6 +424,15 @@ class AiRunner(object):
         log_progress("{}: query {} done rc={} ok={} elapsed_ms={}".format(self.name, action, rc, ok, elapsed_ms))
         if expect_ok:
             require(rc == 0 and ok, "{} failed rc={} data={} stderr={}".format(action, rc, json.dumps(data, indent=2), err))
+            if not action.startswith("session."):
+                summary = data.get("summary", {})
+                payload = data.get("data", {})
+                duplicate_keys = sorted(
+                    key for key, value in summary.items()
+                    if key in payload and payload[key] == value
+                )
+                if duplicate_keys:
+                    self.duplicate_contract_violations.append({"action": action, "keys": duplicate_keys})
         else:
             require(rc != 0 or not ok, "{} expected failure but passed".format(action))
         return data
@@ -887,7 +899,7 @@ def run_nonaxi(xdebug, fsdb):
             "time_range": {"begin": "120ns", "end": "210ns"},
             "rules": {"max_wait_cycles": 2, "check_data_stable_when_stalled": True},
         })
-        require(hs["summary"]["max_stall_cycles"] >= 3 and hs["data"]["data_stability_violations"] >= 1, "handshake.inspect mismatch")
+        require(hs["summary"]["max_stall_cycles"] >= 3 and hs["summary"]["data_stability_violations"] >= 1, "handshake.inspect mismatch")
         require_clock_summary(hs, "negedge")
         return r.rows
     finally:

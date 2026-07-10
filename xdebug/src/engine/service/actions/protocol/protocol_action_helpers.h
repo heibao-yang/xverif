@@ -1,8 +1,48 @@
 #pragma once
 
 #include "service/engine_action_handler.h"
+#include "waveform/apb/apb_manager.h"
+#include "waveform/axi/axi_manager.h"
 
 namespace xdebug_design {
+
+inline Json apb_config_json(const xdebug_waveform::ApbConfig& cfg) {
+    Json out = {{"name", cfg.name}, {"sampling_mode", "clock_edge"},
+                {"clock", cfg.clock_sample.clock},
+                {"edge", xdebug_waveform::clock_edge_kind_text(cfg.clock_sample.edge)},
+                {"rst_n", cfg.rst_n}, {"paddr", cfg.paddr}, {"psel", cfg.psel},
+                {"penable", cfg.penable}, {"pwrite", cfg.pwrite},
+                {"pwdata", cfg.pwdata}, {"prdata", cfg.prdata}};
+    if (cfg.clock_sample.edge != xdebug_waveform::ClockEdgeKind::Negedge)
+        out["sample_point"] = xdebug_waveform::clock_sample_point_text(cfg.clock_sample.sample_point);
+    if (!cfg.pready.empty()) out["pready"] = cfg.pready;
+    if (!cfg.pslverr.empty()) out["pslverr"] = cfg.pslverr;
+    return out;
+}
+
+inline Json axi_config_json(const xdebug_waveform::AxiConfig& cfg) {
+    Json out = {{"name", cfg.name}, {"sampling_mode", "clock_edge"},
+                {"clock", cfg.clock_sample.clock},
+                {"edge", xdebug_waveform::clock_edge_kind_text(cfg.clock_sample.edge)},
+                {"rst_n", cfg.rst_n}};
+    if (cfg.clock_sample.edge != xdebug_waveform::ClockEdgeKind::Negedge)
+        out["sample_point"] = xdebug_waveform::clock_sample_point_text(cfg.clock_sample.sample_point);
+    out["channels"] = {
+        {"aw", {{"addr", cfg.awaddr}, {"id", cfg.awid}, {"len", cfg.awlen},
+                {"size", cfg.awsize}, {"burst", cfg.awburst},
+                {"valid", cfg.awvalid}, {"ready", cfg.awready}}},
+        {"w", {{"data", cfg.wdata}, {"strb", cfg.wstrb}, {"last", cfg.wlast},
+               {"valid", cfg.wvalid}, {"ready", cfg.wready}}},
+        {"b", {{"id", cfg.bid}, {"resp", cfg.bresp},
+               {"valid", cfg.bvalid}, {"ready", cfg.bready}}},
+        {"ar", {{"addr", cfg.araddr}, {"id", cfg.arid}, {"len", cfg.arlen},
+                {"size", cfg.arsize}, {"burst", cfg.arburst},
+                {"valid", cfg.arvalid}, {"ready", cfg.arready}}},
+        {"r", {{"id", cfg.rid}, {"data", cfg.rdata}, {"resp", cfg.rresp},
+               {"last", cfg.rlast}, {"valid", cfg.rvalid}, {"ready", cfg.rready}}}
+    };
+    return out;
+}
 
 inline Json protocol_example_args(const std::string& action) {
     if (action == "axi.config.load") {

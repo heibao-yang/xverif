@@ -532,24 +532,20 @@ Json ai_expr_eval_at(const Json& args, std::string& error) {
         {"time", format_time(t)},
         {"status", xdebug_waveform::expr_tri_text(result)},
         {"known", result != ExprTri::Unknown},
-        {"clock_edge_hit", point_result.context.clock_edge_hit},
-        {"target_edge_hit", point_result.context.target_edge_hit},
+        {"requested_any_edge_hit", point_result.context.clock_edge_hit},
+        {"requested_target_edge_hit", point_result.context.target_edge_hit},
         {"bracket_complete", point_result.context.bracket_complete}
     };
-    data["expr"] = expr;
-    data["time"] = format_time(t);
-    data["status"] = xdebug_waveform::expr_tri_text(result);
-    data["known"] = result != ExprTri::Unknown;
     data["expr_value"] = result == ExprTri::True ? Json(true) : result == ExprTri::False ? Json(false) : Json(nullptr);
     data["operands"] = operands;
     data["clock_context"] = {
         {"clock", clock_sample.clock},
         {"edge", clock_edge_kind_text(clock_sample.edge)},
         {"requested_time", format_time(t)},
-        {"clock_edge_hit", point_result.context.clock_edge_hit},
+        {"requested_any_edge_hit", point_result.context.clock_edge_hit},
         {"clock_edge_kind", point_result.context.has_clock_edge_kind
             ? Json(clock_edge_kind_text(point_result.context.clock_edge_kind)) : Json(nullptr)},
-        {"target_edge_hit", point_result.context.target_edge_hit},
+        {"requested_target_edge_hit", point_result.context.target_edge_hit},
         {"sample_point_applied", point_result.context.target_edge_hit && clock_sample.edge != ClockEdgeKind::Negedge
             ? Json(clock_sample_point_text(clock_sample.sample_point)) : Json(nullptr)},
         {"previous_sample_time", point_result.context.has_previous_sample_time
@@ -558,16 +554,6 @@ Json ai_expr_eval_at(const Json& args, std::string& error) {
             ? Json(format_time(point_result.context.next_sample_time)) : Json(nullptr)},
         {"bracket_complete", point_result.context.bracket_complete}
     };
-    data["sample_rows"] = Json::array();
-    for (size_t i = 0; i < aliases.size(); ++i) {
-        Json row;
-        row["signal"] = aliases[i];
-        row["path"] = paths[i];
-        row["before"] = have_before_result ? before_operands[i]["value"] : Json("missing_edge");
-        row["middle"] = operands[i]["value"];
-        row["after"] = have_after_result ? after_operands[i]["value"] : Json("missing_edge");
-        data["sample_rows"].push_back(row);
-    }
     data["expr_samples"] = {
         {"before", have_before_result ? Json(expr_tri_text(before_result)) : Json("missing_edge")},
         {"middle", expr_tri_text(result)},
@@ -620,9 +606,18 @@ Json ai_window_verify(const Json& args, std::string& error) {
 
     int samples = 0;
     bool truncated = false;
+    bool decisive_proof = false;
+    bool have_sample = false;
+    npiFsdbTime first_sample_time = 0;
+    npiFsdbTime last_sample_time = 0;
     ClockSampleScanner scanner(g_fsdb_file, clock_sample);
     bool ok = scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', max_samples,
         [&](const ClockSample& sample) -> bool {
+            if (!have_sample) {
+                first_sample_time = sample.time;
+                have_sample = true;
+            }
+            last_sample_time = sample.time;
             std::map<std::string, std::string> values = clock_sample_value_map(sample_signals, sample.values);
             bool has_eventually = false;
             bool all_eventually_seen = true;
@@ -644,10 +639,15 @@ Json ai_window_verify(const Json& args, std::string& error) {
                     has_eventually = true;
                     if (st.pass == 0) all_eventually_seen = false;
                 } else if (r == ExprTri::Unknown || !pass) {
+                    decisive_proof = true;
                     return false;
                 }
             }
-            return !(has_eventually && all_eventually_seen);
+            if (has_eventually && all_eventually_seen) {
+                decisive_proof = true;
+                return false;
+            }
+            return true;
         }, error, samples, truncated);
     if (!ok) return Json();
 
@@ -664,13 +664,24 @@ Json ai_window_verify(const Json& args, std::string& error) {
         conds.push_back({{"expr", st.expr}, {"mode", st.mode}, {"passed", passed},
                          {"pass_samples", st.pass}, {"failed_samples", st.fail}, {"unknown_samples", st.unknown}});
     }
+    const bool validation_complete = decisive_proof || !truncated;
+    const std::string verdict = !validation_complete ? "inconclusive" :
+                                all_passed ? "pass" : "fail";
     Json data;
     data["summary"] = {
-        {"all_passed", all_passed},
+        {"execution_ok", true},
+        {"verdict", verdict},
+        {"all_passed", validation_complete ? Json(all_passed) : Json(nullptr)},
         {"sample_count", samples},
         {"failed_samples", failed_samples},
         {"unknown_samples", unknown_samples},
         {"truncated", truncated},
+        {"validation_complete", validation_complete},
+        {"proof_begin", format_time(begin)},
+        {"proof_end", format_time(end)},
+        {"scanned_range", {{"begin", have_sample ? Json(format_time(first_sample_time)) : Json(nullptr)},
+                            {"end", have_sample ? Json(format_time(last_sample_time)) : Json(nullptr)}}},
+        {"truncation_scope", truncated ? Json("analysis_samples") : Json(nullptr)},
         {"sampling_mode", "clock_edge"},
         {"clock", clock_sample.clock},
         {"edge", clock_edge_kind_text(clock_sample.edge)},
@@ -678,11 +689,6 @@ Json ai_window_verify(const Json& args, std::string& error) {
     };
     if (clock_sample.edge != ClockEdgeKind::Negedge)
         data["summary"]["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
-    data["all_passed"] = all_passed;
-    data["sample_count"] = samples;
-    data["failed_samples"] = failed_samples;
-    data["unknown_samples"] = unknown_samples;
-    data["truncated"] = truncated;
     data["conditions"] = conds;
     return data;
 }
@@ -705,15 +711,14 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
         bool truncated = false;
         if (!read_signal_changes(signal, begin, end, fmt, changes, error, -1, &truncated)) return Json();
         Json data;
-        data["signal"] = signal;
-        data["sampling_mode"] = "raw_value_changes";
-        data["begin"] = format_time(begin);
-        data["end"] = format_time(end);
-        data["sample_count"] = changes.size();
+        data["summary"] = {{"signal", signal}, {"sampling_mode", "raw_value_changes"},
+                           {"begin", format_time(begin)}, {"end", format_time(end)},
+                           {"sample_count", changes.size()},
+                           {"actual_transition_count", changes.empty() ? 0 : changes.size() - 1},
+                           {"analysis_complete", !truncated}, {"truncated", truncated},
+                           {"truncation_scope", truncated ? Json("analysis_rows") : Json(nullptr)}};
         data["returned_change_rows"] = changes.size();
         data["includes_initial_value"] = !changes.empty();
-        data["transition_count"] = changes.empty() ? 0 : changes.size() - 1;
-        data["truncated"] = truncated;
         int high_bursts = 0;
         npiFsdbTime first_high = 0, last_high = 0, last_fall = 0;
         bool prev_high = false;
@@ -824,6 +829,7 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
 
     Json data;
     data["summary"] = {
+        {"signal", signal},
         {"sampling_mode", "clock_edge"},
         {"clock", clock},
         {"edge", clock_edge_kind_text(clock_sample.edge)},
@@ -831,24 +837,15 @@ Json ai_signal_statistics(const Json& args, std::string& error) {
         {"sample_count", samples},
         {"known_count", known},
         {"unknown_count", unknown},
-        {"truncated", truncated}
+        {"begin", format_time(begin)},
+        {"end", format_time(end)},
+        {"analysis_complete", !truncated},
+        {"truncated", truncated},
+        {"truncation_scope", truncated ? Json("analysis_samples") : Json(nullptr)}
     };
     if (clock_sample.edge != ClockEdgeKind::Negedge)
         data["summary"]["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
-    data["signal"] = signal;
-    data["clock"] = clock;
-    data["edge"] = clock_edge_kind_text(clock_sample.edge);
-    if (clock_sample.edge != ClockEdgeKind::Negedge)
-        data["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
-    data["sample_time_semantics"] = "time is sample_time";
-    data["sampling_mode"] = "clock_edge";
-    data["begin"] = format_time(begin);
-    data["end"] = format_time(end);
-    data["sample_count"] = samples;
-    data["known_count"] = known;
-    data["unknown_count"] = unknown;
     data["transition_count"] = transitions;
-    data["truncated"] = truncated;
     if (have_known) {
         data["first"] = bit_value_json(first_bits);
         data["final"] = bit_value_json(final_bits);

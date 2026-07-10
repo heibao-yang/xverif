@@ -241,6 +241,8 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
                              const StreamQueryOptions& options, StreamAnalysis& analysis,
                              std::string& error) {
     analysis = StreamAnalysis();
+    analysis.requested_begin = options.begin;
+    analysis.requested_end = options.end;
     ClockSampleSpec clock_sample = config.clock_sample;
     if (!normalize_clock_sample_spec(file, clock_sample, error)) return false;
     Compiled compiled;
@@ -399,6 +401,11 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
     int cycle = 0;
     for (const auto& sample : sampled_edges) {
         npiFsdbTime t = sample.time;
+        if (!analysis.has_scanned_samples) {
+            analysis.scanned_begin = t;
+            analysis.has_scanned_samples = true;
+        }
+        analysis.scanned_end = t;
         analysis.clock_edges++;
         std::map<std::string, StreamValue> values;
         for (size_t i = 0; i < deps.size(); ++i) {
@@ -687,13 +694,21 @@ Json stream_summary_json(const StreamConfig& config, const StreamAnalysis& analy
     j["ready_bp_conflict_count"] = analysis.ready_bp_conflict_count;
     j["stable_mismatch_count"] = analysis.stable_mismatch_count;
     j["truncated"] = analysis.truncated;
+    j["analysis_complete"] = analysis.analysis_complete;
+    j["truncation_scope"] = analysis.truncated ? Json("response_rows") : Json(nullptr);
+    j["requested_range"] = {{"begin", format_time(analysis.requested_begin)},
+                             {"end", format_time(analysis.requested_end)}};
+    j["scanned_range"] = {{"begin", analysis.has_scanned_samples
+        ? Json(format_time(analysis.scanned_begin)) : Json(nullptr)},
+                           {"end", analysis.has_scanned_samples
+        ? Json(format_time(analysis.scanned_end)) : Json(nullptr)}};
     if (!analysis.transfers.empty()) {
-        j["first_transfer"] = stream_row_json(analysis.transfers.front());
-        j["last_transfer"] = stream_row_json(analysis.transfers.back());
+        j["first_transfer_time"] = format_time(analysis.transfers.front().time);
+        j["last_transfer_time"] = format_time(analysis.transfers.back().time);
     }
     if (!analysis.stalls.empty()) {
-        j["first_stall"] = stream_stall_json(analysis.stalls.front());
-        j["last_stall"] = stream_stall_json(analysis.stalls.back());
+        j["first_stall_time"] = format_time(analysis.stalls.front().start_time);
+        j["last_stall_time"] = format_time(analysis.stalls.back().start_time);
     }
     return j;
 }

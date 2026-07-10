@@ -31,23 +31,16 @@ public:
             auto configs = am.list_all(xdebug_waveform::g_session_id);
             Json arr = Json::array();
             for (const auto& cfg : configs) {
-                arr.push_back({{"name", cfg.name},
-                               {"sampling_mode", "clock_edge"},
-                               {"clock", cfg.clock_sample.clock},
-                               {"edge", xdebug_waveform::clock_edge_kind_text(cfg.clock_sample.edge)}});
+                arr.push_back(axi_config_json(cfg));
             }
             return Json{{"summary", {{"count", configs.size()}}}, {"configs", arr}};
         }
         xdebug_waveform::AxiConfig cfg;
         if (!am.get_axi(xdebug_waveform::g_session_id, name, cfg))
             return protocol_config_not_found_error(action_name(), "axi", name);
-        Json out; out["name"] = name;
-        out["sampling_mode"] = "clock_edge";
-        out["clock"] = cfg.clock_sample.clock;
-        out["edge"] = xdebug_waveform::clock_edge_kind_text(cfg.clock_sample.edge);
-        if (cfg.clock_sample.edge != xdebug_waveform::ClockEdgeKind::Negedge)
-            out["sample_point"] = xdebug_waveform::clock_sample_point_text(cfg.clock_sample.sample_point);
-        out["rst_n"] = cfg.rst_n;
+        Json out;
+        out["summary"] = {{"name", name}, {"status", "found"}};
+        out["config"] = axi_config_json(cfg);
         return out;
     }
 };

@@ -38,6 +38,18 @@ struct AxiOutstandingSample {
     std::map<std::string, int> write_by_id;
 };
 
+struct AxiOutstandingSummary {
+    size_t sample_count = 0;
+    size_t change_point_count = 0;
+    std::vector<AxiOutstandingSample> change_points;
+    int peak_read = 0;
+    int peak_write = 0;
+    npiFsdbTime peak_read_time = 0;
+    npiFsdbTime peak_write_time = 0;
+    npiFsdbTime first_nonzero_time = 0;
+    bool has_first_nonzero = false;
+};
+
 struct AxiResult {
     std::vector<AxiTransaction> all;
     std::vector<AxiTransaction> writes;
@@ -101,6 +113,8 @@ public:
     bool cursor_next(const std::string& name, int filter, const AxiTransaction*& out);
     bool cursor_prev(const std::string& name, int filter, const AxiTransaction*& out);
     bool cursor_last(const std::string& name, int filter, const AxiTransaction*& out);
+    bool cursor_state(const std::string& name, int filter, size_t& one_based_index,
+                      size_t& total_count) const;
 
     // Latency stats helpers
     bool get_latency_stats(const std::string& name, bool is_write,
@@ -123,6 +137,12 @@ public:
                                           npiFsdbTime end,
                                           std::vector<AxiOutstandingSample>& out,
                                           int max_results = -1) const;
+    bool summarize_outstanding_in_range(const std::string& name,
+                                        npiFsdbTime begin,
+                                        npiFsdbTime end,
+                                        int filter,
+                                        int max_change_points,
+                                        AxiOutstandingSummary& out) const;
 
 private:
     std::map<std::string, AxiResult> results_;

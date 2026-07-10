@@ -113,7 +113,10 @@ public:
                         {"format", format},
                         {"status", output_prefix.empty() ? "preview" : "written"},
                         {"output_written", !output_prefix.empty()},
-                        {"truncated", false}};
+                        {"truncated", false},
+                        {"requested_range", {{"begin", format_time(begin)}, {"end", format_time(end)}}},
+                        {"scanned_range", {{"begin", format_time(result.scan_begin)},
+                                            {"end", format_time(result.scan_end)}}}};
 
         if (output_prefix.empty()) {
             Json preview;
@@ -125,15 +128,7 @@ public:
             for (size_t i = 0; i < rlimit; ++i) preview["reads"].push_back(txn_json(result.reads[i]));
             Json out;
             out["summary"] = summary;
-            out["name"] = name;
-            out["begin"] = format_time(begin);
-            out["end"] = format_time(end);
-            out["scan_begin"] = format_time(result.scan_begin);
-            out["scan_end"] = format_time(result.scan_end);
             out["preview"] = preview;
-            out["write_count"] = result.writes.size();
-            out["read_count"] = result.reads.size();
-            out["total_count"] = result.writes.size() + result.reads.size();
             return out;
         }
 
@@ -152,14 +147,6 @@ public:
                              {"meta_path", meta_file},
                              {"file_format", format}};
         out["summary"] = summary;
-        out["name"] = name;
-        out["begin"] = format_time(begin);
-        out["end"] = format_time(end);
-        out["scan_begin"] = format_time(result.scan_begin);
-        out["scan_end"] = format_time(result.scan_end);
-        out["write_count"] = result.writes.size();
-        out["read_count"] = result.reads.size();
-        out["total_count"] = result.writes.size() + result.reads.size();
         return out;
     }
 };

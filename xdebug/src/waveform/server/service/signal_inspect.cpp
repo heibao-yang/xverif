@@ -322,12 +322,19 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
     int max_wait = rules.value("max_wait_cycles", 100);
     bool check_data = rules.value("check_data_stable_when_stalled", false);
     int samples = 0, transfers = 0, stall_cycles = 0, max_stall = 0, ready_only = 0, data_violations = 0;
-    bool in_stall = false, truncated = false;
+    bool in_stall = false, scan_truncated = false;
     npiFsdbTime stall_begin = 0;
     std::map<std::string, std::string> stall_data;
     Json findings = Json::array();
+    const int finding_limit = args.value("line_limit", 100);
+    int finding_count = 0;
+    auto add_finding = [&](const Json& finding) {
+        ++finding_count;
+        if (finding_limit < 0 || static_cast<int>(findings.size()) < finding_limit)
+            findings.push_back(finding);
+    };
     ClockSampleScanner scanner(g_fsdb_file, clock_sample);
-    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', args.value("line_limit", 1000000),
+    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', -1,
         [&](const ClockSample& sample) -> bool {
             npiFsdbTime t = sample.time;
             std::map<std::string, std::string> values = clock_sample_value_map(sample_signals, sample.values);
@@ -336,7 +343,11 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
             bool transfer = v == ExprTri::True && r == ExprTri::True;
             bool stall = v == ExprTri::True && r == ExprTri::False;
             if (transfer) transfers++;
-            if (r == ExprTri::True && v == ExprTri::False) ready_only++;
+            if (r == ExprTri::True && v == ExprTri::False) {
+                ready_only++;
+                add_finding({{"type", "ready_without_valid"}, {"severity", "info"},
+                             {"time", format_time(t)}});
+            }
             if (stall) {
                 stall_cycles++;
                 if (!in_stall) {
@@ -345,22 +356,35 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
                     stall_data = values;
                 } else if (check_data) {
                     for (const auto& kv : values) {
-                        if (kv.first.find("data") == 0 && stall_data[kv.first] != kv.second) data_violations++;
+                        if (kv.first.find("data") == 0 && stall_data[kv.first] != kv.second) {
+                            data_violations++;
+                            add_finding({{"type", "data_changed_while_stalled"}, {"severity", "warning"},
+                                         {"begin", format_time(stall_begin)}, {"time", format_time(t)},
+                                         {"signal", kv.first}});
+                        }
                     }
                 }
             } else if (in_stall) {
                 int cycles = stall_cycles;
                 if (cycles > max_stall) max_stall = cycles;
                 if (cycles > max_wait) {
-                    findings.push_back({{"type", "long_stall"}, {"severity", "warning"},
-                                        {"begin", format_time(stall_begin)}, {"end", format_time(t)}, {"cycles", cycles}});
+                    add_finding({{"type", "long_stall"}, {"severity", "warning"},
+                                 {"begin", format_time(stall_begin)}, {"end", format_time(t)}, {"cycles", cycles}});
                 }
                 in_stall = false;
                 stall_cycles = 0;
             }
             return true;
-        }, error, samples, truncated)) return Json();
-    if (in_stall && stall_cycles > max_stall) max_stall = stall_cycles;
+        }, error, samples, scan_truncated)) return Json();
+    if (in_stall) {
+        if (stall_cycles > max_stall) max_stall = stall_cycles;
+        if (stall_cycles > max_wait) {
+            add_finding({{"type", "long_stall"}, {"severity", "warning"},
+                         {"begin", format_time(stall_begin)}, {"end", format_time(end)},
+                         {"cycles", stall_cycles}, {"open_at_window_end", true}});
+        }
+    }
+    const bool response_truncated = finding_limit >= 0 && finding_count > finding_limit;
     Json data;
     data["summary"] = {
         {"sampling_mode", "clock_edge"},
@@ -370,14 +394,14 @@ Json ai_handshake_inspect(const Json& args, std::string& error) {
         {"sample_count", samples},
         {"transfer_count", transfers},
         {"max_stall_cycles", max_stall},
-        {"truncated", truncated}
+        {"ready_without_valid_cycles", ready_only},
+        {"data_stability_violations", data_violations},
+        {"finding_count", finding_count},
+        {"returned_finding_count", findings.size()},
+        {"analysis_complete", !scan_truncated},
+        {"truncated", response_truncated},
+        {"truncation_scope", response_truncated ? Json("response_findings") : Json(nullptr)}
     };
-    data["sample_count"] = samples;
-    data["transfer_count"] = transfers;
-    data["max_stall_cycles"] = max_stall;
-    data["ready_without_valid_cycles"] = ready_only;
-    data["data_stability_violations"] = data_violations;
-    data["truncated"] = truncated;
     data["findings"] = findings;
     return data;
 }
@@ -465,43 +489,80 @@ Json ai_detect_abnormal(const Json& args, std::string& error) {
     }
     int max_findings = args.value("line_limit", 50);
     Json findings = Json::array();
+    Json scan_status = Json::array();
+    int finding_count = 0;
+    bool analysis_complete = true;
+    auto add_finding = [&](const Json& finding, int& signal_finding_count) {
+        ++finding_count;
+        ++signal_finding_count;
+        if (max_findings < 0 || static_cast<int>(findings.size()) < max_findings)
+            findings.push_back(finding);
+    };
     for (const auto& s : args["signals"]) {
-        if (max_findings >= 0 && static_cast<int>(findings.size()) >= max_findings) break;
         if (!s.is_string()) continue;
         std::string signal = s.get<std::string>();
         fsdbTimeValPairVec_t changes;
-        if (!read_signal_changes(signal, begin, end, npiFsdbBinStrVal, changes, error)) return Json();
+        std::string signal_error;
+        if (!read_signal_changes(signal, begin, end, npiFsdbBinStrVal, changes, signal_error)) {
+            analysis_complete = false;
+            scan_status.push_back({{"signal", signal}, {"status", "error"},
+                                   {"analysis_complete", false}, {"message", signal_error}});
+            continue;
+        }
+        int signal_finding_count = 0;
         for (size_t i = 0; i < changes.size(); ++i) {
-            if (max_findings >= 0 && static_cast<int>(findings.size()) >= max_findings) break;
             if (check_unknown && contains_xz_value(changes[i].second)) {
-                findings.push_back({{"type", "unknown_xz"}, {"signal", signal}, {"severity", "warning"},
-                                    {"time", format_time(changes[i].first)}, {"value", wave_value_json(changes[i].second, 'b')}});
+                add_finding({{"type", "unknown_xz"}, {"signal", signal}, {"severity", "warning"},
+                             {"time", format_time(changes[i].first)}, {"value", wave_value_json(changes[i].second, 'b')}},
+                            signal_finding_count);
             }
             if (check_glitch && i + 1 < changes.size()) {
                 npiFsdbTime width = changes[i + 1].first >= changes[i].first ? changes[i + 1].first - changes[i].first : 0;
                 if (width > 0 && width < glitch_width) {
-                    findings.push_back({{"type", "glitch"}, {"signal", signal}, {"severity", "info"},
-                                        {"time", format_time(changes[i].first)}, {"pulse_width", format_time(width)}});
+                    add_finding({{"type", "glitch"}, {"signal", signal}, {"severity", "info"},
+                                 {"time", format_time(changes[i].first)}, {"pulse_width", format_time(width)}},
+                                signal_finding_count);
                 }
             }
             if (check_stuck && i + 1 < changes.size()) {
                 npiFsdbTime width = changes[i + 1].first >= changes[i].first ? changes[i + 1].first - changes[i].first : 0;
                 if (width >= stuck_duration) {
-                    findings.push_back({{"type", "stuck"}, {"signal", signal}, {"severity", "warning"},
-                                        {"begin", format_time(changes[i].first)}, {"end", format_time(changes[i + 1].first)},
-                                        {"duration", format_time(width)}, {"value", wave_value_json(changes[i].second, 'b')}});
+                    add_finding({{"type", "stuck"}, {"signal", signal}, {"severity", "warning"},
+                                 {"begin", format_time(changes[i].first)}, {"end", format_time(changes[i + 1].first)},
+                                 {"duration", format_time(width)}, {"value", wave_value_json(changes[i].second, 'b')}},
+                                signal_finding_count);
                 }
             }
         }
+        if (check_stuck && !changes.empty() && end >= changes.back().first &&
+            end - changes.back().first >= stuck_duration) {
+            npiFsdbTime width = end - changes.back().first;
+            add_finding({{"type", "stuck"}, {"signal", signal}, {"severity", "warning"},
+                         {"begin", format_time(changes.back().first)}, {"end", format_time(end)},
+                         {"duration", format_time(width)}, {"value", wave_value_json(changes.back().second, 'b')},
+                         {"open_at_window_end", true}}, signal_finding_count);
+        }
+        scan_status.push_back({{"signal", signal}, {"status", "ok"},
+                               {"analysis_complete", true}, {"change_row_count", changes.size()},
+                               {"finding_count", signal_finding_count},
+                               {"no_finding_reason", signal_finding_count == 0
+                                   ? Json("no configured rule matched in the requested window") : Json(nullptr)}});
     }
+    const bool response_truncated = max_findings >= 0 && finding_count > max_findings;
     Json data;
     data["summary"] = {
-        {"finding_count", findings.size()},
-        {"truncated", max_findings >= 0 && static_cast<int>(findings.size()) >= max_findings}
+        {"finding_count", finding_count},
+        {"returned_finding_count", findings.size()},
+        {"signal_count", scan_status.size()},
+        {"analysis_complete", analysis_complete},
+        {"truncated", response_truncated},
+        {"truncation_scope", response_truncated ? Json("response_findings") : Json(nullptr)},
+        {"checks", checks},
+        {"glitch_threshold", check_glitch ? Json(format_time(glitch_width)) : Json(nullptr)},
+        {"stuck_threshold", check_stuck ? Json(format_time(stuck_duration)) : Json(nullptr)}
     };
-    data["finding_count"] = findings.size();
     data["findings"] = findings;
-    data["truncated"] = max_findings >= 0 && static_cast<int>(findings.size()) >= max_findings;
+    data["scan_status"] = scan_status;
     return data;
 }
 

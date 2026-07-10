@@ -41,9 +41,7 @@ public:
                                       {"args", {{"file", "rtl/top.sv"}, {"line", 42}, {"context_lines", 8}}}}},
                  {"example_note", "Example only; use the file and line returned by trace/source actions."}});
 
-        Json output = args.value("output", Json::object());
-        bool compact = !output.value("verbose", false);
-        int ctx_lines = args.value("context_lines", compact ? 3 : 8);
+        int ctx_lines = args.value("context_lines", 3);
 
         std::ifstream in(file);
         if (!in) return make_handler_error(
@@ -69,18 +67,15 @@ public:
         nlohmann::json enclosing = detail::infer_enclosing_block(lines, line);
 
         Json out;
-        out["summary"] = {{"file",file},{"line",line}};
-        out["file"] = file;
-        out["line"] = line;
+        out["summary"] = {{"file", file}, {"line", line},
+                          {"context_begin", begin}, {"context_end", end},
+                          {"context_kind", enclosing.value("type", "unknown")}};
         out["symbol"] = args.value("symbol", "");
-        out["context_kind"] = enclosing.value("type", "unknown");
         out["enclosing"] = Json::parse(enclosing.dump());
-        if (!compact) {
-            nlohmann::json ctx = nlohmann::json::array();
-            for (int i = begin; i <= end; ++i)
-                ctx.push_back({{"line",i},{"text",lines[i-1]},{"hit",i == line}});
-            out["context"] = Json::parse(ctx.dump());
-        }
+        nlohmann::json source_lines = nlohmann::json::array();
+        for (int i = begin; i <= end; ++i)
+            source_lines.push_back({{"line",i},{"text",lines[i-1]},{"hit",i == line}});
+        out["context"] = Json::parse(source_lines.dump());
         return out;
     }
 };

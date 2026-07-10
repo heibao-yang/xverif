@@ -239,20 +239,12 @@ public:
         if (config.clock_sample.edge != ClockEdgeKind::Negedge)
             out["summary"]["sample_point"] = clock_sample_point_text(config.clock_sample.sample_point);
         if (!arr.empty()) {
-            out["first"] = arr[0]["time"];
-            out["last"] = arr[arr.size()-1]["time"];
-            out["summary"]["first"] = out["first"];
-            out["summary"]["last"] = out["last"];
+            out["summary"]["first"] = arr[0]["time"];
+            out["summary"]["last"] = arr[arr.size()-1]["time"];
         }
         auto formatted_range = xdebug_core::format_time_range(g_fsdb_file, tbegin, tend);
-        out["begin"] = formatted_range.first;
-        out["end"] = formatted_range.second;
-        out["sampling_mode"] = "clock_edge";
-        out["clock"] = config.clock_sample.clock;
-        out["edge"] = clock_edge_kind_text(config.clock_sample.edge);
-        if (config.clock_sample.edge != ClockEdgeKind::Negedge)
-            out["sample_point"] = clock_sample_point_text(config.clock_sample.sample_point);
-        out["sample_time_semantics"] = "time is sample_time";
+        out["summary"]["begin"] = formatted_range.first;
+        out["summary"]["end"] = formatted_range.second;
         Json output = args.value("output", Json::object());
         std::string output_path = output.value("path", std::string());
         std::string file_format = output.value("file_format", std::string("json"));
@@ -267,13 +259,14 @@ public:
         out["summary"]["truncated"] = false;
         if (!output_path.empty()) {
             std::string write_error;
-            if (!xdebug_waveform::write_text_file_creating_dirs(output_path, out.dump(2) + "\n", write_error))
+            Json artifact = out;
+            artifact["events"] = arr;
+            if (!xdebug_waveform::write_text_file_creating_dirs(output_path, artifact.dump(2) + "\n", write_error))
                 return make_handler_error("ACTION_FAILED", write_error, {{"cause_code", "EXPORT_FAILED"}});
             Json output_info = {{"path", output_path}, {"file_format", file_format}};
             out["summary"]["output"] = output_info;
             out["output"] = output_info;
-        } else {
-            out["preview"] = arr;
+            out.erase("events");
         }
         return out;
     }

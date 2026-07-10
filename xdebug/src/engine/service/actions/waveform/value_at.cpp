@@ -109,10 +109,8 @@ public:
 
         npiFsdbValType vtype = xdebug_waveform::parse_format(fmt);
 
-        Json out;
-        out["signal"] = signal;
         std::string formatted_time = xdebug_core::format_time(g_fsdb_file, fsdb_time);
-        out["time"] = formatted_time;
+        Json out;
         ClockPointQueryResult point;
         Json point_error;
         if (!build_clock_point_query(g_fsdb_file,
@@ -131,14 +129,12 @@ public:
             return waveform_signal_not_found_error(action_name(), signal);
         Json middle_value = middle_cell.value("value", Json());
         std::string requested_format = args.value("format", "");
-        out["status"] = middle_cell.value("status", std::string("unknown"));
+        std::string status = middle_cell.value("status", std::string("unknown"));
         out["value"] = middle_value;
-        out["known"] = middle_value.is_object() ? !contains_xz(middle_value.value("value", std::string())) : false;
+        bool known = middle_value.is_object() ? !contains_xz(middle_value.value("value", std::string())) : false;
         out["clock_context"] = point.clock_context;
-        out["samples"] = point.samples;
-        out["sample_rows"] = point.rows;
         if (requested_format == "array_indexed") {
-            out["status"] = "unsupported_format";
+            status = "unsupported_format";
             out["reason"] = "format:array_indexed requires an FSDB aggregate value";
         }
         // xbit hints require the raw FSDB scalar. Keep the old direct middle read for hints only.
@@ -149,10 +145,7 @@ public:
             if (!hints.is_null()) out["xbit_hints"] = hints;
         }
         out["summary"] = {{"signal", signal}, {"time", formatted_time},
-                          {"known", out["known"]}, {"status", out["status"]},
-                          {"clock_edge_hit", point.clock_context["clock_edge_hit"]},
-                          {"target_edge_hit", point.clock_context["target_edge_hit"]},
-                          {"bracket_complete", point.clock_context["bracket_complete"]}};
+                          {"known", known}, {"status", status}};
         return out;
     }
 
@@ -167,11 +160,12 @@ private:
         if (d.contains("clock_context")) {
             out.emit_kv("clock", d["clock_context"].value("clock", std::string()));
             out.emit_kv("edge", d["clock_context"].value("edge", std::string()));
-            out.emit_kv("clock_edge_hit", d["clock_context"].value("clock_edge_hit", false));
-            out.emit_kv("target_edge_hit", d["clock_context"].value("target_edge_hit", false));
+            out.emit_kv("requested_any_edge_hit", d["clock_context"].value("requested_any_edge_hit", false));
+            out.emit_kv("requested_target_edge_hit", d["clock_context"].value("requested_target_edge_hit", false));
         }
         out.emit_section("summary");
-        if (d.contains("status")) out.emit_kv("status", d["status"]);
+        if (r.contains("summary") && r["summary"].contains("status"))
+            out.emit_kv("status", r["summary"]["status"]);
         if (d.contains("sample_rows") && d["sample_rows"].is_array()) {
             std::vector<std::vector<std::string>> rows;
             for (const auto& row : d["sample_rows"]) {

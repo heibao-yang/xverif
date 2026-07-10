@@ -173,11 +173,11 @@ public:
         std::string query = args.value("query", std::string("summary"));
         Json out;
         out["summary"] = xdebug_waveform::stream_summary_json(config, analysis);
-        out["query"] = query;
-        out["truncated"] = analysis.truncated;
+        out["summary"]["query"] = query;
         out["hint"] = analysis.truncated ? "use stream.export for large result" : "";
         if (query == "summary") return out;
         if (query == "first_transfer" || query == "last_transfer") {
+            out["summary"].erase(query == "first_transfer" ? "first_transfer_time" : "last_transfer_time");
             if (!analysis.transfers.empty()) {
                 out["row"] = xdebug_waveform::stream_row_json(
                     query == "first_transfer" ? analysis.transfers.front() : analysis.transfers.back());
@@ -189,6 +189,7 @@ public:
             return out;
         }
         if (query == "first_stall" || query == "last_stall") {
+            out["summary"].erase(query == "first_stall" ? "first_stall_time" : "last_stall_time");
             if (!analysis.stalls.empty()) {
                 out["stall"] = xdebug_waveform::stream_stall_json(
                     query == "first_stall" ? analysis.stalls.front() : analysis.stalls.back());
@@ -235,8 +236,8 @@ public:
         if (query == "packet_window") {
             out["packets"] = packets_limited(analysis.packets, options.limit);
             if (static_cast<int>(analysis.packets.size()) > options.limit) {
-                out["truncated"] = true;
                 out["summary"]["truncated"] = true;
+                out["summary"]["truncation_scope"] = "response_packets";
             }
             return out;
         }
