@@ -965,7 +965,7 @@ def run_axi(xdebug, fsdb):
             "axi.request_response_pair",
             args={"name": "axi0", "time_range": tr, "line_limit": 10000},
         )
-        require(pair_cold["data"]["truncated"] is False,
+        require(pair_cold.get("meta", {}).get("truncated") is False,
                 "AXI percentile oracle requires the complete transaction set")
         oracle_latencies = sorted(
             duration_fs(txn["latency"])

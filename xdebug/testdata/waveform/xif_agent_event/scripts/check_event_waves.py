@@ -14,8 +14,7 @@ REPO_ROOT = ROOT.parents[3]
 
 
 def query(binary, home, action, args=None, target=None, expect_ok=True):
-    request = {"api_version": "xdebug.v1", "action": action, "args": args or {},
-               "output": {"verbosity": "full"}}
+    request = {"api_version": "xdebug.v1", "action": action, "args": args or {}}
     if target is not None:
         request["target"] = target
     env = os.environ.copy()
@@ -143,7 +142,7 @@ def main():
                 {"type": "unknown_xz"},
                 {"type": "stuck", "min_duration": "20ns"},
             ],
-            "limit": 20,
+            "line_limit": 20,
         }, {"session_id": session})
         findings = abnormal["data"].get("findings", [])
         require(any(f.get("type") == "unknown_xz" and f.get("signal") == "xif_event_top.xz_data"
