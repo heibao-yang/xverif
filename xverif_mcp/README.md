@@ -425,6 +425,10 @@ XVERIF_MCP_ENABLE_SVA=0 tools/xverif-mcp
 ## 测试
 
 ```bash
-make -C xdebug PYTHON=python3 mcp-test
+pytest --xverif-gate fast --xverif-suite xverif_mcp.unit
+pytest --xverif-gate regression --xverif-suite xverif_mcp.process
+pytest --xverif-gate regression --xverif-suite xverif_mcp.action_smoke
 PYTHON=python3 XVERIF_MCP_FAKE_LSF=1 tools/xverif-lsf-doctor --fake
 ```
+
+MCP stdio/UDS、NPI 和 fake/real LSF 测试必须在沙箱外运行。real LSF 由 nightly catalog optional capability 控制，不会切换到 fake backend。

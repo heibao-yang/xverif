@@ -30,4 +30,4 @@ xsva 把 SystemVerilog Assertion 编译为 Surface IR、Sequence IR、Timeline I
 
 - 不支持的 SVA 构造应给 conservative diagnostic，不要补语义。
 - 修改 parser/lowering 时先加失败语义测试，再修实现，最后更新 golden IR。
-- 回归入口在 `xsva` 目录运行 `make test`。
+- 回归入口在仓库根目录运行 `pytest --xverif-gate fast --xverif-suite xsva.core`；VCS 语义缓存消费使用 nightly 的 `xsva.vcs` suite。

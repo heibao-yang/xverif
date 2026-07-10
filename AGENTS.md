@@ -60,16 +60,15 @@
 
 常用入口：
 
-- 顶层常规测试：`make test`
-- 顶层完整真实回归：`make full-test`
-- xdebug schema/example：`make -C xdebug schema-test`
-- xdebug contract：`make -C xdebug contract-test`
-- xdebug C++ unit：`make -C xdebug unit-test`
-- xdebug 快速组合：`make -C xdebug test-fast`
-- xdebug 回归分层：`make -C xdebug test-regression`
-- xdebug nightly/VIP/真实 LSF：`make -C xdebug test-nightly` 或对应 `test-vip`、`test-mcp-real-lsf`，这类动作按环境规则在沙箱外执行。
-- MCP action smoke：`make -C xdebug mcp-test` 或 `make -C xdebug mcp-test-schema`
-- xbit/xentry/xloc/xcov/xwaveform：优先使用各目录 Makefile 的 `test` 目标。
+- 全仓快速门禁：`pytest --xverif-gate fast`
+- 全仓确定性回归：`pytest --xverif-gate regression -n auto`
+- 全仓 nightly：`pytest --xverif-gate nightly -n auto`
+- focused suite：在对应 gate 后追加 `--xverif-suite <catalog-id>`
+- 显式准备数据库：`pytest --xverif-prepare <fixture-id>` 或 `all-generated`
+- 全量 Fixture 校验：`pytest --xverif-fixture-validation --xverif-all-fixtures`
+- 查看选择计划：`pytest --xverif-gate <gate> --xverif-plan`
+
+Makefile 不再提供测试 target；裸 `pytest` 是 usage error。普通 regression/nightly 只消费缓存，cache miss 不自动仿真、不降级、不把 required 变成 SKIP。
 
 ## xdebug 外部材料
 

@@ -323,38 +323,30 @@ tools/xverif-loop-client --socket /tmp/xverif-loop.sock --json \
 
 ## Test Entry Points
 
-xdebug 测试入口以 Makefile 聚合 target 和 pytest marker 为主，Python 解释器可通过
-`PYTHON=/path/to/python` 覆盖。
+xdebug 与全仓其它组件共享根级 catalog-driven pytest plugin；Makefile 只负责构建。
 
-常用入口：
+常用入口（从仓库根目录运行）：
 
 ```bash
-make -C xdebug test-fast
-make -C xdebug test-synthetic
-make -C xdebug test-vip
-make -C xdebug test-session
-make -C xdebug test-mcp-direct
-make -C xdebug test-mcp-fake-lsf
-make -C xdebug test-realdata-smoke
-make -C xdebug test-regression
-make -C xdebug test-nightly
+pytest --xverif-gate fast
+pytest --xverif-gate regression -n auto
+pytest --xverif-gate nightly -n auto
+pytest --xverif-gate regression --xverif-suite xdebug.contract
+pytest --xverif-gate nightly --xverif-suite xdebug.axi_vip
 ```
 
-在 Codex 受限沙箱中，只建议直接运行不启动 NPI/EDA/session 子进程的基础入口，例如
-`test-fast`。所有涉及 NPI、Verdi/VCS、FSDB、daidir、`session.open`、Unix domain
+在 Codex 受限沙箱中，只运行 `fast`。所有涉及 NPI、Verdi/VCS、FSDB、daidir、`session.open`、Unix domain
 socket、SVT VIP 编译/仿真的入口，应在沙箱外运行，否则可能得到 license 连接失败、
 UDS bind 失败或 `SESSION_UNHEALTHY: child_exited` 等环境型失败。
 
-`test-regression` 不包含真实 LSF。`test-nightly` 默认也不会强制真实 LSF；只有显式
-设置 `XDEBUG_ENABLE_REAL_LSF=1` 时才追加 real LSF smoke：
+普通 gate 不生成 FSDB/daidir；先显式 prepare：
 
 ```bash
-XDEBUG_ENABLE_REAL_LSF=1 make -C xdebug test-mcp-real-lsf
-XDEBUG_ENABLE_REAL_LSF=1 make -C xdebug test-nightly
+pytest --xverif-prepare all-generated
+pytest --xverif-fixture-validation --xverif-all-fixtures
 ```
 
-真实项目 FSDB/daidir 通过 `xdebug/tests/realdata/manifests/*.yaml` 描述，Python
-测试代码不硬编码项目路径。realdata 使用 invariant 检查，不做完整 JSON golden。
+nightly 中 realdata 与 real LSF 是 catalog optional suite；能力缺失会在 environment snapshot 和报告中明确 SKIP。required fixture 缺失则在执行前 ERROR，不会 fallback。真实项目资源仍由 `xdebug/tests/realdata/manifests/*.yaml` 描述。
 
 ## Core Concepts
 
@@ -870,10 +862,10 @@ xdebug log bundle --session <id> --out debug_bundle.redacted.tgz --redact
 5. 如果是 MCP/LSF 启动、ready timeout、stdout pollution 或 cleanup 问题，看 `~/.xverif/mcp/sessions/<alias>/*.ndjson`。
 6. 如果是非 MCP UDS wrapper 的请求解析、socket、LSF 或 cleanup 问题，看 `~/.xverif/loop-wrapper/logs/uds.ndjson` 和 `~/.xverif/loop-wrapper/sessions/<alias>/*.ndjson`。
 
-日志相关快速回归入口：
+日志相关 focused 回归入口：
 
 ```bash
-make -C xdebug log-test
+pytest --xverif-gate regression --xverif-suite xdebug.session
 ```
 
 ## 参考文档

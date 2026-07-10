@@ -38,7 +38,7 @@ UVM_ERROR L_00000001 @ 100ns: packet mismatch
 默认输出为 `xout` 结构化文本；需要脚本解析时，`resolve/context/stats` 可加 `--json`。
 
 ```bash
-make -C xloc test
+pytest --xverif-gate fast --xverif-suite xloc.unit
 
 # 用一个手动构造的 JSONL 试一下
 echo '{"loc_id":"L_00000001","file":"tb/test.sv","line":42,"msg_id":"ERROR_TEST"}' > /tmp/test.xloc.jsonl
@@ -227,8 +227,10 @@ make -f Makefile.test   # 需要 VCS + UVM
 
 ```bash
 make -C xloc          # 语法检查
-make -C xloc test     # Python 单元测试 + Vim 插件 smoke test
-make -f Makefile.test # UVM 测试环境（需 VCS + UVM）
+pytest --xverif-gate fast --xverif-suite xloc.unit
+pytest --xverif-gate regression --xverif-suite xloc.vim
+pytest --xverif-prepare xloc.uvm
+pytest --xverif-gate nightly --xverif-suite xloc.uvm
 ```
 
 `xloc` 只依赖 Python 标准库，不依赖 NPI、Verdi 或任何 Synopsys 工具。UVM 测试环境需要 VCS。

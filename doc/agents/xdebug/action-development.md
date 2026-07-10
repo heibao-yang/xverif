@@ -120,11 +120,11 @@
 
 最小要求：
 
-- schema/example 变化：`make -C xdebug schema-test`
-- action inventory/runtime 变化：`make -C xdebug contract-test`
+- schema/example 变化：`pytest --xverif-gate fast --xverif-suite xdebug.static`
+- action inventory/runtime 变化：`pytest --xverif-gate regression --xverif-suite xdebug.action_runtime_catalog`
 - C++ helper 变化：相关 unit test 或新增 unit test。
 - waveform/design/combined 行为变化：添加 focused pytest 或 fixture。
-- MCP 暴露变化：更新 `xverif_mcp/tests/` 或 `make -C xdebug mcp-test-schema`。
+- MCP 暴露变化：更新 `xverif_mcp/tests/`，运行 `pytest --xverif-gate regression --xverif-suite xverif_mcp.action_smoke`。
 
 提交前必须按变更范围跑通关联测试。
 
