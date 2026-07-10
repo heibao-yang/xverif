@@ -960,22 +960,42 @@ def run_axi(xdebug, fsdb):
 
         r.query("axi.cursor", args={"name": "axi0", "op": "begin", "direction": "all"})
         r.query("axi.cursor", args={"name": "axi0", "op": "next", "direction": "all"})
+        tr = {"begin": "0ns", "end": "200ms"}
+        pair_cold = r.query(
+            "axi.request_response_pair",
+            args={"name": "axi0", "time_range": tr, "line_limit": 10000},
+        )
+        require(pair_cold["data"]["truncated"] is False,
+                "AXI percentile oracle requires the complete transaction set")
+        oracle_latencies = sorted(
+            duration_fs(txn["latency"])
+            for txn in pair_cold["data"]["transactions"]
+        )
+        require(oracle_latencies, "AXI percentile oracle transaction set is empty")
+
         latency = r.query("axi.analysis", args={"name": "axi0", "analysis": "latency", "direction": "all"})
-        percentile_values = []
-        for percentile in ("p50", "p95", "p99"):
+        percentile_values = {}
+        for percentile, percent in (("p50", 50), ("p95", 95), ("p99", 99)):
             require(percentile in latency["summary"],
                     "AXI latency analysis missing {}".format(percentile))
-            percentile_values.append(duration_fs(latency["summary"][percentile]))
-        require(percentile_values == sorted(percentile_values),
-                "AXI latency percentiles must be monotonic")
-        require(latency["summary"]["samples"] > 0,
-                "AXI latency analysis must report samples")
+            percentile_values[percentile] = duration_fs(latency["summary"][percentile])
+            rank = (percent * len(oracle_latencies) + 99) // 100
+            expected = oracle_latencies[rank - 1]
+            require(percentile_values[percentile] == expected,
+                    "AXI {} nearest-rank mismatch: expected {}, got {}".format(
+                        percentile, expected, percentile_values[percentile]))
+        require(latency["summary"]["samples"] == len(oracle_latencies),
+                "AXI latency sample count does not match transaction oracle")
         require({"time", "response_time", "addr", "id", "is_write"} <= set(latency["data"]["slowest"]),
                 "AXI latency analysis missing slowest transaction anchor")
+        slowest = latency["data"]["slowest"]
+        slowest_latency = duration_fs(slowest["response_time"]) - duration_fs(slowest["time"])
+        require(slowest_latency == duration_fs(latency["summary"]["max"]),
+                "AXI slowest transaction latency must equal summary.max")
+        require(slowest_latency == oracle_latencies[-1],
+                "AXI slowest transaction must match the transaction oracle maximum")
         r.query("axi.analysis", args={"name": "axi0", "analysis": "osd", "direction": "all"})
 
-        tr = {"begin": "0ns", "end": "200ms"}
-        pair_cold = r.query("axi.request_response_pair", args={"name": "axi0", "time_range": tr, "line_limit": 20})
         require(pair_cold["data"]["transaction_count"] > 0, "AXI request_response_pair empty")
         require(all("data" not in txn and "wstrb" not in txn
                     for txn in pair_cold["data"]["transactions"]),
