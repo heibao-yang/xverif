@@ -45,10 +45,19 @@ class XverifDebugAdapter:
         return self._sessions.open_session(name=name, **kwargs)
 
     def session_list(self, **kwargs: Any) -> Json:
-        return self._sessions.list_sessions()
+        return self._sessions.list_sessions(**kwargs)
 
     def session_close(self, key: str) -> Json:
         return self._sessions.close_session(key)
+
+    def session_doctor(self, key: str, verbose: bool = False) -> Json:
+        return self._sessions.doctor_session(key, verbose=verbose)
+
+    def session_kill(self, key: str) -> Json:
+        return self._sessions.kill_session(key)
+
+    def session_gc(self, verbose: bool = False) -> Json:
+        return self._sessions.gc_sessions(verbose=verbose)
 
     def close_all(self) -> None:
         self._sessions.close_all()

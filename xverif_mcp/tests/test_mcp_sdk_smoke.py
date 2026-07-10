@@ -123,8 +123,16 @@ def test_mcp_tools_list(monkeypatch: pytest.MonkeyPatch):
     assert "xverif_debug_list_actions" in names
     assert "xverif_debug_get_schema" in names
     assert "xverif_debug_session_list" in names
+    assert "xverif_debug_session_doctor" in names
     assert "xverif_debug_session_use" not in names
     assert "xverif_debug_session_close" in names
+    assert "xverif_debug_session_kill" in names
+    assert "xverif_debug_session_gc" in names
+    assert "xverif_cov_session_list" in names
+    assert "xverif_cov_session_doctor" in names
+    assert "xverif_cov_session_close" in names
+    assert "xverif_cov_session_kill" in names
+    assert "xverif_cov_session_gc" in names
     assert "xverif_session_open" not in names
     assert "xverif_session_list" not in names
     assert "xverif_session_use" not in names

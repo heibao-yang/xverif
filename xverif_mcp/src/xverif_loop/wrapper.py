@@ -123,9 +123,22 @@ class LoopWrapperService:
                 resource=params.get("resource"),
             )
         if method == "debug.session.list":
-            return self.debug.list_sessions()
+            return self.debug.list_sessions(
+                include_tombstones=bool(params.get("include_tombstones", False)),
+                verbose=bool(params.get("verbose", False)),
+            )
+        if method == "debug.session.doctor":
+            return self.debug.doctor_session(
+                _session_key(params), verbose=bool(params.get("verbose", False)))
         if method == "debug.session.close":
             return self.debug.close_session(_session_key(params))
+        if method == "debug.session.kill":
+            key = _session_key(params)
+            if key == "all":
+                return _error("INVALID_ARGUMENT", "all is not supported; provide one exact session")
+            return self.debug.kill_session(key)
+        if method == "debug.session.gc":
+            return self.debug.gc_sessions(verbose=bool(params.get("verbose", False)))
         if method == "debug.query":
             action = _required_str(params, "action")
             if is_forbidden_native_session_action(action):
@@ -146,13 +159,29 @@ class LoopWrapperService:
                 resource=params.get("resource"),
             )
         if method == "cov.session.list":
-            return self.cov.list_sessions()
+            return self.cov.list_sessions(
+                include_tombstones=bool(params.get("include_tombstones", False)),
+                verbose=bool(params.get("verbose", False)),
+            )
+        if method == "cov.session.doctor":
+            return self.cov.doctor_session(
+                _session_key(params), verbose=bool(params.get("verbose", False)))
         if method == "cov.session.close":
             return self.cov.close_session(_session_key(params))
+        if method == "cov.session.kill":
+            key = _session_key(params)
+            if key == "all":
+                return _error("INVALID_ARGUMENT", "all is not supported; provide one exact session")
+            return self.cov.kill_session(key)
+        if method == "cov.session.gc":
+            return self.cov.gc_sessions(verbose=bool(params.get("verbose", False)))
         if method == "cov.query":
+            action = _required_str(params, "action")
+            if is_forbidden_native_session_action(action):
+                return forbidden_native_session_error(action, backend="cov")
             return self.cov.query(
                 session=_required_str(params, "session"),
-                action=_required_str(params, "action"),
+                action=action,
                 args=params.get("args") or {},
                 limits=params.get("limits"),
                 output=params.get("output"),

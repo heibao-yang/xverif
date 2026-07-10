@@ -489,8 +489,16 @@ def test_mcp_fake_lsf_launches_real_xdebug_stdio_loop(
             )
         )
         assert opened["ok"] is True
-        assert opened["session"]["mode"] == "lsf"
-        assert opened["session"]["job_id"] == "123"
+        assert opened["session"]["launcher"] == "lsf"
+        assert "job_id" not in opened["session"]
+        listed = _json(
+            _call(
+                server,
+                "xverif_debug_session_list",
+                {"verbose": True},
+            )
+        )
+        assert listed["sessions"][0]["job_id"] == "123"
 
         queried = _json(
             _call(
@@ -640,8 +648,17 @@ def test_mcp_real_lsf_optional_waveform_smoke(
             )
         )
         assert opened["ok"] is True, opened
-        assert opened["session"]["mode"] == "lsf"
-        assert opened["session"].get("job_id") or opened["session"].get("job_name")
+        assert opened["session"]["launcher"] == "lsf"
+        assert "job_id" not in opened["session"]
+        assert "job_name" not in opened["session"]
+        listed = _json(
+            _call(
+                server,
+                "xverif_debug_session_list",
+                {"verbose": True},
+            )
+        )
+        assert listed["sessions"][0].get("job_id") or listed["sessions"][0].get("job_name")
 
         queried = _json(
             _call(
@@ -670,7 +687,8 @@ def test_mcp_real_lsf_optional_waveform_smoke(
             )
         )
         assert closed["ok"] is True
-        assert closed["closed"]["state"] in {"closed", "dead"}
+        assert closed["summary"]["status"] == "closed"
+        assert closed["summary"]["cleanup_complete"] is True
     finally:
         _close_loaded_server()
         _kill_native_sessions(isolated_home)

@@ -71,7 +71,9 @@ def _fake_loop_script(dirpath: Path, fail_open: bool = False, fail_query: bool =
         '        sys.stderr.write("fake xdebug crashing")',
         "        sys.exit(1)",
         "",
-        '    wants_json = req.get("output", {}).get("format") == "json"',
+        '    wants_json = (req.get("output", {}).get("format") == "json" or',
+        '                  req.get("output", {}).get("response_format") == "json" or',
+        '                  req.get("__xverif_loop_payload_format") == "json")',
         "    if wants_json:",
         '        if action == "session.open":',
         '            result = {"ok": True, "action": action,',
@@ -274,6 +276,7 @@ class TestManagerEvict:
         r = mgr.query("evict_me", "value.at", {"signal": "x"}, output_format="json")
         assert "SESSION_LOST" in str(r)
         assert "evict_me" not in mgr.sessions
+        assert mgr.tombstones["evict_me"].state == "orphan_suspected"
 
     def test_stale_alive_open_returns_session_stale(self, tmp_path):
         fake = _fake_loop_script(tmp_path)
@@ -306,9 +309,10 @@ class TestManagerEvict:
         s.state = "dead"
 
         r = mgr.close_session("close_me")
-        assert r.get("ok"), r
+        assert not r.get("ok"), r
+        assert r["error"]["code"] == "SESSION_CLEANUP_REQUIRED"
         assert "close_me" not in mgr.sessions
-        assert r.get("previous_state") == "dead"
+        assert mgr.tombstones["close_me"].state == "orphan_suspected"
 
     def test_close_all_closes_each_live_session_normally(self, tmp_path):
         fake = _fake_loop_script(tmp_path)
@@ -320,11 +324,59 @@ class TestManagerEvict:
             id(session): session for session in mgr.sessions.values()
         }
 
-        mgr.close_all()
+        result = mgr.close_all()
 
         assert mgr.sessions == {}
+        assert result["ok"] is True
+        assert result["summary"] == {"closed_count": 2, "unresolved_count": 0}
         assert all(session.state == "closed" for session in sessions.values())
         assert all(not session.process_alive() for session in sessions.values())
+
+    def test_native_close_failure_is_tombstoned_with_manager_layer(self, tmp_path):
+        fake = _fake_loop_script(tmp_path)
+        mgr = McpSessionManager(mode="direct")
+        mgr.xdebug_bin = fake
+        mgr.open_session("partial_close", fsdb="test.fsdb")
+        session = mgr.sessions["partial_close"]
+        session.close = lambda: {
+            "ok": False,
+            "error": {
+                "code": "SESSION_CLEANUP_PARTIAL_FAILURE",
+                "message": "native close failed",
+                "cleanup": {"native_backend": "failed"},
+            },
+        }
+
+        result = mgr.close_session("partial_close")
+
+        assert result["ok"] is False
+        assert result["error"]["error_layer"] == "session_manager"
+        assert result["error"]["cleanup"]["manager_record"] == "evicted"
+        assert result["error"]["cleanup"]["tombstone"] == "retained_unresolved"
+        assert "partial_close" not in mgr.sessions
+        assert mgr.tombstones["partial_close"].state == "cleanup_partial"
+
+    def test_cov_gc_confirms_dead_loop_without_native_fallback(self, tmp_path):
+        fake = _fake_loop_script(tmp_path)
+        mgr = McpSessionManager(
+            mode="direct",
+            backend="xcov",
+            api_version="xcov.v1",
+            ready_protocol="xdebug-stdio-loop",
+            target_key="vdb",
+        )
+        mgr.xdebug_bin = fake
+        opened = mgr.open_session("dead_cov", fsdb="merged.vdb")
+        assert opened["ok"] is True
+        session = mgr.sessions["dead_cov"]
+        session.handle.terminate()
+
+        result = mgr.gc_sessions()
+
+        assert result["summary"]["removed_count"] == 1
+        assert result["summary"]["unresolved_count"] == 0
+        assert "dead_cov" not in mgr.sessions
+        assert "dead_cov" not in mgr.tombstones
 
 
 class TestOpenAfterLost:
@@ -337,9 +389,18 @@ class TestOpenAfterLost:
         mgr.query("reopen_me", "value.at", {"signal": "x"}, output_format="json")
         assert "reopen_me" not in mgr.sessions
 
-        # Now create a working fake and open the same name after eviction.
+        # Tombstone blocks implicit reopen until exact cleanup is confirmed.
         fake2 = _fake_loop_script(tmp_path)
         mgr.xdebug_bin = fake2
+        r = mgr.open_session("reopen_me", fsdb="test.fsdb")
+        assert not r.get("ok"), r
+        assert r["error"]["code"] == "SESSION_TOMBSTONE_EXISTS"
+        tombstone = mgr.tombstones["reopen_me"]
+        tombstone._call_native_admin = lambda action: {"ok": True, "action": action}
+        killed = mgr.kill_session("reopen_me")
+        assert killed.get("ok"), killed
+        gc = mgr.gc_sessions()
+        assert gc["summary"]["removed_count"] == 1
         r = mgr.open_session("reopen_me", fsdb="test.fsdb")
         assert r.get("ok"), r
         assert "reopen_me" in mgr.sessions

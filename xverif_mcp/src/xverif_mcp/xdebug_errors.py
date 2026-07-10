@@ -12,6 +12,7 @@ FORBIDDEN_NATIVE_SESSION_ACTIONS = {
     "session.kill",
     "session.gc",
     "session.doctor",
+    "session.status",
     "session.list",
 }
 
@@ -20,36 +21,47 @@ def is_forbidden_native_session_action(action: str | None) -> bool:
     return action in FORBIDDEN_NATIVE_SESSION_ACTIONS
 
 
-def forbidden_native_session_error(action: str | None) -> Json:
+def forbidden_native_session_error(action: str | None, backend: str = "debug") -> Json:
     action_text = action or "session.*"
+    prefix = "xverif_cov" if backend == "cov" else "xverif_debug"
     if action == "session.open":
-        tool = "xverif_debug_session_open"
-        args: Json = {"name": "case_a", "fsdb": "<waves.fsdb>"}
+        tool = f"{prefix}_session_open"
+        args: Json = ({"name": "cov_a", "vdb": "<merged.vdb>"}
+                      if backend == "cov" else
+                      {"name": "case_a", "fsdb": "<waves.fsdb>"})
     elif action in {"session.close", "session.kill"}:
-        tool = "xverif_debug_session_close"
-        args = {"session_id": "case_a"}
+        suffix = "kill" if action == "session.kill" else "close"
+        tool = f"{prefix}_session_{suffix}"
+        args = {"session_id": "cov_a" if backend == "cov" else "case_a"}
+    elif action in {"session.doctor", "session.status"}:
+        tool = f"{prefix}_session_doctor"
+        args = {"session_id": "cov_a" if backend == "cov" else "case_a"}
+    elif action == "session.gc":
+        tool = f"{prefix}_session_gc"
+        args = {}
     else:
-        tool = "xverif_debug_session_list"
+        tool = f"{prefix}_session_list"
         args = {}
     return {
         "ok": False,
         "error": {
             "code": "NATIVE_SESSION_ACTION_FORBIDDEN",
             "message": (
-                f"MCP debug tools do not allow native xdebug action {action_text}; "
-                "use xverif_debug_session_* tools for session lifecycle"
+                f"MCP {backend} query does not allow native lifecycle action {action_text}; "
+                f"use {prefix}_session_* tools for managed session lifecycle"
             ),
             "recoverable": True,
             "error_layer": "wrapper",
             "invalid_arg": "action",
             "expected": "use MCP session tools instead of native session.* actions",
-            "example_note": "示例仅说明当前 MCP 入口的 session 生命周期工具形态；不要在 xverif_debug_query 中调用 native session.* action。",
+            "example_note": (
+                f"示例仅说明当前 MCP 入口的 session 生命周期工具形态；"
+                f"不要在 {prefix}_query 中调用 native session.* action。"
+            ),
             "correct_example": {"tool": tool, "args": args},
-            "next_actions": [
-                "xverif_debug_session_open",
-                "xverif_debug_session_close",
-                "xverif_debug_session_list",
-            ],
+            "next_actions": [f"{prefix}_session_open", f"{prefix}_session_doctor",
+                             f"{prefix}_session_close", f"{prefix}_session_kill",
+                             f"{prefix}_session_gc", f"{prefix}_session_list"],
         },
     }
 

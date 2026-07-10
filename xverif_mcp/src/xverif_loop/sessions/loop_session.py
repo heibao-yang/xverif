@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import re
+import hashlib
+import json
+import os
+import subprocess
 import threading
 import time
 from dataclasses import dataclass, field
@@ -13,6 +17,7 @@ from xverif_loop.logging import log_session_event
 
 from xverif_loop.config import default_xdebug_bin, startup_timeout, request_timeout, close_timeout
 from xverif_loop.sessions.launchers import LaunchConfig, Launcher
+from xverif_loop.sessions.capabilities import lifecycle_capability
 from xverif_loop.sessions.session_errors import response_says_session_terminal
 from xverif_mcp.xdebug_errors import translate_native_example_for_query, xout_error
 
@@ -42,6 +47,24 @@ def _extract_session_id(response: Json) -> Optional[str]:
 
 def _trace_id(alias: str, request_id: str) -> str:
     return f"mcp-{_safe_name(alias)}-{request_id}"
+
+
+def _backend_payload(response: Json) -> Json:
+    payload = response.get("json")
+    return payload if isinstance(payload, dict) else response
+
+
+def _request_native_json(request: Json, backend: str) -> Json:
+    capability = lifecycle_capability(backend)
+    if capability.json_request_style == "loop_marker":
+        request["__xverif_loop_payload_format"] = "json"
+    elif capability.json_request_style == "output_response_format":
+        request["output"] = {"response_format": "json"}
+    else:
+        raise ValueError(
+            f"unsupported native JSON request style: {capability.json_request_style}"
+        )
+    return request
 
 
 @dataclass
@@ -154,22 +177,22 @@ class XdebugLoopSession:
                            queue=self.queue, resource=self.resource,
                            job_name=self.job_name,
                            startup_timeout_sec=self.startup_timeout_sec)
-        self.handle = self.launcher.start(cfg)
         try:
+            self.handle = self.launcher.start(cfg)
             ready = self.handle.wait_ready(self.ready_protocol, self.startup_timeout_sec)
             self.pid = int(ready.get("pid") or 0)
             open_req: Json = {
                 "request_id": f"open-{_safe_name(self.alias)}",
-                "api_version": self.api_version, "action": "session.open",
+                "api_version": self.api_version,
+                "action": lifecycle_capability(self.backend).native_open_action,
                 "target": {},
                 "args": {"name": self.alias},
             }
-            if self.backend == "xcov":
-                open_req["output"] = {"response_format": "json"}
+            capability = lifecycle_capability(self.backend)
             open_req["trace_id"] = _trace_id(self.alias, open_req["request_id"])
-            if self.backend == "xdebug":
-                open_req["args"]["transport"] = "uds"
-                open_req["__xverif_loop_payload_format"] = "json"
+            if capability.managed_transport:
+                open_req["args"]["transport"] = capability.managed_transport
+            _request_native_json(open_req, self.backend)
             if self.fsdb:
                 open_req["target"][self.target_key] = self.fsdb
             if self.daidir:
@@ -226,15 +249,18 @@ class XdebugLoopSession:
                 req = {
                     "request_id": f"close-{_safe_name(self.alias)}",
                     "trace_id": _trace_id(self.alias, f"close-{_safe_name(self.alias)}"),
-                    "api_version": self.api_version, "action": "session.close",
+                    "api_version": self.api_version,
+                    "action": lifecycle_capability(self.backend).native_close_action,
                     "target": {"session_id": self.session_id},
                 }
-                if self.backend == "xcov":
-                    req["output"] = {"response_format": "json"}
+                _request_native_json(req, self.backend)
+                backend_rsp = self._call_raw(req, timeout=close_timeout())
+                backend_payload = _backend_payload(backend_rsp)
+                if not backend_rsp.get("ok", False) or not backend_payload.get("ok", False):
+                    cleanup["backend_close"] = "failed"
+                    errors["backend_close"] = backend_payload
                 else:
-                    req["__xverif_loop_payload_format"] = "json"
-                self._call_raw(req, timeout=close_timeout())
-                cleanup["backend_close"] = "ok"
+                    cleanup["backend_close"] = "ok"
             except Exception as exc:
                 cleanup["backend_close"] = "failed"
                 errors["backend_close"] = str(exc)
@@ -281,6 +307,131 @@ class XdebugLoopSession:
                           session_id=self.session_id, state=self.state,
                           cleanup=cleanup)
         return {"ok": True, "closed": self.public_json(), "cleanup": cleanup}
+
+    def doctor(self, verbose: bool = False) -> Json:
+        capability = lifecycle_capability(self.backend)
+        transport_alive = self.process_alive()
+        backend_response: Optional[Json] = None
+        source = "loop"
+        if self.state == "alive" and transport_alive and self.session_id:
+            req: Json = {
+                "request_id": f"doctor-{_safe_name(self.alias)}",
+                "trace_id": _trace_id(self.alias, f"doctor-{_safe_name(self.alias)}"),
+                "api_version": self.api_version,
+                "action": capability.native_health_action,
+                "target": {"session_id": self.session_id},
+            }
+            _request_native_json(req, self.backend)
+            try:
+                backend_response = _backend_payload(self._call_raw(req))
+            except Exception as exc:
+                backend_response = _error("DOCTOR_TRANSPORT_FAILED", str(exc))
+        elif capability.fixed_admin_path and self.session_id:
+            source = "fixed_native_admin"
+            backend_response = self._call_native_admin(capability.native_health_action)
+        backend_ok = bool(backend_response and backend_response.get("ok"))
+        unresolved = (
+            self.state == "alive" and not backend_ok
+        ) or (
+            self.state != "closed" and capability.backend_survives_loop and not backend_ok
+        )
+        return {
+            "ok": True,
+            "summary": {
+                "alias": self.alias,
+                "session_id": self.session_id,
+                "ownership": "managed",
+                "backend": self.backend,
+                "state": self.state,
+                "transport_alive": transport_alive,
+                "backend_health_known": backend_response is not None,
+                "backend_healthy": backend_ok,
+                "unresolved": unresolved,
+                "source": source,
+                "read_only": True,
+            },
+            "session": self.public_json(verbose=verbose),
+            "backend_response": backend_response if verbose else None,
+        }
+
+    def kill(self) -> Json:
+        capability = lifecycle_capability(self.backend)
+        stages: Json = {
+            "native_kill": "not_supported" if capability.native_kill_action is None else "pending",
+            "loop_terminate": "not_started",
+            "lsf_job": "not_applicable",
+        }
+        errors: Json = {}
+        if capability.native_kill_action and self.session_id:
+            if self.state == "alive" and self.process_alive():
+                req: Json = {
+                    "request_id": f"kill-{_safe_name(self.alias)}",
+                    "trace_id": _trace_id(self.alias, f"kill-{_safe_name(self.alias)}"),
+                    "api_version": self.api_version,
+                    "action": capability.native_kill_action,
+                    "target": {"session_id": self.session_id},
+                }
+                _request_native_json(req, self.backend)
+                try:
+                    response = _backend_payload(self._call_raw(req, timeout=close_timeout()))
+                except Exception as exc:
+                    response = _error("NATIVE_KILL_FAILED", str(exc))
+            elif capability.fixed_admin_path:
+                response = self._call_native_admin(capability.native_kill_action)
+            else:
+                response = _error("NATIVE_KILL_UNAVAILABLE", "native kill path unavailable")
+            if response.get("ok"):
+                stages["native_kill"] = "ok"
+            else:
+                stages["native_kill"] = "failed"
+                errors["native_kill"] = response
+        handle = self.handle
+        self.handle = None
+        if handle is not None:
+            try:
+                self.launcher.terminate(handle)
+                stages["loop_terminate"] = "ok"
+                if getattr(handle, "job_id", None) or getattr(handle, "job_name", None):
+                    stages["lsf_job"] = "kill_requested"
+            except Exception as exc:
+                stages["loop_terminate"] = "failed"
+                errors["loop_terminate"] = str(exc)
+        else:
+            stages["loop_terminate"] = "already_exited"
+        self.last_cleanup = stages
+        if errors:
+            stages["errors"] = errors
+            self.state = "orphan_suspected" if capability.backend_survives_loop else "cleanup_partial"
+            return _error("SESSION_CLEANUP_PARTIAL_FAILURE",
+                          "session kill cleanup was only partially confirmed",
+                          cleanup=stages, session=self.public_json())
+        self.state = "closed"
+        return {"ok": True, "killed": self.public_json(), "cleanup": stages}
+
+    def _call_native_admin(self, action: str) -> Json:
+        if not self.session_id:
+            return _error("SESSION_ID_MISSING", "backend session id is unavailable")
+        request: Json = {
+            "api_version": self.api_version,
+            "action": action,
+            "target": {"session_id": self.session_id},
+            "output": {"response_format": "json"},
+        }
+        try:
+            proc = subprocess.run(
+                [self.xdebug_bin, "--json", "-"],
+                input=json.dumps(request) + "\n",
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=close_timeout(),
+                check=False,
+            )
+            payload = json.loads(proc.stdout)
+            return payload if isinstance(payload, dict) else _error(
+                "ADMIN_BAD_RESPONSE", "native admin response is not an object")
+        except Exception as exc:
+            return _error("ADMIN_PATH_FAILED", str(exc), action=action)
 
     def query(self, action: str, args: Optional[Json] = None,
               target: Optional[Json] = None, limits: Optional[Json] = None,
@@ -403,17 +554,23 @@ class XdebugLoopSession:
         with self._lock:
             return self.handle.request(req, timeout_sec=timeout or self.request_timeout_sec)
 
-    def public_json(self) -> Json:
+    def public_json(self, verbose: bool = False) -> Json:
         h = self.handle
         out: Json = {"alias": self.alias, "session_id": self.session_id,
-                      "daidir": self.daidir,
-                      "state": self.state, "mode": self.launcher.mode,
-                      "backend": self.backend}
-        if self.fsdb:
-            out[self.target_key] = self.fsdb
-        if self.queue: out["queue"] = self.queue
-        if self.resource: out["resource"] = self.resource
-        if self.job_name: out["job_name"] = self.job_name
-        if h and getattr(h, "job_id", None): out["job_id"] = h.job_id
-        if self.pid: out["pid"] = self.pid
+                      "ownership": "managed", "state": self.state,
+                      "launcher": self.launcher.mode, "backend": self.backend}
+        resource_path = self.fsdb or self.daidir
+        if resource_path:
+            out[self.target_key if self.fsdb else "daidir"] = os.path.basename(resource_path)
+            out["resource_hash"] = hashlib.sha256(
+                os.path.abspath(resource_path).encode("utf-8")).hexdigest()[:12]
+        if verbose:
+            out["resource_path"] = resource_path
+            if self.queue: out["queue"] = self.queue
+            if self.resource: out["lsf_resource"] = self.resource
+            if self.job_name: out["job_name"] = self.job_name
+            if h and getattr(h, "job_id", None): out["job_id"] = h.job_id
+            if self.pid: out["pid"] = self.pid
+            if self.last_cleanup: out["last_cleanup"] = self.last_cleanup
+            if self.last_error: out["last_error"] = self.last_error
         return out

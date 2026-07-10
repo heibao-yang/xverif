@@ -48,7 +48,9 @@ for line in sys.stdin:
     target = req.get("target", {})
     limits = req.get("limits", {})
     output = req.get("output", {})
-    wants_json = output.get("format") == "json"
+    wants_json = (output.get("format") == "json" or
+                  output.get("response_format") == "json" or
+                  req.get("__xverif_loop_payload_format") == "json")
 
     if action == "stdio.quit":
         rsp = {"id": rid, "ok": True, "payload_format": "json", "json": {"ok": True, "action": "stdio.quit"}}
@@ -179,6 +181,27 @@ class TestLoopSessionOpen:
             assert rsp["summary"]["echo_target"]["session_id"] == "test2"
         finally:
             s.close(force=True)
+
+    def test_launcher_start_failure_returns_structured_open_error(self):
+        class MissingLauncher(DirectLauncher):
+            def start(self, cfg):
+                raise FileNotFoundError("required launcher executable is unavailable")
+
+        session = XdebugLoopSession(
+            alias="missing_launcher",
+            fsdb="test.fsdb",
+            daidir=None,
+            launcher=MissingLauncher(),
+            xdebug_bin="/missing/xdebug",
+        )
+
+        result = session.open()
+
+        assert result["ok"] is False
+        assert result["error"]["code"] == "SESSION_OPEN_FAILED"
+        assert "launcher executable" in result["error"]["message"]
+        assert result["error"]["cleanup"]["subprocess"] == "not_started"
+        assert session.state == "dead"
 
 
 class TestLoopSessionQuery:
@@ -326,7 +349,7 @@ class TestLoopSessionClose:
             except Exception:
                 pass
 
-    def test_manager_keeps_session_after_close_partial_failure(self, fake_xdebug_bin, monkeypatch):
+    def test_manager_tombstones_session_after_close_partial_failure(self, fake_xdebug_bin, monkeypatch):
         manager = McpSessionManager(
             mode="direct",
             xdebug_bin=fake_xdebug_bin,
@@ -347,5 +370,7 @@ class TestLoopSessionClose:
 
         assert r["ok"] is False
         assert r["error"]["code"] == "SESSION_CLEANUP_PARTIAL_FAILURE"
-        assert manager.sessions["keep"] is s
-        assert s.state == "alive"
+        assert r["error"]["error_layer"] == "session_manager"
+        assert "keep" not in manager.sessions
+        assert manager.tombstones["keep"] is s
+        assert s.state == "cleanup_partial"

@@ -39,7 +39,9 @@ for line in sys.stdin:
     rid = req.get("request_id", req.get("id", "unknown"))
     action = req.get("action", "")
     output = req.get("output", {{}})
-    wants_json = output.get("format") == "json" or output.get("response_format") == "json"
+    wants_json = (output.get("format") == "json" or
+                  output.get("response_format") == "json" or
+                  req.get("__xverif_loop_payload_format") == "json")
     if action == "stdio.quit":
         rsp = {{"id": rid, "ok": True, "payload_format": "json", "json": {{"ok": True, "action": "stdio.quit"}}}}
         print(json.dumps(rsp)); sys.stdout.flush(); sys.exit(0)
@@ -118,15 +120,19 @@ def test_loop_wrapper_debug_session_lifecycle(tmp_path, monkeypatch):
     try:
         responses = send_requests(sock, [
             {"id": "open", "method": "debug.session.open", "params": {"name": "d0", "fsdb": "wave.fsdb"}},
+            {"id": "doctor", "method": "debug.session.doctor", "params": {"session": "d0"}},
             {"id": "query", "method": "debug.query", "params": {
                 "session": "d0", "action": "value.at", "args": {"signal": "clk"}, "output_format": "json"}},
             {"id": "list", "method": "debug.session.list", "params": {}},
             {"id": "close", "method": "debug.session.close", "params": {"name": "d0"}},
+            {"id": "gc", "method": "debug.session.gc", "params": {}},
         ])
-        assert [r["ok"] for r in responses] == [True, True, True, True]
+        assert [r["ok"] for r in responses] == [True, True, True, True, True, True]
         assert responses[0]["result"]["session"]["alias"] == "d0"
-        assert responses[1]["result"]["action"] == "value.at"
-        assert responses[2]["result"]["sessions"]
+        assert responses[1]["result"]["summary"]["read_only"] is True
+        assert responses[2]["result"]["action"] == "value.at"
+        assert responses[3]["result"]["sessions"]
+        assert responses[5]["result"]["summary"]["removed_count"] == 1
     finally:
         server.shutdown()
         thread.join(timeout=5)
@@ -141,13 +147,18 @@ def test_loop_wrapper_cov_session_lifecycle(tmp_path, monkeypatch):
     try:
         responses = send_requests(sock, [
             {"id": "open", "method": "cov.session.open", "params": {"name": "c0", "vdb": "merged.vdb"}},
+            {"id": "doctor", "method": "cov.session.doctor", "params": {"session": "c0"}},
             {"id": "query", "method": "cov.query", "params": {
                 "session": "c0", "action": "coverage.summary", "output_format": "json"}},
-            {"id": "close", "method": "cov.session.close", "params": {"name": "c0"}},
+            {"id": "kill", "method": "cov.session.kill", "params": {"name": "c0"}},
+            {"id": "gc", "method": "cov.session.gc", "params": {}},
         ])
-        assert [r["ok"] for r in responses] == [True, True, True]
+        assert [r["ok"] for r in responses] == [True, True, True, True, True]
         assert responses[0]["result"]["session"]["vdb"] == "merged.vdb"
-        assert responses[1]["result"]["action"] == "coverage.summary"
+        assert responses[1]["result"]["summary"]["read_only"] is True
+        assert responses[2]["result"]["action"] == "coverage.summary"
+        assert responses[3]["result"]["data"]["cleanup"]["native_kill"] == "not_supported"
+        assert responses[4]["result"]["summary"]["removed_count"] == 1
     finally:
         server.shutdown()
         thread.join(timeout=5)

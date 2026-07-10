@@ -342,9 +342,25 @@ def xverif_debug_session_open(
 
 
 @xverif_tool("debug")
-def xverif_debug_session_list(include_native: bool = False) -> dict:
+def xverif_debug_session_list(
+    include_tombstones: bool = False,
+    verbose: bool = False,
+) -> dict:
     """List xdebug sessions managed by this server."""
-    return debug.session_list(include_native=include_native)
+    return debug.session_list(include_tombstones=include_tombstones, verbose=verbose)
+
+
+@xverif_tool("debug")
+def xverif_debug_session_doctor(
+    name: Optional[str] = None,
+    session_id: Optional[str] = None,
+    verbose: bool = False,
+) -> dict:
+    """Read-only health diagnosis for one managed xdebug session."""
+    key = session_id or name
+    if not key:
+        return _tool_error("INVALID_ARGUMENT", "provide name or session_id")
+    return debug.session_doctor(key, verbose=verbose)
 
 
 @xverif_tool("debug")
@@ -357,6 +373,24 @@ def xverif_debug_session_close(
     if not key:
         return _tool_error("INVALID_ARGUMENT", "provide name or session_id")
     return debug.session_close(key)
+
+
+@xverif_tool("debug")
+def xverif_debug_session_kill(
+    name: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> dict:
+    """Force cleanup of exactly one managed xdebug session."""
+    key = session_id or name
+    if not key or key == "all":
+        return _tool_error("INVALID_ARGUMENT", "provide one exact name or session_id; all is not supported")
+    return debug.session_kill(key)
+
+
+@xverif_tool("debug")
+def xverif_debug_session_gc(verbose: bool = False) -> dict:
+    """Remove confirmed terminal xdebug tombstones; report unresolved sessions."""
+    return debug.session_gc(verbose=verbose)
 
 
 @xverif_tool("debug")
@@ -446,9 +480,25 @@ def xverif_cov_session_open(
 
 
 @xverif_tool("cov")
-def xverif_cov_session_list() -> dict:
+def xverif_cov_session_list(
+    include_tombstones: bool = False,
+    verbose: bool = False,
+) -> dict:
     """List xcov sessions managed by this server."""
-    return cov.session_list()
+    return cov.session_list(include_tombstones=include_tombstones, verbose=verbose)
+
+
+@xverif_tool("cov")
+def xverif_cov_session_doctor(
+    name: Optional[str] = None,
+    session_id: Optional[str] = None,
+    verbose: bool = False,
+) -> dict:
+    """Read-only health diagnosis for one managed xcov session."""
+    key = session_id or name
+    if not key:
+        return _tool_error("INVALID_ARGUMENT", "provide name or session_id")
+    return cov.session_doctor(key, verbose=verbose)
 
 
 @xverif_tool("cov")
@@ -464,6 +514,24 @@ def xverif_cov_session_close(
 
 
 @xverif_tool("cov")
+def xverif_cov_session_kill(
+    name: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> dict:
+    """Terminate exactly one managed xcov loop session."""
+    key = session_id or name
+    if not key or key == "all":
+        return _tool_error("INVALID_ARGUMENT", "provide one exact name or session_id; all is not supported")
+    return cov.session_kill(key)
+
+
+@xverif_tool("cov")
+def xverif_cov_session_gc(verbose: bool = False) -> dict:
+    """Remove confirmed terminal xcov tombstones; report unresolved sessions."""
+    return cov.session_gc(verbose=verbose)
+
+
+@xverif_tool("cov")
 def xverif_cov_query(
     session: str,
     action: str,
@@ -476,6 +544,8 @@ def xverif_cov_query(
     if output_format not in ("xout", "json", "envelope"):
         return _tool_error("INVALID_ARGUMENT",
                            "output_format must be 'xout', 'json', or 'envelope'")
+    if is_forbidden_native_session_action(action):
+        return forbidden_native_session_error(action, backend="cov")
     return cov.query(
         action=action,
         args=args or {},
@@ -778,9 +848,18 @@ TOOL_CATALOG = [
     {"name": "xverif_debug_session_list", "category": "debug", "backend": "xdebug",
      "stateful": True, "requires_session": False,
      "description": "List xdebug sessions managed by this server."},
+    {"name": "xverif_debug_session_doctor", "category": "debug", "backend": "xdebug",
+     "stateful": True, "requires_session": True,
+     "description": "Read-only diagnosis for one managed xdebug session."},
     {"name": "xverif_debug_session_close", "category": "debug", "backend": "xdebug",
      "stateful": True, "requires_session": True,
      "description": "Close and cleanup an xdebug session."},
+    {"name": "xverif_debug_session_kill", "category": "debug", "backend": "xdebug",
+     "stateful": True, "requires_session": True,
+     "description": "Force cleanup of exactly one managed xdebug session."},
+    {"name": "xverif_debug_session_gc", "category": "debug", "backend": "xdebug",
+     "stateful": True, "requires_session": False,
+     "description": "Remove confirmed terminal xdebug tombstones."},
     {"name": "xverif_debug_query", "category": "debug", "backend": "xdebug",
      "stateful": True, "requires_session": True,
      "description": "Run an xdebug action through a loop session."},
@@ -800,9 +879,18 @@ TOOL_CATALOG = [
     {"name": "xverif_cov_session_list", "category": "cov", "backend": "xcov",
      "stateful": True, "requires_session": False,
      "description": "List xcov sessions managed by this server."},
+    {"name": "xverif_cov_session_doctor", "category": "cov", "backend": "xcov",
+     "stateful": True, "requires_session": True,
+     "description": "Read-only diagnosis for one managed xcov session."},
     {"name": "xverif_cov_session_close", "category": "cov", "backend": "xcov",
      "stateful": True, "requires_session": True,
      "description": "Close and cleanup an xcov session."},
+    {"name": "xverif_cov_session_kill", "category": "cov", "backend": "xcov",
+     "stateful": True, "requires_session": True,
+     "description": "Terminate exactly one managed xcov loop session."},
+    {"name": "xverif_cov_session_gc", "category": "cov", "backend": "xcov",
+     "stateful": True, "requires_session": False,
+     "description": "Remove confirmed terminal xcov tombstones."},
     {"name": "xverif_cov_query", "category": "cov", "backend": "xcov",
      "stateful": True, "requires_session": True,
      "description": "Run an xcov action through a coverage session."},
