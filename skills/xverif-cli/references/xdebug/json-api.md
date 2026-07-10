@@ -93,7 +93,7 @@ xdebug/examples/requests/<action>.basic.json
 xdebug/examples/responses/<action>.basic.json
 ```
 
-调用 `actions` 可以在 `data.actions[]` 中读取 `request_schema`、`response_schema`、`request_examples`、`response_examples`。AI agent 需要精确契约时应使用这些 action-specific 文件；通用 `xdebug.request.schema.json` / `xdebug.response.schema.json` 只描述 envelope。
+调用 `actions` 默认在 `data.actions[]` 返回 compact action names；需要 `request_schema`、`response_schema`、`request_examples`、`response_examples` descriptor 时传 `args.output.verbose:true`。AI agent 需要精确契约时应使用这些 action-specific 文件；通用 envelope schema 不替代 action schema。
 
 字段说明：
 

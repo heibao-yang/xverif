@@ -31,7 +31,7 @@
 ## Builtin Actions
 | action | status | resource | purpose | how it works | objective | args contract |
 | --- | --- | --- | --- | --- | --- | --- |
-| `actions` | stable | none | 列出当前运行时公开 action catalog。 | 读取 ActionRegistry 中注册的 spec，返回 implemented/removed/modes/descriptors。 | 让 agent 在调用前发现真实可用能力。 | none |
+| `actions` | stable | none | 列出当前运行时公开 action catalog。 | 默认返回 compact action names；`args.output.verbose=true` 时返回 descriptors，并同时返回 removed/modes。 | 让 agent 在调用前发现真实可用能力。 | no required args |
 | `batch` | stable | none | 批量执行多个 xdebug request。 | 按 requests 顺序复用同一入口逐条调度，汇总每条响应。 | 减少多轮 IPC 和保持一组查询的上下文一致。 | required: requests |
 | `schema` | stable | none | 返回指定 action 的 request/response JSON schema。 | 按 action/kind 查 checked-in schema 文件并原样返回。 | 让调用方先校验参数和响应结构。 | none |
 ## Session Actions

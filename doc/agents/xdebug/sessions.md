@@ -99,13 +99,23 @@ MCP debug 工具：
 
 - open：`xverif_debug_session_open(name, fsdb=None, daidir=None, ...)`
 - query：`xverif_debug_query(session_id, action, args=None, ...)`
+- list：`xverif_debug_session_list(include_tombstones=False, verbose=False)`
+- doctor：`xverif_debug_session_doctor(name=..., session_id=..., verbose=False)`
 - close：`xverif_debug_session_close(name=..., session_id=...)`
+- kill：`xverif_debug_session_kill(name=..., session_id=...)`
+- gc：`xverif_debug_session_gc(verbose=False)`
+
+MCP coverage 工具使用对称的 `xverif_cov_session_open/list/doctor/close/kill/gc`，query 参数名为 `session`。
 
 要求：
 
 - MCP 参数名必须映射到原生 `target.session_id`。
 - batch nested args 中，outer args 是 MCP tool 参数，inner args 是 xdebug action 参数。
-- SESSION_LOST 后必须重新 open。
+- debug/cov query 禁止调用 native `session.*`；coverage 的 `session.status` 使用 `xverif_cov_session_doctor`。
+- doctor 只读，不自动重连、重启或 reopen；kill 只接受一个精确 session，不支持 `all`。
+- SESSION_LOST 后先查看 tombstone 并 doctor；xdebug detached engine 未确认清理前不得同名 reopen，精确 kill 后由 gc 删除 closed tombstone。
+- xdebug dead loop 使用固定 native admin path；xcov backend 随 loop 退出。能力差异来自 capability 表，不允许失败后改 transport/backend。
+- public record 默认 compact；只有 `verbose=true` 返回 PID、job、完整资源路径和分层清理诊断。
 
 ## Session 测试
 

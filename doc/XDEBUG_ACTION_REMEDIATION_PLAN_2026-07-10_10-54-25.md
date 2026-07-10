@@ -724,13 +724,13 @@ push 后回报：
 后续进入 goal 模式后，每一阶段必须更新以下状态：
 
 - [x] 阶段 0：基线与 70 action 台账完成
-- [ ] 阶段 1：公共 error/status/projection 合同完成
-- [ ] 阶段 2：P0 正确性问题完成
-- [ ] 阶段 3：waveform/list/event/cursor 输出完成
-- [ ] 阶段 4：APB/AXI/stream 合同完成
-- [ ] 阶段 5：xdebug/xcov MCP 生命周期完成
-- [ ] 阶段 6：schema/docs/examples/skills 同步完成
-- [ ] 70 action 逐项验收全部完成
+- [x] 阶段 1：公共 error/status/projection 合同完成
+- [x] 阶段 2：P0 正确性问题完成
+- [x] 阶段 3：waveform/list/event/cursor 输出完成
+- [x] 阶段 4：APB/AXI/stream 合同完成
+- [x] 阶段 5：xdebug/xcov MCP 生命周期完成
+- [x] 阶段 6：schema/docs/examples/skills 同步完成
+- [x] 70 action 逐项验收全部完成
 - [ ] `make clean` 完成
 - [ ] `make test` PASS
 - [ ] `make full-test` PASS

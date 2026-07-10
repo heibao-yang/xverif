@@ -237,12 +237,16 @@ MCP client 配置示例（direct 模式）：
 可用 xdebug MCP tools（以 `xverif_` 前缀统一命名）：
 
 - `xverif_debug_session_open`：打开命名 session。
-- `xverif_debug_session_list`：列出管理的 session。
-- `xverif_debug_session_close`：关闭 session 并清理。
+- `xverif_debug_session_list`：列出 managed session；可按需包含 tombstone 或展开诊断字段。
+- `xverif_debug_session_doctor`：只读诊断精确 name/session_id，不自动 reopen。
+- `xverif_debug_session_close`：正常关闭并返回分层 cleanup 结果。
+- `xverif_debug_session_kill`：强制清理一个精确 session；不支持 `all`。
+- `xverif_debug_session_gc`：删除已确认终止的 tombstone，未确认 orphan 只报告 unresolved。
 - `xverif_debug_query`：通过 loop session 调用 xdebug action。
-- `xverif_debug_request`：一次性 raw JSON request（无 session）。
-- `xverif_debug_actions` / `xverif_debug_schema`：查询 action catalog 和 schema。
+- `xverif_debug_list_actions` / `xverif_debug_get_schema`：查询 action catalog 和 schema。
 - `xverif_wave_value_at`、`xverif_design_trace_driver` 等高频别名。
+
+xcov 提供对称的 `xverif_cov_session_open/list/doctor/close/kill/gc`。debug/cov query 都禁止 native lifecycle action。xdebug dead loop 只使用固定 native admin path 精确 doctor/kill；xcov backend 随 loop 退出，kill 不虚构 native kill。清理部分失败会保留 tombstone，不切换 transport/backend。
 
 #### MCP LSF backend
 
@@ -436,26 +440,16 @@ file session 示例：
     "daidir": "simv.daidir",
     "fsdb": "waves.fsdb"
   },
-  "args": {},
-  "limits": {},
-  "output": {
-    "verbosity": "compact",
-    "pretty": false
-  }
+  "args": {
+    "output": {"verbose": false}
+  },
+  "limits": {}
 }
 ```
 
-### 输出档位
+### 输出控制
 
-`output.verbosity` 默认是 `compact`：
-
-| verbosity | 用途 |
-| --- | --- |
-| `compact` | 默认，只返回 AI 下一步决策需要的摘要、证据、少量 examples、关键 graph/path |
-| `full` | 兼容旧脚本或人工查看完整 payload |
-| `debug` | 诊断 session、daemon、内部过程和截断原因 |
-
-compact 默认不返回大字段，例如 `expanded_queries`、`raw_edges`、`all_samples`、`all_events`、`all_changes`、`normal_transactions`、`timeline`、`source_text`、`module_body`。需要时用精确 `include_*` 开关，不要一开始请求 `debug`。
+action 默认返回 compact summary/evidence。需要 action schema 明确定义的详细字段时使用 `args.output.verbose:true`；大列表使用 action-specific `line_limit`，完整数据使用对应 export action。top-level `output`、`output.verbosity` 和 public `include_*` 均不受支持。
 
 ### 常见意图到 action
 
@@ -463,7 +457,7 @@ compact 默认不返回大字段，例如 `expanded_queries`、`raw_edges`、`al
 | --- | --- | --- |
 | 统计 high/active cycles | `signal.statistics` | 有 `clock` 时做 clock-sampled 统计；无 `clock` 时做 raw value-change 统计，并返回 `sampling_mode`。 |
 | 统计 counter min/max/average | `counter.statistics` | 传 `clock`、`time_range`、`vld`、`cnt`，按周期采样最多 64 bit counter；`cnt` 可用 `{hi,lo}` 拼接。 |
-| 看跳变时间线 | `signal.changes` | compact 默认只返回 summary；需要行时设置 `include_rows:true`，用 `mode:"head"` 或 `"tail"` 控制方向。 |
+| 看跳变时间线 | `signal.changes` | 用 `line_limit` 限制返回 rows，`mode:"head"` 或 `"tail"` 控制方向；只要聚合时用 `aggregate_only:true`。 |
 | 判断窗口内保持 0/1 | `window.verify` 或 `signal.statistics` | 不要用 `signal.changes` 的 row count 当周期数。 |
 | 找 first/last occurrence | `event.find`，或 `signal.changes` + `mode:"head"/"tail"` | `event.find` 支持布尔组合、相等比较和大小比较；`signal.changes aggregate_only:true` 适合先看首末值和跳变总数。 |
 
@@ -471,48 +465,15 @@ compact 默认不返回大字段，例如 `expanded_queries`、`raw_edges`、`al
 
 `signal.statistics` 的 clock 模式对多 bit 信号用 bit-string/value object 返回 `first`、`final`、`min`、`max`，避免宽信号被整数截断。
 
-### include 开关与限制
+### 详细输出与限制
 
-设计侧常用开关：
-
-```json
-{
-  "args": {
-    "include_source": true,
-    "include_ast": true,
-    "include_candidates": true,
-    "include_trace": true,
-    "include_expanded_queries": true,
-    "include_raw_edges": true,
-    "include_graph": true,
-    "include_debug": true
-  }
-}
-```
-
-波形侧常用开关：
+只有 action-specific schema 声明 `args.output.verbose` 时才能展开详细字段：
 
 ```json
 {
   "args": {
-    "include_raw": true,
-    "include_signal_meta": true,
-    "include_rows": true,
-    "include_samples": true,
-    "include_all_changes": true,
-    "include_transactions": true,
-    "include_beats": true,
-    "include_accesses": true,
-    "include_debug": true
-  }
-}
-```
-
-通用限制：
-
-```json
-{
-  "args": {
+    "output": {"verbose": true},
+    "line_limit": 100,
     "max_items": 20,
     "max_examples": 5
   },
@@ -776,7 +737,7 @@ unpacked/聚合数组可显式请求结构化显示：
 }
 ```
 
-需要 rows：
+需要 event rows：
 
 ```json
 {
@@ -790,10 +751,7 @@ unpacked/聚合数组可显式请求结构化显示：
       "begin": "0ns",
       "end": "100us"
     },
-    "include_rows": true
-  },
-  "limits": {
-    "max_rows": 1000
+    "line_limit": 1000
   }
 }
 ```
@@ -835,7 +793,7 @@ APB 配置的基础字段为 `paddr/pwdata/prdata/pwrite/penable/psel/clk/rst_n`
 2. 用 `value.batch_at` 取相关握手、状态、数据寄存器。
 3. 用 `trace.driver` 或 `trace.load` 查设计依赖。
 4. 如果两类资源都有，用 `trace.active_driver` 给出当前时间点的生效驱动。
-5. 只有当 compact 证据不足时，再打开 `include_source`、`include_trace`、`include_rows` 等细节。
+5. 只有当 compact 证据不足且 schema 支持时，再使用 `args.output.verbose:true`；大结果优先 export。
 
 ## 错误、截断与证据
 
@@ -853,7 +811,7 @@ APB 配置的基础字段为 `paddr/pwdata/prdata/pwrite/penable/psel/clk/rst_n`
 
 所有脚本必须先检查 `ok`。失败时读取 `error.code` 和 `error.message`，不要解析 stderr 或人类文本。
 
-`meta.truncated=true` 表示结果被主动截断。优先缩小查询范围或提高 `limits`；只有确实需要证明明细时才打开对应 `include_*`。
+`meta.truncated=true` 表示结果被主动截断。优先缩小查询范围或提高 action-specific `line_limit`；需要完整结果时使用对应 export action。
 
 compact payload 优先返回 evidence，而不是大段源码：
 

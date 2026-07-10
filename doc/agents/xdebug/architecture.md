@@ -186,7 +186,7 @@ frontend 不直接承载 NPI 重逻辑；NPI/FSDB/engine 能力集中在内部 e
 
 - clock/time/sample_point 语义必须集中复用统一 helper。
 - value/logic 四态处理必须复用 `LogicValue` 相关组件。
-- 大 payload 默认 compact，只按显式 include 返回细节。
+- 大 payload 默认 compact；只使用 schema 声明的 `args.output.verbose`、action-specific `line_limit` 或 export action 返回细节。
 
 ## Combined Active Trace 层
 

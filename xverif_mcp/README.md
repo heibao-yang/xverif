@@ -382,7 +382,10 @@ xdebug session 工具使用明确前缀：
 ```text
 xverif_debug_session_open
 xverif_debug_session_list
+xverif_debug_session_doctor
 xverif_debug_session_close
+xverif_debug_session_kill
+xverif_debug_session_gc
 ```
 
 xcov session 工具使用 coverage 前缀：
@@ -390,9 +393,16 @@ xcov session 工具使用 coverage 前缀：
 ```text
 xverif_cov_session_open
 xverif_cov_session_list
+xverif_cov_session_doctor
 xverif_cov_session_close
+xverif_cov_session_kill
+xverif_cov_session_gc
 xverif_cov_query
 ```
+
+两组生命周期工具遵循相同 managed contract：单 session 操作必须给精确 name/session_id，kill 不接受 `all`，list 支持 `include_tombstones`/`verbose`，doctor 只读且不会 reopen。compact record 返回 alias/session_id/ownership/backend/launcher/state 与资源 basename/hash；verbose 才展开 PID、job、完整路径和 cleanup 诊断。
+
+xdebug detached backend 可能比 stdio-loop 活得更久，dead loop 只由固定 native admin path 精确 doctor/kill；xcov backend 由 loop 进程拥有，kill 只终止 loop/process/LSF job，并明确返回 native kill `not_supported`。任一 cleanup 阶段失败时返回 `SESSION_CLEANUP_PARTIAL_FAILURE`、`error_layer=session_manager` 并保留 unresolved tombstone。debug/cov query 均拒绝 native lifecycle action，不会 fallback 到其它 transport 或 backend。
 
 ## 工具暴露开关
 

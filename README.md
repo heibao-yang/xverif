@@ -179,9 +179,9 @@ printf '%s\n' '{"api_version":"xcov.v1","action":"session.open","target":{"vdb":
 tools/xcov --stdio-loop
 ```
 
-MCP 工具入口使用 `xverif_cov_session_open`、`xverif_cov_query`、`xverif_cov_session_close`。真实 NPI coverage 查询需要可访问 Synopsys license server；优先使用 Python 3.11 环境，必要时再切换到 Verdi 自带 Python。
+MCP 工具入口使用对称的 `xverif_cov_session_open/list/doctor/close/kill/gc` 和 `xverif_cov_query`。coverage query 禁止绕过 manager 直接调用 native lifecycle action；真实 NPI coverage 查询需要可访问 Synopsys license server，环境不满足时直接报告，不自动切换 Python 或 backend。
 
-完整说明见 [`xcov/README.md`](xcov/README.md)，skill 见 [`skills/xverif/SKILL.md`](skills/xverif/SKILL.md) 和 [`skills/xverif/references/xcov.md`](skills/xverif/references/xcov.md)。
+完整说明见 [`xcov/README.md`](xcov/README.md)，CLI/MCP skill 分别见 [`skills/xverif-cli/references/xcov.md`](skills/xverif-cli/references/xcov.md) 和 [`skills/xverif-mcp/references/xcov.md`](skills/xverif-mcp/references/xcov.md)。
 
 ### xeda-runner
 
@@ -203,7 +203,7 @@ xeda-runner run --action sim --target compile --option TEST=smoke_test --dry-run
 xeda-runner run --action sim --target compile --option TEST=smoke_test --option SEED=123
 ```
 
-完整说明见 [`xeda_runner/README.md`](xeda_runner/README.md)，skill 见 [`skills/xverif/SKILL.md`](skills/xverif/SKILL.md) 和 [`skills/xverif/references/xeda-runner.md`](skills/xverif/references/xeda-runner.md)。
+完整说明见 [`xeda_runner/README.md`](xeda_runner/README.md)，skill 见 [`skills/xverif-cli/SKILL.md`](skills/xverif-cli/SKILL.md) 和 [`skills/xverif-cli/references/xeda-runner.md`](skills/xverif-cli/references/xeda-runner.md)。
 
 ## 推荐 Shell 入口
 
@@ -295,23 +295,24 @@ make full-test
 ## 文档入口
 
 - xdebug 用户文档：[`xdebug/README.md`](xdebug/README.md)
-- xverif agent skill：[`skills/xverif/SKILL.md`](skills/xverif/SKILL.md)
+- xverif CLI skill：[`skills/xverif-cli/SKILL.md`](skills/xverif-cli/SKILL.md)
+- xverif MCP skill：[`skills/xverif-mcp/SKILL.md`](skills/xverif-mcp/SKILL.md)
 - x-npi agent skill：[`skills/x-npi/SKILL.md`](skills/x-npi/SKILL.md)，用于 AI 编写 Python `pynpi` 批量波形统计、APB/AXI/stream 离线分析和静态 driver/load 脚本；实时 active-driver 因果追踪仍用 xdebug。
-- xdebug agent reference：[`skills/xverif/references/xdebug/overview.md`](skills/xverif/references/xdebug/overview.md)
-- xdebug JSON API 速查：[`skills/xverif/references/xdebug/json-api.md`](skills/xverif/references/xdebug/json-api.md)
-- SDK-free xdebug wrapper：[`skills/xverif/references/sdk-free-xdebug/overview.md`](skills/xverif/references/sdk-free-xdebug/overview.md)
-- MCP reference：[`skills/xverif/references/mcp/overview.md`](skills/xverif/references/mcp/overview.md)
+- xdebug CLI reference：[`skills/xverif-cli/references/xdebug/overview.md`](skills/xverif-cli/references/xdebug/overview.md)
+- xdebug JSON API 速查：[`skills/xverif-cli/references/xdebug/json-api.md`](skills/xverif-cli/references/xdebug/json-api.md)
+- SDK-free loop wrapper：[`skills/xverif-mcp/references/sdk-free-loop/overview.md`](skills/xverif-mcp/references/sdk-free-loop/overview.md)
+- MCP reference：[`skills/xverif-mcp/references/mcp/overview.md`](skills/xverif-mcp/references/mcp/overview.md)
 - xbit 用户文档：[`xbit/README.md`](xbit/README.md)
-- xbit agent reference：[`skills/xverif/references/xbit.md`](skills/xverif/references/xbit.md)
+- xbit agent reference：[`skills/xverif-cli/references/xbit.md`](skills/xverif-cli/references/xbit.md)
 - xentry 用户文档：[`xentry/README.md`](xentry/README.md)
-- xentry agent reference：[`skills/xverif/references/xentry.md`](skills/xverif/references/xentry.md)
+- xentry agent reference：[`skills/xverif-cli/references/xentry.md`](skills/xverif-cli/references/xentry.md)
 - xloc 用户文档：[`xloc/README.md`](xloc/README.md)
-- xloc agent reference：[`skills/xverif/references/xloc.md`](skills/xverif/references/xloc.md)
+- xloc agent reference：[`skills/xverif-cli/references/xloc.md`](skills/xverif-cli/references/xloc.md)
 - xwiki 持续记忆 skill：[`skills/xwiki/SKILL.md`](skills/xwiki/SKILL.md)
 - xsva 用户文档：[`xsva/README.md`](xsva/README.md)
-- xsva agent reference：[`skills/xverif/references/xsva.md`](skills/xverif/references/xsva.md)
+- xsva agent reference：[`skills/xverif-cli/references/xsva.md`](skills/xverif-cli/references/xsva.md)
 - xcov 用户文档：[`xcov/README.md`](xcov/README.md)
-- xcov agent reference：[`skills/xverif/references/xcov.md`](skills/xverif/references/xcov.md)
+- xcov agent reference：[`skills/xverif-cli/references/xcov.md`](skills/xverif-cli/references/xcov.md)
 - xverif-mcp 用户文档：[`xverif_mcp/README.md`](xverif_mcp/README.md)
 - xeda-runner 用户文档：[`xeda_runner/README.md`](xeda_runner/README.md)
-- xeda-runner agent reference：[`skills/xverif/references/xeda-runner.md`](skills/xverif/references/xeda-runner.md)
+- xeda-runner agent reference：[`skills/xverif-cli/references/xeda-runner.md`](skills/xverif-cli/references/xeda-runner.md)

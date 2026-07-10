@@ -42,8 +42,10 @@ description: >
 
 - xdebug 常规 MCP workflow：先 `xverif_debug_session_open`，再 `xverif_debug_query(session_id, action, args, limits, output)`，最后 `xverif_debug_session_close`。
 - xcov 常规 MCP workflow：先 `xverif_cov_session_open`，再 `xverif_cov_query(session, action, args, limits, output)`，最后 `xverif_cov_session_close`。
+- xdebug/xcov 都提供 `session_list/doctor/close/kill/gc` 对称工具；SESSION_LOST 或 partial cleanup 时先 list tombstone/doctor，再精确 kill/gc，不自动 reopen。
 - MCP query 参数壳和原生 action 参数必须分清：xdebug 外层是 `session_id/action/args/limits/output/output_format`，xcov 外层是 `session/action/args/limits/output/output_format`；内层 `args` 才是 xdebug/xcov action 参数。
 - xdebug MCP 不暴露原生 envelope raw request。常规调试只使用 `xverif_debug_session_open` + `xverif_debug_query`；需要完整原生 `xdebug.v1` envelope 时改用 `xverif-cli`。
+- debug/cov query 禁止 native lifecycle action；coverage health 使用 `xverif_cov_session_doctor`，不得把 `session.status` 塞进 query。
 - `xverif_batch` 每行是 MCP tool 调用壳：`tool` 指工具名，外层 `args` 指该 MCP tool 的参数；如果该 tool 自己也有 `args`，需要嵌套第二层。
 - SDK-free loop wrapper 是没有 MCP SDK 或需要脚本化 stdio-loop/LSF 时的旁路托管入口，仍按 MCP/session 托管语义维护；不要把它当原生 CLI raw JSON。
 - 默认优先使用 `output_format:"xout"` 或省略 `output_format`；只有脚本字段读取、JSON schema 验证或 envelope 调试时才请求 JSON/envelope。

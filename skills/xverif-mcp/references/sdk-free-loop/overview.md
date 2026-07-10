@@ -20,13 +20,16 @@ tools/xverif-loop-client
 
 ## 能力边界
 
-第一版 SDK-free wrapper 只覆盖 stateful xdebug/xcov session：
+SDK-free wrapper 覆盖与 MCP SDK 对称的 stateful xdebug/xcov session：
 
 - `debug.session.open`
 - `debug.session.list`
+- `debug.session.doctor`
 - `debug.session.close`
+- `debug.session.kill`
+- `debug.session.gc`
 - `debug.query`
-- `cov.session.open/list/close/query`
+- `cov.session.open/list/doctor/close/kill/gc/query`
 
 它不覆盖 xbit/xentry/xloc/xsva，也不等价于完整 MCP 工具集。
 
@@ -46,4 +49,4 @@ client -> UDS socket -> xverif-loop-server -> tools/xdebug --stdio-loop
 client -> UDS socket -> xverif-loop-server -> tools/xcov --stdio-loop
 ```
 
-wrapper 负责 alias、session manager、stdio-loop 进程和 LSF job cleanup。
+wrapper 负责 alias、session manager、tombstone、stdio-loop 进程和 LSF job cleanup。query 禁止 native lifecycle action；doctor 只读，kill 只接受一个精确 session，partial cleanup 保留诊断证据且不切换 transport/backend。

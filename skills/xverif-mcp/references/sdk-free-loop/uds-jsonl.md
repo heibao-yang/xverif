@@ -39,14 +39,20 @@ tools/xverif-loop-client --socket /tmp/xverif-loop.sock --json \
 - `server.shutdown`
 - `debug.session.open`
 - `debug.session.list`
+- `debug.session.doctor`
 - `debug.session.close`
+- `debug.session.kill`
+- `debug.session.gc`
 - `debug.query`
 - `cov.session.open`
 - `cov.session.list`
+- `cov.session.doctor`
 - `cov.session.close`
+- `cov.session.kill`
+- `cov.session.gc`
 - `cov.query`
 
-`debug.query` 和 `cov.query` 会把 `action/args/limits/output/output_format` 转给当前 managed session，并固定 target 为该 session。不要用它们发送 lifecycle raw request。
+`debug.query` 和 `cov.query` 会把 `action/args/limits/output/output_format` 转给当前 managed session，并固定 target 为该 session。不要用它们发送 lifecycle raw request（coverage 的 `session.status` 使用 `cov.session.doctor`）。list 接受 `include_tombstones`/`verbose`，doctor 接受精确 `session|session_id|name` 和 `verbose`，close/kill 接受精确 session key，gc 接受 `verbose`；kill 的 `all` 明确拒绝。
 
 ## 环境变量
 

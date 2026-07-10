@@ -156,8 +156,8 @@ Session transport
 
 Output control
 --------------
-  output.verbosity=compact/full/debug; use include_* switches and limits when
-  details are needed. Trace XOUT source windows use
+  Responses are compact by default. Use action-specific args.output.verbose,
+  line_limit, or export actions when details are needed. Trace XOUT source windows use
   XDEBUG_TRACE_SOURCE_CONTEXT_LINES (default 3) and merge same-file nearby
   source hits with XDEBUG_TRACE_SOURCE_MERGE_THRESHOLD_LINES (default 10).
 
@@ -197,9 +197,8 @@ Action choice guidance
       single signal or a restricted {hi,lo} concat up to 64 bits.
 
   transition timeline:
-      Use signal.changes. Compact output omits data.changes rows by default;
-      set include_rows:true or include_all_changes:true when rows are needed.
-      Use mode:"head" or mode:"tail" plus limit to inspect either end.
+      Use signal.changes. Use line_limit to bound data.changes rows, or
+      aggregate_only:true for summary only. Use mode:"head" or mode:"tail".
 
   window holds 0/1:
       Use window.verify, or signal.statistics for sampled activity. Do not use
@@ -214,27 +213,14 @@ Action choice guidance
 
 Output control
 --------------
-  output.verbosity:
-      compact  Default. Keep only information needed for the next AI decision.
-      full     Preserve larger user-facing payloads for compatibility.
-      debug    Include process/debug-oriented details.
+  Default:
+      Compact summary/evidence.
 
-  Common args:
-      max_items, max_examples
-
-  Common limits:
-      limits.max_rows, limits.max_events, limits.max_samples,
-      limits.max_depth, limits.max_paths
-
-  Design include switches:
-      include_source, include_ast, include_candidates, include_trace,
-      include_expanded_queries, include_raw_edges, include_graph,
-      include_debug
-
-  Waveform include switches:
-      include_raw, include_signal_meta, include_rows, include_samples,
-      include_all_changes, include_transactions, include_beats,
-      include_accesses, include_debug
+  Detailed output:
+      args.output.verbose=true only when the action schema allows it.
+      Use action-specific line_limit for bounded rows and export actions for
+      complete datasets. Top-level output, output.verbosity, and public
+      include_* switches are rejected.
 
 Examples
 --------
