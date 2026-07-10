@@ -51,7 +51,6 @@ def test_counter_statistics_targeted_waveform(
             str(xdebug_bin),
             "--fsdb",
             str(resources / "out" / "waves.fsdb"),
-            "--skip-build",
         ],
         cwd=repo_root,
         timeout_sec=1200,

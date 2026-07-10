@@ -2,16 +2,21 @@ from __future__ import annotations
 
 from pathlib import Path
 import shutil
+import json
+import os
+import subprocess
+import sys
 from typing import Any
 
 import pytest
 
 from .catalog import Catalog, CatalogError
-from .gates import ExecutionPlan, build_plan, filter_plan
+from .gates import ExecutionPlan, build_plan, changed_paths, filter_changed, filter_plan
 from .items import ExternalSuiteItem
 from .fixtures import FixtureError, FixtureStore, load_default_registry
 from .reports import ResultManager
 from .resources import apply_xdist_resource_group
+from .environment import probe_capabilities, write_snapshot
 
 
 DEFAULT_CATALOG = Path("testinfra/catalog.v1.yaml")
@@ -79,13 +84,15 @@ def _ensure_xverif_state(config: pytest.Config) -> str | None:
     except CatalogError as exc:
         raise pytest.UsageError(str(exc)) from exc
     config._xverif_catalog = catalog  # type: ignore[attr-defined]
+    root = _repo_root(config)
     if operation == "gate":
         gate = config.getoption("--xverif-gate")
         try:
-            plan = filter_plan(
-                build_plan(catalog, gate),
-                list(config.getoption("--xverif-suite")),
-            )
+            plan = build_plan(catalog, gate)
+            changed = config.getoption("--xverif-changed")
+            if changed:
+                plan = filter_changed(plan, changed_paths(root, changed))
+            plan = filter_plan(plan, list(config.getoption("--xverif-suite")))
         except ValueError as exc:
             raise pytest.UsageError(str(exc)) from exc
         config._xverif_plan = plan  # type: ignore[attr-defined]
@@ -146,17 +153,27 @@ def pytest_cmdline_main(config: pytest.Config) -> int | None:
                     else requested
                 )
                 for fixture_id in fixture_ids:
+                    try:
+                        store.resolve(fixture_id)
+                        cache_hit = True
+                    except FixtureError:
+                        cache_hit = False
                     path = store.prepare(fixture_id)
-                    print(f"prepared {fixture_id}: {path.relative_to(root)}")
+                    status = "cache hit" if cache_hit else "prepared"
+                    print(f"{status} {fixture_id}: {path.relative_to(root)}")
                 return pytest.ExitCode.OK
             if operation == "fixture-validation":
-                if not config.getoption("--xverif-all-fixtures"):
+                changed = config.getoption("--xverif-changed")
+                if not config.getoption("--xverif-all-fixtures") and not changed:
                     raise pytest.UsageError(
-                        "fixture-validation currently requires --xverif-all-fixtures"
+                        "fixture-validation requires --xverif-all-fixtures or --xverif-changed BASE"
                     )
-                for spec in store.registry.fixtures:
-                    path = store.prepare(spec.id, rebuild=True)
-                    print(f"validated {spec.id}: {path.relative_to(root)}")
+                fixture_ids = [spec.id for spec in store.registry.fixtures]
+                if changed:
+                    fixture_ids = list(store.affected_fixture_ids(changed_paths(root, changed)))
+                for fixture_id in fixture_ids:
+                    path = store.prepare(fixture_id, rebuild=True)
+                    print(f"validated {fixture_id}: {path.relative_to(root)}")
                 return pytest.ExitCode.OK
             if operation == "fixture-clean":
                 store.clean()
@@ -168,6 +185,24 @@ def pytest_cmdline_main(config: pytest.Config) -> int | None:
                     shutil.rmtree(results)
                 print("xverif test results removed")
                 return pytest.ExitCode.OK
+            if operation == "rerun-failed":
+                report_path = Path(config.getoption("xverif_rerun_failed")).resolve()
+                payload = json.loads(report_path.read_text(encoding="utf-8"))
+                suites = sorted(
+                    {
+                        item["suite_id"]
+                        for item in payload.get("items", [])
+                        if item.get("outcome") == "failed" and item.get("suite_id") != "unmapped"
+                    }
+                )
+                if not suites:
+                    raise pytest.UsageError("report contains no failed suites")
+                argv = [sys.executable, "-m", "pytest", "--xverif-gate", payload["gate"]]
+                for suite_id in suites:
+                    argv.extend(["--xverif-suite", suite_id])
+                env = dict(os.environ)
+                env["XVERIF_PARENT_REPORT"] = str(report_path)
+                return subprocess.run(argv, cwd=root, env=env, check=False).returncode
         except FixtureError as exc:
             raise pytest.UsageError(str(exc)) from exc
         raise pytest.UsageError(f"xverif operation {operation!r} is not implemented")
@@ -191,23 +226,63 @@ def pytest_collection_modifyitems(
     catalog: Catalog = config._xverif_catalog  # type: ignore[attr-defined]
     plan: ExecutionPlan = config._xverif_plan  # type: ignore[attr-defined]
     selected_ids = plan.selected_ids()
+    repo_root = _repo_root(config)
+    unavailable: dict[str, str] = {}
+    if not config.getoption("collectonly") and not config.getoption("--xverif-plan"):
+        capabilities = probe_capabilities(
+            (name for selected in plan.suites for name in selected.suite.capabilities),
+            repo_root,
+        )
+        store = FixtureStore(repo_root, load_default_registry(repo_root))
+        required_errors: list[str] = []
+        for selected in plan.suites:
+            reasons = [
+                f"capability {name}: {capabilities[name].reason}"
+                for name in selected.suite.capabilities
+                if not capabilities[name].available
+            ]
+            for fixture_id in selected.suite.fixtures:
+                try:
+                    store.resolve(fixture_id)
+                except FixtureError as exc:
+                    reasons.append(str(exc))
+            if reasons:
+                message = "; ".join(reasons)
+                if selected.required:
+                    required_errors.append(f"{selected.suite.id}: {message}")
+                else:
+                    unavailable[selected.suite.id] = message
+        manager = getattr(config, "_xverif_results", None)
+        if manager is not None:
+            write_snapshot(manager.environment_path(), capabilities)
+        if required_errors:
+            raise pytest.UsageError(
+                "xverif required suite preflight failed:\n  " + "\n  ".join(required_errors)
+            )
     selected_commands = [
         selected.suite
         for selected in plan.suites
         if selected.suite.runner.get("kind") == "command"
     ]
-    repo_root = _repo_root(config)
     kept: list[pytest.Item] = []
     deselected: list[pytest.Item] = []
     unmapped: list[str] = []
     for item in items:
-        suite = catalog.owner_for_path(Path(str(item.path)), repo_root)
+        owners = catalog.owners_for_path(Path(str(item.path)), repo_root)
+        if len(owners) == 1:
+            suite = owners[0]
+        else:
+            markers = {marker.name for marker in item.iter_markers()}
+            matched = [suite for suite in owners if suite.pytest_marker() in markers]
+            suite = matched[0] if len(matched) == 1 else None
         if suite is None:
             unmapped.append(item.nodeid)
             continue
         item.user_properties.append(("xverif_suite", suite.id))
         setattr(item, "_xverif_suite_id", suite.id)
         if suite.id in selected_ids:
+            if suite.id in unavailable:
+                item.add_marker(pytest.mark.skip(reason=unavailable[suite.id]))
             apply_xdist_resource_group(item, suite)
             kept.append(item)
         else:
@@ -223,6 +298,8 @@ def pytest_collection_modifyitems(
         parent = items[0].session
         for suite in selected_commands:
             external = ExternalSuiteItem.from_suite(parent, suite)
+            if suite.id in unavailable:
+                external.add_marker(pytest.mark.skip(reason=unavailable[suite.id]))
             apply_xdist_resource_group(external, suite)
             kept.append(external)
     items[:] = kept

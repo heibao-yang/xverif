@@ -150,6 +150,16 @@ def xdebug_bin(pytestconfig: pytest.Config) -> Path:
     return Path(pytestconfig.getoption("--xdebug-bin")).expanduser().resolve()
 
 
+@pytest.fixture
+def complex_wave_fsdb(xverif_fixture) -> Path:
+    return xverif_fixture("xdebug.ai_complex_wave") / "out/waves.fsdb"
+
+
+@pytest.fixture
+def stream_wave_fsdb(xverif_fixture) -> Path:
+    return xverif_fixture("xdebug.stream_v1") / "out/waves.fsdb"
+
+
 @pytest.fixture(scope="session")
 def artifact_root(pytestconfig: pytest.Config) -> Path:
     return Path(pytestconfig.getoption("--xdebug-artifacts")).expanduser().resolve()

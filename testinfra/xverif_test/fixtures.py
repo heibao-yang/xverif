@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import fnmatch
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -33,6 +34,7 @@ class FixtureSpec:
     id: str
     source_dir: str
     inputs: tuple[str, ...]
+    extra_inputs: tuple[str, ...]
     builder: dict[str, Any]
     outputs: tuple[FixtureOutput, ...]
     tool_env: tuple[str, ...]
@@ -43,6 +45,7 @@ class FixtureSpec:
             id=data["id"],
             source_dir=data["source_dir"],
             inputs=tuple(data["inputs"]),
+            extra_inputs=tuple(data.get("extra_inputs", [])),
             builder=dict(data["builder"]),
             outputs=tuple(
                 FixtureOutput(
@@ -165,11 +168,34 @@ class FixtureStore:
         if self.root.exists():
             shutil.rmtree(self.root)
 
+    def affected_fixture_ids(self, changed: Iterable[str]) -> tuple[str, ...]:
+        paths = tuple(changed)
+        if any(path.startswith("testinfra/xverif_test/fixtures") for path in paths):
+            return tuple(spec.id for spec in self.registry.fixtures)
+        affected: list[str] = []
+        for spec in self.registry.fixtures:
+            prefix = spec.source_dir.rstrip("/") + "/"
+            for path in paths:
+                if any(fnmatch.fnmatch(path, pattern) for pattern in spec.extra_inputs):
+                    affected.append(spec.id)
+                    break
+                if not path.startswith(prefix):
+                    continue
+                relative = path[len(prefix):]
+                if any(fnmatch.fnmatch(relative, pattern) for pattern in spec.inputs):
+                    affected.append(spec.id)
+                    break
+        return tuple(affected)
+
     def _source_files(self, spec: FixtureSpec) -> tuple[Path, ...]:
         files: set[Path] = set()
         source = self.repo_root / spec.source_dir
         for pattern in spec.inputs:
             for path in source.glob(pattern):
+                if path.is_file():
+                    files.add(path.resolve())
+        for pattern in spec.extra_inputs:
+            for path in self.repo_root.glob(pattern):
                 if path.is_file():
                     files.add(path.resolve())
         return tuple(sorted(files))

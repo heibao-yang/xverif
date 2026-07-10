@@ -67,6 +67,10 @@ class Suite:
             paths = [self.runner["path"]]
         return tuple(str(path).rstrip("/") for path in paths)
 
+    def pytest_marker(self) -> str | None:
+        value = self.runner.get("marker")
+        return str(value) if value else None
+
 
 @dataclass(frozen=True)
 class SelectedSuite:
@@ -99,7 +103,7 @@ class Catalog:
     @staticmethod
     def _validate_semantics(suites: Iterable[Suite]) -> None:
         ids: set[str] = set()
-        path_owners: dict[str, str] = {}
+        path_owners: dict[tuple[str, str | None], str] = {}
         for suite in suites:
             if suite.id in ids:
                 raise CatalogError(f"duplicate suite id: {suite.id}")
@@ -109,12 +113,13 @@ class Catalog:
             if suite.cost_class not in COST_ORDER:
                 raise CatalogError(f"invalid cost class for {suite.id}: {suite.cost_class}")
             for path in suite.pytest_paths():
-                previous = path_owners.get(path)
+                key = (path, suite.pytest_marker())
+                previous = path_owners.get(key)
                 if previous is not None:
                     raise CatalogError(
-                        f"pytest path {path} is owned by both {previous} and {suite.id}"
+                        f"pytest path/marker {key} is owned by both {previous} and {suite.id}"
                     )
-                path_owners[path] = suite.id
+                path_owners[key] = suite.id
 
     def suite_by_id(self, suite_id: str) -> Suite:
         for suite in self.suites:
@@ -149,16 +154,21 @@ class Catalog:
         return tuple(selected)
 
     def owner_for_path(self, path: Path, repo_root: Path) -> Suite | None:
+        owners = self.owners_for_path(path, repo_root)
+        return owners[0] if len(owners) == 1 else None
+
+    def owners_for_path(self, path: Path, repo_root: Path) -> tuple[Suite, ...]:
         try:
             relative = path.resolve().relative_to(repo_root.resolve()).as_posix()
         except ValueError:
-            return None
+            return ()
         candidates: list[tuple[int, Suite]] = []
         for suite in self.suites:
             for prefix in suite.pytest_paths():
                 if relative == prefix or relative.startswith(prefix + "/"):
                     candidates.append((len(prefix), suite))
         if not candidates:
-            return None
+            return ()
         candidates.sort(key=lambda item: item[0], reverse=True)
-        return candidates[0][1]
+        longest = candidates[0][0]
+        return tuple(suite for length, suite in candidates if length == longest)

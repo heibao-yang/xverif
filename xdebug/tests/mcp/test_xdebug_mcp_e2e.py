@@ -119,35 +119,15 @@ def _kill_native_sessions(isolated_home: Path) -> None:
 
 
 @pytest.fixture
-def mcp_resources(xdebug_root: Path) -> dict[str, str]:
+def mcp_resources(xverif_fixture) -> dict[str, str]:
+    uart = xverif_fixture("xdebug.design_uart")
+    wave = xverif_fixture("xdebug.ai_complex_wave")
+    combined = xverif_fixture("xdebug.active_driver")
     return {
-        "daidir": str(
-            xdebug_root / "testdata" / "design" / "uart" / "simv.daidir"
-        ),
-        "fsdb": str(
-            xdebug_root
-            / "testdata"
-            / "waveform"
-            / "ai_complex_wave"
-            / "out"
-            / "waves.fsdb"
-        ),
-        "combined_daidir": str(
-            xdebug_root
-            / "testdata"
-            / "combined"
-            / "active_driver"
-            / "out"
-            / "simv.daidir"
-        ),
-        "combined_fsdb": str(
-            xdebug_root
-            / "testdata"
-            / "combined"
-            / "active_driver"
-            / "out"
-            / "waves.fsdb"
-        ),
+        "daidir": str(uart / "simv.daidir"),
+        "fsdb": str(wave / "out/waves.fsdb"),
+        "combined_daidir": str(combined / "out/simv.daidir"),
+        "combined_fsdb": str(combined / "out/waves.fsdb"),
     }
 
 

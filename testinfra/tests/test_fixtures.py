@@ -18,6 +18,7 @@ def make_store(root: Path) -> tuple[FixtureStore, FixtureSpec]:
         id="demo.fixture",
         source_dir="fixture",
         inputs=("*.sv",),
+        extra_inputs=(),
         builder={
             "argv": [
                 "python3",

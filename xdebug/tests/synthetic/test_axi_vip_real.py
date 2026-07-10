@@ -75,7 +75,6 @@ def test_axi_vip_real_waveform_actions(
         "axi",
         "--xdebug",
         str(xdebug_bin),
-        "--skip-build",
     ]
 
     result = command_runner.run(

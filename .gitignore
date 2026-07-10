@@ -13,11 +13,7 @@ regression/
 **/testdata/
 **/regression/
 
-# Public xdebug verification assets
-!regression/
-regression/*
-!regression/run_xdebug_regression.sh
-!regression/run_full_regression.sh
+# Catalog-owned verification assets
 !xdebug/tests/
 !xdebug/tests/**
 !xdebug/testdata/
@@ -28,6 +24,8 @@ regression/*
 !xentry/tests/**
 !xwaveform/tests/
 !xwaveform/tests/**
+!xloc/tests/
+!xloc/tests/**
 !skills/xwiki/tests/
 !skills/xwiki/tests/**
 !xcov/tests/

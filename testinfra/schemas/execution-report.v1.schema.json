@@ -10,6 +10,7 @@
     "catalog_version": {"type": "string"},
     "exitstatus": {"type": "integer"},
     "counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "parent_report": {"type": "string"},
     "items": {
       "type": "array",
       "items": {

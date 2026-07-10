@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 import tempfile
+import os
+import shutil
+import time
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -14,7 +17,9 @@ class ResultManager:
         self.repo_root = repo_root
         results_root = repo_root / ".xverif-test-results"
         results_root.mkdir(parents=True, exist_ok=True)
+        _prune_results(results_root)
         self.run_dir = Path(tempfile.mkdtemp(prefix=f"{stamp}-", dir=results_root))
+        (self.run_dir / "RUNNING").write_text("\n", encoding="utf-8")
         self.gate = gate
         self.catalog_version = catalog_version
         self.items: list[dict[str, Any]] = []
@@ -41,6 +46,9 @@ class ResultManager:
         path = self.suite_dir(suite_id)
         (path / "stdout.log").write_text(stdout, encoding="utf-8")
         (path / "stderr.log").write_text(stderr, encoding="utf-8")
+
+    def environment_path(self) -> Path:
+        return self.run_dir / "environment.json"
 
     def record_report(self, report: Any) -> None:
         if report.when not in {"setup", "call", "teardown"}:
@@ -80,10 +88,64 @@ class ResultManager:
             "counts": dict(sorted(counts.items())),
             "items": self.items,
         }
+        parent = os.environ.get("XVERIF_PARENT_REPORT")
+        if parent:
+            payload["parent_report"] = parent
         (self.run_dir / "report.json").write_text(
             json.dumps(payload, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        (self.run_dir / "RUNNING").unlink(missing_ok=True)
+
+
+def _prune_results(root: Path) -> None:
+    now = time.time()
+    runs = sorted((path for path in root.iterdir() if path.is_dir()), key=lambda path: path.stat().st_mtime)
+    referenced: set[Path] = set()
+    records: list[tuple[Path, bool, float]] = []
+    for path in runs:
+        if (path / "RUNNING").exists() or (path / ".pin").exists():
+            continue
+        report_path = path / "report.json"
+        try:
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        parent = report.get("parent_report")
+        if parent:
+            referenced.add(Path(parent).resolve().parent)
+        records.append((path, report.get("exitstatus") == 0, path.stat().st_mtime))
+
+    successful = [record for record in records if record[1]]
+    delete: set[Path] = {path for path, _, _ in successful[:-20]}
+    delete.update(
+        path
+        for path, success, modified in records
+        if not success and now - modified > 30 * 24 * 60 * 60
+    )
+    for path in sorted(delete):
+        if path.resolve() not in referenced:
+            shutil.rmtree(path, ignore_errors=True)
+
+    limit = 10 * 1024**3
+    remaining = [path for path, _, _ in records if path.exists()]
+    size = sum(_tree_size(path) for path in remaining)
+    for path, success, _ in records:
+        if size <= limit:
+            break
+        if not success or not path.exists() or path.resolve() in referenced:
+            continue
+        path_size = _tree_size(path)
+        shutil.rmtree(path, ignore_errors=True)
+        size -= path_size
+    if size > limit:
+        raise RuntimeError(
+            "xverif results exceed 10 GiB and no successful unreferenced run can be removed"
+        )
+
+
+def _tree_size(path: Path) -> int:
+    return sum(item.stat().st_size for item in path.rglob("*") if item.is_file())
 
 
 def _error_layer(report: Any) -> str | None:

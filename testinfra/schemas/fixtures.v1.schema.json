@@ -16,6 +16,7 @@
           "id": {"type": "string", "pattern": "^[a-z0-9_.-]+$"},
           "source_dir": {"type": "string"},
           "inputs": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+          "extra_inputs": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
           "builder": {
             "type": "object",
             "additionalProperties": false,

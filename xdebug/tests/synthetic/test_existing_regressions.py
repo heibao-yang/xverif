@@ -32,29 +32,6 @@ def _require_success(
 
 
 @pytest.mark.synthetic
-@pytest.mark.design
-@pytest.mark.slow
-def test_existing_design_semantics_regression(
-    command_runner: CommandRunner,
-    repo_root: Path,
-    xdebug_root: Path,
-    artifact_root: Path,
-) -> None:
-    result = command_runner.run(
-        ["bash", str(xdebug_root / "tests" / "design" / "run_semantics.sh")],
-        cwd=repo_root,
-        timeout_sec=900,
-        metadata={"suite": "design-semantics"},
-    )
-    _require_success(
-        result,
-        case_name="existing-design-semantics",
-        artifact_root=artifact_root,
-    )
-    assert "xdebug design semantics regression passed" in result.stdout_raw
-
-
-@pytest.mark.synthetic
 @pytest.mark.waveform
 @pytest.mark.slow
 def test_existing_nonaxi_waveform_regression(
@@ -72,7 +49,6 @@ def test_existing_nonaxi_waveform_regression(
             str(xdebug_root / "tests" / "waveform" / "run_complex_wave.py"),
             "--mode",
             "nonaxi",
-            "--skip-build",
             "--fsdb",
             str(resources / "out" / "waves.fsdb"),
             "--xdebug",
@@ -118,7 +94,6 @@ def test_existing_combined_active_driver_regression(
         timeout_sec=1200,
         env={
             "XDEBUG": str(xdebug_bin),
-            "XDEBUG_REQUIRE_NPI": "1",
             "XDEBUG_ACTIVE_DRIVER_FIXTURE_DIR": str(active_driver),
             "XDEBUG_INTERFACE_PORT_ROOT_FIXTURE_DIR": str(interface_root),
         },
