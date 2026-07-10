@@ -95,9 +95,47 @@
 - MCP SDK 和 SDK-free wrapper 均提供 debug/cov open/list/doctor/close/kill/gc。
 - coverage query 拒绝 native `session.open/status/close` 及其它 lifecycle action，并给出 coverage 专用正确示例。
 - xdebug 与 xcov public tool 语义对称，native capability 不对称：xdebug 支持 fixed admin doctor/kill/gc；xcov kill 仅终止 managed loop/process/job。
-- direct、fake LSF、SDK、SDK-free、dead loop、native close failure、partial cleanup、tombstone 和 gc 定向回归通过；最终全仓库门禁仍见第 4 节。
-- 本轮执行 `make -C xdebug test-mcp-real-lsf`，在启动阶段返回 `FileNotFoundError: bsub`；当前 `command -v bsub` 为空。该项记录为环境阻塞，未切换 fake LSF，也未记为通过。
+- direct、fake LSF、SDK、SDK-free、dead loop、native close failure、partial cleanup、tombstone 和 gc 定向回归通过；最终全仓库门禁见第 4 节。
+- 用户确认前曾调用 real-LSF test target，但在 launcher 查找/执行 `bsub` 阶段即失败，未提交任何真实 LSF job。用户随后明确本机无 LSF、不得运行 real LSF；最终门禁因此把 real LSF 记录为 NOT RUN，未再调用该 target，未切换 fake LSF，也未把 fake LSF 记作 real LSF 通过。
 
 ## 4. 最终门禁
 
-Stage 7 必须从 clean 状态重新构建并执行顶层 `make test`、`make full-test` 以及计划列出的 MCP/NPI/VIP/LSF 分层测试。最终结果、commit 和 push 状态以交付说明为准。
+最终门禁在 commit `9eeb2bf` 后的当前 HEAD 执行，结果如下：
+
+- `env -u XDEBUG_ENABLE_REAL_LSF make full-test`：PASS。`regression/run_full_regression.sh` 的 `build_all` 阶段执行 `make clean all`，因此该结果来自 clean rebuild；汇总为 PASS 9、SKIP 1、FAIL 0，日志位于 `/tmp/xdebug_full_regression_20260710_222407/summary.txt`。
+- `realdata_system_wave`：SKIP。原因是可选的 `~/wave_tmp/waves.fsdb` fixture 不存在；其它 build、unit、active-driver、API/combined、design semantics、waveform complex/event 和 realdata AXI 阶段均通过。
+- `env -u XDEBUG_ENABLE_REAL_LSF make test`：PASS。覆盖 152 个 schema、145 个 examples、71 个 action spec/runtime 合同、C++ unit、MCP action 163/163、xbit 19、xentry 14、xloc 13、xcov 45、xwaveform 5，以及 VCS active-driver 回归。
+- `env -u XDEBUG_ENABLE_REAL_LSF make -C xdebug test-nightly`：PASS。infra 13、contract 65、synthetic existing 3、counter 1、active semantics 1、session 27、MCP direct 4、fake LSF 3、realdata 1、AXI VIP 1、APB VIP 1 全部通过。
+- real LSF：NOT RUN。用户确认本机无 LSF，并明确不得执行；`full-test`、`make test` 与 nightly 三个最终门禁命令均显式移除 `XDEBUG_ENABLE_REAL_LSF`，nightly 输出可选 real LSF skip。没有 fallback。
+- APB VIP 定向复验：`make -C xdebug pytest-apb-vip`，1 passed。测试消费者已按公开合同读取 `data.config`，并使用 `direction=write|read`。
+
+## 5. 提交与范围核对
+
+本计划的实现提交从 `0796074` 到 `9eeb2bf`，按公共 error、信号/波形语义、protocol 响应、MCP 生命周期、文档/skill、回归消费者和公共截断投影分层提交。所有提交 subject/body 均为中文；测试修正没有改变产品 handler/schema，也没有加入兼容 fallback。
+
+最终独立复审见第 6 节；复审通过后执行最终文档提交、工作树检查与 push。
+
+## 6. 最终独立复审
+
+### 6.1 总体结论
+
+独立 agent 完成只读复审后，有条件同意交付：产品实现与测试证据支持核心结论，未发现需要修改产品代码或重跑 required 测试的阻断。复审要求修正的计划首页状态、cleanup/tombstone 示例和 real-LSF 历史/最终边界均已在本次文档收口中落实。
+
+### 6.2 逐项核对
+
+1. 验收表包含 70 个唯一 action，与 `xdebug/specs/actions/actions.yaml` 中 70 个 non-removed action 完全一致；request/response schema 与 basic request/response example 各 70 份，无缺项或多项。逐 action 的“通过”含义是静态合同加所属 runtime 回归通过，不夸大为最终门禁重新手工 replay；本任务始终未使用仓库 70-action replay runner。
+2. `capabilities.py` 定义了 xdebug native doctor/kill/gc、fixed admin path 与 backend-survives-loop 能力，以及 xcov native status、无 native kill/gc、backend 随 loop 退出的差异；server 与 SDK-free wrapper 对称暴露 debug/cov open/list/doctor/close/kill/gc。coverage query guard 在 adapter 前禁止 native lifecycle action，并返回 coverage 专用示例。报告的“public 对称、backend capability 差异化、禁止绕过 manager”结论正确。
+3. `LoopSession.close()` 同时检查 transport envelope 与 backend payload 的 `ok`；partial failure 返回 `SESSION_CLEANUP_PARTIAL_FAILURE`，manager 增加 `error_layer=session_manager` 并保留 unresolved tombstone。成功 close 的公开 cleanup 为 `backend_close`、`stdio_quit`、`terminate`、`manager_record=evicted`、`tombstone=retained_closed`，计划示例现已与实现一致。
+4. `/tmp/xdebug_full_regression_20260710_222407/summary.txt` 明确为 PASS 9、SKIP 1、FAIL 0；`regression/run_full_regression.sh` 的 `build_all` 入口为 `make clean all`。唯一 SKIP 对应可选 system FSDB fixture。make test、nightly 与 APB 定向计数和实际 Makefile target/提交验证一致。
+5. 复审时 HEAD 为 `9eeb2bf`，相对 `origin/master` ahead 14，工作树仅有两份本轮计划/验收文档；`git diff --check` 通过，范围符合文档收口阶段。
+
+### 6.3 发现问题与处理
+
+- 已修正计划首页“尚未开始源码实现”的过期状态。
+- 已把 cleanup 成功示例改为真实字段，并明确成功 close 保留 closed tombstone、等待显式 gc。
+- 已明确用户确认前 real-LSF target 在缺少 `bsub` 时即失败且未提交真实 job；用户确认后的最终门禁未再调用，状态为 NOT RUN、无 fallback。
+- `/tmp` full-test 日志不是长期唯一证据；本报告已版本化保存关键阶段、计数、SKIP 原因和执行边界。
+
+### 6.4 是否同意交付
+
+上述三项文档问题修正后，独立 reviewer 同意完成文档提交、最终 clean status 检查并 push；没有产品级阻断。

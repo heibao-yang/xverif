@@ -5,7 +5,7 @@
 - 目标范围：报告覆盖的 70 个 xdebug public action，以及它们依赖的 xverif MCP session 公共基础设施
 - 额外必要范围：xcov MCP session 生命周期对称化；不扩展为 xcov 全 action 整改
 - 后续执行方式：以本文件作为 goal 模式的唯一工作计划入口，逐阶段实现、验证、提交，最终 clean 后执行全仓库测试并推送远端
-- 当前状态：goal 执行中；阶段 0 基线已确认，尚未开始源码实现
+- 当前状态：阶段 0-6 实现及阶段 7 required 验证已完成；独立复审已通过，待最终文档提交、工作树核对与 push
 
 ## 0. 执行基线
 
@@ -282,7 +282,7 @@ xcov：
 
 ### 5.4 分层清理结果
 
-close/kill/gc 统一返回：
+成功 close 的公开返回示例：
 
 ```json
 {
@@ -293,16 +293,19 @@ close/kill/gc 统一返回：
   },
   "data": {
     "cleanup": {
-      "native_backend": "closed",
-      "stdio_loop": "quit",
-      "process": "terminated",
-      "lsf_job": "not_applicable",
+      "backend_close": "ok",
+      "stdio_quit": "ok",
+      "terminate": "ok",
       "manager_record": "evicted",
-      "tombstone": "not_needed"
+      "tombstone": "retained_closed"
     }
   }
 }
 ```
+
+成功 close 仍保留 `retained_closed` tombstone，供 list/doctor 审计并由显式 gc 清理；不能把成功 cleanup 等同于无 tombstone。不同 launcher/backend 不适用的阶段使用实现定义的 `skipped`/`force_skipped` 等状态，不虚构 LSF 或 native cleanup 阶段。
+
+kill/gc 复用相同的顶层 `ok`、`summary`/`data` 所有权与 `cleanup_complete` 语义，但 cleanup 阶段和 `data` 字段按 operation 定义：kill 可包含 `native_kill`、`loop_terminate`、`lsf_job`，gc 返回 removed/unresolved 汇总；不得强行伪装成 close 字段。
 
 任一阶段失败：
 
@@ -397,7 +400,7 @@ close/kill/gc 统一返回：
 - 修复 `include_native` 无效参数：删除该公开参数，不做兼容别名；native list 仍由 CLI action负责。
 - 默认 session public JSON compact，敏感/噪声字段放 verbose。
 
-退出条件：direct、fake LSF、real LSF 条件下的正常、dead loop、native close fail、partial cleanup、tombstone、gc 均有明确测试。
+退出条件：direct、fake LSF 条件下的正常、dead loop、native close fail、partial cleanup、tombstone、gc 均有明确测试；real LSF 仅在环境具备 `bsub` 且用户要求时执行。本机无 LSF，最终门禁按用户确认记录为 NOT RUN，不以 fake LSF 冒充或 fallback。
 
 ### 阶段 6：catalog、schema、XOUT、docs、examples、skills 收口
 
@@ -731,13 +734,13 @@ push 后回报：
 - [x] 阶段 5：xdebug/xcov MCP 生命周期完成
 - [x] 阶段 6：schema/docs/examples/skills 同步完成
 - [x] 70 action 逐项验收全部完成
-- [ ] `make clean` 完成
-- [ ] `make test` PASS
-- [ ] `make full-test` PASS
-- [ ] `make -C xdebug test-nightly` PASS
-- [ ] real LSF PASS 或按规则明确 NOT RUN/阻塞
-- [ ] 所有阶段 commits 完成且范围正确
-- [ ] 最终工作树检查完成
+- [x] `make clean` 完成（最终 `make full-test` 的 `build_all` 明确执行 `make clean all`）
+- [x] `make test` PASS
+- [x] `make full-test` PASS（PASS 9 / SKIP 1 / FAIL 0）
+- [x] `make -C xdebug test-nightly` PASS
+- [x] real LSF 按用户确认 NOT RUN（本机无 LSF；未 fallback）
+- [x] 所有实现与测试阶段 commits 完成且范围正确
+- [x] 最终提交前工作树范围检查完成（仅本计划与验收报告两份文档）
 - [ ] 推送远端完成
 
 ## 13. 计划变更规则
