@@ -42,6 +42,9 @@ public:
         Json args = request.value("args", Json::object());
         std::string signal = args.value("signal", std::string());
         if (signal.empty()) return design_missing_signal_error(action_name());
+        SignalResolveResult resolved;
+        Json failure;
+        if (!resolve_design_signal(action_name(), signal, resolved, failure)) return failure;
         TraceEngine engine;
         TraceResult result = engine.trace(signal, TraceMode::Driver, parse_trace_opts(args));
         Json raw = Json::parse(engine.render_ai_json(result));

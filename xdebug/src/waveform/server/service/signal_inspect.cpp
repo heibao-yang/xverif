@@ -128,8 +128,6 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
         sample_signals.push_back({aliases[i], paths[i], handles[i]});
     }
 
-    int max_samples = args.value("line_limit", 1000000);
-    int max_events = args.value("line_limit", 100000);
     int max_findings = args.value("line_limit", 100);
     npiFsdbValType fmt = json_value_format(args);
     char value_prefix = json_value_prefix(fmt);
@@ -140,7 +138,7 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
     int sampled_high = 0, sampled_low = 0, sampled_unknown = 0;
     npiFsdbTime first_high = 0, last_high = 0;
     ClockSampleScanner scanner(g_fsdb_file, clock_sample);
-    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', max_samples,
+    if (!scanner.scan(sample_signals, begin, end, npiFsdbBinStrVal, 'b', -1,
         [&](const ClockSample& sample) -> bool {
             npiFsdbTime t = sample.time;
             std::map<std::string, std::string> values = clock_sample_value_map(sample_signals, sample.values);
@@ -164,8 +162,7 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
 
     fsdbTimeValPairVec_t valid_changes;
     bool valid_truncated = false;
-    int read_limit = max_events >= 0 ? max_events + 1 : -1;
-    if (!read_signal_changes(valid, begin, end, npiFsdbBinStrVal, valid_changes, error, read_limit, &valid_truncated)) return Json();
+    if (!read_signal_changes(valid, begin, end, npiFsdbBinStrVal, valid_changes, error, -1, &valid_truncated)) return Json();
 
     std::string init_valid;
     if (!read_sig_value_at(g_fsdb_file, valid.c_str(), begin, 'B', init_valid)) {
@@ -176,7 +173,9 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
     npiFsdbTime segment_begin = begin;
     Json findings = Json::array();
     bool findings_truncated = false;
+    int risk_count = 0;
     auto push_finding = [&](const Json& item) {
+        ++risk_count;
         if (max_findings >= 0 && static_cast<int>(findings.size()) >= max_findings) {
             findings_truncated = true;
             return;
@@ -234,7 +233,7 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
         std::string signal = p.value("signal", std::string());
         fsdbTimeValPairVec_t changes;
         bool one_truncated = false;
-        if (!read_signal_changes(signal, begin, end, fmt, changes, error, read_limit, &one_truncated)) return Json();
+        if (!read_signal_changes(signal, begin, end, fmt, changes, error, -1, &one_truncated)) return Json();
         payload_transition_count += static_cast<int>(changes.size());
         if (one_truncated) payload_truncated = true;
         for (const auto& ch : changes) {
@@ -264,7 +263,7 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
         }
     }
 
-    bool truncated = sample_truncated || valid_truncated || payload_truncated || findings_truncated;
+    bool analysis_complete = !sample_truncated && !valid_truncated && !payload_truncated;
     Json data;
     data["summary"] = {
         {"sampling_mode", "clock_edge"},
@@ -273,35 +272,25 @@ Json ai_sampled_pulse_inspect(const Json& args, std::string& error) {
         {"sample_time_semantics", "time is sample_time"},
         {"sample_count", sample_count},
         {"sampled_high_cycles", sampled_high},
-        {"risk_count", findings.size() + (findings_truncated ? 1 : 0)},
-        {"truncated", truncated}
+        {"risk_count", risk_count},
+        {"returned_finding_count", findings.size()},
+        {"analysis_complete", analysis_complete},
+        {"truncated", findings_truncated},
+        {"truncation_scope", findings_truncated ? Json("response_findings") : Json(nullptr)}
     };
     if (clock_sample.edge != ClockEdgeKind::Negedge)
         data["summary"]["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
-    if (clock_sample.edge != ClockEdgeKind::Negedge)
-        data["summary"]["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
-    data["clock"] = clock;
     data["valid"] = valid;
     data["payloads"] = payload_aliases;
-    data["edge"] = clock_edge_kind_text(clock_sample.edge);
-    if (clock_sample.edge != ClockEdgeKind::Negedge)
-        data["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
-    data["sample_time_semantics"] = "time is sample_time";
-    data["sampling_mode"] = "clock_edge";
     data["begin"] = format_time(begin);
     data["end"] = format_time(end);
-    data["sample_count"] = sample_count;
-    data["sampled_high_cycles"] = sampled_high;
     data["sampled_low_cycles"] = sampled_low;
     data["sampled_unknown_cycles"] = sampled_unknown;
     data["raw_valid_transition_count"] = valid_changes.size();
     data["payload_transition_count"] = payload_transition_count;
-    data["risk_count"] = findings.size() + (findings_truncated ? 1 : 0);
     data["first_sampled_high_time"] = first_high == 0 ? Json(nullptr) : Json(format_time(first_high));
     data["last_sampled_high_time"] = last_high == 0 ? Json(nullptr) : Json(format_time(last_high));
-    data["first_risk"] = findings.empty() ? Json(nullptr) : findings.front();
     data["findings"] = findings;
-    data["truncated"] = truncated;
     return data;
 }
 

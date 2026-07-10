@@ -23,18 +23,6 @@
 namespace xdebug_design {
 namespace {
 
-static Json with_scalar_summary(Json out) {
-    if (out.contains("summary") && out["summary"].is_object() && !out["summary"].empty())
-        return out;
-    Json summary = Json::object();
-    for (auto it = out.begin(); it != out.end(); ++it) {
-        if (it->is_string() || it->is_number() || it->is_boolean() || it->is_null())
-            summary[it.key()] = it.value();
-    }
-    if (!summary.empty()) out["summary"] = summary;
-    return out;
-}
-
 class SignalResolveHandler : public EngineActionHandler {
 public:
     const char* action_name() const override { return "signal.resolve"; }
@@ -45,9 +33,18 @@ public:
         Json args = request.value("args", Json::object());
         std::string signal = args.value("signal", std::string());
         if (signal.empty()) return design_missing_signal_error(action_name());
-        SignalFinder finder;
-        SignalResolveResult result = finder.resolve(signal);
-        return with_scalar_summary(Json::parse(finder.render_json(result)));
+        SignalResolveResult result;
+        Json failure;
+        if (!resolve_design_signal(action_name(), signal, result, failure)) return failure;
+        Json matches = Json::array();
+        for (const auto& match : result.matches) {
+            matches.push_back({{"signal", match.signal}, {"type", match.type},
+                               {"file", match.file}, {"line", match.line}});
+        }
+        return Json{{"summary", {{"status", "found"}, {"query", signal},
+                                  {"match_count", static_cast<int>(matches.size())},
+                                  {"truncated", result.truncated}}},
+                    {"matches", matches}};
     }
 };
 

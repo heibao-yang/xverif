@@ -98,6 +98,23 @@ public:
 
         const bool want_wave = source == "auto" || source == "wave";
         const bool want_design = source == "auto" || source == "design";
+        const bool wave_available = g_has_waveform && g_fsdb_file;
+        const bool design_available = g_has_design;
+        if ((source == "wave" && !wave_available) ||
+            (source == "design" && !design_available)) {
+            return make_handler_error(
+                "RESOURCE_UNAVAILABLE",
+                source + " roots requested but the resource is not loaded",
+                {{"invalid_arg", "args.source"},
+                 {"missing_resource", source == "wave" ? "waveform" : "design database"},
+                 {"expected", source == "wave" ? "session with FSDB loaded" : "session with daidir loaded"},
+                 {"correct_example", {{"api_version", "xdebug.v1"},
+                                       {"action", "scope.roots"},
+                                       {"target", {{"session_id", "case_a"}}},
+                                       {"args", {{"source", "auto"}}}}},
+                 {"next_actions", Json::array({"Open a session containing the requested resource.",
+                                                "Use args.source=auto to inspect resources already loaded."})}});
+        }
         Json limitations = Json::array();
         Json wave_roots = Json::array();
         Json wave_root_candidates = Json::array();
@@ -151,12 +168,18 @@ public:
         }
 
         Json out;
-        out["source"] = source;
         out["roots"] = roots;
         out["wave_roots"] = wave_roots;
         out["design_roots"] = design_roots;
         out["summary"] = {
             {"source", source},
+            {"wave_available", wave_available},
+            {"design_available", design_available},
+            {"resource_available", source == "wave" ? wave_available :
+                                   source == "design" ? design_available :
+                                   (wave_available || design_available)},
+            {"analysis_complete", source == "auto" ?
+                                  ((!want_wave || wave_available) && (!want_design || design_available)) : true},
             {"root_count", static_cast<int>(roots.size())},
             {"wave_count", static_cast<int>(wave_roots.size())},
             {"design_count", static_cast<int>(design_roots.size())},

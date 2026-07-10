@@ -1,6 +1,7 @@
 #include "action_support.h"
 
 #include <cctype>
+#include <cstring>
 #include <set>
 #include <utility>
 
@@ -96,6 +97,60 @@ std::string confidence_for_trace(const json& trace) {
 }
 
 } // namespace
+
+ExprSyntaxValidation validate_expr_syntax(const std::string& expr) {
+    ExprSyntaxValidation result;
+    std::string s = trim(expr);
+    if (s.empty()) {
+        result.ok = false;
+        result.message = "expression is empty";
+        return result;
+    }
+    int depth = 0;
+    int question_depth = 0;
+    for (size_t i = 0; i < s.size(); ++i) {
+        const char c = s[i];
+        if (c == '(') ++depth;
+        else if (c == ')') {
+            if (depth == 0) {
+                result.ok = false;
+                result.message = "unmatched closing parenthesis";
+                result.offset = i;
+                return result;
+            }
+            --depth;
+        } else if (c == '?') {
+            ++question_depth;
+        } else if (c == ':' && question_depth > 0) {
+            --question_depth;
+        }
+    }
+    if (depth != 0) {
+        result.ok = false;
+        result.message = "unmatched opening parenthesis";
+        result.offset = s.size() - 1;
+        return result;
+    }
+    if (question_depth != 0) {
+        result.ok = false;
+        result.message = "ternary expression is missing ':' branch";
+        result.offset = s.size() - 1;
+        return result;
+    }
+    static const char* const dangling_ops[] = {
+        "||", "&&", "!=", "==", ">=", "<=", ">", "<", "+", "-", "*", "?", ":"
+    };
+    for (const char* op : dangling_ops) {
+        const size_t n = std::strlen(op);
+        if (s.size() >= n && s.compare(s.size() - n, n, op) == 0) {
+            result.ok = false;
+            result.message = "expression ends with operator '" + std::string(op) + "'";
+            result.offset = s.size() - n;
+            return result;
+        }
+    }
+    return result;
+}
 
 json parse_expr_ast(const std::string& expr) {
     std::string s = trim(expr);

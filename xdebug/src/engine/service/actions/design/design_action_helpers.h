@@ -1,6 +1,7 @@
 #pragma once
 
 #include "service/engine_action_handler.h"
+#include "design/signal/signal_finder.h"
 
 namespace xdebug_design {
 
@@ -29,6 +30,32 @@ inline Json design_missing_signal_error(const std::string& action) {
          {"correct_example", design_action_example(action)},
          {"example_note", "Example only; replace target.session_id and args.signal with active design values."},
          {"next_actions", Json::array({"Use scope/list style discovery or signal.resolve to identify the signal path."})}});
+}
+
+inline Json design_signal_not_found_error(const std::string& action,
+                                          const std::string& signal) {
+    return make_handler_error(
+        "SIGNAL_NOT_FOUND",
+        "design signal not found: " + signal,
+        {{"invalid_arg", "args.signal"},
+         {"missing_name", signal},
+         {"missing_resource", "design signal"},
+         {"expected", "existing design signal path"},
+         {"correct_example", design_action_example(action)},
+         {"example_note", "Example only; replace target.session_id and args.signal with active design values."},
+         {"next_actions", Json::array({"Call signal.resolve with a known design path.",
+                                        "Use scope discovery to find the exact signal path."})}});
+}
+
+inline bool resolve_design_signal(const std::string& action,
+                                  const std::string& signal,
+                                  SignalResolveResult& result,
+                                  Json& failure) {
+    SignalFinder finder;
+    result = finder.resolve(signal);
+    if (result.ok && !result.matches.empty()) return true;
+    failure = design_signal_not_found_error(action, signal);
+    return false;
 }
 
 } // namespace xdebug_design

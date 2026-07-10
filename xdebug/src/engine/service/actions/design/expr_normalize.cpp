@@ -71,10 +71,25 @@ public:
              {"correct_example", {{"api_version", "xdebug.v1"},
                                   {"action", "expr.normalize"},
                                   {"args", {{"expr", "valid && ready"}}}}}});
-        out["summary"] = {{"expr",expr},{"source","string_fallback"},{"confidence","low"}};
+        ExprSyntaxValidation syntax = validate_expr_syntax(expr);
+        if (!syntax.ok) {
+            return make_handler_error(
+                "EXPR_SYNTAX_INVALID",
+                syntax.message,
+                {{"invalid_arg", "args.expr"},
+                 {"received", expr},
+                 {"expected", "balanced expression with complete operands and operators"},
+                 {"correct_example", {{"api_version", "xdebug.v1"},
+                                       {"action", "expr.normalize"},
+                                       {"args", {{"expr", "valid && ready"}}}}},
+                 {"next_actions", Json::array({"Fix the expression syntax before using it for debug queries."})}});
+        }
+        out["summary"] = {{"status", "parsed"}, {"source", "string_parser"},
+                          {"confidence", "syntax_only"}};
         out["expr"] = Json::parse(parse_expr_ast(expr).dump());
-        out["confidence"] = "low";
-        out["confidence_reason"] = "parsed from raw string without NPI handle";
+        out["parsed"] = true;
+        out["confidence"] = "syntax_only";
+        out["confidence_reason"] = "syntax validated without an NPI expression handle";
         return out;
     }
 };

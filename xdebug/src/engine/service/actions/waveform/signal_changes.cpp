@@ -41,31 +41,9 @@ public:
     bool needs_waveform() const override { return nw_; }
     Json run(const Json& request, EngineActionContext& ctx) const override {
         std::string error;
-        Json effective_request = request;
-        Json result = xdebug_waveform::ai_dispatch_query(effective_request, error);
+        Json result = xdebug_waveform::ai_dispatch_query(request, error);
         if (!error.empty()) {
             return make_handler_error_from_message(error);
-        }
-        // Fix statistics end time: ai functions may return FSDB max time
-        // instead of the requested window end.
-        Json args = request.value("args", Json::object());
-        if (name_ == "signal.changes") {
-            int limit = args.value("line_limit", 1000);
-            size_t matched = result.value("returned_change_rows", static_cast<size_t>(0));
-            if (limit >= 0 && matched > static_cast<size_t>(limit))
-                result["truncated"] = true;
-        }
-        if (args.contains("time_range") && args["time_range"].is_object() &&
-            args["time_range"].contains("end")) {
-            std::string req_end = args["time_range"]["end"].get<std::string>();
-            if (!req_end.empty() && result.contains("end") &&
-                result["end"].is_string() && result["end"] != req_end) {
-                npiFsdbTime parsed_end = 0;
-                std::string parse_error;
-                if (xdebug_waveform::parse_user_time(req_end.c_str(), true, parsed_end, parse_error)) {
-                    result["end"] = xdebug_core::format_time(g_fsdb_file, parsed_end);
-                }
-            }
         }
         return result;
     }

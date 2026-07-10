@@ -351,51 +351,42 @@ Json ai_signal_changes(const Json& args, std::string& error) {
     int limit = args.value("line_limit", 1000);
     std::string mode = args.value("mode", std::string("head"));
     bool aggregate_only = args.value("aggregate_only", false);
-    bool include_rows = args.value("include_rows", args.value("include_all_changes", false));
     npiFsdbValType fmt = json_value_format(args);
     fsdbTimeValPairVec_t changes;
     bool truncated = false;
     if (!read_signal_changes(signal, begin, end, fmt, changes, error, -1, &truncated)) return Json();
-    size_t row_count = changes.size();
-    bool includes_initial = row_count > 0;
-    size_t actual_transitions = includes_initial ? row_count - 1 : 0;
+    const size_t total_rows = changes.size();
+    const bool includes_initial = total_rows > 0;
+    const size_t actual_transitions = includes_initial ? total_rows - 1 : 0;
+    fsdbTimeValPairVec_t selected = changes;
+    bool response_truncated = false;
+    if (!aggregate_only && limit >= 0 && selected.size() > static_cast<size_t>(limit)) {
+        response_truncated = true;
+        if (mode == "tail") selected.erase(selected.begin(), selected.end() - limit);
+        else selected.erase(selected.begin() + limit, selected.end());
+    }
     Json data;
     data["summary"] = {
         {"signal", signal},
-        {"returned_change_rows", static_cast<int>(row_count)},
+        {"total_change_rows", static_cast<int>(total_rows)},
+        {"returned_change_rows", aggregate_only ? 0 : static_cast<int>(selected.size())},
         {"actual_transition_count", static_cast<int>(actual_transitions)},
-        {"truncated", truncated}
+        {"analysis_complete", !truncated},
+        {"truncated", response_truncated || truncated},
+        {"truncation_scope", truncated ? "analysis_samples" :
+                              response_truncated ? "response_rows" : "none"}
     };
-    data["signal"] = signal;
     data["begin"] = format_time(begin);
     data["end"] = format_time(end);
-    data["returned_change_rows"] = row_count;
     data["includes_initial_value"] = includes_initial;
-    data["actual_transition_count"] = actual_transitions;
     data["semantic_note"] = "signal.changes returns value-change rows for timeline inspection. Do not use row counts as sampled high cycles; use signal.statistics.high_cycles for clock-sampled activity.";
-    data["transition_count"] = actual_transitions;
-    data["truncated"] = truncated;
     if (!changes.empty()) {
         data["initial_value"] = wave_value_json(changes.front().second, json_value_prefix(fmt));
         data["final_value"] = wave_value_json(changes.back().second, json_value_prefix(fmt));
         data["first_change"] = format_time(changes.front().first);
         data["last_change"] = format_time(changes.back().first);
     }
-    if (row_count > 1000 && !include_rows && !aggregate_only) {
-        data["warnings"] = Json::array({
-            "signal.changes matched more than 1000 change rows. Compact output omits rows by default; use aggregate_only:true, mode:head/tail, or narrow time_range unless timeline rows are required."
-        });
-    }
-    if (include_rows && !aggregate_only) {
-        fsdbTimeValPairVec_t selected = changes;
-        if (limit >= 0 && selected.size() > static_cast<size_t>(limit)) {
-            if (mode == "tail") {
-                selected.erase(selected.begin(), selected.end() - limit);
-            } else {
-                selected.erase(selected.begin() + limit, selected.end());
-            }
-            data["truncated"] = true;
-        }
+    if (!aggregate_only) {
         data["mode"] = mode == "tail" ? "tail" : "head";
         bool rows_truncated = false;
         data["changes"] = changes_to_json(selected, json_value_prefix(fmt), -1, rows_truncated);
@@ -412,7 +403,6 @@ Json ai_signal_stability(const Json& args, std::string& error) {
     npiFsdbTime begin = 0, end = 0;
     if (!json_time_range(args, begin, end, error)) return Json();
     npiFsdbValType fmt = json_value_format(args);
-    bool truncated = false;
     npiFsdbSigHandle sig = npi_fsdb_sig_by_name(g_fsdb_file, signal.c_str(), NULL);
     if (!sig) {
         error = "Signal not found: " + signal;
@@ -445,12 +435,21 @@ Json ai_signal_stability(const Json& args, std::string& error) {
     }
 
     Json data;
-    data["signal"] = signal;
     data["begin"] = format_time(begin);
     data["end"] = format_time(end);
     data["changes"] = arr;
-    data["transition_count"] = arr.size();
-    data["truncated"] = truncated;
+    const size_t change_row_count = arr.size();
+    const size_t actual_transition_count = stable ? 0 : 1;
+    Json summary = {
+        {"signal", signal}, {"stable", stable},
+        {"change_row_count", static_cast<int>(change_row_count)},
+        {"actual_transition_count", static_cast<int>(actual_transition_count)},
+        {"analysis_complete", true},
+        {"scan_stopped_on_first_transition", !stable}
+    };
+    if (stable && !arr.empty()) summary["value"] = arr[0]["value"];
+    data["summary"] = summary;
+    data["includes_initial_value"] = change_row_count > 0;
     if (!arr.empty()) {
         data["initial_value"] = arr[0]["value"];
         data["final_value"] = arr[arr.size() - 1]["value"];
@@ -465,8 +464,6 @@ Json ai_signal_stability(const Json& args, std::string& error) {
             }
         }
     }
-    data["stable"] = stable;
-    if (stable && !arr.empty()) data["value"] = arr[0]["value"];
     return data;
 }
 

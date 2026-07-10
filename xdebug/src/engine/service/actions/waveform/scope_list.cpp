@@ -46,9 +46,26 @@ public:
 
         FILE* fp = tmpfile();
         if (!fp) return make_handler_error("INTERNAL_ERROR", "tmpfile failed");
-        npi_fsdb_hier_tree_dump_sig(g_fsdb_file, fp, path.c_str(),
-                                     recursive ? max_depth : 1);
+        int listed = npi_fsdb_hier_tree_dump_sig(g_fsdb_file, fp, path.c_str(),
+                                                  recursive ? max_depth : 1);
         fflush(fp); rewind(fp);
+
+        if (!listed) {
+            fclose(fp);
+            return make_handler_error(
+                path.empty() ? "SCOPE_LIST_FAILED" : "SCOPE_NOT_FOUND",
+                path.empty() ? "failed to list waveform roots" : "waveform scope not found: " + path,
+                {{"invalid_arg", "args.path"},
+                 {"missing_name", path},
+                 {"missing_resource", "waveform scope"},
+                 {"expected", "existing waveform scope path; use an empty path only for roots"},
+                 {"correct_example", {{"api_version", "xdebug.v1"},
+                                       {"action", "scope.list"},
+                                       {"target", {{"session_id", "wave0"}}},
+                                       {"args", {{"path", "top"}, {"recursive", true},
+                                                 {"max_depth", 3}}}}},
+                 {"next_actions", Json::array({"Call scope.roots to discover valid root paths."})}});
+        }
 
         Json scopes = Json::array();
         Json signals = Json::array();

@@ -18,6 +18,13 @@ std::string lower_copy(const std::string& s);
 bool contains_word_like(const std::string& text, const std::string& token);
 std::string next_token_after(const std::string& text, const std::string& key);
 
+struct ExprSyntaxValidation {
+    bool ok = true;
+    std::string message;
+    size_t offset = 0;
+};
+
+ExprSyntaxValidation validate_expr_syntax(const std::string& expr);
 json parse_expr_ast(const std::string& expr);
 std::string expr_op(const json& expr);
 bool expr_mentions_signal(const json& expr, const std::string& signal);

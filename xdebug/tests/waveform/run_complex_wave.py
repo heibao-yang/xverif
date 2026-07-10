@@ -183,6 +183,12 @@ def require_clock_summary(resp, edge, sample_point=None, expected_clock="ai_comp
             "missing sample time semantics: {}".format(json.dumps(summary, sort_keys=True)))
 
 
+def time_ns(value):
+    text = str(value).strip().lower()
+    require(text.endswith("ns"), "expected ns time, got {}".format(value))
+    return float(text[:-2])
+
+
 def normalize_sv_hex(value):
     text = str(value).strip().lower().replace("_", "")
     if text.startswith("'h"):
@@ -505,6 +511,8 @@ def run_nonaxi(xdebug, fsdb):
             if row["signal"] == "ai_complex_top.sig_a"
         ]
         require(hinted_rows and hinted_rows[0]["xbit_hints"]["status"] == "ready", "batch xbit hints not generated")
+        require(v["data"]["clock_context"] == batch_hint["data"]["clock_context"],
+                "value.at and value.batch_at must share one clock bracket contract")
         unsupported = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "clock": "ai_complex_top.clk", "time": "75ns", "format": "array_indexed"})
         require(unsupported["summary"]["status"] == "unsupported_format", "array_indexed unsupported diagnostic missing")
         r.query("value.at", args={"signal": "ai_complex_top.no_such", "clock": "ai_complex_top.clk", "time": "10ns"}, expect_ok=False)
@@ -803,7 +811,9 @@ def run_nonaxi(xdebug, fsdb):
         changes = r.query("signal.changes", args={"signal": "ai_complex_top.sig_a", "time_range": {"begin": "0ns", "end": "120ns"}, "line_limit": 2})
         require(changes["meta"]["truncated"] is True, "signal.changes did not truncate")
         stab = r.query("signal.stability", args={"signal": "ai_complex_top.stable_sig", "time_range": {"begin": "0ns", "end": "400ns"}})
-        require(stab["data"]["stable"] is True, "stable_sig should be stable")
+        require(stab["summary"]["stable"] is True, "stable_sig should be stable")
+        require(stab["summary"]["actual_transition_count"] == 0,
+                "stable initial value must not be counted as a transition")
         stats = r.query("signal.statistics", args={"signal": "ai_complex_top.hs_valid", "clock": "ai_complex_top.clk", "time_range": {"begin": "120ns", "end": "210ns"}, "line_limit": 1000})
         require_clock_summary(stats, "negedge")
         require(stats["summary"]["sample_count"] > 0 and stats["summary"]["known_count"] > 0, "signal.statistics did not sample")
@@ -828,6 +838,27 @@ def run_nonaxi(xdebug, fsdb):
         require(any(f.get("type") == "glitch" for f in anomaly["data"].get("findings", [])), "glitch not detected")
         require(any(f.get("type") == "unknown_xz" and f.get("value", {}).get("value") == "8'hzz"
                     for f in anomaly["data"].get("findings", [])), "Z finding not preserved in detect_abnormal JSON")
+        sampled_pulse = r.query("sampled_pulse.inspect", args={
+            "clock": "ai_complex_top.clk",
+            "valid": "ai_complex_top.glitch_sig",
+            "payload": "ai_complex_top.sig_a",
+            "edge": "posedge",
+            "time_range": {"begin": "0ns", "end": "140ns"},
+            "line_limit": 1,
+        })
+        require(sampled_pulse["summary"]["analysis_complete"] is True,
+                "sampled_pulse analysis must cover the complete requested window")
+        require(sampled_pulse["summary"]["returned_finding_count"] == 1,
+                "sampled_pulse line_limit must only limit returned findings")
+        require(sampled_pulse["summary"]["risk_count"] >= sampled_pulse["summary"]["returned_finding_count"],
+                "sampled_pulse risk_count must count all analyzed findings")
+        finding = sampled_pulse["data"]["findings"][0]
+        raw_begin = time_ns(finding["raw_begin"])
+        raw_end = time_ns(finding["raw_end"])
+        require(time_ns(finding["previous_sample_edge"]) <= raw_begin,
+                "sampled_pulse previous edge must bracket the raw pulse")
+        require(time_ns(finding["next_sample_edge"]) >= raw_end,
+                "sampled_pulse next edge must bracket the raw pulse")
         bad_checks = r.query("detect_abnormal", args={
             "signals": ["ai_complex_top.glitch_sig", "ai_complex_top.xz_bus"],
             "time_range": {"begin": "0ns", "end": "200ns"},
