@@ -47,7 +47,7 @@ import sys
 
 with open(sys.argv[1]) as f:
     data = json.load(f)["data"]
-assert "trace.active_driver" in data["implemented"]
+assert "trace.active_driver" in data["actions"]
 assert "signal.search" in data["removed"]
 PY
 
@@ -92,7 +92,7 @@ expect_ok design_open
 query design_only "{\"api_version\":\"xdebug.v1\",\"action\":\"trace.driver\",\"target\":{\"session_id\":\"design_case\"},\"args\":{\"signal\":\"active_driver_tb.u_dut.q\"},\"limits\":{\"max_results\":4}}"
 expect_ok design_only
 
-query compact_verify '{"api_version":"xdebug.v1","action":"verify.conditions","target":{"session_id":"wave_case"},"args":{"clock":"active_driver_tb.clk","time":"26ns","conditions":[{"signal":"active_driver_tb.u_dut.q","op":"==","value":"'\''hb2"},{"signal":"active_driver_tb.u_dut.q","op":"==","value":"'\''h00"}]}}'
+query compact_verify '{"api_version":"xdebug.v1","action":"verify.conditions","target":{"session_id":"wave_case"},"args":{"clock":"active_driver_tb.clk","time":"26ns","signals":{"q":"active_driver_tb.u_dut.q"},"conditions":[{"expr":"q == '\''hb2"},{"expr":"q == '\''h00"}]}}'
 python3 - "$TMP_HOME/wave_only.json" "$TMP_HOME/design_only.json" "$TMP_HOME/compact_verify.json" <<'PY'
 import json
 import sys
@@ -113,10 +113,10 @@ query combined_open "{\"api_version\":\"xdebug.v1\",\"action\":\"session.open\",
 expect_ok combined_open
 query_from_root combined_relative_open '{"api_version":"xdebug.v1","action":"session.open","target":{"daidir":"xdebug/testdata/combined/active_driver/out/simv.daidir","fsdb":"xdebug/testdata/combined/active_driver/out/waves.fsdb"},"args":{"name":"combined_relative"}}'
 expect_ok combined_relative_open
-query active_assignment '{"api_version":"xdebug.v1","action":"trace.active_driver","target":{"session_id":"combined_case"},"args":{"signal":"active_driver_tb.u_dut.q","time":"26ns","include_control":true,"include_parity":true}}'
-query active_force '{"api_version":"xdebug.v1","action":"trace.active_driver","target":{"session_id":"combined_case"},"args":{"signal":"active_driver_tb.u_dut.q","time":"40ns","include_control":true}}'
-query active_default '{"api_version":"xdebug.v1","action":"trace.active_driver","target":{"session_id":"combined_case"},"args":{"signal":"active_driver_tb.u_dut.comb_q","time":"51ns","include_control":true}}'
-query active_relative '{"api_version":"xdebug.v1","action":"trace.active_driver","target":{"session_id":"combined_relative"},"args":{"signal":"active_driver_tb.u_dut.q","time":"26ns","include_control":true}}'
+query active_assignment '{"api_version":"xdebug.v1","action":"trace.active_driver","target":{"session_id":"combined_case"},"args":{"signal":"active_driver_tb.u_dut.q","time":"26ns"}}'
+query active_force '{"api_version":"xdebug.v1","action":"trace.active_driver","target":{"session_id":"combined_case"},"args":{"signal":"active_driver_tb.u_dut.q","time":"40ns"}}'
+query active_default '{"api_version":"xdebug.v1","action":"trace.active_driver","target":{"session_id":"combined_case"},"args":{"signal":"active_driver_tb.u_dut.comb_q","time":"51ns"}}'
+query active_relative '{"api_version":"xdebug.v1","action":"trace.active_driver","target":{"session_id":"combined_relative"},"args":{"signal":"active_driver_tb.u_dut.q","time":"26ns"}}'
 python3 - "$TMP_HOME/active_assignment.json" "$TMP_HOME/active_force.json" "$TMP_HOME/active_default.json" "$TMP_HOME/active_relative.json" <<'PY'
 import json
 import sys
@@ -133,7 +133,7 @@ assert default["summary"]["path_count"] >= 0
 assert any(path["line"] == 20 for path in relative["data"]["paths"]), relative
 PY
 
-query session_active '{"api_version":"xdebug.v1","action":"trace.active_driver","target":{"session_id":"combined_case"},"args":{"signal":"active_driver_tb.u_dut.q","time":"26ns","include_control":true}}'
+query session_active '{"api_version":"xdebug.v1","action":"trace.active_driver","target":{"session_id":"combined_case"},"args":{"signal":"active_driver_tb.u_dut.q","time":"26ns"}}'
 expect_ok session_active
 python3 - "$TMP_HOME/session_active.json" <<'PY'
 import json
@@ -145,4 +145,4 @@ assert result["summary"]["path_count"] == len(result["data"]["paths"])
 assert any(path["line"] == 20 for path in result["data"]["paths"]), result
 PY
 
-printf 'PASS: xdebug JSON API, fallback modes, and active trace fixture\n'
+printf 'PASS: xdebug JSON API, resource modes, and active trace fixture\n'

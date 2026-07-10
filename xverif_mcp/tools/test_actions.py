@@ -168,7 +168,14 @@ async def _open_session(session, cfg):
 
 
 async def _close_session(session, cfg):
-    await session.call_tool("xverif_debug_session_close", {"name": cfg["session_name"]})
+    result = await session.call_tool("xverif_debug_session_close", {"name": cfg["session_name"]})
+    data = json.loads(result.content[0].text)
+    if not data.get("ok"):
+        raise RuntimeError(
+            "failed to close managed session {}: {}".format(
+                cfg["session_name"], data.get("error")
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -216,14 +223,13 @@ async def test_l2_basic(session: ClientSession, cfg: dict, action_args: dict) ->
             "action": action, "session_id": sn, "args": args, "output_format": "json",
         })
         data = json.loads(result.content[0].text)
-        if isinstance(data, dict):
+        if isinstance(data, dict) and data.get("ok") is True:
             passed += 1
-            ok = data.get("ok")
-            marker = f"{Colors.GREEN}OK{Colors.RESET}" if ok else f"{Colors.YELLOW}ERR{Colors.RESET}"
-            print(f"  {marker} ({'ok' if ok else 'err':3s}) {action} {json.dumps(args)}")
+            print(f"  {Colors.GREEN}OK{Colors.RESET}  (ok ) {action} {json.dumps(args)}")
         else:
             failed += 1
-            print(f"  {Colors.RED}FAIL{Colors.RESET} {action}: returned {type(data).__name__}")
+            error = data.get("error") if isinstance(data, dict) else {"response_type": type(data).__name__}
+            print(f"  {Colors.RED}FAIL{Colors.RESET} {action}: {error}")
 
     await _close_session(session, cfg)
     return passed, failed
@@ -261,18 +267,13 @@ async def test_with_signal(session: ClientSession, cfg: dict, signal: str) -> tu
             "action": action, "session_id": sn, "args": args, "output_format": "json",
         })
         data = json.loads(result.content[0].text)
-        if isinstance(data, dict):
+        if isinstance(data, dict) and data.get("ok") is True:
             passed += 1
-            ok = data.get("ok")
-            marker = f"{Colors.GREEN}OK{Colors.RESET}" if ok else f"{Colors.YELLOW}ERR{Colors.RESET}"
-            detail = ""
-            if not ok:
-                err = data.get("error", {})
-                detail = f" — {err.get('code', '?')}: {err.get('message', '?')[:60]}"
-            print(f"  {marker} {action} {detail}")
+            print(f"  {Colors.GREEN}OK{Colors.RESET} {action}")
         else:
             failed += 1
-            print(f"  {Colors.RED}FAIL{Colors.RESET} {action}: bad response type")
+            error = data.get("error") if isinstance(data, dict) else {"response_type": type(data).__name__}
+            print(f"  {Colors.RED}FAIL{Colors.RESET} {action}: {error}")
 
     # XOUT format test
     print(f"\n{Colors.CYAN}--- 输出格式测试 ---{Colors.RESET}")
@@ -295,7 +296,7 @@ async def discover_signal(session: ClientSession, cfg: dict) -> str | None:
     """尝试在真实数据中发现可用信号。优先用 config 中的 signal/clock。"""
     sn = cfg["session_name"]
     if not await _open_session(session, cfg):
-        return None
+        raise RuntimeError("failed to open managed discovery session {}".format(sn))
 
     # Strategy 0: try config signal/clock first
     for key in ("signal", "clock"):
@@ -361,20 +362,24 @@ async def main():
             pass  # skip L2/L3
         elif args.level in ("L2", "all"):
             # --- L2: Basic invocation ---
-            action_args = build_action_args(cfg["signal"], cfg["clock"], cfg["session_name"])
-            p, f = await test_l2_basic(session, cfg, action_args)
+            base_session_name = cfg["session_name"]
+            l2_cfg = {**cfg, "session_name": f"{base_session_name}_l2"}
+            action_args = build_action_args(cfg["signal"], cfg["clock"], l2_cfg["session_name"])
+            p, f = await test_l2_basic(session, l2_cfg, action_args)
             total_pass += p
             total_fail += f
 
             # --- Signal discovery ---
             print(f"\n{Colors.CYAN}Discovering signal...{Colors.RESET}", flush=True)
-            signal = await discover_signal(session, cfg)
+            discover_cfg = {**cfg, "session_name": f"{base_session_name}_discover"}
+            signal = await discover_signal(session, discover_cfg)
             if signal:
                 print(f"  {Colors.GREEN}Found: {signal}{Colors.RESET}", flush=True)
 
                 # --- L3: Full verification ---
                 if args.level in ("L3", "all"):
-                    p, f = await test_with_signal(session, cfg, signal)
+                    l3_cfg = {**cfg, "session_name": f"{base_session_name}_l3"}
+                    p, f = await test_with_signal(session, l3_cfg, signal)
                     total_pass += p
                     total_fail += f
             else:
