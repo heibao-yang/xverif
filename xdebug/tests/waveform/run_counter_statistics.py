@@ -30,8 +30,8 @@ def run_counter_statistics(xdebug, fsdb):
             "cnt": "ai_complex_top.counter_inc",
         })
         require(direct["summary"]["valid_count"] >= 4, "counter.statistics valid_count too small")
-        require(direct["data"]["min_value"] == "0", "counter.statistics min mismatch")
-        require(direct["data"]["max_value"] == "4", "counter.statistics max mismatch")
+        require(direct["summary"]["min_value"] == "0", "counter.statistics min mismatch")
+        require(direct["summary"]["max_value"] == "4", "counter.statistics max mismatch")
         require(direct["data"]["min_count"] == 1 and direct["data"]["max_count"] == 1, "counter.statistics min/max count mismatch")
         require("ns" in direct["data"]["min_first_time"], "counter.statistics missing min_first_time")
 
@@ -48,7 +48,7 @@ def run_counter_statistics(xdebug, fsdb):
             "cnt": "ai_complex_top.counter_inc",
         })
         require(expr["summary"]["valid_count"] == direct["summary"]["valid_count"], "expression vld valid_count mismatch")
-        require(expr["data"]["average_value"] == "2", "expression vld average mismatch")
+        require(expr["summary"]["average_value"] == "2", "expression vld average mismatch")
 
         concat = r.query("counter.statistics", args={
             "clock": "ai_complex_top.clk",
@@ -57,7 +57,7 @@ def run_counter_statistics(xdebug, fsdb):
             "vld": "ai_complex_top.rst_n",
             "cnt": "{ai_complex_top.sig_a,ai_complex_top.counter_inc}",
         })
-        require(int(concat["data"]["max_value"]) > 255, "concat counter max did not include high bits")
+        require(int(concat["summary"]["max_value"]) > 255, "concat counter max did not include high bits")
 
         r.query("cursor.set", args={"name": "cnt_begin", "time": "55ns"})
         r.query("cursor.set", args={"name": "cnt_end", "time": "95ns"})
@@ -68,8 +68,8 @@ def run_counter_statistics(xdebug, fsdb):
             "vld": "ai_complex_top.rst_n",
             "cnt": "ai_complex_top.counter_inc",
         })
-        require(cursor["data"]["min_value"] == direct["data"]["min_value"], "cursor window min mismatch")
-        require(cursor["data"]["max_value"] == direct["data"]["max_value"], "cursor window max mismatch")
+        require(cursor["summary"]["min_value"] == direct["summary"]["min_value"], "cursor window min mismatch")
+        require(cursor["summary"]["max_value"] == direct["summary"]["max_value"], "cursor window max mismatch")
 
         r.query("counter.statistics", args={
             "clock": "ai_complex_top.clk",

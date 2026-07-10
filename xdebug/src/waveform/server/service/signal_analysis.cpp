@@ -967,17 +967,9 @@ Json ai_counter_statistics(const Json& args, std::string& error) {
 
     Json data;
     data["summary"] = {
-        {"sampling_mode", "clock_edge"},
-        {"clock", clock_sample.clock},
-        {"edge", clock_edge_kind_text(clock_sample.edge)},
-        {"sample_time_semantics", "time is sample_time"},
         {"sample_count", samples},
-        {"valid_count", valid_count},
-        {"unknown_count", unknown_count},
-        {"truncated", truncated}
+        {"valid_count", valid_count}
     };
-    if (clock_sample.edge != ClockEdgeKind::Negedge)
-        data["summary"]["sample_point"] = clock_sample_point_text(clock_sample.sample_point);
     data["clock"] = clock;
     data["edge"] = clock_edge_kind_text(clock_sample.edge);
     if (clock_sample.edge != ClockEdgeKind::Negedge)
@@ -986,17 +978,16 @@ Json ai_counter_statistics(const Json& args, std::string& error) {
     data["sampling_mode"] = "clock_edge";
     data["begin"] = format_time(begin);
     data["end"] = format_time(end);
-    data["sample_count"] = samples;
-    data["valid_count"] = valid_count;
     data["valid_false_count"] = valid_false_count;
     data["unknown_count"] = unknown_count;
     data["truncated"] = truncated;
     data["cnt"] = args["cnt"];
     data["vld"] = args["vld"];
     if (have_value) {
-        data["min_value"] = u64_to_decimal(min_value);
-        data["max_value"] = u64_to_decimal(max_value);
-        data["average_value"] = long_double_to_decimal(sum / static_cast<long double>(valid_count));
+        data["summary"]["min_value"] = u64_to_decimal(min_value);
+        data["summary"]["max_value"] = u64_to_decimal(max_value);
+        data["summary"]["average_value"] =
+            long_double_to_decimal(sum / static_cast<long double>(valid_count));
         data["min_count"] = min_count;
         data["max_count"] = max_count;
         data["min_first_time"] = format_time(min_first_time);

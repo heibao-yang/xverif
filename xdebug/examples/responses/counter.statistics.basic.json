@@ -16,7 +16,6 @@
     "end": "200ns",
     "valid_false_count": 3,
     "unknown_count": 1,
-    "truncated": false,
     "cnt": "{top.cnt_hi,top.cnt_lo}",
     "vld": {
       "expr": "valid && ready",
@@ -29,5 +28,6 @@
     "max_count": 1,
     "min_first_time": "120ns",
     "max_first_time": "180ns"
-  }
+  },
+  "meta": {"truncated": false}
 }

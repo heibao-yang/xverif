@@ -1175,11 +1175,14 @@ change item：`time`、`time_ps`、`value`。
 | `summary.average_value` | string | 平均值 |
 | `data.clock` | string | clock |
 | `data.edge` | string | sampling edge |
+| `data.sample_point` | string | posedge/dual 的 before/after 采样点 |
+| `data.sampling_mode` | string | 固定为 `clock_edge` |
+| `data.sample_time_semantics` | string | 时间字段表示真实采样时间 |
 | `data.begin` | string | begin |
 | `data.end` | string | end |
 | `data.valid_false_count` | number | valid 为 false 的 sample 数 |
 | `data.unknown_count` | number | unknown sample 数 |
-| `data.truncated` | boolean | 是否截断 |
+| `meta.truncated` | boolean | 是否因 `line_limit` 截断 |
 | `data.cnt` | string/object | counter 表达式或信号 |
 | `data.vld` | string/object | valid 表达式或信号 |
 | `data.min_count` | number | 最小值出现次数 |
