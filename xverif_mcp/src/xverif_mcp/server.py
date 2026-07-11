@@ -29,76 +29,15 @@ from xverif_mcp.xdebug_errors import (
 # FastMCP application
 # ---------------------------------------------------------------------------
 
-INSTRUCTIONS = """
-xverif-mcp — https://github.com/BLANK2077/xverif
-
-Exposes deterministic local tools for chip verification debug agents.
-The xdebug and xcov backends are stateful and may run locally or through LSF.
-Other tools (xbit, xentry, xloc, xsva) are stateless in-process adapters.
-
-Typical workflow:
-1. Call xverif_tools to discover available tools.
-2. For debug queries: xverif_debug_session_open → xverif_debug_query.
-3. For coverage queries: xverif_cov_session_open → xverif_cov_query.
-4. For stateless queries: call the tool directly (e.g., xverif_bit_eval).
-
-Managed lifecycle is symmetric for debug and coverage:
-  session_open → session_list/session_doctor → session_close/session_kill → session_gc.
-Doctor is read-only; kill requires one exact name/session_id and never accepts all.
-Query tools reject native session.* actions (including coverage session.status).
-
-If xverif_debug_query returns error.code=SESSION_LOST:
-  - check error.terminal_source: "transport" means subprocess/LSF crash or timeout
-  - if timeout: inform user of possible causes (large data, LSF queue delay)
-    and let user decide — narrow query scope or increase timeout env vars
-  - inspect the managed tombstone with session_list(include_tombstones=true)
-  - call session_doctor; xdebug may still have a detached backend
-  - use exact session_kill and then session_gc before opening the same alias
-No automatic retry or reopen is performed by the server.
-
-Batch execution (xverif_batch):
-  Use xverif_batch when you need to run multiple tools in strict serial order,
-  especially for stateful workflows like session.open → query → session.close.
-  This avoids race conditions where a query might execute before the session is
-  ready.
-
-  IMPORTANT — nested args: tools like xverif_debug_query and xverif_cov_query
-  have their own "args" parameter.  In a batch line, the outer "args" maps to
-  the tool's MCP parameters, and the inner "args" maps to the action's arguments:
-    {"tool":"xverif_debug_query","args":{"session_id":"s0","action":"value.at","args":{"signal":"top.clk","time":"10ns","clock":"top.clk"}}}
-
-  Step 1 — write the batch file (bash inline):
-    cat > /tmp/batch.ndjson << 'EOF'
-    {"tool": "xverif_cov_session_open", "args": {"name": "s0", "vdb": "/path/to/merged.vdb"}}
-    {"tool": "xverif_cov_query", "args": {"session": "s0", "action": "cov.holes", "args": {"metrics": ["line"], "limits": {"max_items": 5}}, "output_format": "json"}}
-    {"tool": "xverif_cov_session_close", "args": {"name": "s0"}}
-    EOF
-
-  Or Python inline:
-    import json
-    reqs = [
-        {"tool": "xverif_cov_session_open", "args": {"name": "s0", "vdb": "/path/to/merged.vdb"}},
-        {"tool": "xverif_cov_query", "args": {"session": "s0", "action": "cov.holes", "args": {"metrics": ["line"], "limits": {"max_items": 5}}, "output_format": "json"}},
-        {"tool": "xverif_cov_session_close", "args": {"name": "s0"}},
-    ]
-    with open("/tmp/batch.ndjson", "w") as f:
-        for r in reqs: f.write(json.dumps(r) + "\\n")
-
-  Step 2 — call xverif_batch(batch_file="/tmp/batch.ndjson", output_file="/tmp/batch_results.ndjson").
-  Returns {total, ok_count, failed_count, output_file}.
-
-  Step 3 — read results (Python inline):
-    import json
-    with open("/tmp/batch_results.ndjson") as f:
-        for line in f:
-            r = json.loads(line)
-            # r["tool"], r["ok"], r["elapsed_ms"], r["error"]
-  Format errors (invalid JSON, missing tool field) appear as tool=null with ok=false.
-
-Output format: all tools default to output_format="xout" (compact AI-readable
-structured text, saves tokens vs JSON). Use output_format="json" only when you
-need structured data for programmatic analysis.
-"""
+INSTRUCTIONS = """xverif exposes deterministic chip-verification tools.
+xdebug and xcov are stateful; xbit, xentry, xloc and xsva are stateless.
+Discover tools with xverif_tools and action contracts with the corresponding
+catalog/schema tools. Stateful work uses session_open -> query -> session_close;
+debug and coverage queries both use session_id/action/args/limits/output_format.
+Use xverif_batch only for strict serial execution and keep action parameters
+inside the query tool's inner args. No automatic retry, reopen, backend,
+transport or data-source fallback is performed. Detailed workflows belong to
+the xverif and xverif-admin skills."""
 
 
 def _cleanup_stateful_sessions() -> None:
@@ -482,39 +421,29 @@ def xverif_cov_session_list(
 
 @xverif_tool("cov")
 def xverif_cov_session_doctor(
-    name: Optional[str] = None,
-    session_id: Optional[str] = None,
+    session_id: str,
     verbose: bool = False,
 ) -> dict:
     """Read-only health diagnosis for one managed xcov session."""
-    key = session_id or name
-    if not key:
-        return _tool_error("INVALID_ARGUMENT", "provide name or session_id")
-    return cov.session_doctor(key, verbose=verbose)
+    return cov.session_doctor(session_id, verbose=verbose)
 
 
 @xverif_tool("cov")
 def xverif_cov_session_close(
-    name: Optional[str] = None,
-    session_id: Optional[str] = None,
+    session_id: str,
 ) -> dict:
     """Close and cleanup an xcov session."""
-    key = session_id or name
-    if not key:
-        return _tool_error("INVALID_ARGUMENT", "provide name or session_id")
-    return cov.session_close(key)
+    return cov.session_close(session_id)
 
 
 @xverif_tool("cov")
 def xverif_cov_session_kill(
-    name: Optional[str] = None,
-    session_id: Optional[str] = None,
+    session_id: str,
 ) -> dict:
     """Terminate exactly one managed xcov loop session."""
-    key = session_id or name
-    if not key or key == "all":
-        return _tool_error("INVALID_ARGUMENT", "provide one exact name or session_id; all is not supported")
-    return cov.session_kill(key)
+    if session_id == "all":
+        return _tool_error("INVALID_ARGUMENT", "provide one exact session_id; all is not supported")
+    return cov.session_kill(session_id)
 
 
 @xverif_tool("cov")
@@ -525,7 +454,7 @@ def xverif_cov_session_gc(verbose: bool = False) -> dict:
 
 @xverif_tool("cov")
 def xverif_cov_query(
-    session: str,
+    session_id: str,
     action: str,
     args: Optional[dict] = None,
     limits: Optional[dict] = None,
@@ -541,7 +470,7 @@ def xverif_cov_query(
     return cov.query(
         action=action,
         args=args or {},
-        session=session,
+        session=session_id,
         limits=limits,
         output=output,
         output_format=output_format,

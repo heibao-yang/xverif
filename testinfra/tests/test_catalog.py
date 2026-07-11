@@ -25,7 +25,10 @@ def test_catalog_loads_and_ids_are_unique() -> None:
     assert "xsva.core" in ids
     assert "xeda_runner.unit" in ids
     assert "xdebug.cpp_unit" in ids
-    assert {"skills.xverif_cli", "skills.xverif_mcp", "skills.x_npi", "skills.xwiki"} <= set(ids)
+    assert {
+        "skills.xverif", "skills.xverif_admin", "skills.xeda_runner",
+        "skills.public_docs", "skills.x_npi", "skills.xwiki",
+    } <= set(ids)
 
 
 def test_gate_selection_is_monotonic() -> None:

@@ -49,10 +49,8 @@ VERDI_HOME=~/Synopsys/verdi/V-2023.12-SP2
 ```text
 xverif_cov_session_open
 xverif_cov_session_list
-xverif_cov_session_use
 xverif_cov_session_close
 xverif_cov_query
-xverif_cov_raw_request
 xverif_cov_list_actions
 xverif_cov_get_schema
 ```

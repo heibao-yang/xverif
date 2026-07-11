@@ -1,4 +1,4 @@
-.PHONY: all xdebug xbit xentry xloc xcov xwaveform clean install-all-skill install-xverif-cli-skill install-xverif-mcp-skill install-xwiki-skill install-x-npi-skill _install-agent-skill
+.PHONY: all xdebug xbit xentry xloc xcov xwaveform clean install-all-skill remove-legacy-xverif-skills install-xverif-skill install-xverif-admin-skill install-xeda-runner-skill install-xwiki-skill install-x-npi-skill _install-agent-skill
 
 PYTHON ?= python3
 
@@ -22,11 +22,14 @@ xcov:
 xwaveform:
 	$(MAKE) -C xwaveform
 
-install-xverif-cli-skill:
-	$(MAKE) _install-agent-skill SKILL_SRC=skills/xverif-cli SKILL_NAME=xverif-cli
+install-xverif-skill:
+	$(MAKE) _install-agent-skill SKILL_SRC=skills/xverif SKILL_NAME=xverif
 
-install-xverif-mcp-skill:
-	$(MAKE) _install-agent-skill SKILL_SRC=skills/xverif-mcp SKILL_NAME=xverif-mcp
+install-xverif-admin-skill:
+	$(MAKE) _install-agent-skill SKILL_SRC=skills/xverif-admin SKILL_NAME=xverif-admin
+
+install-xeda-runner-skill:
+	$(MAKE) _install-agent-skill SKILL_SRC=skills/xeda-runner SKILL_NAME=xeda-runner
 
 install-xwiki-skill:
 	$(MAKE) _install-agent-skill SKILL_SRC=skills/xwiki SKILL_NAME=xwiki
@@ -34,7 +37,19 @@ install-xwiki-skill:
 install-x-npi-skill:
 	$(MAKE) _install-agent-skill SKILL_SRC=skills/x-npi SKILL_NAME=x-npi
 
-install-all-skill:
+remove-legacy-xverif-skills:
+	@set -eu; \
+	for home in "$$HOME/.codex" "$$HOME/.claude"; do \
+		for legacy in xverif-cli xverif-mcp; do \
+			dst="$$home/skills/$$legacy"; \
+			if [ -e "$$dst" ]; then \
+				echo "==> Removing retired skill $$dst"; \
+				rm -rf "$$dst"; \
+			fi; \
+		done; \
+	done
+
+install-all-skill: remove-legacy-xverif-skills
 	@set -eu; \
 	found=0; \
 	for skill_md in skills/*/SKILL.md; do \

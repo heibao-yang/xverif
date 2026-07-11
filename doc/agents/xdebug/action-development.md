@@ -101,12 +101,11 @@
 必须检查：
 
 - `xdebug/docs/action-inventory.md`
-- `skills/xverif-cli/references/xdebug/action-reference.md`
-- `skills/xverif-cli/references/xdebug/json-api.md`
-- `skills/xverif-cli/references/xdebug/response-fields.md`
-- `skills/xverif-mcp/references/xdebug/action-reference.md`
-- `skills/xverif-mcp/references/xdebug/json-api.md`
-- `skills/xverif-mcp/references/xdebug/response-fields.md`
+- `skills/xverif/references/capabilities/xdebug.md`
+- `skills/xverif/references/generated/xdebug-actions.md`
+- `skills/xverif/references/xdebug/json-api.md`
+- `skills/xverif/references/xdebug/response-fields.md`
+- `skills/xverif/specs/examples.yaml`
 - 两个 skill 中相关 recipe/example 文档
 - 本目录说明书相关页面
 
