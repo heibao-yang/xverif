@@ -148,7 +148,6 @@ class LoopWrapperService:
                 action=action,
                 args=params.get("args") or {},
                 limits=params.get("limits"),
-                output=params.get("output"),
                 output_format=params.get("output_format", "xout"),
             )
         if method == "cov.session.open":
@@ -202,6 +201,19 @@ class LoopWrapperServer:
         self._server_socket: Optional[socket.socket] = None
         self._threads: list[threading.Thread] = []
         self._created_socket = False
+        self._ready = threading.Event()
+        self._startup_finished = threading.Event()
+        self._startup_error: Optional[BaseException] = None
+
+    def wait_until_ready(self, timeout_sec: float) -> None:
+        if not self._startup_finished.wait(timeout_sec):
+            raise TimeoutError(
+                f"loop wrapper server did not finish startup within {timeout_sec} seconds")
+        if self._startup_error is not None:
+            raise RuntimeError(
+                f"loop wrapper server startup failed: {self._startup_error}") from self._startup_error
+        if not self._ready.is_set():
+            raise RuntimeError("loop wrapper server startup finished without becoming ready")
 
     def serve_forever(self) -> None:
         path = Path(self.socket_path)
@@ -211,10 +223,17 @@ class LoopWrapperServer:
         log_uds_event("uds.listen.begin", True, socket_path=self.socket_path)
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as srv:
             self._server_socket = srv
-            srv.bind(self.socket_path)
-            self._created_socket = True
-            srv.listen()
-            srv.settimeout(0.2)
+            try:
+                srv.bind(self.socket_path)
+                self._created_socket = True
+                srv.listen()
+                srv.settimeout(0.2)
+            except Exception as exc:
+                self._startup_error = exc
+                self._startup_finished.set()
+                raise
+            self._ready.set()
+            self._startup_finished.set()
             log_uds_event("uds.listen.ready", True, socket_path=self.socket_path)
             while not self._stop.is_set():
                 try:

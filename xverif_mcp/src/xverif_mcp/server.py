@@ -405,7 +405,6 @@ def xverif_debug_query(
     action: str,
     args: Optional[dict] = None,
     limits: Optional[dict] = None,
-    output: Optional[dict] = None,
     output_format: str = "xout",
 ) -> Any:
     """Run an xdebug action through a loop session.
@@ -421,7 +420,6 @@ def xverif_debug_query(
         session_id: Explicit session alias or session_id returned by session_open.
         args: Action-specific arguments dict.
         limits: Query limits dict (max_rows, timeout, etc.).
-        output: Output control dict (rarely needed).
         output_format:
             "xout" (default) — AI-readable structured text.
             "json" — raw xdebug JSON dict.
@@ -437,7 +435,6 @@ def xverif_debug_query(
         args=args or {},
         session=session_id,
         limits=limits,
-        output=output,
         output_format=output_format,
     )
 
@@ -459,17 +456,6 @@ def xverif_cov_get_schema(action: str, kind: str = "request") -> dict:
     if kind not in ("request", "response"):
         return _tool_error("INVALID_ARGUMENT", "kind must be 'request' or 'response'")
     return cov.schema(action, kind)
-
-
-@xverif_tool("cov")
-def xverif_cov_raw_request(request: dict, output_format: str = "xout") -> Any:
-    """Run a complete xcov JSON request one-shot."""
-    if not isinstance(request, dict):
-        return _tool_error("INVALID_ARGUMENT", "request must be a JSON object")
-    if output_format not in ("xout", "json", "envelope"):
-        return _tool_error("INVALID_ARGUMENT",
-                           "output_format must be 'xout', 'json', or 'envelope'")
-    return cov.request(request, output_format)
 
 
 @xverif_tool("cov")
@@ -876,9 +862,6 @@ TOOL_CATALOG = [
     {"name": "xverif_cov_get_schema", "category": "cov", "backend": "xcov",
      "stateful": False, "requires_session": False,
      "description": "Return an xcov action schema."},
-    {"name": "xverif_cov_raw_request", "category": "cov", "backend": "xcov",
-     "stateful": False, "requires_session": False,
-     "description": "Run a complete xcov JSON request one-shot."},
     {"name": "xverif_cov_session_open", "category": "cov", "backend": "xcov",
      "stateful": True, "requires_session": True,
      "description": "Open a loop-backed xcov coverage database session."},
@@ -900,22 +883,6 @@ TOOL_CATALOG = [
     {"name": "xverif_cov_query", "category": "cov", "backend": "xcov",
      "stateful": True, "requires_session": True,
      "description": "Run an xcov action through a coverage session."},
-    # wave aliases
-    {"name": "xverif_wave_value_at", "category": "debug", "backend": "xdebug",
-     "stateful": True, "requires_session": True,
-     "description": "Get signal value at a time (alias for value.at)."},
-    {"name": "xverif_wave_changes", "category": "debug", "backend": "xdebug",
-     "stateful": True, "requires_session": True,
-     "description": "Get all value changes in a time window (alias for signal.changes)."},
-    {"name": "xverif_wave_generate_rc", "category": "debug", "backend": "xdebug",
-     "stateful": True, "requires_session": True,
-     "description": "Generate RC from config (alias for rc.generate)."},
-    {"name": "xverif_waveform_render_list", "category": "debug", "backend": "xdebug+xwaveform",
-     "stateful": True, "requires_session": True,
-     "description": "Export an xdebug signal list and render a fixed-width JPG waveform."},
-    {"name": "xverif_design_trace_driver", "category": "debug", "backend": "xdebug",
-     "stateful": True, "requires_session": True,
-     "description": "Trace the driver of a signal (alias for trace.driver)."},
     # bit
     {"name": "xverif_bit_convert", "category": "bit", "backend": "xbit",
      "stateful": False, "requires_session": False,
@@ -1002,154 +969,6 @@ def xverif_tool_help(name: str) -> dict:
         if t["name"] == name:
             return _tool_error("TOOL_NOT_ENABLED", f"tool is disabled by MCP policy: {name}")
     return _tool_error("TOOL_NOT_FOUND", f"tool not found: {name}")
-
-
-# ---------------------------------------------------------------------------
-# High-frequency debug aliases (shortcuts for xverif_debug_query)
-# ---------------------------------------------------------------------------
-
-
-@xverif_tool("debug")
-def xverif_wave_value_at(signal: str, clock: str, time: str = "0ns",
-                          session_id: str = "",
-                          output_format: str = "xout") -> Any:
-    """Get a signal value at a specific time (alias for value.at).
-
-    Args:
-        signal: Full hierarchical signal path.
-        clock: Sampling clock signal path.
-        time: Target time string (e.g. "100ns", "1us").
-        session_id: Explicit session alias or session_id.
-        output_format: "xout", "json", or "envelope".
-    """
-    return debug.query(action="value.at", args={"signal": signal, "time": time, "clock": clock},
-                       session=session_id, output_format=output_format)
-
-
-@xverif_tool("debug")
-def xverif_wave_changes(signal: str, begin: str = "0ns",
-                                end: str = "100ns",
-                                session_id: str = "",
-                                output_format: str = "xout") -> Any:
-    """Get all value changes for a signal in a time window.
-
-    Args:
-        signal: Full hierarchical signal path.
-        begin: Start time (e.g. "0ns").
-        end: End time (e.g. "100ns").
-        session_id: Explicit session alias or session_id.
-        output_format: "xout", "json", or "envelope".
-    """
-    return debug.query(action="signal.changes",
-                       args={"signal": signal, "time_range": {"begin": begin, "end": end}},
-                       session=session_id, output_format=output_format)
-
-
-@xverif_tool("debug")
-def xverif_wave_generate_rc(config_path: str, path: str,
-                              session_id: str = "",
-                              output_format: str = "xout") -> Any:
-    """Generate recovery context from config (alias for rc.generate).
-
-    Args:
-        config_path: Path to RC config file.
-        path: Output path for generated RC.
-        session_id: Explicit session alias or session_id.
-        output_format: "json" or "xout".
-    """
-    return debug.query(action="rc.generate",
-                       args={"config_path": config_path, "output": {"path": path}},
-                       session=session_id, output_format=output_format)
-
-
-@xverif_tool("debug")
-def xverif_waveform_render_list(
-    session_id: str,
-    name: str,
-    begin: str,
-    end: str,
-    output_dir: str = "",
-    image_file: str = "",
-    width: int = 4096,
-    height_per_signal: int = 24,
-    cursor_count: int = 32,
-    export_format: str = "u64bin",
-    image_format: str = "jpg",
-) -> dict:
-    """Export a waveform list and render a fixed-width JPG image."""
-    if image_format.lower() not in ("jpg", "jpeg"):
-        return _tool_error("INVALID_ARGUMENT", "image_format must be 'jpg'")
-    if export_format != "u64bin":
-        return _tool_error("INVALID_ARGUMENT", "xwaveform rendering requires export_format='u64bin'")
-    args: dict[str, Any] = {
-        "name": name,
-        "time_range": {"begin": begin, "end": end},
-        "format": export_format,
-    }
-    if output_dir:
-        args["output"] = {"path": output_dir}
-    exported = debug.query(
-        session=session_id,
-        action="list.export",
-        args=args,
-        output_format="json",
-    )
-    if not isinstance(exported, dict) or not exported.get("ok"):
-        return exported if isinstance(exported, dict) else _tool_error("EXPORT_FAILED", str(exported))
-    data = exported.get("data", {})
-    manifest = data.get("manifest_file")
-    export_dir = data.get("output_dir") or output_dir
-    if not manifest or not export_dir:
-        return _tool_error("EXPORT_FAILED", "list.export did not return manifest_file/output_dir")
-    if not image_file:
-        image_file = str(export_dir).rstrip("/") + "/wave.jpg"
-
-    from xverif_mcp.runner import StatelessCliRunner
-    rendered = StatelessCliRunner().run_json(
-        "xwaveform",
-        [
-            "render",
-            "--manifest", str(manifest),
-            "--output", str(image_file),
-            "--width", str(width),
-            "--height-per-signal", str(height_per_signal),
-            "--cursor-count", str(cursor_count),
-            "--json",
-        ],
-    )
-    if not isinstance(rendered, dict) or not rendered.get("ok"):
-        return rendered if isinstance(rendered, dict) else _tool_error("RENDER_FAILED", str(rendered))
-    return {
-        "ok": True,
-        "export_dir": export_dir,
-        "manifest_file": manifest,
-        "image_file": rendered.get("image_file"),
-        "stats_file": rendered.get("stats_file"),
-        "signal_count": rendered.get("signal_count", data.get("signal_count")),
-        "row_count": rendered.get("row_count", data.get("row_count")),
-        "format": data.get("format"),
-        "image_format": "jpg",
-        "width": rendered.get("width", width),
-        "cursor_count": rendered.get("cursor_count", cursor_count),
-        "time_direction": "left_to_right",
-    }
-
-
-@xverif_tool("debug")
-def xverif_design_trace_driver(signal: str, time: str = "0ns",
-                                session_id: str = "",
-                                output_format: str = "xout") -> Any:
-    """Trace the active driver of a signal at a specific time.
-
-    Args:
-        signal: Full hierarchical signal path.
-        time: Target time string.
-        session_id: Explicit session alias or session_id.
-        output_format: "xout", "json", or "envelope".
-    """
-    return debug.query(action="trace.driver",
-                       args={"signal": signal, "time": time},
-                       session=session_id, output_format=output_format)
 
 
 # ---------------------------------------------------------------------------

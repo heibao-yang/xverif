@@ -69,12 +69,8 @@ def _start_server(tmp_path: Path, service: LoopWrapperService) -> tuple[LoopWrap
     server = LoopWrapperServer(sock, service=service)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    deadline = time.time() + 5
-    while time.time() < deadline:
-        if Path(sock).exists():
-            return server, thread, sock
-        time.sleep(0.01)
-    raise AssertionError("server socket was not created")
+    server.wait_until_ready(timeout_sec=5.0)
+    return server, thread, sock
 
 
 def _send_raw(socket_path: str, payload: str) -> dict:
