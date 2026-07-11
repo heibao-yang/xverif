@@ -36,6 +36,12 @@ xentry 把多拍 byte fragments 按 config 切成 raw field slices。不要让 L
 {"tool":"xverif_entry_explain","args":{"config_path":"entry.yaml"}}
 ```
 
+只校验 config/fragments 而不生成 decode 结果时使用：
+
+```json
+{"tool":"xverif_entry_validate","args":{"config_path":"entry.yaml","input_path":"fragments.jsonl"}}
+```
+
 ## 规则
 
 - config 必须声明 `total_bits`、`fragment_byte_order`、`bit_numbering`、`fields`。

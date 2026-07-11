@@ -4,7 +4,7 @@
 
 ## MCP 入口规则
 
-MCP 场景下，本文所有原生 xdebug action 都通过 `xverif_debug_query` 进入：先 `xverif_debug_session_open` 得到 session，再把 `action`/`args`/`limits`/`output` 传给 query。MCP xdebug 不暴露原生 envelope raw request；需要完整原生 envelope 时使用 `xverif-cli`。
+MCP 场景下，本文所有原生 xdebug action 都通过 `xverif_debug_query` 进入：先 `xverif_debug_session_open` 得到 session，再把 `action`/`args`/`limits` 传给 query。action 专用输出配置只放在对应 schema 允许的 `args.output`。MCP xdebug 不暴露原生 envelope raw request；需要完整原生 envelope 时使用 `xverif-cli`。
 
 ## 通用原则
 

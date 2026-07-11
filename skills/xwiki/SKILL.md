@@ -79,6 +79,8 @@ case fail debug 结束后必须写回 wiki：
 - testbench、UVM env、RM、checker、scoreboard、sequence、配置、脚本、仿真参数或 DV 假设问题写入 `dv_issue`。
 - 如果根因未完全确认，仍要更新对应候选 issue 页面，把结论标为未确认，并记录下一步需要的证据。
 
+根因主题与存储对象固定映射：`env_bug` 写入 `dv_issue/`，`rtl_bug` 写入 `de_issue/rtl/`，`spec_bug` 写入 `de_issue/spec/`。主题名用于问题分类，frontmatter 的 `object_type` 仍只能使用 `dv_issue` 或 `de_issue`，不能写成 `env_bug`、`rtl_bug`、`spec_bug`。
+
 详细流程见 [references/compile-process.md](references/compile-process.md)。
 
 ## Wiki 格式

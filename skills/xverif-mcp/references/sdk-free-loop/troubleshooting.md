@@ -26,3 +26,4 @@
 - ready timeout：检查 LSF 队列、backend 是否能启动、`XVERIF_LOOP_STARTUP_TIMEOUT_SEC`。
 - query timeout：先缩小 time_range/limits，再考虑增大 `XVERIF_LOOP_REQUEST_TIMEOUT_SEC`。
 - UDS bind 失败：检查 socket path 目录权限和旧 socket 文件。
+- server 启动后立即 `ECONNREFUSED`：socket 文件存在只说明 `bind()` 已完成，不代表已经 `listen()`；测试或编排必须等待明确 ready，不使用固定 sleep 或静默重试。

@@ -7,7 +7,7 @@
 有 MCP client 且 MCP SDK 可用时，AI agent 调用 xdebug 能力应优先走 MCP 托管 session：
 
 1. 用 `xverif_debug_session_open` 打开 design/waveform/combined session。
-2. 用 `xverif_debug_query` 传 `action`、`args`、`limits`、`output` 调用本文列出的 xdebug 原生 action。
+2. 用 `xverif_debug_query` 传 `action`、`args`、`limits` 调用本文列出的 xdebug 原生 action；action 专用输出配置只放在 schema 允许的 `args.output`。
 3. xdebug MCP 不暴露原生 envelope raw request；不要把 `api_version`、`target` 或完整 `xdebug.v1` request 放进 MCP query。
 4. 需要完整 xdebug envelope 控制或验证 CLI 行为时，改用 `xverif-cli` 的 native CLI 入口。
 

@@ -11,6 +11,10 @@ xsva 把 SystemVerilog Assertion 编译为 Surface IR、Sequence IR、Timeline I
 ```
 
 ```json
+{"tool":"xverif_sva_scan_constructs","args":{"file":"input.sva"}}
+```
+
+```json
 {"tool":"xverif_sva_parse_property","args":{"file":"input.sva","property":"p_name","emit":"timeline-ir"}}
 ```
 

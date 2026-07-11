@@ -27,6 +27,10 @@ xbit 是确定性 bit/value/expression calculator。遇到 SV literal、slice、
 {"tool":"xverif_bit_eval","args":{"expr":"valid && ready","vars":{"valid":"1'b1","ready":"1'b0"}}}
 ```
 
+```json
+{"tool":"xverif_bit_check","args":{"expr":"opcode & 4'hf","values":"4'ha"}}
+```
+
 ## 读取规则
 
 - 先看 `ok`。

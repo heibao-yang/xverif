@@ -5,7 +5,7 @@ MCP 的 xdebug/xcov stateful session 通过同一套 stdio-loop session manager 
 ## xdebug
 
 - `xverif_debug_session_open(name, fsdb=None, daidir=None, queue=None, resource=None)`
-- `xverif_debug_query(session_id, action, args=None, limits=None, output=None, output_format="xout")`
+- `xverif_debug_query(session_id, action, args=None, limits=None, output_format="xout")`
 - `xverif_debug_session_list(include_tombstones=False, verbose=False)`
 - `xverif_debug_session_doctor(name=..., session_id=..., verbose=False)`
 - `xverif_debug_session_close(name=..., session_id=...)`
