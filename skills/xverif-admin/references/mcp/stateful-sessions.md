@@ -38,3 +38,6 @@ MCP 的 xdebug/xcov stateful session 通过同一套 stdio-loop session manager 
 - 两类 session-open 的 `run_manifest` 均为可选路径。提供时会在启动后端前校验
   `state:"published"`、相对资源路径、`size_bytes` 与 SHA-256；xdebug 使用
   `xdebug.run-manifest.v1`（`fsdb`/`daidir`），xcov 使用 `xcov.run-manifest.v1`（`vdb`）。
+- xdebug 的 JSON 响应 `tool` 元数据包含 `build_id`、`git_revision` 和
+  `schema_revision`；会话列表中的 `resource_identity.manifest_sha256` 只是 wrapper
+  对已提供 manifest 的摘要，实际 provenance 校验仍由 native session.open 完成。

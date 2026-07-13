@@ -7,3 +7,6 @@
 - session/transport/LSF/timeout 排障转 `xverif-admin`，不自动 reopen 或 fallback。
 - `run_manifest` 可选；提供时必须是已发布的对应 `*.run-manifest.v1`，资源路径相对
   manifest 文件，校验不匹配会返回 `RESOURCE_PROVENANCE_MISMATCH`，不会启动后端。
+- xdebug 完成仿真后可用 `xdebug/tools/publish_run_manifest.py --fsdb waves.fsdb
+  --output run-manifest.json` 原子发布 manifest；MCP session 元数据中的
+  `resource_identity` 同时报告路径摘要、stat 快照和声明的 manifest 摘要，不能把路径摘要当作内容摘要。

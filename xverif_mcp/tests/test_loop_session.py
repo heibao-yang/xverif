@@ -205,6 +205,25 @@ class TestLoopSessionOpen:
         finally:
             s.close(force=True)
 
+    def test_public_json_reports_stat_and_declared_manifest_identity(self, fake_xdebug_bin, tmp_path):
+        fsdb = tmp_path / "waves.fsdb"
+        manifest = tmp_path / "run-manifest.json"
+        fsdb.write_bytes(b"fixture")
+        manifest.write_text('{"state":"published"}\n', encoding="utf-8")
+        s = XdebugLoopSession(
+            alias="identity_test", fsdb=str(fsdb), daidir=None,
+            run_manifest=str(manifest), launcher=DirectLauncher(),
+            xdebug_bin=fake_xdebug_bin, startup_timeout_sec=5.0,
+            request_timeout_sec=5.0,
+        )
+        try:
+            identity = s.public_json()["resource_identity"]
+            assert identity["content_identity"] == "manifest_declared"
+            assert identity["stat"]["size_bytes"] == len(b"fixture")
+            assert identity["manifest_sha256"]
+        finally:
+            s.close(force=True)
+
     def test_launcher_start_failure_returns_structured_open_error(self):
         class MissingLauncher(DirectLauncher):
             def start(self, cfg):

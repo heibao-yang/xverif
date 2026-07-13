@@ -579,7 +579,10 @@ class XdebugLoopSession:
                 try:
                     identity["manifest_sha256"] = hashlib.sha256(
                         Path(self.run_manifest).read_bytes()).hexdigest()
-                    identity["content_identity"] = "verified_manifest"
+                    # The native xdebug/xcov backend verifies the manifest at
+                    # open time.  This wrapper only reports its own digest, so
+                    # do not claim that the digest itself performed validation.
+                    identity["content_identity"] = "manifest_declared"
                 except OSError:
                     identity["manifest_sha256"] = None
             out["resource_identity"] = identity

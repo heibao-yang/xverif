@@ -51,7 +51,7 @@ def main() -> int:
                                       "resources": {"fsdb": resource(Path(args.fsdb), output)}}
         if args.daidir:
             payload["resources"]["daidir"] = resource(Path(args.daidir), output)
-    except ValueError as exc:
+    except (OSError, ValueError) as exc:
         parser.error(str(exc))
     output.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix=f".{output.name}.", dir=output.parent)

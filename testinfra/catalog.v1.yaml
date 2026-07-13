@@ -101,7 +101,11 @@ suites:
     level: static
     intent: [contract]
     domains: [schema, action]
-    runner: {kind: pytest, path: xdebug/tests/static/test_static_contracts.py}
+    runner:
+      kind: pytest
+      paths:
+        - xdebug/tests/static/test_static_contracts.py
+        - xdebug/tests/static/test_publish_run_manifest.py
     hermetic: true
     deterministic: true
     cost: {class: fast, estimate_sec: 5}
