@@ -46,7 +46,6 @@
 - `xentry/`：entry、descriptor、header、fragment 等结构化字段解析工具。
 - `xloc/`：压缩日志位置 ID 与源码位置之间的还原、统计和标注工具。
 - `xsva/`：SVA 解析、IR 生成和语义解释工具。
-- `xeda_runner/`：安全执行 make、VCS、simv、Verdi 等 EDA 命令的 runner。
 - `xverif_mcp/`：把 xverif 工具暴露给 MCP client 的 server、adapter 和测试。
 - `skills/`：面向 Codex/Claude 等 agent 的工具使用说明、reference、脚本和可安装 skill。
 - `doc/`：项目级报告、计划、架构说明和临时交付文档。

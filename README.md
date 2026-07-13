@@ -1,6 +1,6 @@
 # xverif
 
-`xverif` 是面向芯片验证 debug agent 的本地工具仓库，当前包含六个核心工具、一个持续记忆 skill、一个统一 MCP 入口和一个 EDA 命令执行器：
+`xverif` 是面向芯片验证 debug agent 的本地工具仓库，当前包含六个核心工具、一个持续记忆 skill 和一个统一 MCP 入口：
 
 - [`xdebug`](xdebug/README.md)：查询设计数据库和波形数据库里的事实。
 - [`xbit`](xbit/README.md)：确定性计算 bit、literal、slice、表达式和 expected value。
@@ -10,9 +10,8 @@
 - [`xsva`](xsva/README.md)：把 SystemVerilog Assertion 编译为结构化 IR，并生成确定性解释和可视化。
 - [`xcov`](xcov/README.md)：查询 VCS/Verdi coverage database，输出 compact coverage evidence。
 - [`xverif-mcp`](xverif_mcp/README.md)：统一 MCP server，xdebug/xcov 作为 stateful backend，其他工具以 stateless CLI adapter 接入。
-- [`xeda-runner`](xeda_runner/README.md)：带环境快照缓存的阻塞式 EDA 命令执行器（非 MCP，独立 CLI）。
 
-简单说：`xdebug` 负责“事实从哪里来、某时刻发生了什么”，`xbit` 负责“这些值按 SystemVerilog 规则算出来到底是多少”，`xentry` 负责“这个 entry 的 bit 域段按配置切出来是什么”，`xloc` 负责“这条 log 在哪个文件的哪一行，但只在需要时才查”，`xwiki` 负责“把验证环境、DUT 功能、workflow、debug 入口等知识编译进持续 LLM wiki”，`xsva` 负责”assertion 的 temporal 语义先降成 IR，再解释给人和 agent”，`xcov` 负责“coverage database 里哪些 scope/object/bin 已覆盖或未覆盖，并给出源码 evidence”，`xverif-mcp` 负责”把确定性工具统一暴露给 AI agent 的 MCP 协议入口”，`xeda-runner` 负责”在预配置的安全白名单内执行 EDA 命令，先 init 缓存环境再 run 阻塞执行”。
+简单说：`xdebug` 负责“事实从哪里来、某时刻发生了什么”，`xbit` 负责“这些值按 SystemVerilog 规则算出来到底是多少”，`xentry` 负责“这个 entry 的 bit 域段按配置切出来是什么”，`xloc` 负责“这条 log 在哪个文件的哪一行，但只在需要时才查”，`xwiki` 负责“把验证环境、DUT 功能、workflow、debug 入口等知识编译进持续 LLM wiki”，`xsva` 负责”assertion 的 temporal 语义先降成 IR，再解释给人和 agent”，`xcov` 负责“coverage database 里哪些 scope/object/bin 已覆盖或未覆盖，并给出源码 evidence”，`xverif-mcp` 负责”把确定性工具统一暴露给 AI agent 的 MCP 协议入口”。
 
 ## 工具概览
 
@@ -183,28 +182,6 @@ MCP 工具入口使用对称的 `xverif_cov_session_open/list/doctor/close/kill/
 
 完整说明见 [`xcov/README.md`](xcov/README.md)，agent 能力说明见 [`skills/xverif/references/xcov.md`](skills/xverif/references/xcov.md)，MCP 运行环境问题见 [`skills/xverif-admin/SKILL.md`](skills/xverif-admin/SKILL.md)。
 
-### xeda-runner
-
-`xeda-runner` 是带环境快照缓存的阻塞式 allowlist EDA 命令执行器。它先通过 `init` 缓存 `tcsh/module/setup` 环境为 env0 快照，`run` 时读取快照并按配置白名单构造 argv、校验 target/option、阻塞执行并透传 exit code。纯 Python 标准库，零 pip 依赖，支持 bash/zsh/tcsh。
-
-适合的问题：
-
-- 在预配置的安全白名单内执行 `make`、`vcs`、`simv` 等 EDA 命令。
-- 让 AI agent 只能通过限定 action/target/option 调用底层工具，避免绕过环境或拼 raw command。
-- 需要执行超长任务（>5 分钟）时配合 `tmux`/`nohup` 保证不被 terminal 生命周期影响。
-
-入口示例：
-
-```bash
-xeda-runner init
-xeda-runner list-actions
-xeda-runner describe-action --action sim
-xeda-runner run --action sim --target compile --option TEST=smoke_test --dry-run
-xeda-runner run --action sim --target compile --option TEST=smoke_test --option SEED=123
-```
-
-完整说明见 [`xeda_runner/README.md`](xeda_runner/README.md)，执行型 skill 见 [`skills/xeda-runner/SKILL.md`](skills/xeda-runner/SKILL.md)。
-
 ## 推荐 Shell 入口
 
 为了在任意目录和非交互 shell 中稳定调用，建议把统一 wrapper 目录加入 `PATH`。示例中的 `<xverif-root>` 表示本仓库根目录，请按本机实际路径替换。
@@ -232,8 +209,6 @@ xentry '{"api_version":"xentry.v1","action":"explain","config_path":"xentry/exam
 xloc resolve L_00000001 --map out/sim.log.xloc.jsonl
 xsva list --file xsva/tests/golden_ir/simple_impl/input.sva
 xcov --stdio-loop
-xeda-runner init
-xeda-runner run --action sim --target compile --option TEST=smoke_test
 ```
 
 所有工具入口统一放在 `tools/` 目录下。
@@ -292,7 +267,6 @@ pytest --xverif-results-clean
 - xdebug 用户文档：[`xdebug/README.md`](xdebug/README.md)
 - xverif 能力路由 skill：[`skills/xverif/SKILL.md`](skills/xverif/SKILL.md)
 - xverif 运维 skill：[`skills/xverif-admin/SKILL.md`](skills/xverif-admin/SKILL.md)
-- xeda-runner 执行 skill：[`skills/xeda-runner/SKILL.md`](skills/xeda-runner/SKILL.md)
 - x-npi agent skill：[`skills/x-npi/SKILL.md`](skills/x-npi/SKILL.md)，用于 AI 编写 Python `pynpi` 批量波形统计、APB/AXI/stream 离线分析和静态 driver/load 脚本；实时 active-driver 因果追踪仍用 xdebug。
 - xdebug CLI reference：[`skills/xverif/references/xdebug/overview.md`](skills/xverif/references/xdebug/overview.md)
 - xdebug JSON API 速查：[`skills/xverif/references/xdebug/json-api.md`](skills/xverif/references/xdebug/json-api.md)
@@ -310,5 +284,3 @@ pytest --xverif-results-clean
 - xcov 用户文档：[`xcov/README.md`](xcov/README.md)
 - xcov agent reference：[`skills/xverif/references/xcov.md`](skills/xverif/references/xcov.md)
 - xverif-mcp 用户文档：[`xverif_mcp/README.md`](xverif_mcp/README.md)
-- xeda-runner 用户文档：[`xeda_runner/README.md`](xeda_runner/README.md)
-- xeda-runner agent reference：[`skills/xeda-runner/references/execution.md`](skills/xeda-runner/references/execution.md)

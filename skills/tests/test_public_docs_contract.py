@@ -32,7 +32,6 @@ def test_public_skill_links_target_new_layout() -> None:
     root = (ROOT / "README.md").read_text()
     assert "skills/xverif/SKILL.md" in root
     assert "skills/xverif-admin/SKILL.md" in root
-    assert "skills/xeda-runner/SKILL.md" in root
 
 
 def test_component_readme_action_names_exist_in_current_catalogs() -> None:

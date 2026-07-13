@@ -153,16 +153,6 @@ suites:
     deterministic: true
     cost: {class: slow, estimate_sec: 10}
 
-  - id: xeda_runner.unit
-    owner: xeda_runner
-    level: unit
-    intent: [contract]
-    domains: [eda-runner]
-    runner: {kind: pytest, path: xeda_runner/tests}
-    hermetic: true
-    deterministic: true
-    cost: {class: fast, estimate_sec: 3}
-
   - id: skills.xverif
     owner: skills/xverif
     level: static
@@ -182,16 +172,6 @@ suites:
     hermetic: true
     deterministic: true
     cost: {class: fast, estimate_sec: 5}
-
-  - id: skills.xeda_runner
-    owner: skills/xeda-runner
-    level: static
-    intent: [contract]
-    domains: [skill, eda, execution]
-    runner: {kind: pytest, path: skills/tests/test_xeda_runner_skill.py}
-    hermetic: true
-    deterministic: true
-    cost: {class: fast, estimate_sec: 2}
 
   - id: skills.public_docs
     owner: skills

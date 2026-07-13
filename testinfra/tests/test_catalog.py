@@ -23,10 +23,9 @@ def test_catalog_loads_and_ids_are_unique() -> None:
     assert len(ids) == len(set(ids))
     assert "xdebug.axi_vip" in ids
     assert "xsva.core" in ids
-    assert "xeda_runner.unit" in ids
     assert "xdebug.cpp_unit" in ids
     assert {
-        "skills.xverif", "skills.xverif_admin", "skills.xeda_runner",
+        "skills.xverif", "skills.xverif_admin",
         "skills.public_docs", "skills.x_npi", "skills.xwiki",
     } <= set(ids)
 

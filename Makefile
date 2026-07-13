@@ -1,4 +1,4 @@
-.PHONY: all xdebug xbit xentry xloc xcov xwaveform clean install-all-skill remove-legacy-xverif-skills install-xverif-skill install-xverif-admin-skill install-xeda-runner-skill install-xwiki-skill install-x-npi-skill _install-agent-skill
+.PHONY: all xdebug xbit xentry xloc xcov xwaveform clean install-all-skill remove-legacy-xverif-skills install-xverif-skill install-xverif-admin-skill install-xwiki-skill install-x-npi-skill _install-agent-skill
 
 PYTHON ?= python3
 
@@ -27,9 +27,6 @@ install-xverif-skill:
 
 install-xverif-admin-skill:
 	$(MAKE) _install-agent-skill SKILL_SRC=skills/xverif-admin SKILL_NAME=xverif-admin
-
-install-xeda-runner-skill:
-	$(MAKE) _install-agent-skill SKILL_SRC=skills/xeda-runner SKILL_NAME=xeda-runner
 
 install-xwiki-skill:
 	$(MAKE) _install-agent-skill SKILL_SRC=skills/xwiki SKILL_NAME=xwiki

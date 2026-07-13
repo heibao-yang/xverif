@@ -1,7 +1,7 @@
 .agents/
 .codex/
-**/.xeda_runner/
 /out/
+/tmp/
 
 # Legacy unowned test and regression assets
 test/
@@ -36,8 +36,6 @@ regression/
 !xsva/tests/**
 !xverif_mcp/tests/
 !xverif_mcp/tests/**
-!xeda_runner/tests/
-!xeda_runner/tests/**
 !testinfra/tests/
 !testinfra/tests/**
 xdebug/testdata/**/out/

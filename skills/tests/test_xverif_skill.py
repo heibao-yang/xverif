@@ -92,7 +92,7 @@ def test_xdebug_main_workflow_has_required_decisions_and_routes() -> None:
 def test_only_xverif_is_generic_trigger() -> None:
     main = (SKILL / "SKILL.md").read_text()
     assert "唯一通用隐式入口" in main
-    for name in ("xverif-admin", "x-npi", "xwiki", "xeda-runner"):
+    for name in ("xverif-admin", "x-npi", "xwiki"):
         assert name in main
 
 

@@ -22,6 +22,7 @@ BINARIES = (
     "test_event_expr",
     "test_expression",
     "test_rc_generator",
+    "test_sha256",
 )
 
 

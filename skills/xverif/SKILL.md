@@ -4,7 +4,7 @@ description: >
   用于芯片验证中的确定性事实查询和计算：daidir/FSDB debug、coverage、
   SystemVerilog bit 计算、entry 解码、日志位置恢复、SVA 解释和波形渲染。
   先按任务选择能力，再按环境选择 MCP 或 CLI。批量 pynpi 分析用 x-npi，
-  运维用 xverif-admin，执行 EDA 命令用 xeda-runner，持续知识用 xwiki。
+  运维用 xverif-admin，持续知识用 xwiki。
 ---
 
 # xverif
@@ -27,7 +27,7 @@ description: >
 | 统一证据字段和 partial/truncated 处理 | [证据合同](references/core/evidence-contract.md) |
 | 同一 canonical example 的三种请求包装 | [生成的 surface 示例](references/generated/surface-examples.md) |
 
-批量 FSDB/VDB 扫描或自定义报告使用 `x-npi`；安装、LSF、transport、timeout、session 运维使用 `xverif-admin`；执行 make/VCS/simv/Verdi 使用 `xeda-runner`；项目长期知识使用 `xwiki`。
+批量 FSDB/VDB 扫描或自定义报告使用 `x-npi`；安装、LSF、transport、timeout、session 运维使用 `xverif-admin`；项目长期知识使用 `xwiki`。
 
 ## 标准流程
 
