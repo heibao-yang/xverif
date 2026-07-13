@@ -127,6 +127,20 @@
 - 不在 action handler 中手写四态比较或时间单位换算。
 - clock sampling 行为变化必须配套 tests 和文档。
 
+## AXI Transaction Tracker
+
+路径：
+
+- `src/waveform/axi/axi_transaction_tracker.*`
+- `src/waveform/axi/axi_analyzer.*`
+
+职责与要求：
+
+- 在纯采样事件层统一重建 AW/W/B/AR/R transaction、outstanding 和诊断。
+- 必须支持 AW-first、same-cycle、W-first、多 W burst 先于 AW、跨 ID B 乱序。
+- exporter 和 action 只消费 canonical `AxiResult`；禁止再次扫描 FSDB 或建立第二套
+  pending queue。
+
 ## Transport/File Exchange
 
 路径：

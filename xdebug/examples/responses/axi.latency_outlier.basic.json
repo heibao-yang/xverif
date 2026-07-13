@@ -2,6 +2,6 @@
   "api_version": "xdebug.v1",
   "ok": true,
   "action": "axi.latency_outlier",
-  "summary": {"name": "if0", "transaction_count": 4, "outlier_count": 1, "begin": "0ns", "end": "200ns"},
-  "data": {"outliers": [{"time": "100ns", "response_time": "140ns", "latency": "40ns", "addr": 240, "id": 1, "is_write": true}]}
+  "summary": {"name": "if0", "transaction_count": 4, "begin": "0ns", "end": "200ns"},
+  "data": {"method": "top_n", "candidate_count": 4, "matched_outlier_count": 1, "outlier_count": 1, "outliers": [{"addr_time": "100ns", "resp_time": "140ns", "latency": "40ns", "phase_order": "aw_before_w", "addr": "f0", "id": "1", "is_write": true}]}
 }

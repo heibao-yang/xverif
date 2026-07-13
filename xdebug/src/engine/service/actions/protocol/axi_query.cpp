@@ -67,6 +67,12 @@ static Json axi_transaction_json(const xdebug_waveform::AxiTransaction& txn, boo
     tj["size"] = txn.size;
     tj["burst"] = txn.burst;
     tj["is_write"] = txn.is_write;
+    tj["first_data_time"] = xdebug_core::format_time(xdebug_waveform::g_fsdb_file, txn.first_data_time);
+    tj["last_data_time"] = xdebug_core::format_time(xdebug_waveform::g_fsdb_file, txn.last_data_time);
+    tj["beat_count"] = txn.data.size();
+    tj["expected_beat_count"] = txn.expected_beat_count;
+    tj["phase_order"] = txn.phase_order;
+    tj["response_dependency_violation"] = txn.response_dependency_violation;
     if (verbose && !txn.data.empty()) {
         Json da = Json::array();
         for (const auto& d : txn.data) da.push_back(d);

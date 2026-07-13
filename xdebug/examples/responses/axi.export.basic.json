@@ -12,6 +12,8 @@
     "status": "written",
     "output_written": true,
     "truncated": false,
+    "full_scan_count": 1,
+    "analysis_complete": true,
     "output": {
       "path": "/tmp/if0_axi",
       "write_path": "/tmp/if0_axi.write.tsv",

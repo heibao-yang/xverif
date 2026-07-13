@@ -47,6 +47,11 @@ pytest --xverif-results-clean
 
 Fixture 使用内容指纹、工具兼容 identity、跨进程锁、staging、backend-aware semantic probe、不可变 generation 和原子 `current.json` 切换。builder 与 probe 只在显式 prepare/validation 发布新 generation 时执行；普通 gate 和 cache-hit prepare 只读 manifest/产物，不重新编译或仿真。cache miss、指纹不符或输出不完整会在 suite 启动前形成 required preflight ERROR，并给出 prepare 命令；不会自动生成、SKIP 或换数据源。连续两次 prepare 的第二次必须命中缓存。
 
+`xdebug.axi_vip` 一次编译后运行 stress、固定 delay，以及 seed 7/19/73 三组固定
+seed 随机 delay。每组必须发布 FSDB、simulation log 和独立 pin-handshake oracle；
+测试比较 VIP scoreboard、pin oracle 与 xdebug canonical transaction，并检查三种
+AW/W phase order、最终 outstanding、dependency violation 和 `full_scan_count=1`。
+
 ## 结果与诊断
 
 每次 gate 写入 `.xverif-test-results/<run>/`：

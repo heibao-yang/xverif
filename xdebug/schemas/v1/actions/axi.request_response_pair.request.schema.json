@@ -35,6 +35,10 @@
           "minimum": 1,
           "description": "控制 response/xout 中 item、finding、event、transaction 或 row 的最大返回行数。"
         },
+        "direction": {
+          "type": "string",
+          "enum": ["write", "read", "all"]
+        },
         "name": {
           "type": "string",
           "description": "已保存配置、游标、列表或接口配置名称。"

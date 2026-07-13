@@ -532,6 +532,9 @@ Json axi_txn_to_json(const xdebug_waveform::AxiTransaction* txn, bool verbose) {
     j["last_data_time"] = format_time(txn->last_data_time);
     j["resp_time"] = format_time(txn->resp_time);
     j["resp"] = "'h" + txn->resp;
+    j["expected_beats"] = txn->expected_beat_count;
+    j["phase_order"] = txn->phase_order;
+    j["response_dependency_violation"] = txn->response_dependency_violation;
     if (verbose) {
         j["data"] = json_array_hex(txn->data);
         j["wstrb"] = json_array_hex(txn->wstrb);

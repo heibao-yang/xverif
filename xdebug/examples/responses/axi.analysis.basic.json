@@ -2,6 +2,9 @@
   "api_version": "xdebug.v1",
   "ok": true,
   "action": "axi.analysis",
-  "summary": {"name": "if0", "analysis": "latency", "min": "10ns", "avg": "20ns", "max": "40ns", "p50": "20ns", "p95": "40ns", "p99": "40ns", "samples": 4},
-  "data": {"slowest": {"time": "100ns", "response_time": "140ns", "addr": 240, "id": 1, "is_write": true}}
+  "summary": {"name": "if0", "analysis": "latency", "direction": "all", "full_scan_count": 1, "completed_read_count": 2, "completed_write_count": 2, "incomplete_read_count": 0, "incomplete_write_count": 0, "min": "10ns", "avg": "20ns", "max": "40ns", "p50": "20ns", "p95": "40ns", "p99": "40ns", "samples": 4},
+  "data": {
+    "latency": {"read": {"samples": 2, "max": "30ns"}, "write": {"samples": 2, "max": "40ns"}, "write_phase_order_counts": {"aw_before_w": 1, "same_cycle": 0, "w_before_aw": 1, "unknown": 0}},
+    "slowest": {"time": "100ns", "response_time": "140ns", "first_data_time": "90ns", "last_data_time": "110ns", "addr": "f0", "id": "1", "is_write": true, "phase_order": "w_before_aw"}
+  }
 }

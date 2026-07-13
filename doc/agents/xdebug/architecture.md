@@ -138,6 +138,17 @@ frontend 不直接承载 NPI 重逻辑；NPI/FSDB/engine 能力集中在内部 e
 
 修改要求：
 
+### AXI canonical transaction reconstruction
+
+- `src/waveform/axi/axi_transaction_tracker.*` 是 AXI AW/W/B/AR/R 配对的唯一状态机；
+  handler 和 exporter 不得复制配对逻辑。
+- AXI4 W burst 按 AW acceptance order 绑定，允许整个 W burst 在 AW 前完成；BID 绑定
+  同 ID 最老的 data-complete write，RID 绑定同 ID 最老的 AR。
+- `AxiAnalyzer` 每个 session/config 只做一次完整 FSDB clock scan，query、analysis、
+  pair、timeline、outlier、cursor 和 export 复用 `AxiResult`。
+- 新增 AXI action 或输出时必须保留 `full_scan_count=1` 回归，并用独立 pin/VIP oracle
+  验证，不能以另一个 xdebug action 作为期望值。
+
 - 新 action 应进入对应 `actions/<domain>/` 子目录，并在对应 `register_*_handlers.cpp` 注册。
 - handler 不应重新发明 schema 校验；只做业务语义检查。
 

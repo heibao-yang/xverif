@@ -30,6 +30,11 @@
     "args": {
       "type": "object",
       "properties": {
+        "line_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "控制 response/xout 中 item、finding、event、transaction 或 row 的最大返回行数。"
+        },
         "analysis": {
           "type": "string",
           "enum": [

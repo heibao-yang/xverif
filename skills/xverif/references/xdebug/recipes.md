@@ -181,10 +181,14 @@ inline 配置示例：
 
 ## AXI latency 异常
 
-1. `axi.analysis` 用 compact 查 latency/outstanding/response findings。
-2. 对 top abnormal 的 begin/end 设 cursor 或直接用 TimeSpec。
-3. `value.batch_at` 查 AW/W/B/AR/R channel 的 valid/ready/id/resp。
-4. 需要具体 transaction 时用 `axi.query` 的 `query.index` / `query.line_limit` 缩小；需要批量导出时用 `axi.export`。
+1. `axi.analysis(analysis=latency)` 查 read/write 分项、phase-order 和完整性；
+   `analysis=outstanding` 只查扫描结束仍未闭合事务，不能用 `osd` 代替。
+2. 用 `axi.latency_outlier(method=top_n|threshold)` 从完整候选集筛慢事务，
+   `line_limit` 只限制展示。
+3. 对 top abnormal 的 begin/end 设 cursor 或直接用 TimeSpec，再用 `value.batch_at`
+   查 AW/W/B/AR/R valid/ready/id/resp。
+4. W-first 是合法顺序；检查 `phase_order` 和 B 是否晚于 AW 与 WLAST。需要批量事实用
+   `axi.export`，它复用 canonical result，`full_scan_count` 应为 1。
 
 ```json
 {

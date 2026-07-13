@@ -36,6 +36,49 @@ static bool ensure_axi_analyzed(const std::string& name,
     return true;
 }
 
+static Json latency_stat_json(const xdebug_waveform::AxiStatResult& stat) {
+    using namespace xdebug_waveform;
+    Json out = {{"samples", stat.samples}};
+    if (stat.samples == 0) {
+        out["status"] = "empty";
+        out["min"] = nullptr;
+        out["max"] = nullptr;
+        out["avg"] = nullptr;
+        out["p50"] = nullptr;
+        out["p95"] = nullptr;
+        out["p99"] = nullptr;
+        return out;
+    }
+    out["min"] = xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.min));
+    out["max"] = xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.max));
+    out["avg"] = xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.avg));
+    out["p50"] = xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.p50));
+    out["p95"] = xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.p95));
+    out["p99"] = xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.p99));
+    return out;
+}
+
+static Json outstanding_stat_json(const xdebug_waveform::AxiStatResult& stat) {
+    if (stat.samples == 0)
+        return Json{{"samples", 0}, {"status", "empty"}, {"min", 0}, {"max", 0}, {"avg", 0.0}};
+    return Json{{"samples", stat.samples}, {"min", stat.min}, {"max", stat.max}, {"avg", stat.avg}};
+}
+
+static Json pending_txn_json(const xdebug_waveform::AxiTransaction& txn,
+                             npiFsdbTime scan_end) {
+    using namespace xdebug_waveform;
+    Json out = {{"direction", txn.is_write ? "write" : "read"},
+                {"id", txn.id}, {"addr", txn.addr}, {"len", txn.len},
+                {"request_time", xdebug_core::format_time(g_fsdb_file, txn.addr_time)},
+                {"age", xdebug_core::format_duration(
+                    g_fsdb_file, scan_end >= txn.addr_time ? scan_end - txn.addr_time : 0)},
+                {"observed_beat_count", txn.data.size()},
+                {"expected_beat_count", txn.expected_beat_count},
+                {"data_complete", txn.data_complete}};
+    if (txn.is_write) out["phase_order"] = txn.phase_order;
+    return out;
+}
+
 class AxiAnalysisHandler : public EngineActionHandler {
 public:
     const char* action_name() const override { return "axi.analysis"; }
@@ -56,41 +99,98 @@ public:
         std::string analysis = a.value("analysis", "latency");
         std::string dir = a.value("direction", "all");
         int filter = (dir == "write") ? 1 : (dir == "read") ? 2 : 0;
-        std::string id_str = a.value("id", "");
-
+        const AxiResult* canonical = g_axi_analyzer.get_result(name);
+        if (!canonical)
+            return protocol_analyze_error(action_name(), "axi", name,
+                                          "canonical AXI result unavailable");
+        const AxiDiagnostics& diag = canonical->diagnostics;
         Json out;
-        if (analysis == "osd" || analysis == "outstanding") {
-            AxiStatResult stat;
-            if (!g_axi_analyzer.get_outstanding_stats(name, filter,
-                    id_str.empty() ? nullptr : id_str.c_str(), stat)) {
-                out["summary"] = {{"name",name},{"analysis","osd"},{"max",0},
-                    {"min",0},{"avg",0.0},{"samples",0},{"status","empty"}};
-                return out;
+        out["summary"] = {{"name", name}, {"analysis", analysis}, {"direction", dir},
+            {"analysis_complete", diag.analysis_complete},
+            {"sample_count", diag.sample_count},
+            {"full_scan_count", diag.full_scan_count},
+            {"scanned_range", {{"begin", xdebug_core::format_time(g_fsdb_file, diag.scan_begin)},
+                                {"end", xdebug_core::format_time(g_fsdb_file, diag.scan_end)}}},
+            {"completed_read_count", canonical->reads.size()},
+            {"completed_write_count", canonical->writes.size()},
+            {"incomplete_read_count", diag.incomplete_read_count},
+            {"incomplete_write_count", diag.incomplete_write_count},
+            {"buffered_w_beat_count", diag.buffered_w_beat_count},
+            {"buffered_w_burst_count", diag.buffered_w_burst_count},
+            {"orphan_w_beat_count", diag.orphan_w_beat_count},
+            {"orphan_b_count", diag.orphan_b_count},
+            {"orphan_r_beat_count", diag.orphan_r_beat_count},
+            {"response_dependency_violation_count", diag.response_dependency_violation_count},
+            {"channel_handshakes", {{"aw", diag.handshakes.aw}, {"w", diag.handshakes.w},
+                                     {"b", diag.handshakes.b}, {"ar", diag.handshakes.ar},
+                                     {"r", diag.handshakes.r}}}};
+
+        if (analysis == "latency") {
+            AxiStatResult selected, read, write;
+            g_axi_analyzer.get_latency_stats(name, filter, nullptr, selected);
+            g_axi_analyzer.get_latency_stats(name, 2, nullptr, read);
+            g_axi_analyzer.get_latency_stats(name, 1, nullptr, write);
+            Json selected_json = latency_stat_json(selected);
+            for (Json::const_iterator it = selected_json.begin(); it != selected_json.end(); ++it)
+                out["summary"][it.key()] = it.value();
+            out["latency"] = {
+                {"read", latency_stat_json(read)},
+                {"write", latency_stat_json(write)},
+                {"definitions", {{"read", "AR handshake to RLAST handshake"},
+                                  {"write", "AW handshake to B handshake"}}}
+            };
+            Json phase_counts = {{"aw_before_w", 0}, {"same_cycle", 0}, {"w_before_aw", 0},
+                                 {"unknown", 0}};
+            for (const auto& txn : canonical->writes) {
+                const std::string key = phase_counts.contains(txn.phase_order)
+                    ? txn.phase_order : "unknown";
+                phase_counts[key] = phase_counts[key].get<int>() + 1;
             }
-            out["summary"] = {{"name",name},{"analysis","osd"},{"max",stat.max},
-                {"min",stat.min},{"avg",stat.avg},{"samples",(int)stat.samples}};
+            out["latency"]["write_phase_order_counts"] = phase_counts;
+            if (selected.max_txn) {
+                out["slowest"] = {{"time", xdebug_core::format_time(g_fsdb_file, selected.max_txn->addr_time)},
+                    {"response_time", xdebug_core::format_time(g_fsdb_file, selected.max_txn->resp_time)},
+                    {"first_data_time", xdebug_core::format_time(g_fsdb_file, selected.max_txn->first_data_time)},
+                    {"last_data_time", xdebug_core::format_time(g_fsdb_file, selected.max_txn->last_data_time)},
+                    {"addr", selected.max_txn->addr}, {"id", selected.max_txn->id},
+                    {"is_write", selected.max_txn->is_write},
+                    {"phase_order", selected.max_txn->phase_order}};
+            }
+        } else if (analysis == "osd") {
+            AxiStatResult selected, read, write;
+            g_axi_analyzer.get_outstanding_stats(name, filter, nullptr, selected);
+            g_axi_analyzer.get_outstanding_stats(name, 2, nullptr, read);
+            g_axi_analyzer.get_outstanding_stats(name, 1, nullptr, write);
+            out["summary"]["max"] = selected.max;
+            out["summary"]["min"] = selected.min;
+            out["summary"]["avg"] = selected.avg;
+            out["summary"]["samples"] = selected.samples;
+            out["osd"] = {{"read", outstanding_stat_json(read)},
+                          {"write", outstanding_stat_json(write)},
+                          {"final_read", diag.final_read_outstanding},
+                          {"final_write", diag.final_write_outstanding},
+                          {"definitions", {{"read", "increment on AR handshake, decrement on RLAST handshake"},
+                                           {"write", "increment on AW handshake, decrement on B handshake"}}}};
         } else {
-            AxiStatResult stat;
-            if (!g_axi_analyzer.get_latency_stats(name, filter,
-                    id_str.empty() ? nullptr : id_str.c_str(), stat)) {
-                out["summary"] = {{"name",name},{"analysis","latency"},
-                    {"max",nullptr},{"min",nullptr},{"avg",nullptr},{"samples",0},{"status","empty"}};
-                return out;
-            }
-            out["summary"] = {{"name",name},{"analysis","latency"},
-                {"max", xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.max))},
-                {"min", xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.min))},
-                {"avg", xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.avg))},
-                {"p50", xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.p50))},
-                {"p95", xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.p95))},
-                {"p99", xdebug_core::format_duration(g_fsdb_file, static_cast<npiFsdbTime>(stat.p99))},
-                {"samples",(int)stat.samples}};
-            if (stat.max_txn) {
-                out["slowest"] = {{"time", xdebug_core::format_time(g_fsdb_file, stat.max_txn->addr_time)},
-                                  {"response_time", xdebug_core::format_time(g_fsdb_file, stat.max_txn->resp_time)},
-                                  {"addr", stat.max_txn->addr}, {"id", stat.max_txn->id},
-                                  {"is_write", stat.max_txn->is_write}};
-            }
+            int line_limit = a.value("line_limit", 20);
+            Json transactions = Json::array();
+            size_t matching_count = 0;
+            auto append_pending = [&](const std::vector<AxiTransaction>& pending, int kind) {
+                for (const auto& txn : pending) {
+                    if (filter != 0 && filter != kind) continue;
+                    ++matching_count;
+                    if (static_cast<int>(transactions.size()) < line_limit)
+                        transactions.push_back(pending_txn_json(txn, diag.scan_end));
+                }
+            };
+            append_pending(canonical->pending_writes, 1);
+            append_pending(canonical->pending_reads, 2);
+            out["summary"]["outstanding_count"] = matching_count;
+            out["summary"]["returned_outstanding_count"] = transactions.size();
+            out["summary"]["truncated"] = transactions.size() < matching_count;
+            out["summary"]["truncation_scope"] = transactions.size() < matching_count
+                ? Json("response_transactions") : Json(nullptr);
+            out["outstanding"] = transactions;
         }
         return out;
     }

@@ -682,6 +682,17 @@ unpacked/聚合数组可显式请求结构化显示：
 
 ### 协议与事件：event / APB / AXI
 
+AXI 的 AW 与 W 是独立通道，`axi.*` 会处理 `aw_before_w`、`same_cycle` 和
+`w_before_aw`，不能假设每个 W handshake 旁边都有 AW handshake。首次
+`axi.query/analysis/pair/timeline/outlier/export` 会为同一 config 建立并缓存唯一
+canonical transaction result，后续 action（包括 export）复用该结果，不再重复扫描
+FSDB。`axi.analysis` 的 `latency`、`osd`、`outstanding` 分别表示完成事务延迟、
+outstanding 统计和扫描结束仍未闭合的事务；`summary.full_scan_count` 应为 1。
+
+`axi.config.load` 在保存前解析全部信号、检查控制/ID/data-strobe 位宽关系，并确认
+请求的 clock edge 在 FSDB 中存在。写事务同时返回 AW/首末 W/B 时间、
+`phase_order`、beat count 和 B response dependency 诊断。
+
 `event.find` 查 first/last/all occurrence。已有 event config 时传 `name`；临时查询可直接传 `expr` + `clk` + `signals`，不会留下持久 event config。表达式支持布尔组合和数值比较，可直接写 counter 阈值，例如 `wait_count >= 512`：
 
 ```json
