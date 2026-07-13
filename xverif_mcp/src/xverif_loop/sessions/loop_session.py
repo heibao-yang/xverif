@@ -10,6 +10,7 @@ import subprocess
 import threading
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from xverif_loop.lsf.protocol import JsonlProcess, ProtocolError
@@ -564,8 +565,24 @@ class XdebugLoopSession:
         resource_path = self.fsdb or self.daidir
         if resource_path:
             out[self.target_key if self.fsdb else "daidir"] = os.path.basename(resource_path)
-            out["resource_hash"] = hashlib.sha256(
+            path_hash = hashlib.sha256(
                 os.path.abspath(resource_path).encode("utf-8")).hexdigest()[:12]
+            out["resource_hash"] = path_hash  # Compatibility alias: this hashes only the path.
+            identity: Json = {"path_hash": path_hash, "content_identity": "stat_snapshot"}
+            try:
+                stat = os.stat(resource_path)
+                identity["stat"] = {"mtime_ns": stat.st_mtime_ns, "size_bytes": stat.st_size,
+                                    "dev": stat.st_dev, "inode": stat.st_ino}
+            except OSError:
+                identity["stat"] = None
+            if self.run_manifest:
+                try:
+                    identity["manifest_sha256"] = hashlib.sha256(
+                        Path(self.run_manifest).read_bytes()).hexdigest()
+                    identity["content_identity"] = "verified_manifest"
+                except OSError:
+                    identity["manifest_sha256"] = None
+            out["resource_identity"] = identity
         if verbose:
             out["resource_path"] = resource_path
             if self.run_manifest: out["run_manifest"] = self.run_manifest
