@@ -41,9 +41,16 @@ AXI_EXPECTED_TXN_JSON {"dir":"WR",...}
 
 pytest 会解析这些 JSON 行并与 `axi.export` 的 read/write 文件逐项对比。
 
+写通道每四笔事务固定覆盖 AW 先握手、W 先握手、AW/W 同周期以及固定 seed
+随机 delay；slave response 每四笔覆盖 0、4、17 cycle 固定 delay 和固定
+seed 的 50–100 cycle 随机 delay。pin 级 AW/W/B/AR/R 握手写入独立的
+`axi_handshake.jsonl`，避免大规模 oracle 日志拖慢仿真 stdout；pytest 直接从
+该文件独立重建事务并与 xdebug 的 `phase_order`、beat count 和响应依赖诊断核对。
+
 输出位置由 `manifest.json` 定义，`out/` 不进入版本库。pytest 会检查：
 
 - 仿真无 UVM error/fatal，scoreboard 通过；
+- 固定 delay 与固定 seed 随机 delay profile 均命中，且 W-before-AW 被实际观察；
 - FSDB 和 daidir 均真实生成；
 - `axi.config.load/list`、`axi.query/cursor/analysis`；
 - request/response pairing、latency outlier、outstanding timeline；

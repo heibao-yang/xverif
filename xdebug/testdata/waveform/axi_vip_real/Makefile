@@ -15,6 +15,8 @@ OUTSTANDING_DEPTH ?= 4
 MIN_DELAY        ?= 50
 MAX_DELAY        ?= 100
 SEED             ?= 7
+AXI_PROFILE      ?= stress
+RUN_TAG          ?= $(TC)
 VERBOSITY        ?= UVM_LOW
 
 ROOT_DIR  := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
@@ -23,7 +25,7 @@ OUT_DIR   := $(OUTPUT_ROOT)/$(MODE)
 BUILD_DIR := $(OUT_DIR)/build
 ANDB_DIR  := $(BUILD_DIR)/work
 SIMV      := $(BUILD_DIR)/simv
-RUN_DIR   := $(OUT_DIR)/test/$(TC)
+RUN_DIR   := $(OUT_DIR)/test/$(RUN_TAG)
 
 VCS_SHARED := -full64 -sverilog -ntb_opts uvm-1.2 \
 	+define+SVT_UVM_TECHNOLOGY \
@@ -48,11 +50,12 @@ SIM_OPTS := +UVM_TESTNAME=$(TC) \
 	+outstanding_depth=$(OUTSTANDING_DEPTH) \
 	+min_delay=$(MIN_DELAY) \
 	+max_delay=$(MAX_DELAY) \
+	+axi_profile=$(AXI_PROFILE) \
 	+ntb_random_seed=$(SEED) \
 	+fsdb+force +fsdb+autoflush +fsdbfile+waves.fsdb \
 	-l sim.log
 
-.PHONY: check-env vlog_com vlog_rtl vlog_tb elab cmp ncrun mrun run clean
+.PHONY: check-env vlog_com vlog_rtl vlog_tb elab cmp ncrun mrun run run-suite clean
 
 check-env:
 	@test -n "$(AXI_REFERENCE_ROOT)" || { echo "AXI_REFERENCE_ROOT is required"; exit 2; }
@@ -92,6 +95,7 @@ ncrun:
 	@mkdir -p $(RUN_DIR)
 	cd $(RUN_DIR) && $(SIMV) $(SIM_OPTS)
 	@test -s $(RUN_DIR)/waves.fsdb
+	@test -s $(RUN_DIR)/axi_handshake.jsonl
 	@test -d $(BUILD_DIR)/simv.daidir
 	@grep -q "UVM_ERROR :    0" $(RUN_DIR)/sim.log
 	@grep -q "UVM_FATAL :    0" $(RUN_DIR)/sim.log
@@ -99,7 +103,14 @@ ncrun:
 
 mrun: vlog_tb elab ncrun
 
-run: cmp ncrun
+run-suite:
+	$(MAKE) ncrun RUN_TAG=axi_multi_id_test AXI_PROFILE=stress NUM_IDS=16 TRANS_PER_ID=200 OUTSTANDING_DEPTH=4 MIN_DELAY=50 MAX_DELAY=100 SEED=7
+	$(MAKE) ncrun RUN_TAG=axi_fixed_delay AXI_PROFILE=fixed NUM_IDS=4 TRANS_PER_ID=8 OUTSTANDING_DEPTH=4 MIN_DELAY=0 MAX_DELAY=32 SEED=7
+	$(MAKE) ncrun RUN_TAG=axi_random_seed_7 AXI_PROFILE=random NUM_IDS=8 TRANS_PER_ID=32 OUTSTANDING_DEPTH=8 MIN_DELAY=0 MAX_DELAY=32 SEED=7
+	$(MAKE) ncrun RUN_TAG=axi_random_seed_19 AXI_PROFILE=random NUM_IDS=8 TRANS_PER_ID=32 OUTSTANDING_DEPTH=8 MIN_DELAY=0 MAX_DELAY=32 SEED=19
+	$(MAKE) ncrun RUN_TAG=axi_random_seed_73 AXI_PROFILE=random NUM_IDS=8 TRANS_PER_ID=32 OUTSTANDING_DEPTH=8 MIN_DELAY=0 MAX_DELAY=32 SEED=73
+
+run: cmp run-suite
 
 clean:
 	rm -rf $(OUT_DIR)

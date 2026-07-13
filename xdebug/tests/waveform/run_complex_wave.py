@@ -36,6 +36,14 @@ AXI_SIM_LOG = os.path.join(
     "axi_multi_id_test",
     "sim.log",
 )
+AXI_HANDSHAKE_ORACLE = os.path.join(
+    AXI_DIR,
+    "out",
+    "regression",
+    "test",
+    "axi_multi_id_test",
+    "axi_handshake.jsonl",
+)
 DEFAULT_AXI_ENV = {
     "AXI_REFERENCE_ROOT": "~/axi_test/test",
     "SVT_VIP_INCDIR": "~/axi_test/test/include/sverilog",
@@ -224,6 +232,125 @@ def parse_axi_expected_log(path):
     return records
 
 
+def require_axi_delay_matrix(path, expected_writes, min_random_delay, max_random_delay):
+    from collections import Counter
+
+    write_profiles = []
+    response_profiles = []
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            if "AXI_DELAY_PROFILE_JSON " in line:
+                write_profiles.append(json.loads(line.split("AXI_DELAY_PROFILE_JSON ", 1)[1]))
+            elif "AXI_RESPONSE_DELAY_JSON " in line:
+                response_profiles.append(json.loads(line.split("AXI_RESPONSE_DELAY_JSON ", 1)[1]))
+    expected_per_profile = expected_writes // 4
+    require(expected_writes % 4 == 0 and
+            Counter(row["profile"] for row in write_profiles) ==
+            Counter({0: expected_per_profile, 1: expected_per_profile,
+                     2: expected_per_profile, 3: expected_per_profile}),
+            "write delay profile matrix count mismatch")
+    response_counts = Counter(row["profile"] for row in response_profiles)
+    require(set(response_counts) == {0, 1, 2, 3} and
+            min(response_counts.values()) > 0 and
+            max(response_counts.values()) - min(response_counts.values()) <= 1,
+            "response delay profile matrix is incomplete or unbalanced: {}".format(
+                dict(response_counts)))
+    for row in write_profiles:
+        profile = row["profile"]
+        if profile == 0:
+            require((row["data_before_addr"], row["addr_valid_delay"], row["first_wvalid_delay"]) == (0, 0, 4),
+                    "AW-before-W fixed delay profile drifted")
+        elif profile == 1:
+            require((row["data_before_addr"], row["addr_valid_delay"], row["first_wvalid_delay"]) == (1, 4, 0),
+                    "W-before-AW fixed delay profile drifted")
+        elif profile == 2:
+            require((row["data_before_addr"], row["addr_valid_delay"], row["first_wvalid_delay"]) == (0, 0, 0),
+                    "same-cycle fixed delay profile drifted")
+        else:
+            require(0 <= row["addr_valid_delay"] <= 7 and
+                    0 <= row["first_wvalid_delay"] <= 7,
+                    "fixed-seed random write delay escaped configured range")
+    fixed_values = {0: 0, 1: 4, 2: 17}
+    for row in response_profiles:
+        profile = row["profile"]
+        selected = row["bvalid_delay"] if row["channel"] == "B" else row["rvalid_delay"]
+        if profile in fixed_values:
+            require(selected == fixed_values[profile],
+                    "fixed response delay profile drifted")
+        else:
+            require(min_random_delay <= selected <= max_random_delay,
+                    "fixed-seed random response delay escaped configured range")
+
+
+def parse_axi_handshake_oracle(path):
+    """Reconstruct AXI writes from raw pin handshakes, independently of xdebug."""
+    pending_writes = []
+    completed_w_bursts = []
+    current_w_burst = None
+    completed = []
+    channel_counts = {name: 0 for name in ("AW", "W", "B", "AR", "R")}
+
+    def drain_w_bursts():
+        while completed_w_bursts:
+            target = next((txn for txn in pending_writes if "w_first_time" not in txn), None)
+            if target is None:
+                return
+            burst = completed_w_bursts.pop(0)
+            target.update(burst)
+
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            payload = line.strip()
+            if not payload:
+                continue
+            rec = json.loads(payload)
+            channel = rec["channel"]
+            channel_counts[channel] += 1
+            if channel == "AW":
+                pending_writes.append({
+                    "id": int(rec["id"]),
+                    "addr": int(rec["addr"]),
+                    "expected_beat_count": int(rec["len"]) + 1,
+                    "aw_time": int(rec["time_ps"]),
+                })
+                drain_w_bursts()
+            elif channel == "W":
+                if current_w_burst is None:
+                    current_w_burst = {
+                        "w_first_time": int(rec["time_ps"]),
+                        "beat_count": 0,
+                    }
+                current_w_burst["beat_count"] += 1
+                if int(rec["last"]):
+                    current_w_burst["w_last_time"] = int(rec["time_ps"])
+                    completed_w_bursts.append(current_w_burst)
+                    current_w_burst = None
+                    drain_w_bursts()
+            elif channel == "B":
+                target = next((txn for txn in pending_writes
+                               if txn["id"] == int(rec["id"]) and
+                               "w_last_time" in txn), None)
+                require(target is not None,
+                        "raw handshake oracle saw B without completed AW/W for id={}".format(rec["id"]))
+                target["b_time"] = int(rec["time_ps"])
+                if target["w_first_time"] < target["aw_time"]:
+                    target["phase_order"] = "w_before_aw"
+                elif target["w_first_time"] > target["aw_time"]:
+                    target["phase_order"] = "aw_before_w"
+                else:
+                    target["phase_order"] = "same_cycle"
+                require(target["b_time"] >= target["aw_time"] and
+                        target["b_time"] >= target["w_last_time"],
+                        "raw handshake oracle found illegal early B response")
+                completed.append(target)
+                pending_writes.remove(target)
+
+    require(current_w_burst is None and not completed_w_bursts and not pending_writes,
+            "raw handshake oracle ended with incomplete writes: current={} buffered={} pending={}".format(
+                current_w_burst is not None, len(completed_w_bursts), len(pending_writes)))
+    return {"writes": completed, "channel_counts": channel_counts}
+
+
 def read_axi_export_table(path):
     delimiter = "," if path.endswith(".csv") else "\t"
     with open(path, "r", encoding="utf-8", newline="") as fh:
@@ -279,7 +406,8 @@ def require_completion_sorted(rows, label):
     require(times == sorted(times), "{} export is not sorted by completion time".format(label))
 
 
-def compare_axi_export_to_log(export_data, expected_log):
+def compare_axi_export_to_log(export_data, expected_log, handshake_oracle,
+                              expected_count, num_ids, transactions_per_id):
     write_file = export_data["summary"]["output"]["write_path"]
     read_file = export_data["summary"]["output"]["read_path"]
     meta_file = export_data["summary"]["output"]["meta_path"]
@@ -293,10 +421,10 @@ def compare_axi_export_to_log(export_data, expected_log):
     with open(meta_file, "r", encoding="utf-8") as fh:
         meta = json.load(fh)
 
-    require(len(writes) == 3200, "unexpected exported write count: {}".format(len(writes)))
-    require(len(reads) == 3200, "unexpected exported read count: {}".format(len(reads)))
-    require(len(expected_log["WR"]) == 3200, "unexpected expected write log count: {}".format(len(expected_log["WR"])))
-    require(len(expected_log["RD"]) == 3200, "unexpected expected read log count: {}".format(len(expected_log["RD"])))
+    require(len(writes) == expected_count, "unexpected exported write count: {}".format(len(writes)))
+    require(len(reads) == expected_count, "unexpected exported read count: {}".format(len(reads)))
+    require(len(expected_log["WR"]) == expected_count, "unexpected expected write log count: {}".format(len(expected_log["WR"])))
+    require(len(expected_log["RD"]) == expected_count, "unexpected expected read log count: {}".format(len(expected_log["RD"])))
 
     from collections import Counter
 
@@ -307,7 +435,7 @@ def compare_axi_export_to_log(export_data, expected_log):
     require(write_export == write_expected, "write export does not match VIP monitor log")
     require(read_export == read_expected, "read export does not match VIP monitor log")
 
-    expected_ids = ["'h{:x}".format(i) for i in range(16)]
+    expected_ids = ["'h{:x}".format(i) for i in range(num_ids)]
     write_ids = {normalize_sv_hex(v) for v in meta["unique_write_ids"]}
     read_ids = {normalize_sv_hex(v) for v in meta["unique_read_ids"]}
     write_count_by_id = {normalize_sv_hex(k): v for k, v in meta["write_count_by_id"].items()}
@@ -315,13 +443,31 @@ def compare_axi_export_to_log(export_data, expected_log):
     require(write_ids == set(expected_ids), "unexpected write id set: {}".format(meta["unique_write_ids"]))
     require(read_ids == set(expected_ids), "unexpected read id set: {}".format(meta["unique_read_ids"]))
     for axi_id in expected_ids:
-        require(write_count_by_id.get(axi_id) == 200, "write count mismatch for {}".format(axi_id))
-        require(read_count_by_id.get(axi_id) == 200, "read count mismatch for {}".format(axi_id))
-    require(meta["max_total_write_outstanding"] >= 16, "write outstanding pressure was not observed")
-    require(meta["max_total_read_outstanding"] >= 16, "read outstanding pressure was not observed")
+        require(write_count_by_id.get(axi_id) == transactions_per_id, "write count mismatch for {}".format(axi_id))
+        require(read_count_by_id.get(axi_id) == transactions_per_id, "read count mismatch for {}".format(axi_id))
+    require(meta["max_total_write_outstanding"] >= min(num_ids, 4), "write outstanding pressure was not observed")
+    require(meta["max_total_read_outstanding"] >= min(num_ids, 4), "read outstanding pressure was not observed")
     require(meta["beat_count_mismatch_count"] == 0, "beat count mismatch in export meta")
     require(meta["incomplete_write_count"] == 0, "incomplete writes in export meta")
     require(meta["incomplete_read_count"] == 0, "incomplete reads in export meta")
+    require(meta["orphan_w_beat_count"] == 0, "orphan W beats in export meta")
+    require(meta["buffered_w_burst_count"] == 0, "buffered W bursts remained after export")
+    require(meta["response_dependency_violation_count"] == 0,
+            "early AXI response dependency violation in export meta")
+
+    oracle_writes = handshake_oracle["writes"]
+    require(len(oracle_writes) == len(writes),
+            "raw handshake oracle write count mismatch")
+    oracle_orders = Counter(txn["phase_order"] for txn in oracle_writes)
+    export_orders = Counter(row["phase_order"] for row in writes)
+    require(oracle_orders == export_orders,
+            "write phase-order mismatch: oracle={} export={}".format(
+                dict(oracle_orders), dict(export_orders)))
+    for required_order in ("aw_before_w", "w_before_aw", "same_cycle"):
+        require(oracle_orders[required_order] > 0,
+                "AXI delay matrix did not produce {}".format(required_order))
+    require(any(txn["w_last_time"] < txn["aw_time"] for txn in oracle_writes),
+            "AXI delay matrix did not produce a complete W burst before AW")
 
 
 def make_axi_config(prefix, top="axi_vip_fixture_top", edge="posedge", sample_point=None):
@@ -923,7 +1069,9 @@ def run_nonaxi(xdebug, fsdb):
         r.cleanup()
 
 
-def run_axi(xdebug, fsdb):
+def run_axi(xdebug, fsdb, sim_log=AXI_SIM_LOG, handshake_oracle_path=AXI_HANDSHAKE_ORACLE,
+            expected_count=3200, num_ids=16, transactions_per_id=200,
+            min_random_delay=50, max_random_delay=100):
     r = AiRunner(xdebug, fsdb, "axi")
     try:
         r.open()
@@ -995,6 +1143,8 @@ def run_axi(xdebug, fsdb):
                         percentile, expected, percentile_values[percentile]))
         require(latency["summary"]["samples"] == len(oracle_latencies),
                 "AXI latency sample count does not match transaction oracle")
+        require(latency["summary"]["full_scan_count"] == 1,
+                "canonical AXI analysis must perform exactly one full FSDB scan")
         require({"time", "response_time", "addr", "id", "is_write"} <= set(latency["data"]["slowest"]),
                 "AXI latency analysis missing slowest transaction anchor")
         slowest = latency["data"]["slowest"]
@@ -1035,7 +1185,10 @@ def run_axi(xdebug, fsdb):
         stall = r.query("axi.channel_stall", args={"name": "axi0", "channel": "r", "time_range": tr, "rules": {"max_wait_cycles": 2}, "line_limit": 1000000})
         require(stall["summary"]["sample_count"] > 0, "AXI channel_stall did not sample")
 
-        expected_log = parse_axi_expected_log(AXI_SIM_LOG)
+        expected_log = parse_axi_expected_log(sim_log)
+        require_axi_delay_matrix(sim_log, expected_count,
+                                 min_random_delay, max_random_delay)
+        handshake_oracle = parse_axi_handshake_oracle(handshake_oracle_path)
         export_dir = tempfile.mkdtemp(prefix="xdebug_axi_export_")
         export_prefix = os.path.join(export_dir, "axi0_full")
         exported = r.query(
@@ -1047,7 +1200,10 @@ def run_axi(xdebug, fsdb):
             },
             timeout=240,
         )
-        compare_axi_export_to_log(exported, expected_log)
+        compare_axi_export_to_log(exported, expected_log, handshake_oracle,
+                                  expected_count, num_ids, transactions_per_id)
+        require(exported["summary"]["full_scan_count"] == 1,
+                "analysis/pair/timeline/outlier/export workflow triggered an extra AXI scan")
 
         windowed = r.query(
             "axi.export",
@@ -1077,6 +1233,13 @@ def main():
     parser.add_argument("--xdebug", default=os.path.join(REPO_ROOT, "tools", "xdebug"))
     parser.add_argument("--fsdb", default=NONAXI_FSDB)
     parser.add_argument("--axi-fsdb", default=AXI_FSDB)
+    parser.add_argument("--axi-sim-log", default=AXI_SIM_LOG)
+    parser.add_argument("--axi-handshake-oracle", default=AXI_HANDSHAKE_ORACLE)
+    parser.add_argument("--axi-expected-count", type=int, default=3200)
+    parser.add_argument("--axi-num-ids", type=int, default=16)
+    parser.add_argument("--axi-transactions-per-id", type=int, default=200)
+    parser.add_argument("--axi-min-random-delay", type=int, default=50)
+    parser.add_argument("--axi-max-random-delay", type=int, default=100)
     parser.add_argument("--mode", choices=["all", "nonaxi", "axi"], default="all")
     args = parser.parse_args()
 
@@ -1084,7 +1247,13 @@ def main():
     if args.mode in ("all", "nonaxi"):
         rows.extend(run_nonaxi(os.path.abspath(args.xdebug), os.path.abspath(args.fsdb)))
     if args.mode in ("all", "axi"):
-        rows.extend(run_axi(os.path.abspath(args.xdebug), os.path.abspath(args.axi_fsdb)))
+        rows.extend(run_axi(
+            os.path.abspath(args.xdebug), os.path.abspath(args.axi_fsdb),
+            os.path.abspath(args.axi_sim_log),
+            os.path.abspath(args.axi_handshake_oracle),
+            args.axi_expected_count, args.axi_num_ids,
+            args.axi_transactions_per_id,
+            args.axi_min_random_delay, args.axi_max_random_delay))
     print_rows(rows)
     print("\nPASS: xdebug complex waveform validation completed")
 

@@ -21,6 +21,7 @@ module axi_vip_fixture_top;
   end
 
   svt_axi_if axi_vip_if();
+  integer axi_oracle_fd;
   assign axi_vip_if.common_aclk = clk;
   assign axi_vip_if.master_if[0].aresetn = rst_n;
   assign axi_vip_if.slave_if[0].aresetn = rst_n;
@@ -30,6 +31,38 @@ module axi_vip_fixture_top;
     .rst_n(rst_n),
     .axi_if(axi_vip_if)
   );
+
+  initial begin
+    axi_oracle_fd = $fopen("axi_handshake.jsonl", "w");
+    if (axi_oracle_fd == 0)
+      `uvm_fatal("ORACLE", "Unable to open axi_handshake.jsonl")
+  end
+
+  // Raw channel-handshake oracle.  It intentionally observes pins instead of
+  // consuming xdebug or VIP transaction objects, so pytest can reconstruct an
+  // independent transaction truth set (including W-before-AW).
+  always @(posedge clk) begin
+    if (rst_n) begin
+      if (axi_vip_if.master_if[0].awvalid && axi_vip_if.master_if[0].awready)
+        $fdisplay(axi_oracle_fd, "{\"channel\":\"AW\",\"time_ps\":%0t,\"id\":%0d,\"addr\":%0d,\"len\":%0d}",
+                 $time, axi_vip_if.master_if[0].awid,
+                 axi_vip_if.master_if[0].awaddr, axi_vip_if.master_if[0].awlen);
+      if (axi_vip_if.master_if[0].wvalid && axi_vip_if.master_if[0].wready)
+        $fdisplay(axi_oracle_fd, "{\"channel\":\"W\",\"time_ps\":%0t,\"last\":%0d}",
+                 $time, axi_vip_if.master_if[0].wlast);
+      if (axi_vip_if.master_if[0].bvalid && axi_vip_if.master_if[0].bready)
+        $fdisplay(axi_oracle_fd, "{\"channel\":\"B\",\"time_ps\":%0t,\"id\":%0d,\"resp\":%0d}",
+                 $time, axi_vip_if.master_if[0].bid, axi_vip_if.master_if[0].bresp);
+      if (axi_vip_if.master_if[0].arvalid && axi_vip_if.master_if[0].arready)
+        $fdisplay(axi_oracle_fd, "{\"channel\":\"AR\",\"time_ps\":%0t,\"id\":%0d,\"addr\":%0d,\"len\":%0d}",
+                 $time, axi_vip_if.master_if[0].arid,
+                 axi_vip_if.master_if[0].araddr, axi_vip_if.master_if[0].arlen);
+      if (axi_vip_if.master_if[0].rvalid && axi_vip_if.master_if[0].rready)
+        $fdisplay(axi_oracle_fd, "{\"channel\":\"R\",\"time_ps\":%0t,\"id\":%0d,\"last\":%0d,\"resp\":%0d}",
+                 $time, axi_vip_if.master_if[0].rid,
+                 axi_vip_if.master_if[0].rlast, axi_vip_if.master_if[0].rresp);
+    end
+  end
 
   initial begin
     $fsdbDumpfile("waves.fsdb");

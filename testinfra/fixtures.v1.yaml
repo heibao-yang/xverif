@@ -118,6 +118,19 @@ fixtures:
       - {name: fsdb, path: out/regression/test/axi_multi_id_test/waves.fsdb, kind: file, min_bytes: 1024}
       - {name: daidir, path: out/regression/build/simv.daidir, kind: dir}
       - {name: simulation_log, path: out/regression/test/axi_multi_id_test/sim.log, kind: file, min_bytes: 1}
+      - {name: handshake_oracle, path: out/regression/test/axi_multi_id_test/axi_handshake.jsonl, kind: file, min_bytes: 1}
+      - {name: fixed_fsdb, path: out/regression/test/axi_fixed_delay/waves.fsdb, kind: file, min_bytes: 1024}
+      - {name: fixed_log, path: out/regression/test/axi_fixed_delay/sim.log, kind: file, min_bytes: 1}
+      - {name: fixed_oracle, path: out/regression/test/axi_fixed_delay/axi_handshake.jsonl, kind: file, min_bytes: 1}
+      - {name: seed7_fsdb, path: out/regression/test/axi_random_seed_7/waves.fsdb, kind: file, min_bytes: 1024}
+      - {name: seed7_log, path: out/regression/test/axi_random_seed_7/sim.log, kind: file, min_bytes: 1}
+      - {name: seed7_oracle, path: out/regression/test/axi_random_seed_7/axi_handshake.jsonl, kind: file, min_bytes: 1}
+      - {name: seed19_fsdb, path: out/regression/test/axi_random_seed_19/waves.fsdb, kind: file, min_bytes: 1024}
+      - {name: seed19_log, path: out/regression/test/axi_random_seed_19/sim.log, kind: file, min_bytes: 1}
+      - {name: seed19_oracle, path: out/regression/test/axi_random_seed_19/axi_handshake.jsonl, kind: file, min_bytes: 1}
+      - {name: seed73_fsdb, path: out/regression/test/axi_random_seed_73/waves.fsdb, kind: file, min_bytes: 1024}
+      - {name: seed73_log, path: out/regression/test/axi_random_seed_73/sim.log, kind: file, min_bytes: 1}
+      - {name: seed73_oracle, path: out/regression/test/axi_random_seed_73/axi_handshake.jsonl, kind: file, min_bytes: 1}
     probes:
       - argv: [python3, "{repo}/testinfra/leaf/probe_fixture.py", --resources, "{resources}", --xdebug, "{repo}/tools/xdebug", --fsdb-glob, out/regression/test/axi_multi_id_test/waves.fsdb, --daidir-glob, out/regression/build/simv.daidir, --text-glob, out/regression/test/axi_multi_id_test/sim.log, --uvm-zero]
     tool_env: [VERDI_HOME]
