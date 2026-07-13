@@ -1,6 +1,6 @@
 # XDTE xdebug 发布闭环与可信证据优化计划
 
-状态：已确认，待实施
+状态：已完成（2026-07-13）
 
 ## 背景与目标
 
@@ -63,3 +63,15 @@ reopen、transport/backend/data-source fallback，也不会把 class/virtual-int
   路径 hash。
 - XDTE 未能由当前 FSDB 证明的 class/virtual-interface、动态数组和优化 port
   继续标为限制，优先使用 monitor/log/RM 交叉证据。
+
+## 实施与验收记录
+
+- 构建身份、active-trace schema/catalog 与 response examples 已落地；重建后的
+  CLI 对真实请求返回当前 `git_revision` 和 actions schema 的 `schema_revision`。
+- xdebug manifest helper 已由 XDTE `dv/cfg` 的 `ncrun` 成功路径调用；500-request
+  回归生成 2,969,568-byte FSDB 与 `state:"published"` manifest。有效 manifest
+  可打开 waveform session，篡改的 SHA-256 被 `RESOURCE_PROVENANCE_MISMATCH` 拒绝。
+- 同一真实 FSDB 验证了 `handshake.inspect` 默认 `summary`、显式 `intervals` 和
+  小窗口 `all` 策略；`value_format:"dec"` 可被请求并完成分析。无效 FSDB 返回
+  `ENGINE_START_FAILED`，含受限长度的 native 启动摘要。
+- 静态/skill 门禁通过，MCP stdio-loop host regression 通过；实机 session 已显式关闭。
