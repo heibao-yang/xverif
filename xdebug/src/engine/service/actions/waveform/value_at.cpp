@@ -96,6 +96,14 @@ public:
         Json clock_error;
         if (!parse_point_clock_args(args, clock_spec, clock_error)) return clock_error;
 
+        if (args.value("format", std::string()) == "array_indexed") {
+            return make_handler_error("UNSUPPORTED_AGGREGATE_QUERY",
+                "aggregate and indexed-element reads are not supported by this FSDB/NPI capability profile",
+                {{"invalid_arg", "args.format"}, {"received", "array_indexed"},
+                 {"supported", Json::array({"h", "hex", "b", "bin", "d", "dec"})},
+                 {"reason", "xdebug does not rewrite aggregate paths or infer indexed leaves"}});
+        }
+
         if (args.contains("format") && args.contains("value_format") &&
             args["format"].is_string() && args["value_format"].is_string() &&
             args["format"].get<std::string>() != "array_indexed") {
@@ -113,10 +121,21 @@ public:
             return waveform_time_error(action_name(), "args.time",
                                        time_error.empty() ? "failed to parse time: " + time_str : time_error);
 
-        // Read a bit-accurate value regardless of display preference.  The
-        // server response boundary applies args.value_format afterwards; this
-        // is what lets decimal requests preserve X/Z as binary.
-        npiFsdbValType vtype = xdebug_waveform::parse_format('b');
+        // New value_format needs bit-accurate input so decimal can preserve
+        // X/Z by reporting an effective binary format.  Preserve legacy
+        // format's NPI radix and its historical display shape otherwise.
+        char read_format = 'h';
+        if (args.contains("value_format")) {
+            read_format = 'b';
+        } else {
+            const std::string legacy_format = args.value("format", std::string("h"));
+            if (!legacy_format.empty()) {
+                const char candidate = static_cast<char>(std::tolower(
+                    static_cast<unsigned char>(legacy_format[0])));
+                if (candidate == 'h' || candidate == 'b' || candidate == 'd') read_format = candidate;
+            }
+        }
+        npiFsdbValType vtype = xdebug_waveform::parse_format(read_format);
 
         std::string formatted_time = xdebug_core::format_time(g_fsdb_file, fsdb_time);
         Json out;
@@ -128,7 +147,7 @@ public:
                                      formatted_time,
                                      std::vector<PointSignalSpec>{{signal, signal}},
                                      vtype,
-                                     'b',
+                                     read_format,
                                      point,
                                      point_error)) {
             return point_error;
@@ -137,19 +156,14 @@ public:
         if (middle_cell.value("status", std::string()) == "signal_not_found")
             return waveform_signal_not_found_error(action_name(), signal);
         Json middle_value = middle_cell.value("value", Json());
-        std::string requested_format = args.value("format", "");
         std::string status = middle_cell.value("status", std::string("unknown"));
         out["value"] = middle_value;
         bool known = middle_value.is_object() ? !contains_xz(middle_value.value("value", std::string())) : false;
         out["clock_context"] = point.clock_context;
-        if (requested_format == "array_indexed") {
-            status = "unsupported_format";
-            out["reason"] = "format:array_indexed requires an FSDB aggregate value";
-        }
         // xbit hints require the raw FSDB scalar. Keep the old direct middle read for hints only.
         std::string raw;
         if (npi_fsdb_sig_value_at(g_fsdb_file, signal.c_str(), fsdb_time, raw, vtype)) {
-            raw = with_value_prefix(raw, 'b');
+            raw = with_value_prefix(raw, read_format);
             Json hints = make_xbit_hints(args, signal, raw);
             if (!hints.is_null()) out["xbit_hints"] = hints;
         }

@@ -501,8 +501,9 @@ def run_nonaxi(xdebug, fsdb):
         require(hinted_rows and hinted_rows[0]["xbit_hints"]["status"] == "ready", "batch xbit hints not generated")
         require(v["data"]["clock_context"] == batch_hint["data"]["clock_context"],
                 "value.at and value.batch_at must share one clock bracket contract")
-        unsupported = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "clock": "ai_complex_top.clk", "time": "75ns", "format": "array_indexed"})
-        require(unsupported["summary"]["status"] == "unsupported_format", "array_indexed unsupported diagnostic missing")
+        unsupported = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "clock": "ai_complex_top.clk", "time": "75ns", "format": "array_indexed"}, expect_ok=False)
+        require(unsupported["error"]["code"] == "UNSUPPORTED_AGGREGATE_QUERY",
+                "array_indexed must return the explicit aggregate capability error")
         r.query("value.at", args={"signal": "ai_complex_top.no_such", "clock": "ai_complex_top.clk", "time": "10ns"}, expect_ok=False)
 
         created = r.query("list.create", args={"name": "basic"})

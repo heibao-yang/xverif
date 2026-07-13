@@ -96,6 +96,14 @@ public:
         Json clock_error;
         if (!parse_point_clock_args(args, clock_spec, clock_error)) return clock_error;
 
+        if (args.value("format", std::string()) == "array_indexed") {
+            return make_handler_error("UNSUPPORTED_AGGREGATE_QUERY",
+                "aggregate and indexed-element reads are not supported by this FSDB/NPI capability profile",
+                {{"invalid_arg", "args.format"}, {"received", "array_indexed"},
+                 {"supported", Json::array({"h", "hex", "b", "bin", "d", "dec"})},
+                 {"reason", "xdebug does not rewrite aggregate paths or infer indexed leaves"}});
+        }
+
         if (args.contains("format") && args.contains("value_format") &&
             args["format"].is_string() && args["value_format"].is_string() &&
             args["format"].get<std::string>() != "array_indexed") {
@@ -117,6 +125,17 @@ public:
         for (const auto& s : signals_j)
             if (s.is_string()) names.push_back(s.get<std::string>());
 
+        char read_format = 'h';
+        if (args.contains("value_format")) {
+            read_format = 'b';
+        } else {
+            const std::string legacy_format = args.value("format", std::string("h"));
+            if (!legacy_format.empty()) {
+                const char candidate = static_cast<char>(std::tolower(
+                    static_cast<unsigned char>(legacy_format[0])));
+                if (candidate == 'h' || candidate == 'b' || candidate == 'd') read_format = candidate;
+            }
+        }
         Json out;
         std::string formatted_time = xdebug_core::format_time(g_fsdb_file, fsdb_time);
         std::vector<PointSignalSpec> specs;
@@ -128,8 +147,8 @@ public:
                                      fsdb_time,
                                      formatted_time,
                                      specs,
-                                     xdebug_waveform::parse_format('b'),
-                                     'b',
+                                     xdebug_waveform::parse_format(read_format),
+                                     read_format,
                                      point,
                                      point_error)) {
             return point_error;
@@ -147,8 +166,8 @@ public:
                 item["value"] = middle.value("value", Json());
                 if (item["value"].is_object() && contains_xz(item["value"].value("value", std::string()))) unknown_count++;
                 std::string raw;
-                if (npi_fsdb_sig_value_at(g_fsdb_file, names[i].c_str(), fsdb_time, raw, xdebug_waveform::parse_format('b'))) {
-                    raw = with_value_prefix(raw, 'b');
+                if (npi_fsdb_sig_value_at(g_fsdb_file, names[i].c_str(), fsdb_time, raw, xdebug_waveform::parse_format(read_format))) {
+                    raw = with_value_prefix(raw, read_format);
                     Json hints = make_xbit_hints(args, names[i], raw);
                     if (!hints.is_null()) item["xbit_hints"] = hints;
                 }

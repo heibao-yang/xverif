@@ -39,6 +39,9 @@ frontend 不直接承载 NPI 重逻辑；NPI/FSDB/engine 能力集中在内部 e
 - 不要在 CLI 层手写 action-specific 参数规则；参数合同应来自 schema。
 - 不要让日志污染 JSON stdout。
 - 新增公共输出字段时同时考虑 JSON 和 XOUT。
+- `session.open.target.run_manifest` 是可选的 provenance gate：提供时必须在 engine
+  启动前完成 published state、canonical path、size 和 SHA-256 校验；不得通过自动
+  reopen、固定 sleep 或其他 transport 绕过失败。
 
 ## Schema 与 Validator 层
 
@@ -186,6 +189,10 @@ frontend 不直接承载 NPI 重逻辑；NPI/FSDB/engine 能力集中在内部 e
 
 - clock/time/sample_point 语义必须集中复用统一 helper。
 - value/logic 四态处理必须复用 `LogicValue` 相关组件。
+- signal value 显示使用 `args.value_format`（`hex`、`bin`、`dec`）；decimal 遇 X/Z
+  必须明确给出 binary effective format，不能丢失逐位信息。
+- `edge:"negedge"` 可以携带 `sample_point` 以统一请求形状，但它不改变既有 negedge
+  current-value 采样；响应必须给出 requested/effective sampling。
 - 大 payload 默认 compact；只使用 schema 声明的 `args.output.verbose`、action-specific `line_limit` 或 export action 返回细节。
 
 ## Combined Active Trace 层

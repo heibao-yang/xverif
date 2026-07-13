@@ -1018,6 +1018,8 @@ latency/osd 由底层 analyzer 返回，常见字段：
 | `data.data_stability_violations` | number | 当前固定 0 |
 | `data.truncated` | boolean | 是否截断 |
 | `data.findings[]` | array | long stall findings |
+| `data.sampling.requested/effective` | object | 请求与实际生效的采样语义；negedge 的 effective sample_point 为 null |
+| `data.ready_without_valid_intervals[]` | array | `rules.ready_without_valid:"intervals"` 时的 begin/end/cycle_count |
 
 ## 11. Verify / Expr / Window / Signal 命令
 

@@ -23,7 +23,8 @@
 - `detect_abnormal`：raw waveform smoke scan。用于找 `unknown_xz`、周期内异常短脉冲/毛刺 `glitch`、长时间不变 `stuck`。可传多个信号；对 packed struct / aggregate payload，AI 必须直接传最终 leaf signal path，例如 `top.u.payload.opcode`，不要传 struct aggregate path 后期待 xdebug 自动展开。它不单独证明 valid/ready 协议 bug，`stuck` 命中后还要结合协议上下文解释。
 - `event.find` / `event.export`：clock-edge sampled event query。用于按 `clock`、`edge`、`sample_point` 和 alias 表达式查 `valid && !ready`、`opcode >= 8'h10`、`data != 0` 这类采样点条件。默认优先用 `edge:"negedge"`；只有接口规范、monitor 语义或 race/skew 证据要求时才改用 `edge:"posedge"`。使用 posedge 时默认推荐 `sample_point:"before"`，因为数据与 clock edge 同 timestamp 变化时 before/after 语义不同；只有要观察沿后状态才用 `"after"`。`edge:"dual"` 只用于 DDR/双沿采样/不确定边沿 bring-up。packed struct 字段必须作为 direct leaf signal alias 传入，例如 `"opcode": "top.u.payload.opcode"`，不要只依赖 aggregate `payload`。
 - `sampled_pulse.inspect`：valid sampling explanation。用于回答“raw valid 脉冲存在，但没有被采样边沿看到”以及 payload 在未采样窗口附近是否变化；它不是通用 glitch/stuck/XZ 扫描入口。
-- `handshake.inspect`：valid/ready protocol inspection。用于统计 transfer、stall、ready-without-valid、stalled data stability violation；适合协议层风险，不替代 raw glitch 检测。
+- `handshake.inspect`：valid/ready protocol inspection。用于统计 transfer、stall、ready-without-valid、stalled data stability violation；`rules.ready_without_valid` 默认 `summary`，可选 `intervals` 或 `all`；适合协议层风险，不替代 raw glitch 检测。
+- `value.at` / `value.batch_at`：用 `args.value_format:"hex"|"bin"|"dec"` 控制响应显示。decimal 遇 X/Z 会明确报告 binary effective format。aggregate 根和 `format:"array_indexed"` 当前统一返回 `UNSUPPORTED_AGGREGATE_QUERY`；应传入最终 leaf signal，xdebug 不猜测 indexed path。
 - `stream.*`：通用 vld-data / vld-rdy-data 任务抽取，是重要能力。凡是可抽象成 `clock + vld + data`，并可选 `rdy`、`bp`、`sop/eop`、`channel_id` 的外部接口、模块内部交互、pipeline stage、FIFO/queue 出入口、仲裁请求授予、RM/scoreboard 内部任务流，都可以注册 stream 后查询 transfer、stall、packet、field match 或导出 beats。一次性条件找点用 `event.find/export`；协议统计用 `handshake.inspect`；标准 AXI/APB 可优先用专用 action；非标准或模块内部 vld-data 任务优先考虑 stream。stream action 字段统一写 `stream`，不写 `name`。
 - `window.verify`：sampled proof。用于证明某个 clock window 内条件 always/eventually/never 是否成立；适合最终证明，不适合枚举原始 value-change timeline。
 - `signal.changes`：raw timeline。用于列出某个信号的精确变化时间；需要按表达式关联多信号时改用 `event.find/export`。
@@ -42,7 +43,7 @@
 | `session.gc` | stable | none | 清理过期 session。 | 扫描 session 管理状态并回收可释放项。 | 避免长期运行时积累无用资源。 | none |
 | `session.kill` | stable | session | 强制移除指定 session。 | 按 target.session_id 清理记录和关联资源。 | 处理异常残留 session。 | required: target.session_id |
 | `session.list` | stable | session | 列出当前 session。 | 读取 SessionManager 中的活动 session 元数据。 | 确认已有 session_id 和资源类型。 | none |
-| `session.open` | stable | any | 打开 design/waveform session。 | 解析 target 中的 daidir/fsdb，初始化统一 engine session 和底层资源。 | 建立后续 design/waveform 查询的资源上下文。 | required: name |
+| `session.open` | stable | any | 打开 design/waveform session。 | 解析 target 中的 daidir/fsdb；可选 `target.run_manifest` 会在启动前校验 published state、canonical path、size 与 SHA-256。 | 建立后续 design/waveform 查询的资源上下文。 | required: name |
 ## Design Actions
 | action | status | resource | purpose | how it works | objective | args contract |
 | --- | --- | --- | --- | --- | --- | --- |
