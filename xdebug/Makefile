@@ -24,6 +24,7 @@ SVT_VIP_SRCDIR ?= ~/axi_test/test/src/sverilog/vcs
 CORE_SRCS = src/core/common/tool_config.cpp \
             src/core/common/env_config.cpp \
             src/core/common/path_utils.cpp \
+            src/core/common/sha256.cpp \
             src/core/npi/time_contract.cpp \
             src/core/transport/file_exchange.cpp \
             src/core/logging/action_log.cpp \

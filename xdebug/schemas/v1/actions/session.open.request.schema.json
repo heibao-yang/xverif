@@ -25,7 +25,13 @@
       ]
     },
     "target": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "run_manifest": {
+          "type": "string",
+          "description": "可选 xdebug.run-manifest.v1 路径；提供时在启动 engine 前严格校验 target 资源。"
+        }
+      }
     },
     "args": {
       "type": "object",

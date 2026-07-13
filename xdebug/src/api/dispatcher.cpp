@@ -9,6 +9,7 @@
 #include "common/path_utils.h"
 #include "core/session/session_timeout.h"
 #include "core/session/session_types.h"
+#include "core/common/sha256.h"
 #include "logging/action_log.h"
 
 #include <cerrno>
@@ -17,6 +18,7 @@
 #include <limits.h>
 #include <string>
 #include <cstring>
+#include <fstream>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -37,6 +39,93 @@ bool has_string(const Json& object, const char* key) {
 bool fingerprint_recorded(long mtime, long long size,
                           unsigned long long dev, unsigned long long inode) {
     return mtime != 0 || size != 0 || dev != 0 || inode != 0;
+}
+
+std::string dirname_of(const std::string& path) {
+    const size_t slash = path.find_last_of('/');
+    return slash == std::string::npos ? "." : (slash == 0 ? "/" : path.substr(0, slash));
+}
+
+bool canonical_path(const std::string& path, std::string& out) {
+    char resolved[PATH_MAX] = {};
+    if (!realpath(path.c_str(), resolved)) return false;
+    out = resolved;
+    return true;
+}
+
+Json manifest_mismatch(const Json& request, const std::string& message, const Json& details) {
+    Json response = make_error(request, "session.open", "RESOURCE_PROVENANCE_MISMATCH", message);
+    response["summary"] = {{"status", "manifest_mismatch"}};
+    response["data"] = {{"manifest", details}};
+    return response;
+}
+
+bool validate_manifest_resource(const Json& request, const std::string& manifest_path,
+                                const std::string& key, const std::string& target_path,
+                                Json& details, Json& error_response) {
+    if (!details.contains("resources") || !details["resources"].is_object() ||
+        !details["resources"].contains(key) || !details["resources"][key].is_object()) {
+        error_response = manifest_mismatch(request, "run manifest does not declare resource: " + key, details);
+        return false;
+    }
+    const Json& declared = details["resources"][key];
+    const std::string relative = declared.value("path", std::string());
+    const long long size = declared.value("size_bytes", -1LL);
+    const std::string expected_sha = declared.value("sha256", std::string());
+    if (relative.empty() || size < 0 || expected_sha.size() != 64) {
+        error_response = manifest_mismatch(request, "run manifest has incomplete resource declaration: " + key, details);
+        return false;
+    }
+    std::string expected_path, actual_path;
+    if (!canonical_path(dirname_of(manifest_path) + "/" + relative, expected_path) ||
+        !canonical_path(target_path, actual_path) || expected_path != actual_path) {
+        details["resource"] = key;
+        details["expected_path"] = relative;
+        error_response = manifest_mismatch(request, "run manifest resource path does not match target: " + key, details);
+        return false;
+    }
+    struct stat st;
+    if (stat(actual_path.c_str(), &st) != 0 || static_cast<long long>(st.st_size) != size) {
+        details["resource"] = key;
+        details["expected_size_bytes"] = size;
+        details["actual_size_bytes"] = stat(actual_path.c_str(), &st) == 0 ? Json(static_cast<long long>(st.st_size)) : Json(nullptr);
+        error_response = manifest_mismatch(request, "run manifest resource size does not match target: " + key, details);
+        return false;
+    }
+    std::string actual_sha, sha_error;
+    const bool is_directory = S_ISDIR(st.st_mode);
+    const bool digest_ok = is_directory
+        ? xdebug_core::sha256_directory_tree(actual_path, actual_sha, sha_error)
+        : xdebug_core::sha256_file(actual_path, actual_sha, sha_error);
+    if (!digest_ok || actual_sha != expected_sha) {
+        details["resource"] = key;
+        details["expected_sha256"] = expected_sha;
+        details["actual_sha256"] = actual_sha.empty() ? Json(nullptr) : Json(actual_sha);
+        error_response = manifest_mismatch(request, "run manifest resource SHA-256 does not match target: " + key, details);
+        return false;
+    }
+    return true;
+}
+
+bool validate_run_manifest(const Json& request, const Json& target, Json& details, Json& error_response) {
+    if (!has_string(target, "run_manifest")) return true;
+    std::string manifest_path;
+    if (!canonical_path(target["run_manifest"].get<std::string>(), manifest_path)) {
+        error_response = manifest_mismatch(request, "run manifest is missing or cannot be resolved", Json::object());
+        return false;
+    }
+    std::ifstream input(manifest_path.c_str());
+    if (!input.good()) { error_response = manifest_mismatch(request, "run manifest cannot be opened", Json::object()); return false; }
+    try { input >> details; } catch (...) { error_response = manifest_mismatch(request, "run manifest is not valid JSON", Json::object()); return false; }
+    if (details.value("schema_version", std::string()) != "xdebug.run-manifest.v1" ||
+        details.value("state", std::string()) != "published") {
+        error_response = manifest_mismatch(request, "run manifest must be xdebug.run-manifest.v1 in published state", details);
+        return false;
+    }
+    if (has_string(target, "fsdb") && !validate_manifest_resource(request, manifest_path, "fsdb", target["fsdb"].get<std::string>(), details, error_response)) return false;
+    if (has_string(target, "daidir") && !validate_manifest_resource(request, manifest_path, "daidir", target["daidir"].get<std::string>(), details, error_response)) return false;
+    details["manifest_path"] = manifest_path;
+    return true;
 }
 
 bool resource_changed(const std::string& path,
@@ -211,6 +300,9 @@ void stabilize_resource_paths(Json& target) {
     }
     if (has_string(target, "fsdb")) {
         target["fsdb"] = stable_resource_path(target["fsdb"].get<std::string>());
+    }
+    if (has_string(target, "run_manifest")) {
+        target["run_manifest"] = stable_resource_path(target["run_manifest"].get<std::string>());
     }
 }
 
@@ -531,6 +623,9 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
                               "session.open does not accept args.reuse or args.reopen; close or gc existing sessions explicitly");
         }
         if (mode.empty()) return make_error(request, action, "RESOURCE_REQUIRED", "target.daidir or target.fsdb is required");
+        Json manifest_details;
+        Json manifest_error;
+        if (!validate_run_manifest(request, target, manifest_details, manifest_error)) return manifest_error;
         Json expired_removed;
         Json cleanup_error;
         if (!cleanup_expired_sessions(request, expired_removed, cleanup_error)) return cleanup_error;
@@ -578,7 +673,10 @@ Json Dispatcher::handle_session(const Json& request, const std::string& action) 
         xdebug_core::update_public_session_manifest(record.id, record.mode, record.daidir, record.fsdb);
         Json response = make_response(request, action);
         response["session"] = session_record_json(record);
-        response["summary"] = {{"session_id", name}, {"mode", mode}};
+        response["summary"] = {{"session_id", name}, {"mode", mode},
+                               {"resource_snapshot", {{"daidir", record.daidir.empty() ? Json(nullptr) : Json(record.daidir)},
+                                                      {"fsdb", record.fsdb.empty() ? Json(nullptr) : Json(record.fsdb)},
+                                                      {"run_manifest", manifest_details.empty() ? Json(nullptr) : manifest_details}}}};
         response["data"] = {{"session", response["session"]}};
         Json advisories = duplicate_resource_advisories(before_records, record);
         if (!advisories.empty()) response["advisories"] = advisories;
