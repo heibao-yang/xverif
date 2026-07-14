@@ -36,6 +36,10 @@
 - request/response schema 路径
 - request/response example 路径
 - `required_args` 或其它合同元数据
+- `description_en`、`description_zh`、`purposes`、`use_for`、`do_not_use_for`、
+  `preferred_alternative`。这些字段以 `actions.yaml` 为 canonical source，必须通过
+  `tools/sync_action_metadata.py` 生成编译期 metadata，禁止在 runtime 中逐 action
+  手写另一份描述。
 
 要求：
 
@@ -60,6 +64,8 @@
 - `time_range`、`output.path`、`line_limit`、`stream`、`direction` 等标准字段按现有词典使用，不引入同义别名。
 - 不要为了 AI 误用保留旧 alias。发现常见误用时，优先通过 action-specific schema、错误提示、最小正确模板和错误反例修复；例如 APB/AXI query 使用 `query.index`，active-driver 链深度使用 top-level `limits.max_depth`。
 - response schema 必须覆盖 summary/data/error 的稳定字段。
+- schema 顶层 `description` 使用英文，`x-description-zh` 使用中文；生成器和手写
+  schema 都必须保持这个双语字段约定，不得把中文写回 `description` 造成风格漂移。
 - 参数错误路径必须设计清楚：schema 层负责结构性错误，handler 层负责语义错误；两层都应返回可恢复字段，尤其是 `invalid_arg` 和 `correct_example`。
 
 ## 编写 examples
@@ -97,6 +103,10 @@
 - 大数据默认摘要化，详细数据通过 action-specific `line_limit`、schema 明确声明的 `args.output` 参数或 export action 控制；AXI transaction 使用 `output.include_data`，其它 action 不得照抄该参数或新增裸 `limit`。
 - `line_limit` 只控制 response/XOUT 证据缓存；扫描预算使用 `max_samples`，文件/聚合事件预算按 action 使用 `max_events`。实现不得把 `line_limit` 直接传入 clock scanner。
 - 完整扫描的大结果要在线累计 summary，并有界保留 first/last/前 N 条证据；不得为 compact response 无界缓存所有 transfer/finding。
+
+`actions` catalog 的公开过滤字段固定为 `category`、`requires`、`purposes` 和
+`keyword`；`status` 只作为 descriptor metadata，不是过滤条件。默认返回 compact
+action name，`args.output.verbose=true` 返回字段恒定存在的完整 descriptor。
 
 ## 更新 docs 和 skill
 

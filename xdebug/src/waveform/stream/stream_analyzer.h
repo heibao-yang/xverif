@@ -26,7 +26,7 @@ struct StreamRow {
     int packet_index = -1;
     int beat_index = 0;
     std::map<std::string, StreamValue> fields;
-    std::map<std::string, StreamValue> stable_fields;
+    std::map<std::string, StreamValue> packet_stable_fields;
     StreamValue channel;
     int control_xz_count = 0;
     int data_xz_count = 0;
@@ -39,7 +39,7 @@ struct StreamBeat {
     std::map<std::string, StreamValue> fields;
 };
 
-struct StreamStableMismatch {
+struct StreamPacketStableMismatch {
     std::string field;
     int cycle = 0;
     npiFsdbTime time = 0;
@@ -57,8 +57,8 @@ struct StreamPacket {
     bool partial_begin = false;
     bool partial_end = false;
     StreamValue channel;
-    std::map<std::string, StreamValue> stable_fields;
-    std::vector<StreamStableMismatch> stable_mismatches;
+    std::map<std::string, StreamValue> packet_stable_fields;
+    std::vector<StreamPacketStableMismatch> packet_stable_mismatches;
     std::vector<StreamBeat> beats;
     std::map<std::string, StreamValue> first_fields;
     std::map<std::string, StreamValue> last_fields;
@@ -84,11 +84,12 @@ struct StreamAnalysis {
     int vld_cycles = 0;
     int transfer_count = 0;
     int stall_cycles = 0;
-    int packet_count = 0;
+    int complete_packet_count = 0;
+    int partial_packet_count = 0;
     int control_xz_count = 0;
     int data_xz_count = 0;
     int ready_bp_conflict_count = 0;
-    int stable_mismatch_count = 0;
+    int packet_stable_mismatch_count = 0;
     bool truncated = false;
     bool analysis_complete = true;
     npiFsdbTime requested_begin = 0;
@@ -144,5 +145,7 @@ Json stream_row_json(const StreamRow& row);
 Json stream_stall_json(const StreamStallWindow& stall);
 Json stream_packet_json(const StreamPacket& packet);
 Json stream_summary_json(const StreamConfig& config, const StreamAnalysis& analysis);
+Json stream_static_validation_json(npiFsdbFileHandle file,
+                                   const StreamConfig& config);
 
 } // namespace xdebug_waveform

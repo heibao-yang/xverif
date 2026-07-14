@@ -95,6 +95,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "scope.roots response: 发现 waveform/design 根。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Discover waveform and design hierarchy roots.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "发现 waveform/design 根。"
 }

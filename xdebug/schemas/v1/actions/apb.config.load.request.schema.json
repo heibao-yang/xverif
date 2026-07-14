@@ -32,7 +32,77 @@
       "properties": {
         "config": {
           "type": "object",
-          "description": "内联配置对象。"
+          "description": "内联配置对象。",
+          "properties": {
+            "clock": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rst_n": {
+              "type": "string",
+              "minLength": 1
+            },
+            "edge": {
+              "type": "string",
+              "enum": [
+                "posedge",
+                "negedge",
+                "dual"
+              ]
+            },
+            "sample_point": {
+              "type": "string",
+              "enum": [
+                "before",
+                "after"
+              ]
+            },
+            "paddr": {
+              "type": "string",
+              "minLength": 1
+            },
+            "psel": {
+              "type": "string",
+              "minLength": 1
+            },
+            "penable": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pready": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pslverr": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pwrite": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pwdata": {
+              "type": "string",
+              "minLength": 1
+            },
+            "prdata": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "clock",
+            "rst_n",
+            "paddr",
+            "psel",
+            "penable",
+            "pready",
+            "pslverr",
+            "pwrite",
+            "pwdata",
+            "prdata"
+          ],
+          "additionalProperties": false
         },
         "config_path": {
           "type": "string",
@@ -92,9 +162,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "apb.config.load: 加载 APB 配置。",
+  "description": "Load and validate an APB interface configuration.",
   "x-purpose": "加载 APB 配置。",
   "x-how_it_works": "保存 APB interface 信号映射。",
   "x-when_to_use": "定义后续 APB 查询对象。",
-  "x-arg_contract_notes": "required: name; also one of: config / config_path"
+  "x-arg_contract_notes": "required: name; also one of: config / config_path",
+  "x-description-zh": "加载 APB 配置。"
 }

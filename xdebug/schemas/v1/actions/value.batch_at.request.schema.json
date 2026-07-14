@@ -127,9 +127,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "value.batch_at: 批量读取多个信号值。",
+  "description": "Read multiple signal values at one sampled waveform time.",
   "x-purpose": "批量读取多个信号值。",
   "x-how_it_works": "对 signals 列表按同一 clock/time 执行 FSDB 读取。",
   "x-when_to_use": "减少多信号同一时刻检查的开销。",
-  "x-arg_contract_notes": "required: signals, time, clock"
+  "x-arg_contract_notes": "required: signals, time, clock",
+  "x-description-zh": "批量读取多个信号值。"
 }

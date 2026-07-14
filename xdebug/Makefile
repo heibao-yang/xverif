@@ -11,6 +11,7 @@ NPI_LDFLAGS ?=
 NPI_LIB ?=
 
 BUILD_INFO = $(BUILD)/build_info.h
+ACTION_METADATA = src/api/generated_action_metadata.inc
 CXXFLAGS = $(COMMON_CXXFLAGS) $(NPI_CXXFLAGS) -pthread -I$(BUILD) -Isrc -Isrc/core -Isrc/engine -Isrc/design -Isrc/waveform -isystem third_party -isystem third_party/json-schema-validator/src
 LDFLAGS  = $(NPI_LDFLAGS) -pthread $(if $(NPI_LIB),-Xlinker -rpath -Xlinker $(NPI_LIB),)
 DEPFLAGS = -MMD -MP
@@ -213,6 +214,11 @@ DEPS = $(sort $(CORE_OBJS:.o=.d) \
 .PHONY: all internal-engines cpp-unit-binaries clean FORCE
 
 FORCE:
+
+$(ACTION_METADATA): specs/actions/actions.yaml tools/sync_action_metadata.py
+	$(PYTHON) tools/sync_action_metadata.py
+
+$(BUILD)/src/api/action_registry_init.o: $(ACTION_METADATA)
 
 $(BUILD_INFO): FORCE specs/actions/actions.yaml
 	@mkdir -p $(dir $@)

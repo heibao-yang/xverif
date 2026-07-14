@@ -36,15 +36,39 @@
         "output": {
           "type": "object",
           "properties": {
-            "path": {"type": "string"},
-            "meta_path": {"type": "string"},
-            "file_format": {"type": "string", "enum": ["tsv", "csv", "xout"]}
+            "path": {
+              "type": "string"
+            },
+            "meta_path": {
+              "type": "string"
+            },
+            "file_format": {
+              "type": "string",
+              "enum": [
+                "tsv",
+                "csv",
+                "xout"
+              ]
+            }
           },
-          "required": ["path", "meta_path", "file_format"],
+          "required": [
+            "path",
+            "meta_path",
+            "file_format"
+          ],
           "additionalProperties": true
         },
-        "kind": {"type": "string", "enum": ["transfer", "packet", "packet_beats"]},
-        "row_count": {"type": "integer"}
+        "kind": {
+          "type": "string",
+          "enum": [
+            "transfer",
+            "packet",
+            "packet_beats"
+          ]
+        },
+        "row_count": {
+          "type": "integer"
+        }
       },
       "additionalProperties": true
     },
@@ -57,6 +81,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "stream.export response: 导出 stream 查询结果。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Export stream transfers or packet data.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "导出 stream 查询结果。"
 }

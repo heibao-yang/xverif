@@ -49,7 +49,20 @@ xdebug 是 daidir/FSDB 确定性事实入口。本文件覆盖高频决策链，
 
 流程：确认 leaf paths → `stream.config.load` → `stream.config.list` 验证 → `stream.query` 查 transfer/stall/packet/field match → finding 时间补 `value.batch_at` → `trace.active_driver` 解释 backpressure/control → `window.verify` 证明。
 
+- packet 跨 beat 不变字段写 `packet_stable_fields`；查询 scope 使用
+  `field_scope=packet_stable`，不再使用旧 `stable_fields/stable` 名称。
+- packet 汇总读取 `complete_packet_count`、`partial_packet_count` 和
+  `packet_count_status=exact|not_configured|ambiguous`，不要从窗口内 partial packet
+  推断精确总数。
+- `stream.config.load/show` 返回静态预检：resolved signal path/width、sampling 和
+  packet rules；先看该结果，再启动大窗口扫描。
+
 APB/AXI action 只在需要协议专属 transaction、channel 或 violation 语义时使用。完整 stream/APB/AXI action 见 [全量 action 索引](../generated/xdebug-actions.md)。
+
+`apb.query` 默认 `direction=all`，其 index/last/line_limit/address 都作用于按时间排序的
+读写混合序列；只有明确只看读或写时才传 `direction=read|write`。APB 配置必须显式
+提供 `PREADY` 和 `PSLVERR`；缺少任一信号时 `apb.config.load` 直接拒绝，不假设
+zero-wait 或 no-error。
 
 ## 6. 宏观波形和多模态观察
 

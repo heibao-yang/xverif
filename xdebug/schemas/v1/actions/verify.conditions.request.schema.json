@@ -145,9 +145,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "verify.conditions: 在单个时间验证条件集合。",
+  "description": "Verify multiple conditions at one sampled time.",
   "x-purpose": "在单个时间验证条件集合。",
   "x-how_it_works": "解析 clock/time，按 args.signals 采样 alias，并对 conditions[].expr 求值。",
   "x-when_to_use": "检查某个时间点的多条件事实。",
-  "x-arg_contract_notes": "required: conditions, time, clock, signals"
+  "x-arg_contract_notes": "required: conditions, time, clock, signals",
+  "x-description-zh": "在单个时间验证条件集合。"
 }

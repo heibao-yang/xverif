@@ -4,7 +4,7 @@
 
 This phase enhances existing `stream.*` packet semantics:
 
-- Split packet data into `stable_fields` and `beat_fields`.
+- Split packet data into `packet_stable_fields` and `beat_fields`.
 - Keep legacy `data` and `data_fields` compatible by treating them as beat fields.
 - Make `channel_id` part of packet ownership semantics, not only row annotation.
 - Support non-interleaved and interleaved packet reconstruction.
@@ -19,7 +19,7 @@ New recommended config shape:
 
 ```json
 {
-  "stable_fields": {
+  "packet_stable_fields": {
     "opcode": "top.req_opcode",
     "id": "top.req_id",
     "addr": "top.req_addr"
@@ -36,13 +36,13 @@ New recommended config shape:
 
 Rules:
 
-- `stable_fields` and `beat_fields` are optional maps of field name to stream
+- `packet_stable_fields` and `beat_fields` are optional maps of field name to stream
   expression.
 - `data` and `data_fields` remain valid and are interpreted as legacy beat
   fields.
 - Explicit `beat_fields` and legacy `data/data_fields` are merged; duplicate
   field names are errors.
-- `stable_fields` and `beat_fields` must not share a field name.
+- `packet_stable_fields` and `beat_fields` must not share a field name.
 - `channel_id_valid` values are `sop`, `eop`, and `every_beat`; default is
   `every_beat`.
 - `allow_interleaving` defaults to false.
@@ -53,11 +53,11 @@ Rules:
 
 ## Packet Semantics
 
-- `stable_fields` are sampled on each transfer beat and expected to remain
+- `packet_stable_fields` are sampled on each transfer beat and expected to remain
   constant inside a packet.
-- A packet stores the first stable value as `stable_fields`.
+- A packet stores the first stable value as `packet_stable_fields`.
 - If a later beat changes a stable field, the packet records
-  `stable_mismatches`; validate/query surfaces a warning.
+  `packet_stable_mismatches`; validate/query surfaces a warning.
 - `beat_fields` are sampled on each transfer beat and kept as per-beat values.
 - stream does not concatenate multi-beat data. Inline packet output shows a beat
   preview only.
@@ -98,7 +98,7 @@ Packet query shape:
 
 `match_field`:
 
-- Add `field_scope`: `beat`, `stable`, or `any`; default `any`.
+- Add `field_scope`: `beat`, `packet_stable`, or `any`; default `any`.
 - `beat` returns transfer rows.
 - `stable` returns packet objects.
 - `any` may return both, each row annotated with match scope.
@@ -133,7 +133,7 @@ Exports:
 ## Tests
 
 - Legacy `data` and `data_fields` configs still pass.
-- New `stable_fields` and `beat_fields` config passes.
+- New `packet_stable_fields` and `beat_fields` config passes.
 - Duplicate stable/beat names produce validation errors.
 - Stable fields that change within a packet produce mismatch records and warning.
 - Beat fields show head/tail preview and export complete `packet_beats`.
@@ -152,4 +152,3 @@ make -C xdebug schema-test
 make -C xdebug contract-test
 ~/miniconda3/bin/python -m pytest xdebug/tests/synthetic/test_stream_v1_real_waveform.py -q
 ```
-

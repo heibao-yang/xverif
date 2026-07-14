@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "xdebug.axi.analysis.response.v1",
   "title": "axi.analysis response",
-  "description": "axi.analysis response: 汇总 AXI 行为。",
+  "description": "Analyze AXI latency, pending transactions, and outstanding activity.",
   "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
   "type": "object",
   "required": [
@@ -1010,5 +1010,6 @@
       "additionalProperties": false
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "x-description-zh": "汇总 AXI 行为。"
 }

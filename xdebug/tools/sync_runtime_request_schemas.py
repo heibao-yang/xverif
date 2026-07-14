@@ -37,7 +37,7 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
     "dynamic": {"type": "boolean"},
     "edge": {"type": "string", "enum": ["posedge", "negedge", "dual"]},
     "events": {"type": "boolean"},
-    "field_scope": {"type": "string"},
+    "field_scope": {"type": "string", "enum": ["beat", "packet_stable", "any"]},
     "group_by": {"type": "array"},
     "host": {"type": "string"},
     "include_alias_candidates": {"type": "boolean"},
@@ -69,7 +69,7 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
             "lo": {"type": "string"},
             "hi": {"type": "string"},
             "mask": {"type": "string"},
-            "field_scope": {"type": "string", "enum": ["beat", "stable", "any"]},
+            "field_scope": {"type": "string", "enum": ["beat", "packet_stable", "any"]},
         },
         "required": ["field"],
         "additionalProperties": False,
@@ -122,7 +122,7 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
 
 
 EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
-    "actions": {"output"},
+    "actions": {"filter", "output"},
     "apb.cursor": {"direction"},
     "apb.config.list": {"name"},
     "apb.config.load": {"config", "config_path"},
@@ -300,6 +300,7 @@ def collect_arg_schemas(specs: list[dict[str, Any]]) -> dict[str, dict[str, Any]
     # channel enums are applied in sync_schema().
     arg_schemas["channel"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["channel"])
     arg_schemas["match"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["match"])
+    arg_schemas["field_scope"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["field_scope"])
     arg_schemas["output"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["output"])
     arg_schemas["time_range"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["time_range"])
 
@@ -337,6 +338,20 @@ def collect_arg_schemas(specs: list[dict[str, Any]]) -> dict[str, dict[str, Any]
         ],
     }
     arg_schemas["kind"] = {"type": "string"}
+    string_filter = lambda values: {
+        "type": "array", "minItems": 1, "uniqueItems": True,
+        "items": {"type": "string", "enum": values},
+    }
+    arg_schemas["filter"] = {
+        "type": "object",
+        "properties": {
+            "category": string_filter(["builtin", "design", "waveform", "combined", "session"]),
+            "requires": string_filter(["none", "design", "waveform", "combined", "any", "session"]),
+            "purposes": string_filter(["discover", "configure", "query", "inspect", "analyze", "trace", "verify", "export", "manage", "transform", "orchestrate"]),
+            "keyword": {"type": "string", "pattern": ".*\\S.*"},
+        },
+        "additionalProperties": False,
+    }
     arg_schemas["mode"] = {"type": "string"}
     arg_schemas["op"] = {"type": "string", "enum": ["begin", "next", "prev", "pre", "last"]}
     arg_schemas["port"] = {"type": "integer"}
@@ -353,6 +368,22 @@ def allowed_args_for_spec(spec: dict[str, Any]) -> set[str]:
     if spec.get("handler_kind") == "engine_forward" and action not in ENGINE_FORWARD_TIME_UNIT_EXCLUDE:
         keys.add("time_unit")
     return keys
+
+
+def protocol_config_schema(required_signals: list[str], description: str) -> dict[str, Any]:
+    properties = {
+        signal: {"type": "string", "minLength": 1}
+        for signal in required_signals
+    }
+    properties["edge"] = {"type": "string", "enum": ["posedge", "negedge", "dual"]}
+    properties["sample_point"] = {"type": "string", "enum": ["before", "after"]}
+    return {
+        "type": "object",
+        "description": description,
+        "properties": properties,
+        "required": required_signals,
+        "additionalProperties": False,
+    }
 
 
 def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[str, dict[str, Any]]) -> dict[str, Any]:
@@ -395,10 +426,69 @@ def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[
             selected_props[key].setdefault("description", PARAM_DESCRIPTIONS[key])
     if action in ("apb.query", "axi.query") and "query" in selected_props:
         selected_props["query"] = copy.deepcopy(arg_schemas["protocol_query"])
-        if "direction" in selected_props:
+        if action == "axi.query" and "direction" in selected_props:
             selected_props["direction"] = {"type": "string", "enum": ["write", "read"]}
     if action == "axi.analysis" and "analysis" in selected_props:
         selected_props["analysis"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["analysis"])
+    if action == "apb.config.load" and "config" in selected_props:
+        selected_props["config"] = protocol_config_schema(
+            [
+                "clock", "rst_n", "paddr", "psel", "penable", "pready",
+                "pslverr", "pwrite", "pwdata", "prdata",
+            ],
+            PARAM_DESCRIPTIONS["config"],
+        )
+    if action == "axi.config.load" and "config" in selected_props:
+        selected_props["config"] = protocol_config_schema(
+            [
+                "clock", "rst_n",
+                "awvalid", "awready", "awaddr", "awid", "awlen", "awsize", "awburst",
+                "wvalid", "wready", "wdata", "wstrb", "wlast",
+                "bvalid", "bready", "bid", "bresp",
+                "arvalid", "arready", "araddr", "arid", "arlen", "arsize", "arburst",
+                "rvalid", "rready", "rdata", "rid", "rresp", "rlast",
+            ],
+            PARAM_DESCRIPTIONS["config"],
+        )
+    if action == "stream.config.load":
+        field_map = {
+            "type": "object", "additionalProperties": {"type": "string"},
+        }
+        stream_item = {
+            "type": "object",
+            "required": ["name", "signals", "clock", "vld"],
+            "properties": {
+                "name": {"type": "string"},
+                "signals": {"type": "object", "minProperties": 1,
+                            "additionalProperties": {"type": "string", "minLength": 1}},
+                "clock": {"type": "string"},
+                "edge": {"type": "string", "enum": ["posedge", "negedge", "dual"]},
+                "sample_point": {"type": "string", "enum": ["before", "after"]},
+                "reset": {"type": "string"}, "vld": {"type": "string"},
+                "rdy": {"type": "string"}, "bp": {"type": "string"},
+                "sop": {"type": "string"}, "eop": {"type": "string"},
+                "data": {"type": "string"}, "data_fields": copy.deepcopy(field_map),
+                "beat_fields": copy.deepcopy(field_map),
+                "packet_stable_fields": copy.deepcopy(field_map),
+                "channel_id": {"type": "string"},
+                "channel_id_valid": {"type": "string", "enum": ["sop", "eop", "every_beat"]},
+                "allow_interleaving": {"type": "boolean"},
+                "description": {"type": "string"},
+            },
+            "additionalProperties": False,
+        }
+        streams = {
+            "type": "array", "minItems": 1, "items": stream_item,
+            "description": PARAM_DESCRIPTIONS["streams"],
+        }
+        selected_props["streams"] = copy.deepcopy(streams)
+        selected_props["config"] = {
+            "type": "object", "required": ["streams"],
+            "properties": {"streams": copy.deepcopy(streams)},
+            "additionalProperties": False,
+            "description": PARAM_DESCRIPTIONS["config"],
+        }
+        selected_props["mode"] = {"type": "string", "enum": ["replace", "append"]}
     if action == "axi.query" and "query" in selected_props:
         selected_props["query"] = {
             "oneOf": [

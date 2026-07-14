@@ -48,6 +48,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "signal.stability response: 检查信号窗口内是否稳定。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Check whether a signal stays stable in a time range.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "检查信号窗口内是否稳定。"
 }

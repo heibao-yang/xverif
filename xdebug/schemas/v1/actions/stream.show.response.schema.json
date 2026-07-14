@@ -41,6 +41,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "stream.show response: 显示 stream 定义和摘要。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Show a stream definition and its resolved signal metadata.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "显示 stream 定义和摘要。"
 }

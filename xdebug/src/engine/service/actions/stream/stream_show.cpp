@@ -91,6 +91,7 @@ public:
                           {"packet_enabled", xdebug_waveform::stream_packet_enabled(config)}};
         out["config"] = xdebug_waveform::stream_config_json(config);
         out["issues"] = issue_json(issues);
+        out["validation"] = xdebug_waveform::stream_static_validation_json(g_fsdb_file, config);
         out["semantics"] = {{"transfer", xdebug_waveform::stream_handshake_text(config)},
                             {"stall", config.rdy.empty() && config.bp.empty() ? "none" : "enabled"}};
         return out;

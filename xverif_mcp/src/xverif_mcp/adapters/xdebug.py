@@ -32,8 +32,23 @@ class XverifDebugAdapter:
     def ping(self) -> str:
         return "pong"
 
-    def actions(self, verbose: bool = False) -> Json:
+    def actions(self, verbose: bool = False,
+                category: Optional[list[str]] = None,
+                requires: Optional[list[str]] = None,
+                purposes: Optional[list[str]] = None,
+                keyword: Optional[str] = None) -> Json:
         args: Json = {"output": {"verbose": True}} if verbose else {}
+        filters: Json = {}
+        if category is not None:
+            filters["category"] = category
+        if requires is not None:
+            filters["requires"] = requires
+        if purposes is not None:
+            filters["purposes"] = purposes
+        if keyword is not None:
+            filters["keyword"] = keyword
+        if filters:
+            args["filter"] = filters
         return self._one_shot({"api_version": "xdebug.v1", "action": "actions", "args": args})
 
     def schema(self, action: str, kind: str = "request") -> Json:

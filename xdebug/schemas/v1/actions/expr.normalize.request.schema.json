@@ -105,9 +105,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "expr.normalize: 规范化表达式。",
+  "description": "Normalize an expression for deterministic processing.",
   "x-purpose": "规范化表达式。",
   "x-how_it_works": "无 design 时做字符串级规范化；有 design/signal 时可结合设计赋值信息。",
   "x-when_to_use": "把表达式转成 agent 更易处理的结构。",
-  "x-arg_contract_notes": "required: expr"
+  "x-arg_contract_notes": "required: expr",
+  "x-description-zh": "规范化表达式。"
 }

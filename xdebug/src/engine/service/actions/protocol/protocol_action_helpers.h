@@ -15,8 +15,8 @@ inline Json apb_config_json(const xdebug_waveform::ApbConfig& cfg) {
                 {"pwdata", cfg.pwdata}, {"prdata", cfg.prdata}};
     if (cfg.clock_sample.edge != xdebug_waveform::ClockEdgeKind::Negedge)
         out["sample_point"] = xdebug_waveform::clock_sample_point_text(cfg.clock_sample.sample_point);
-    if (!cfg.pready.empty()) out["pready"] = cfg.pready;
-    if (!cfg.pslverr.empty()) out["pslverr"] = cfg.pslverr;
+    out["pready"] = cfg.pready;
+    out["pslverr"] = cfg.pslverr;
     return out;
 }
 
@@ -86,6 +86,8 @@ inline Json protocol_example_args(const std::string& action) {
                                 {"paddr", "top.u.paddr"},
                                 {"psel", "top.u.psel"},
                                 {"penable", "top.u.penable"},
+                                {"pready", "top.u.pready"},
+                                {"pslverr", "top.u.pslverr"},
                                 {"pwrite", "top.u.pwrite"},
                                 {"pwdata", "top.u.pwdata"},
                                 {"prdata", "top.u.prdata"}}}};
@@ -102,7 +104,7 @@ inline Json protocol_example_args(const std::string& action) {
     }
     if (action == "axi.query" || action == "apb.query") {
         return Json{{"name", action.rfind("axi.", 0) == 0 ? "axi0" : "apb0"},
-                    {"direction", "write"},
+                    {"direction", action.rfind("axi.", 0) == 0 ? "write" : "all"},
                     {"query", {{"line_limit", 8}}}};
     }
     if (action == "axi.analysis") {

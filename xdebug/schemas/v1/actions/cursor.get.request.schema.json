@@ -72,9 +72,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "cursor.get: 读取命名游标。",
+  "description": "Read a named waveform cursor.",
   "x-purpose": "读取命名游标。",
   "x-how_it_works": "从 CursorManager 按 name 取出保存的时间和元信息。",
   "x-when_to_use": "把自然语言中的“刚才那个点”变成确定时间。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name",
+  "x-description-zh": "读取命名游标。"
 }

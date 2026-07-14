@@ -218,13 +218,34 @@ def test_debug_list_actions_verbose_maps_to_native_catalog_projection(
     monkeypatch.setattr(
         server.XverifDebugAdapter,
         "actions",
-        lambda self, verbose=False: calls.append(verbose) or {"ok": True},
+        lambda self, **kwargs: calls.append(kwargs) or {"ok": True},
     )
 
     content, _ = _call_tool(monkeypatch, "xverif_debug_list_actions", {"verbose": True})
 
     assert json.loads(content[0].text)["ok"] is True
-    assert calls == [True]
+    assert calls == [{"verbose": True, "category": None, "requires": None,
+                      "purposes": None, "keyword": None}]
+
+
+def test_debug_list_actions_forwards_catalog_filters(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    calls = []
+    server = _server(monkeypatch)
+    monkeypatch.setattr(
+        server.XverifDebugAdapter,
+        "actions",
+        lambda self, **kwargs: calls.append(kwargs) or {"ok": True},
+    )
+    content, _ = _call_tool(monkeypatch, "xverif_debug_list_actions", {
+        "category": ["waveform"], "requires": ["waveform"],
+        "purposes": ["query"], "keyword": "AXI",
+    })
+    assert json.loads(content[0].text)["ok"] is True
+    assert calls == [{"verbose": False, "category": ["waveform"],
+                      "requires": ["waveform"], "purposes": ["query"],
+                      "keyword": "AXI"}]
 
 
 def test_tool_group_disable_sva(monkeypatch: pytest.MonkeyPatch):

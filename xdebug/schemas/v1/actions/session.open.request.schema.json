@@ -90,9 +90,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "session.open: 打开 design/waveform session。",
+  "description": "Open a design, waveform, or combined debug session.",
   "x-purpose": "打开 design/waveform session。",
   "x-how_it_works": "解析 target 中的 daidir/fsdb；可选 target.run_manifest 会在启动前校验 published state、canonical path、size 与 SHA-256。",
   "x-when_to_use": "建立后续 design/waveform 查询的资源上下文。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name",
+  "x-description-zh": "打开 design/waveform session。"
 }

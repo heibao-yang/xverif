@@ -199,9 +199,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "axi.query: 查询 AXI channel/transaction。",
+  "description": "Query AXI channels and reconstructed transactions.",
   "x-purpose": "查询 AXI channel/transaction。",
   "x-how_it_works": "第 N 个 transaction 用 1-based query.index，多条用 query.line_limit；已知锚点时用 query.channel（AW/W/B/AR/R）与精确 query.handshake_time 反查。逐 beat payload 仅由 output.include_data 展开。",
   "x-when_to_use": "抽取 AXI beat/transaction 或从握手时间反查整笔事务。",
-  "x-arg_contract_notes": "required: name; channel and handshake_time must appear together; do not mix handshake query with transaction selectors"
+  "x-arg_contract_notes": "required: name; channel and handshake_time must appear together; do not mix handshake query with transaction selectors",
+  "x-description-zh": "查询 AXI channel/transaction。"
 }

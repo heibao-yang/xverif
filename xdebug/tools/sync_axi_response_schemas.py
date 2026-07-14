@@ -12,6 +12,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_DIR = ROOT / "schemas" / "v1" / "actions"
+SPEC_PATH = ROOT / "specs" / "actions" / "actions.yaml"
 
 AXI_ACTIONS = (
     "axi.analysis",
@@ -38,6 +39,18 @@ PURPOSES = {
     "axi.query": "查询 AXI channel/transaction。",
     "axi.request_response_pair": "实验性 AXI 请求响应配对。",
 }
+
+
+def action_descriptions() -> dict[str, tuple[str, str]]:
+    entries = json.loads(SPEC_PATH.read_text(encoding="utf-8"))["actions"]
+    return {
+        entry["name"]: (entry["description_en"], entry["description_zh"])
+        for entry in entries
+        if entry["name"] in AXI_ACTIONS
+    }
+
+
+DESCRIPTIONS = action_descriptions()
 
 
 def closed(properties: dict[str, Any], required: list[str] | None = None) -> dict[str, Any]:
@@ -419,7 +432,7 @@ def envelope(action: str) -> dict[str, Any]:
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": f"xdebug.{action}.response.v1",
         "title": f"{action} response",
-        "description": f"{action} response: {PURPOSES[action]}",
+        "description": DESCRIPTIONS[action][0],
         "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
         "type": "object",
         "required": ["api_version", "ok", "action", "summary", "data"],
@@ -438,6 +451,7 @@ def envelope(action: str) -> dict[str, Any]:
             "meta": closed({"truncated": BOOL}),
         },
         "additionalProperties": False,
+        "x-description-zh": DESCRIPTIONS[action][1],
     }
     return schema
 

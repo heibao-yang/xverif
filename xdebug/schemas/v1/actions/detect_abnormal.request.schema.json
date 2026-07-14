@@ -139,9 +139,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "detect_abnormal: 扫描常见波形异常。",
+  "description": "Detect waveform glitches, unknown values, and stuck signals.",
   "x-purpose": "扫描常见波形异常。",
   "x-how_it_works": "对 signals 执行 glitch/stuck/unknown 等检查并返回 findings；valid/ready 协议里的合法 idle/backpressure 不应只凭 stuck finding 判为 bug。",
   "x-when_to_use": "快速发现值得展开的异常窗口。",
-  "x-arg_contract_notes": "required: signals"
+  "x-arg_contract_notes": "required: signals",
+  "x-description-zh": "扫描常见波形异常。"
 }

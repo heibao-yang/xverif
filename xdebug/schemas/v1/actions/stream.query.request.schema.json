@@ -38,7 +38,7 @@
           "type": "string",
           "enum": [
             "beat",
-            "stable",
+            "packet_stable",
             "any"
           ]
         },
@@ -81,7 +81,7 @@
               "type": "string",
               "enum": [
                 "beat",
-                "stable",
+                "packet_stable",
                 "any"
               ]
             }
@@ -161,9 +161,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "stream.query: 查询 stream transfer。",
+  "description": "Query stream transfers, stalls, packets, and fields.",
   "x-purpose": "查询 stream transfer。",
   "x-how_it_works": "按 stream 配置和 query 条件扫描握手/beat。",
   "x-when_to_use": "抽取流事务或 beats。",
-  "x-arg_contract_notes": "required: stream, query"
+  "x-arg_contract_notes": "required: stream, query",
+  "x-description-zh": "查询 stream transfer。"
 }

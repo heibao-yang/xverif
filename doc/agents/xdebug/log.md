@@ -22,3 +22,7 @@
 - xdebug/xcov MCP SDK 与 SDK-free wrapper 统一为 managed open/list/doctor/close/kill/gc 生命周期，backend 差异由 capability 表描述。
 - 增加 tombstone、compact/verbose public record、固定 xdebug native admin path、xcov loop-owned cleanup 和 coverage native lifecycle guard。
 - `actions` 默认返回 compact names，verbose 返回 descriptors；batch 汇总 failed indexes/codes/layers，unknown action 返回相近候选。
+- 2026-07-14：收紧 P2 合同：`apb.query` 默认读写混合时间序列；Stream 使用
+  `packet_stable_fields` 和 complete/partial packet 计数；`actions` catalog 增加
+  category/requires/purposes/双语 keyword 过滤并移除 status 过滤；action 双语描述与
+  purposes 统一由 `actions.yaml` 生成。

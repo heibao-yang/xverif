@@ -137,9 +137,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "signal.statistics: 统计信号活动。",
+  "description": "Measure waveform signal activity and sampled values.",
   "x-purpose": "统计信号活动。",
   "x-how_it_works": "无 clock 时统计原始变化；有 clock 时按边沿采样，统计 known/high/low/unknown。",
   "x-when_to_use": "量化活跃度、占空和采样质量。",
-  "x-arg_contract_notes": "required: signal"
+  "x-arg_contract_notes": "required: signal",
+  "x-description-zh": "统计信号活动。"
 }

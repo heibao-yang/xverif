@@ -49,6 +49,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "list.diff response: 查找 list 在时间窗口内的首次差异。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Find the first difference in a waveform list over a time range.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "查找 list 在时间窗口内的首次差异。"
 }

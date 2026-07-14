@@ -72,9 +72,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "cursor.delete: 删除游标。",
+  "description": "Delete a named waveform cursor.",
   "x-purpose": "删除游标。",
   "x-how_it_works": "按 name 从 CursorManager 删除记录。",
   "x-when_to_use": "清理不再需要的时间标记。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name",
+  "x-description-zh": "删除游标。"
 }

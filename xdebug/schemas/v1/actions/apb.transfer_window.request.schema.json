@@ -90,9 +90,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "apb.transfer_window: 实验性 APB 窗口分析。",
+  "description": "Inspect the waveform window around an APB transfer.",
   "x-purpose": "实验性 APB 窗口分析。",
   "x-how_it_works": "围绕指定 APB transfer 返回相关信号窗口。",
   "x-when_to_use": "解释单笔 APB 访问现场。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name",
+  "x-description-zh": "实验性 APB 窗口分析。"
 }

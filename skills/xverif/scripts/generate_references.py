@@ -31,8 +31,8 @@ def action_reference() -> str:
         "本文件由 `skills/xverif/scripts/generate_references.py` 从 canonical action specs 生成。",
         "用途是保证所有能力可发现；精确参数以 runtime catalog、action-specific schema 和 checked-in example 为准。",
         "",
-        "| Action | Category | Requires | Required inputs | Request schema | Example |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| Action | Status | Category | Requires | Purposes | Use for | Do not use for | Preferred alternative | Required inputs | 中文说明 | English description | Request schema | Example |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     entries = [entry for entry in payload["actions"] if entry.get("status") != "removed"]
     for entry in entries:
@@ -41,8 +41,12 @@ def action_reference() -> str:
         examples = entry.get("examples", {}).get("request", [])
         example = "xdebug/" + examples[0] if examples else "-"
         lines.append(
-            f"| `{entry['name']}` | {entry.get('category', '-')} | "
-            f"{entry.get('requires', '-')} | {_required(entry)} | "
+            f"| `{entry['name']}` | {entry.get('status', '-')} | {entry.get('category', '-')} | "
+            f"{entry.get('requires', '-')} | {', '.join(entry.get('purposes', [])) or '-'} | "
+            f"{'; '.join(entry.get('use_for', [])) or '-'} | "
+            f"{'; '.join(entry.get('do_not_use_for', [])) or '-'} | "
+            f"{json.dumps(entry.get('preferred_alternative', {}), ensure_ascii=False)} | "
+            f"{_required(entry)} | {entry.get('description_zh', '-')} | {entry.get('description_en', '-')} | "
             f"`{schema}` | `{example}` |"
         )
     lines.extend([

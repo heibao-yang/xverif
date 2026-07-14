@@ -106,9 +106,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "signal.changes: 读取信号变化点。",
+  "description": "List raw waveform value changes for a signal.",
   "x-purpose": "读取信号变化点。",
   "x-how_it_works": "扫描 FSDB value changes，支持窗口、line_limit 和聚合。",
   "x-when_to_use": "看信号何时跳变。",
-  "x-arg_contract_notes": "required: signal"
+  "x-arg_contract_notes": "required: signal",
+  "x-description-zh": "读取信号变化点。"
 }

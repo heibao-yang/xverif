@@ -89,9 +89,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "list.create: 创建命名信号列表。",
+  "description": "Create a named waveform signal list.",
   "x-purpose": "创建命名信号列表。",
   "x-how_it_works": "在 ListManager 存储中创建 list，并可追加初始 signals。",
   "x-when_to_use": "为一组信号建立可复用集合。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name",
+  "x-description-zh": "创建命名信号列表。"
 }

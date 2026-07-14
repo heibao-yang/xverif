@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "xdebug.axi.request_response_pair.response.v1",
   "title": "axi.request_response_pair response",
-  "description": "axi.request_response_pair response: 实验性 AXI 请求响应配对。",
+  "description": "Pair AXI requests with their responses.",
   "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
   "type": "object",
   "required": [
@@ -607,5 +607,6 @@
       "additionalProperties": false
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "x-description-zh": "实验性 AXI 请求响应配对。"
 }

@@ -68,9 +68,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "session.kill: 强制移除指定 session。",
+  "description": "Force removal of a debug session.",
   "x-purpose": "强制移除指定 session。",
   "x-how_it_works": "按 target.session_id 清理记录和关联资源。",
   "x-when_to_use": "处理异常残留 session。",
-  "x-arg_contract_notes": "required: target.session_id"
+  "x-arg_contract_notes": "required: target.session_id",
+  "x-description-zh": "强制移除指定 session。"
 }

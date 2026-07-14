@@ -40,6 +40,12 @@ struct ActionSpec {
     std::string response_schema;
     std::vector<std::string> request_examples;
     std::vector<std::string> response_examples;
+    std::string description_en;
+    std::string description_zh;
+    std::vector<std::string> purposes;
+    std::vector<std::string> use_for;
+    std::vector<std::string> do_not_use_for;
+    Json preferred_alternative = Json::object();
 };
 
 std::string to_string(ActionStatus status);

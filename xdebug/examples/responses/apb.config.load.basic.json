@@ -3,5 +3,13 @@
   "ok": true,
   "action": "apb.config.load",
   "summary": {"name": "if0", "status": "loaded"},
-  "data": {"config": {"name": "if0", "clock": "top.clk", "edge": "negedge"}}
+  "data": {
+    "config": {
+      "name": "if0",
+      "clock": "apb_vip_fixture_top.clk",
+      "edge": "posedge",
+      "pready": "apb_vip_fixture_top.apb_if.pready[0]",
+      "pslverr": "apb_vip_fixture_top.apb_if.pslverr[0]"
+    }
+  }
 }

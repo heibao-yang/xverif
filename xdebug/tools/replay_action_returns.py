@@ -80,10 +80,11 @@ def _repo_values(tmpdir: Path) -> dict[str, str]:
         "ai_complex_fsdb": str(XDEBUG_ROOT / "testdata" / "waveform" / "ai_complex_wave" / "out" / "waves.fsdb"),
         "stream_fsdb": str(XDEBUG_ROOT / "testdata" / "waveform" / "stream_v1" / "out" / "waves.fsdb"),
         "stream_daidir": str(XDEBUG_ROOT / "testdata" / "waveform" / "stream_v1" / "out" / "simv.daidir"),
+        "apb_vip_fsdb": str(XDEBUG_ROOT / "testdata" / "waveform" / "apb_vip_real" / "out" / "regression" / "test" / "apb_vip_test" / "waves.fsdb"),
         "design_daidir": str(XDEBUG_ROOT / "testdata" / "design" / "uart" / "simv.daidir"),
         "combined_fsdb": str(XDEBUG_ROOT / "testdata" / "combined" / "active_driver" / "out" / "waves.fsdb"),
         "combined_daidir": str(XDEBUG_ROOT / "testdata" / "combined" / "active_driver" / "out" / "simv.daidir"),
-        "apb_config": str(XDEBUG_ROOT / "testdata" / "waveform" / "ai_complex_wave" / "config" / "apb0.json"),
+        "apb_config": str(XDEBUG_ROOT / "testdata" / "waveform" / "apb_vip_real" / "config" / "apb0.json"),
         "event_config": str(XDEBUG_ROOT / "testdata" / "waveform" / "ai_complex_wave" / "config" / "event0.json"),
         "stream_config": str(XDEBUG_ROOT / "testdata" / "waveform" / "stream_v1" / "config" / "streams.json"),
     }

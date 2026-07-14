@@ -48,6 +48,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "signal.resolve response: 解析设计信号。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Resolve a design signal to canonical candidates.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "解析设计信号。"
 }

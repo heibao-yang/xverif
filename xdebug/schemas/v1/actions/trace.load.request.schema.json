@@ -83,9 +83,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "trace.load: 查找信号 load。",
+  "description": "Find static loads of a design signal.",
   "x-purpose": "查找信号 load。",
   "x-how_it_works": "从设计数据库遍历信号使用点。",
   "x-when_to_use": "回答信号影响到哪里。",
-  "x-arg_contract_notes": "required: signal"
+  "x-arg_contract_notes": "required: signal",
+  "x-description-zh": "查找信号 load。"
 }

@@ -81,8 +81,8 @@ public:
                 ? protocol_config_not_found_error(action_name(), "apb", name)
                 : protocol_analyze_error(action_name(), "apb", name, err);
 
-        std::string dir = a.value("direction", "write");
-        bool is_write = (dir != "read");
+        std::string dir = a.value("direction", "all");
+        const int filter = dir == "write" ? 1 : (dir == "read" ? 2 : 0);
         std::string addr_str = a.value("address", a.value("addr", ""));
         Json query = a.value("query", Json::object());
         int num = query.value("index", -1);
@@ -99,14 +99,14 @@ public:
                                                   parse_err,
                                                   "known integer or SystemVerilog literal address");
             if (num >= 0) {
-                found = is_write ? g_apb_analyzer.get_write_by_addr_num(name, addr, (size_t)num, txn)
-                                 : g_apb_analyzer.get_read_by_addr_num(name, addr, (size_t)num, txn);
+                found = g_apb_analyzer.get_by_addr_num(name, filter, addr,
+                                                       static_cast<size_t>(num), txn);
             } else if (limit > 0) {
                 Json transactions = Json::array();
                 for (int i = 1; i <= limit; ++i) {
                     const ApbTransaction* item = nullptr;
-                    bool ok = is_write ? g_apb_analyzer.get_write_by_addr_num(name, addr, (size_t)i, item)
-                                       : g_apb_analyzer.get_read_by_addr_num(name, addr, (size_t)i, item);
+                    bool ok = g_apb_analyzer.get_by_addr_num(
+                        name, filter, addr, static_cast<size_t>(i), item);
                     if (!ok || !item) break;
                     transactions.push_back(apb_transaction_json(*item));
                 }
@@ -115,21 +115,18 @@ public:
                 out["transactions"] = transactions;
                 return out;
             } else if (last) {
-                found = is_write ? g_apb_analyzer.get_write_by_addr_last(name, addr, txn)
-                                 : g_apb_analyzer.get_read_by_addr_last(name, addr, txn);
+                found = g_apb_analyzer.get_by_addr_last(name, filter, addr, txn);
             } else {
-                found = is_write ? g_apb_analyzer.get_write_by_addr(name, addr, txn)
-                                 : g_apb_analyzer.get_read_by_addr(name, addr, txn);
+                found = g_apb_analyzer.get_by_addr(name, filter, addr, txn);
             }
         } else if (num >= 0) {
-            found = is_write ? g_apb_analyzer.get_write_by_num(name, (size_t)num, txn)
-                             : g_apb_analyzer.get_read_by_num(name, (size_t)num, txn);
+            found = g_apb_analyzer.get_by_num(name, filter, static_cast<size_t>(num), txn);
         } else if (limit > 0) {
             Json transactions = Json::array();
             for (int i = 1; i <= limit; ++i) {
                 const ApbTransaction* item = nullptr;
-                bool ok = is_write ? g_apb_analyzer.get_write_by_num(name, (size_t)i, item)
-                                   : g_apb_analyzer.get_read_by_num(name, (size_t)i, item);
+                bool ok = g_apb_analyzer.get_by_num(
+                    name, filter, static_cast<size_t>(i), item);
                 if (!ok || !item) break;
                 transactions.push_back(apb_transaction_json(*item));
             }
@@ -138,14 +135,18 @@ public:
             out["transactions"] = transactions;
             return out;
         } else if (last) {
-            found = is_write ? g_apb_analyzer.get_write_last(name, txn)
-                             : g_apb_analyzer.get_read_last(name, txn);
+            found = g_apb_analyzer.get_last(name, filter, txn);
         } else {
             // No filter — return count
-            size_t cnt = is_write ? g_apb_analyzer.get_write_count(name)
-                                  : g_apb_analyzer.get_read_count(name);
+            size_t cnt = g_apb_analyzer.get_count(name, filter);
             Json out;
             out["summary"] = {{"name",name},{"direction",dir},{"count",(int)cnt}};
+            if (dir == "all") {
+                out["summary"]["read_count"] =
+                    static_cast<int>(g_apb_analyzer.get_read_count(name));
+                out["summary"]["write_count"] =
+                    static_cast<int>(g_apb_analyzer.get_write_count(name));
+            }
             return out;
         }
 

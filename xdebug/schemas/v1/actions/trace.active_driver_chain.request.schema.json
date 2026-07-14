@@ -116,9 +116,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "trace.active_driver_chain: 展开 active driver 链。",
+  "description": "Trace an active-driver chain across multiple levels.",
   "x-purpose": "展开 active driver 链。",
   "x-how_it_works": "从 signal/time 递归追溯 active driver；深度限制写 top-level limits.max_depth。",
   "x-when_to_use": "给出跨级根因链。",
-  "x-arg_contract_notes": "required: signal, time; do not use args.depth"
+  "x-arg_contract_notes": "required: signal, time; do not use args.depth",
+  "x-description-zh": "展开 active driver 链。"
 }

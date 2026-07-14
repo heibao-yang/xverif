@@ -153,9 +153,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "window.verify: 按 clock 在窗口内验证条件。",
+  "description": "Verify conditions across a clock-sampled time window.",
   "x-purpose": "按 clock 在窗口内验证条件。",
   "x-how_it_works": "按 clock edge 采样 args.signals 中的 alias，逐个 conditions[].expr 统计 pass/fail/unknown。",
   "x-when_to_use": "判断协议或断言类条件是否持续满足。",
-  "x-arg_contract_notes": "required: clock, conditions, signals"
+  "x-arg_contract_notes": "required: clock, conditions, signals",
+  "x-description-zh": "按 clock 在窗口内验证条件。"
 }

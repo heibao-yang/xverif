@@ -72,9 +72,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "signal.canonicalize: 返回信号 canonical 名称。",
+  "description": "Return the canonical design path for a signal.",
   "x-purpose": "返回信号 canonical 名称。",
   "x-how_it_works": "基于设计解析结果选出规范路径。",
   "x-when_to_use": "让后续 action 使用稳定路径。",
-  "x-arg_contract_notes": "required: signal"
+  "x-arg_contract_notes": "required: signal",
+  "x-description-zh": "返回信号 canonical 名称。"
 }

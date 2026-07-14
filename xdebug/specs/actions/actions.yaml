@@ -18,7 +18,19 @@
         "response": [
           "examples/responses/actions.basic.json"
         ]
-      }
+      },
+      "description_en": "List the public xdebug action catalog.",
+      "description_zh": "列出当前运行时公开 action catalog。",
+      "purposes": [
+        "discover"
+      ],
+      "use_for": [
+        "List the public xdebug action catalog."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "apb.config.list",
@@ -37,7 +49,19 @@
         "response": [
           "examples/responses/apb.config.list.basic.json"
         ]
-      }
+      },
+      "description_en": "List saved APB interface configurations.",
+      "description_zh": "列出 APB 配置。",
+      "purposes": [
+        "discover"
+      ],
+      "use_for": [
+        "List saved APB interface configurations."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "apb.config.load",
@@ -67,7 +91,19 @@
         [
           "config_path"
         ]
-      ]
+      ],
+      "description_en": "Load and validate an APB interface configuration.",
+      "description_zh": "加载 APB 配置。",
+      "purposes": [
+        "configure"
+      ],
+      "use_for": [
+        "Load and validate an APB interface configuration."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "apb.cursor",
@@ -90,7 +126,19 @@
       "required_args": [
         "name",
         "op"
-      ]
+      ],
+      "description_en": "Move a cursor across APB transfers.",
+      "description_zh": "在 APB transfer 间移动游标。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Move a cursor across APB transfers."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "apb.query",
@@ -112,7 +160,19 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Query APB read and write transfers.",
+      "description_zh": "查询 APB transfer。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Query APB read and write transfers."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "apb.transfer_window",
@@ -134,7 +194,19 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Inspect the waveform window around an APB transfer.",
+      "description_zh": "实验性 APB 窗口分析。",
+      "purposes": [
+        "analyze"
+      ],
+      "use_for": [
+        "Inspect the waveform window around an APB transfer."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "axi.analysis",
@@ -156,7 +228,19 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Analyze AXI latency, pending transactions, and outstanding activity.",
+      "description_zh": "汇总 AXI 行为。",
+      "purposes": [
+        "analyze"
+      ],
+      "use_for": [
+        "Analyze AXI latency, pending transactions, and outstanding activity."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "axi.export",
@@ -183,7 +267,19 @@
         [
           "time_range"
         ]
-      ]
+      ],
+      "description_en": "Export AXI transactions for external analysis.",
+      "description_zh": "导出 AXI 数据。",
+      "purposes": [
+        "export"
+      ],
+      "use_for": [
+        "Export AXI transactions for external analysis."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "axi.channel_stall",
@@ -205,7 +301,19 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Inspect AXI channel stall windows.",
+      "description_zh": "实验性 AXI stall 分析。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Inspect AXI channel stall windows."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "axi.config.list",
@@ -224,7 +332,19 @@
         "response": [
           "examples/responses/axi.config.list.basic.json"
         ]
-      }
+      },
+      "description_en": "List saved AXI interface configurations.",
+      "description_zh": "列出 AXI 配置。",
+      "purposes": [
+        "discover"
+      ],
+      "use_for": [
+        "List saved AXI interface configurations."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "axi.config.load",
@@ -254,7 +374,19 @@
         [
           "config_path"
         ]
-      ]
+      ],
+      "description_en": "Load and validate an AXI interface configuration.",
+      "description_zh": "加载 AXI 配置。",
+      "purposes": [
+        "configure"
+      ],
+      "use_for": [
+        "Load and validate an AXI interface configuration."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "axi.cursor",
@@ -277,7 +409,19 @@
       "required_args": [
         "name",
         "op"
-      ]
+      ],
+      "description_en": "Move a cursor across AXI transactions.",
+      "description_zh": "在 AXI transfer 间移动游标。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Move a cursor across AXI transactions."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "axi.latency_outlier",
@@ -299,7 +443,19 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Find AXI transactions with abnormal latency.",
+      "description_zh": "实验性 AXI latency 异常。",
+      "purposes": [
+        "analyze"
+      ],
+      "use_for": [
+        "Find AXI transactions with abnormal latency."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "axi.outstanding_timeline",
@@ -321,7 +477,19 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Analyze the AXI pending-transaction timeline.",
+      "description_zh": "实验性 AXI outstanding 时间线。",
+      "purposes": [
+        "analyze"
+      ],
+      "use_for": [
+        "Analyze the AXI pending-transaction timeline."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "axi.query",
@@ -343,7 +511,19 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Query AXI channels and reconstructed transactions.",
+      "description_zh": "查询 AXI channel/transaction。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Query AXI channels and reconstructed transactions."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "axi.request_response_pair",
@@ -365,7 +545,19 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Pair AXI requests with their responses.",
+      "description_zh": "实验性 AXI 请求响应配对。",
+      "purposes": [
+        "analyze"
+      ],
+      "use_for": [
+        "Pair AXI requests with their responses."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "batch",
@@ -387,7 +579,19 @@
       },
       "required_args": [
         "requests"
-      ]
+      ],
+      "description_en": "Execute multiple xdebug requests as one ordered batch.",
+      "description_zh": "批量执行多个 xdebug request。",
+      "purposes": [
+        "orchestrate"
+      ],
+      "use_for": [
+        "Execute multiple xdebug requests as one ordered batch."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "counter.statistics",
@@ -412,7 +616,19 @@
         "time_range",
         "vld",
         "cnt"
-      ]
+      ],
+      "description_en": "Analyze sampled counter behavior and statistics.",
+      "description_zh": "统计计数器行为。",
+      "purposes": [
+        "analyze"
+      ],
+      "use_for": [
+        "Analyze sampled counter behavior and statistics."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "cursor.delete",
@@ -434,7 +650,19 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Delete a named waveform cursor.",
+      "description_zh": "删除游标。",
+      "purposes": [
+        "manage"
+      ],
+      "use_for": [
+        "Delete a named waveform cursor."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "cursor.get",
@@ -456,7 +684,20 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Read a named waveform cursor.",
+      "description_zh": "读取命名游标。",
+      "purposes": [
+        "query",
+        "manage"
+      ],
+      "use_for": [
+        "Read a named waveform cursor."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "cursor.list",
@@ -475,7 +716,20 @@
         "response": [
           "examples/responses/cursor.list.basic.json"
         ]
-      }
+      },
+      "description_en": "List named waveform cursors.",
+      "description_zh": "列出游标。",
+      "purposes": [
+        "discover",
+        "manage"
+      ],
+      "use_for": [
+        "List named waveform cursors."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "cursor.set",
@@ -498,7 +752,20 @@
       "required_args": [
         "name",
         "time"
-      ]
+      ],
+      "description_en": "Save a named waveform cursor.",
+      "description_zh": "保存命名时间游标。",
+      "purposes": [
+        "configure",
+        "manage"
+      ],
+      "use_for": [
+        "Save a named waveform cursor."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "cursor.use",
@@ -520,7 +787,20 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Activate a named waveform cursor.",
+      "description_zh": "激活游标。",
+      "purposes": [
+        "configure",
+        "manage"
+      ],
+      "use_for": [
+        "Activate a named waveform cursor."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "detect_abnormal",
@@ -542,7 +822,19 @@
       },
       "required_args": [
         "signals"
-      ]
+      ],
+      "description_en": "Detect waveform glitches, unknown values, and stuck signals.",
+      "description_zh": "扫描常见波形异常。",
+      "purposes": [
+        "inspect"
+      ],
+      "use_for": [
+        "Detect waveform glitches, unknown values, and stuck signals."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "event.config.list",
@@ -561,7 +853,19 @@
         "response": [
           "examples/responses/event.config.list.basic.json"
         ]
-      }
+      },
+      "description_en": "List saved event-query configurations.",
+      "description_zh": "列出事件配置。",
+      "purposes": [
+        "discover"
+      ],
+      "use_for": [
+        "List saved event-query configurations."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "event.config.load",
@@ -583,7 +887,19 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Load an event-query configuration.",
+      "description_zh": "保存事件查询配置。",
+      "purposes": [
+        "configure"
+      ],
+      "use_for": [
+        "Load an event-query configuration."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "event.export",
@@ -614,7 +930,19 @@
           "clock",
           "signals"
         ]
-      ]
+      ],
+      "description_en": "Export sampled events that match an expression.",
+      "description_zh": "导出满足表达式的事件。",
+      "purposes": [
+        "export"
+      ],
+      "use_for": [
+        "Export sampled events that match an expression."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "event.find",
@@ -645,7 +973,19 @@
           "clock",
           "signals"
         ]
-      ]
+      ],
+      "description_en": "Find sampled events that match an expression.",
+      "description_zh": "查找满足表达式的事件样例。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Find sampled events that match an expression."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "expr.eval_at",
@@ -670,7 +1010,19 @@
         "time",
         "signals",
         "clock"
-      ]
+      ],
+      "description_en": "Evaluate an expression at a sampled waveform time.",
+      "description_zh": "在指定时间求布尔/表达式值。",
+      "purposes": [
+        "transform"
+      ],
+      "use_for": [
+        "Evaluate an expression at a sampled waveform time."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "expr.normalize",
@@ -692,7 +1044,19 @@
       },
       "required_args": [
         "expr"
-      ]
+      ],
+      "description_en": "Normalize an expression for deterministic processing.",
+      "description_zh": "规范化表达式。",
+      "purposes": [
+        "transform"
+      ],
+      "use_for": [
+        "Normalize an expression for deterministic processing."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "handshake.inspect",
@@ -716,7 +1080,19 @@
         "clock",
         "valid",
         "ready"
-      ]
+      ],
+      "description_en": "Inspect valid-ready transfers, stalls, and stability violations.",
+      "description_zh": "检查 valid/ready 握手。",
+      "purposes": [
+        "inspect"
+      ],
+      "use_for": [
+        "Inspect valid-ready transfers, stalls, and stability violations."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "list.add",
@@ -739,7 +1115,20 @@
       "required_args": [
         "name",
         "signal"
-      ]
+      ],
+      "description_en": "Add a signal to a named waveform list.",
+      "description_zh": "向信号列表追加一个信号。",
+      "purposes": [
+        "configure",
+        "manage"
+      ],
+      "use_for": [
+        "Add a signal to a named waveform list."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "list.create",
@@ -761,7 +1150,20 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Create a named waveform signal list.",
+      "description_zh": "创建命名信号列表。",
+      "purposes": [
+        "configure",
+        "manage"
+      ],
+      "use_for": [
+        "Create a named waveform signal list."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "list.delete",
@@ -791,7 +1193,20 @@
         [
           "index"
         ]
-      ]
+      ],
+      "description_en": "Delete a signal or index from a waveform list.",
+      "description_zh": "从信号列表删除信号或 index。",
+      "purposes": [
+        "configure",
+        "manage"
+      ],
+      "use_for": [
+        "Delete a signal or index from a waveform list."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "list.diff",
@@ -814,7 +1229,19 @@
       "required_args": [
         "name",
         "time_range"
-      ]
+      ],
+      "description_en": "Find the first difference in a waveform list over a time range.",
+      "description_zh": "查找 list 在时间窗口内的首次差异。",
+      "purposes": [
+        "analyze"
+      ],
+      "use_for": [
+        "Find the first difference in a waveform list over a time range."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "list.export",
@@ -836,7 +1263,19 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Export waveform-list data.",
+      "description_zh": "导出 list 数据。",
+      "purposes": [
+        "export"
+      ],
+      "use_for": [
+        "Export waveform-list data."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "list.show",
@@ -855,7 +1294,19 @@
         "response": [
           "examples/responses/list.show.basic.json"
         ]
-      }
+      },
+      "description_en": "Show the contents of a waveform signal list.",
+      "description_zh": "显示信号列表内容。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Show the contents of a waveform signal list."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "list.validate",
@@ -877,7 +1328,19 @@
       },
       "required_args": [
         "name"
-      ]
+      ],
+      "description_en": "Validate signal paths stored in a waveform list.",
+      "description_zh": "验证 list 中信号是否存在。",
+      "purposes": [
+        "verify"
+      ],
+      "use_for": [
+        "Validate signal paths stored in a waveform list."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "list.value_at",
@@ -901,7 +1364,19 @@
         "name",
         "time",
         "clock"
-      ]
+      ],
+      "description_en": "Read all signals in a waveform list at one sampled time.",
+      "description_zh": "读取 list 内所有信号在指定时间的值。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Read all signals in a waveform list at one sampled time."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "sampled_pulse.inspect",
@@ -924,7 +1399,19 @@
       "required_args": [
         "clock",
         "valid"
-      ]
+      ],
+      "description_en": "Inspect valid pulses that were not observed at sampling edges.",
+      "description_zh": "检查未被 clock 采到的 valid 短脉冲。",
+      "purposes": [
+        "inspect"
+      ],
+      "use_for": [
+        "Inspect valid pulses that were not observed at sampling edges."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "schema",
@@ -943,7 +1430,19 @@
         "response": [
           "examples/responses/schema.basic.json"
         ]
-      }
+      },
+      "description_en": "Return the request or response schema for an action.",
+      "description_zh": "返回指定 action 的 request/response JSON schema。",
+      "purposes": [
+        "discover"
+      ],
+      "use_for": [
+        "Return the request or response schema for an action."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "scope.list",
@@ -962,7 +1461,19 @@
         "response": [
           "examples/responses/scope.list.basic.json"
         ]
-      }
+      },
+      "description_en": "List waveform scopes and signals.",
+      "description_zh": "列出 FSDB scope 或信号。",
+      "purposes": [
+        "discover"
+      ],
+      "use_for": [
+        "List waveform scopes and signals."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "scope.roots",
@@ -981,7 +1492,19 @@
         "response": [
           "examples/responses/scope.roots.basic.json"
         ]
-      }
+      },
+      "description_en": "Discover waveform and design hierarchy roots.",
+      "description_zh": "发现 waveform/design 根。",
+      "purposes": [
+        "discover"
+      ],
+      "use_for": [
+        "Discover waveform and design hierarchy roots."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "session.close",
@@ -1003,7 +1526,19 @@
       },
       "required_target": [
         "session_id"
-      ]
+      ],
+      "description_en": "Close a debug session and release its runtime resources.",
+      "description_zh": "关闭指定 session。",
+      "purposes": [
+        "manage"
+      ],
+      "use_for": [
+        "Close a debug session and release its runtime resources."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "session.doctor",
@@ -1022,7 +1557,19 @@
         "response": [
           "examples/responses/session.doctor.basic.json"
         ]
-      }
+      },
+      "description_en": "Diagnose debug-session resources and accessibility.",
+      "description_zh": "诊断当前 session。",
+      "purposes": [
+        "manage"
+      ],
+      "use_for": [
+        "Diagnose debug-session resources and accessibility."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "session.gc",
@@ -1041,7 +1588,19 @@
         "response": [
           "examples/responses/session.gc.basic.json"
         ]
-      }
+      },
+      "description_en": "Garbage-collect expired debug sessions.",
+      "description_zh": "清理过期 session。",
+      "purposes": [
+        "manage"
+      ],
+      "use_for": [
+        "Garbage-collect expired debug sessions."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "session.kill",
@@ -1063,7 +1622,19 @@
       },
       "required_target": [
         "session_id"
-      ]
+      ],
+      "description_en": "Force removal of a debug session.",
+      "description_zh": "强制移除指定 session。",
+      "purposes": [
+        "manage"
+      ],
+      "use_for": [
+        "Force removal of a debug session."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "session.list",
@@ -1082,7 +1653,20 @@
         "response": [
           "examples/responses/session.list.basic.json"
         ]
-      }
+      },
+      "description_en": "List active debug sessions.",
+      "description_zh": "列出当前 session。",
+      "purposes": [
+        "discover",
+        "manage"
+      ],
+      "use_for": [
+        "List active debug sessions."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "session.open",
@@ -1104,7 +1688,19 @@
         "response": [
           "examples/responses/session.open.basic.json"
         ]
-      }
+      },
+      "description_en": "Open a design, waveform, or combined debug session.",
+      "description_zh": "打开 design/waveform session。",
+      "purposes": [
+        "manage"
+      ],
+      "use_for": [
+        "Open a design, waveform, or combined debug session."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "signal.canonicalize",
@@ -1126,7 +1722,19 @@
       },
       "required_args": [
         "signal"
-      ]
+      ],
+      "description_en": "Return the canonical design path for a signal.",
+      "description_zh": "返回信号 canonical 名称。",
+      "purposes": [
+        "transform"
+      ],
+      "use_for": [
+        "Return the canonical design path for a signal."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "signal.changes",
@@ -1148,7 +1756,19 @@
       },
       "required_args": [
         "signal"
-      ]
+      ],
+      "description_en": "List raw waveform value changes for a signal.",
+      "description_zh": "读取信号变化点。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "List raw waveform value changes for a signal."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "signal.resolve",
@@ -1170,7 +1790,19 @@
       },
       "required_args": [
         "signal"
-      ]
+      ],
+      "description_en": "Resolve a design signal to canonical candidates.",
+      "description_zh": "解析设计信号。",
+      "purposes": [
+        "transform"
+      ],
+      "use_for": [
+        "Resolve a design signal to canonical candidates."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "signal.stability",
@@ -1192,7 +1824,19 @@
       },
       "required_args": [
         "signal"
-      ]
+      ],
+      "description_en": "Check whether a signal stays stable in a time range.",
+      "description_zh": "检查信号窗口内是否稳定。",
+      "purposes": [
+        "analyze"
+      ],
+      "use_for": [
+        "Check whether a signal stays stable in a time range."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "signal.statistics",
@@ -1214,7 +1858,19 @@
       },
       "required_args": [
         "signal"
-      ]
+      ],
+      "description_en": "Measure waveform signal activity and sampled values.",
+      "description_zh": "统计信号活动。",
+      "purposes": [
+        "analyze"
+      ],
+      "use_for": [
+        "Measure waveform signal activity and sampled values."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "source.context",
@@ -1237,7 +1893,19 @@
       "required_args": [
         "file",
         "line"
-      ]
+      ],
+      "description_en": "Read source code around a file and line.",
+      "description_zh": "读取源码上下文。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Read source code around a file and line."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "trace.active_driver",
@@ -1260,7 +1928,19 @@
       "required_args": [
         "signal",
         "time"
-      ]
+      ],
+      "description_en": "Find active driver evidence at a specific waveform time.",
+      "description_zh": "在指定时间找 active driver。",
+      "purposes": [
+        "trace"
+      ],
+      "use_for": [
+        "Find active driver evidence at a specific waveform time."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "trace.active_driver_chain",
@@ -1283,7 +1963,19 @@
       "required_args": [
         "signal",
         "time"
-      ]
+      ],
+      "description_en": "Trace an active-driver chain across multiple levels.",
+      "description_zh": "展开 active driver 链。",
+      "purposes": [
+        "trace"
+      ],
+      "use_for": [
+        "Trace an active-driver chain across multiple levels."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "trace.driver",
@@ -1305,7 +1997,19 @@
       },
       "required_args": [
         "signal"
-      ]
+      ],
+      "description_en": "Find static drivers of a design signal.",
+      "description_zh": "查找信号直接 driver。",
+      "purposes": [
+        "trace"
+      ],
+      "use_for": [
+        "Find static drivers of a design signal."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "trace.load",
@@ -1327,7 +2031,19 @@
       },
       "required_args": [
         "signal"
-      ]
+      ],
+      "description_en": "Find static loads of a design signal.",
+      "description_zh": "查找信号 load。",
+      "purposes": [
+        "trace"
+      ],
+      "use_for": [
+        "Find static loads of a design signal."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "rc.generate",
@@ -1350,7 +2066,19 @@
       "required_args": [
         "config_path",
         "output"
-      ]
+      ],
+      "description_en": "Generate a grouped waveform-view RC file.",
+      "description_zh": "根据分组生成波形 rc。",
+      "purposes": [
+        "export"
+      ],
+      "use_for": [
+        "Generate a grouped waveform-view RC file."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "value.at",
@@ -1374,7 +2102,19 @@
         "signal",
         "time",
         "clock"
-      ]
+      ],
+      "description_en": "Read one signal value at a sampled waveform time.",
+      "description_zh": "读取单个信号在指定时间的值。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Read one signal value at a sampled waveform time."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "value.batch_at",
@@ -1398,7 +2138,19 @@
         "signals",
         "time",
         "clock"
-      ]
+      ],
+      "description_en": "Read multiple signal values at one sampled waveform time.",
+      "description_zh": "批量读取多个信号值。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Read multiple signal values at one sampled waveform time."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "verify.conditions",
@@ -1423,7 +2175,19 @@
         "time",
         "clock",
         "signals"
-      ]
+      ],
+      "description_en": "Verify multiple conditions at one sampled time.",
+      "description_zh": "在单个时间验证条件集合。",
+      "purposes": [
+        "verify"
+      ],
+      "use_for": [
+        "Verify multiple conditions at one sampled time."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "window.verify",
@@ -1447,7 +2211,19 @@
         "clock",
         "conditions",
         "signals"
-      ]
+      ],
+      "description_en": "Verify conditions across a clock-sampled time window.",
+      "description_zh": "按 clock 在窗口内验证条件。",
+      "purposes": [
+        "verify"
+      ],
+      "use_for": [
+        "Verify conditions across a clock-sampled time window."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "stream.config.load",
@@ -1480,7 +2256,19 @@
         [
           "file"
         ]
-      ]
+      ],
+      "description_en": "Load and validate valid-ready stream configurations.",
+      "description_zh": "加载 stream 配置。",
+      "purposes": [
+        "configure"
+      ],
+      "use_for": [
+        "Load and validate valid-ready stream configurations."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "stream.config.list",
@@ -1499,7 +2287,19 @@
         "response": [
           "examples/responses/stream.config.list.basic.json"
         ]
-      }
+      },
+      "description_en": "List saved stream configurations.",
+      "description_zh": "列出 stream 配置。",
+      "purposes": [
+        "discover"
+      ],
+      "use_for": [
+        "List saved stream configurations."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "stream.show",
@@ -1521,7 +2321,19 @@
       },
       "required_args": [
         "stream"
-      ]
+      ],
+      "description_en": "Show a stream definition and its resolved signal metadata.",
+      "description_zh": "显示 stream 定义和摘要。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Show a stream definition and its resolved signal metadata."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "stream.validate",
@@ -1543,7 +2355,19 @@
       },
       "required_args": [
         "stream"
-      ]
+      ],
+      "description_en": "Validate stream configuration and observed behavior.",
+      "description_zh": "验证 stream 配置。",
+      "purposes": [
+        "verify"
+      ],
+      "use_for": [
+        "Validate stream configuration and observed behavior."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "stream.query",
@@ -1566,7 +2390,19 @@
       "required_args": [
         "stream",
         "query"
-      ]
+      ],
+      "description_en": "Query stream transfers, stalls, packets, and fields.",
+      "description_zh": "查询 stream transfer。",
+      "purposes": [
+        "query"
+      ],
+      "use_for": [
+        "Query stream transfers, stalls, packets, and fields."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "stream.export",
@@ -1588,7 +2424,19 @@
       },
       "required_args": [
         "stream"
-      ]
+      ],
+      "description_en": "Export stream transfers or packet data.",
+      "description_zh": "导出 stream 查询结果。",
+      "purposes": [
+        "export"
+      ],
+      "use_for": [
+        "Export stream transfers or packet data."
+      ],
+      "do_not_use_for": [
+        "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
     },
     {
       "name": "signal.search",

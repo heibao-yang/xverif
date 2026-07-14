@@ -41,6 +41,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "stream.query response: 查询 stream transfer。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Query stream transfers, stalls, packets, and fields.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "查询 stream transfer。"
 }

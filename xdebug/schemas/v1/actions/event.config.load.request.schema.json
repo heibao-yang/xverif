@@ -76,9 +76,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "event.config.load: 保存事件查询配置。",
+  "description": "Load an event-query configuration.",
   "x-purpose": "保存事件查询配置。",
   "x-how_it_works": "request args 只传 name 和可选 config_path/time_unit；clock/edge/sample_point/signals/reset 来自配置文件内容。",
   "x-when_to_use": "复用常见事件查询上下文。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name",
+  "x-description-zh": "保存事件查询配置。"
 }

@@ -131,9 +131,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "sampled_pulse.inspect: 检查未被 clock 采到的 valid 短脉冲。",
+  "description": "Inspect valid pulses that were not observed at sampling edges.",
   "x-purpose": "检查未被 clock 采到的 valid 短脉冲。",
   "x-how_it_works": "按 clock 采样 valid，同时扫描 valid 原始变化；若 valid 在两个采样边沿间拉高但没有采样边沿看到高电平，则报 unsampled_valid_pulse。可选 payload/payloads 用于补风险现场。",
   "x-when_to_use": "解释仿真里“波形有脉冲但 DUT 没采到”的问题。",
-  "x-arg_contract_notes": "required: clock, valid"
+  "x-arg_contract_notes": "required: clock, valid",
+  "x-description-zh": "检查未被 clock 采到的 valid 短脉冲。"
 }

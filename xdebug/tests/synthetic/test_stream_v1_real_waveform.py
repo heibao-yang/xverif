@@ -135,6 +135,26 @@ def test_stream_v1_real_waveform_actions(
             extra={"config": json.loads(config_path.read_text(encoding="utf-8"))},
         )
         assert loaded["summary"]["loaded"] == len(expected)
+        assert len(loaded["data"]["validation"]) == len(expected)
+        ready_preflight = next(
+            item for item in loaded["data"]["validation"]
+            if item["stream"] == "ready_packet"
+        )
+        assert ready_preflight["status"] == "ok"
+        assert ready_preflight["sampling"] == {
+            "clock": "clk", "edge": "posedge", "sample_point": "before"
+        }
+        assert ready_preflight["packet_rules"] == {
+            "packet_enabled": True,
+            "channel_id_valid": "every_beat",
+            "allow_interleaving": False,
+        }
+        assert all(
+            signal["status"] == "ok"
+            and signal["resolved_path"]
+            and signal["width"] > 0
+            for signal in ready_preflight["signals"]
+        )
 
         listed = _query(
             cli_runner,
@@ -207,6 +227,7 @@ def test_stream_v1_real_waveform_actions(
                 artifact_root=artifact_root,
             )
             assert shown["summary"]["stream"] == stream_name
+            assert shown["data"]["validation"]["status"] == "ok"
 
             validated = _query(
                 cli_runner,
@@ -249,8 +270,14 @@ def test_stream_v1_real_waveform_actions(
                 assert summary["stall_cycles"] == counts["stall_cycles"]
                 assert summary["stall_windows"] > 0
             if "packet_count" in counts:
-                assert summary["packet_count"] == counts["packet_count"]
-                assert summary["packet_count"] > 0
+                assert summary["complete_packet_count"] == counts["packet_count"]
+                assert summary["partial_packet_count"] == 0
+                assert summary["packet_count_status"] == "exact"
+                assert summary["complete_packet_count"] > 0
+            else:
+                assert summary["complete_packet_count"] == 0
+                assert summary["partial_packet_count"] == 0
+                assert summary["packet_count_status"] == "not_configured"
             if "ready_bp_conflict_count" in counts:
                 assert (
                     summary["ready_bp_conflict_count"]
@@ -311,6 +338,26 @@ def test_stream_v1_real_waveform_actions(
             assert len(window["data"]["rows"]) == 8
             assert window["meta"]["truncated"] is True
 
+        partial_packet = _query(
+            cli_runner,
+            {
+                "api_version": "xdebug.v1",
+                "action": "stream.query",
+                "target": target,
+                "args": {
+                    "stream": "ready_packet",
+                    "query": "summary",
+                    "time_range": {"begin": "65ns", "end": "75ns"},
+                    "line_limit": 8,
+                },
+            },
+            case_name="stream-v1-partial-packet-count",
+            artifact_root=artifact_root,
+        )["summary"]
+        assert partial_packet["complete_packet_count"] == 0
+        assert partial_packet["partial_packet_count"] == 1
+        assert partial_packet["packet_count_status"] == "ambiguous"
+
         first_packet = _query(
             cli_runner,
             {
@@ -328,7 +375,7 @@ def test_stream_v1_real_waveform_actions(
         )
         assert first_packet["data"]["found"] is True
         assert first_packet["data"]["packet"]["packet_index"] == 0
-        assert first_packet["data"]["packet"]["stable_fields"]["opcode"]["value"] == "8'ha0"
+        assert first_packet["data"]["packet"]["packet_stable_fields"]["opcode"]["value"] == "8'ha0"
         assert first_packet["data"]["packet"]["beat_fields_preview"]["total_beats"] == 4
         assert first_packet["data"]["packet"]["beat_fields_preview"]["head"][0]["fields"]["data"]["value"] == "32'h40000000"
 
@@ -350,7 +397,7 @@ def test_stream_v1_real_waveform_actions(
         )
         assert packet_at["data"]["found"] is True
         assert packet_at["data"]["packet"]["packet_index"] == 3
-        assert packet_at["data"]["packet"]["stable_fields"]["opcode"]["value"] == "8'ha3"
+        assert packet_at["data"]["packet"]["packet_stable_fields"]["opcode"]["value"] == "8'ha3"
         packet_at_xout = _query_xout(
             cli_runner,
             {
@@ -368,7 +415,7 @@ def test_stream_v1_real_waveform_actions(
             case_name="stream-v1-packet-at-xout",
             artifact_root=artifact_root,
         )
-        assert "stable_fields    : opcode=8'ha3" in packet_at_xout
+        assert "packet_stable_fields    : opcode=8'ha3" in packet_at_xout
         assert "18     185ns  0           data=32'h4000000c seq=16'h000c" in packet_at_xout
         assert "first_fields: data=32'h4000000c seq=16'h000c" in packet_at_xout
         assert "last_fields : data=32'h4000000f seq=16'h000f" in packet_at_xout
@@ -409,8 +456,8 @@ def test_stream_v1_real_waveform_actions(
             case_name="stream-v1-stable-mismatch",
             artifact_root=artifact_root,
         )
-        assert mismatch_packet["data"]["packet"]["stable_mismatches"]
-        assert mismatch_packet["summary"]["stable_mismatch_count"] > 0
+        assert mismatch_packet["data"]["packet"]["packet_stable_mismatches"]
+        assert mismatch_packet["summary"]["packet_stable_mismatch_count"] > 0
 
         stalls = _query(
             cli_runner,

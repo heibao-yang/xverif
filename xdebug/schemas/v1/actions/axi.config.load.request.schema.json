@@ -32,7 +32,182 @@
       "properties": {
         "config": {
           "type": "object",
-          "description": "内联配置对象。"
+          "description": "内联配置对象。",
+          "properties": {
+            "clock": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rst_n": {
+              "type": "string",
+              "minLength": 1
+            },
+            "awvalid": {
+              "type": "string",
+              "minLength": 1
+            },
+            "awready": {
+              "type": "string",
+              "minLength": 1
+            },
+            "awaddr": {
+              "type": "string",
+              "minLength": 1
+            },
+            "awid": {
+              "type": "string",
+              "minLength": 1
+            },
+            "awlen": {
+              "type": "string",
+              "minLength": 1
+            },
+            "awsize": {
+              "type": "string",
+              "minLength": 1
+            },
+            "awburst": {
+              "type": "string",
+              "minLength": 1
+            },
+            "wvalid": {
+              "type": "string",
+              "minLength": 1
+            },
+            "wready": {
+              "type": "string",
+              "minLength": 1
+            },
+            "wdata": {
+              "type": "string",
+              "minLength": 1
+            },
+            "wstrb": {
+              "type": "string",
+              "minLength": 1
+            },
+            "wlast": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bvalid": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bready": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bid": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bresp": {
+              "type": "string",
+              "minLength": 1
+            },
+            "arvalid": {
+              "type": "string",
+              "minLength": 1
+            },
+            "arready": {
+              "type": "string",
+              "minLength": 1
+            },
+            "araddr": {
+              "type": "string",
+              "minLength": 1
+            },
+            "arid": {
+              "type": "string",
+              "minLength": 1
+            },
+            "arlen": {
+              "type": "string",
+              "minLength": 1
+            },
+            "arsize": {
+              "type": "string",
+              "minLength": 1
+            },
+            "arburst": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rvalid": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rready": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rdata": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rid": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rresp": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rlast": {
+              "type": "string",
+              "minLength": 1
+            },
+            "edge": {
+              "type": "string",
+              "enum": [
+                "posedge",
+                "negedge",
+                "dual"
+              ]
+            },
+            "sample_point": {
+              "type": "string",
+              "enum": [
+                "before",
+                "after"
+              ]
+            }
+          },
+          "required": [
+            "clock",
+            "rst_n",
+            "awvalid",
+            "awready",
+            "awaddr",
+            "awid",
+            "awlen",
+            "awsize",
+            "awburst",
+            "wvalid",
+            "wready",
+            "wdata",
+            "wstrb",
+            "wlast",
+            "bvalid",
+            "bready",
+            "bid",
+            "bresp",
+            "arvalid",
+            "arready",
+            "araddr",
+            "arid",
+            "arlen",
+            "arsize",
+            "arburst",
+            "rvalid",
+            "rready",
+            "rdata",
+            "rid",
+            "rresp",
+            "rlast"
+          ],
+          "additionalProperties": false
         },
         "config_path": {
           "type": "string",
@@ -92,9 +267,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "axi.config.load: 加载 AXI 配置。",
+  "description": "Load and validate an AXI interface configuration.",
   "x-purpose": "加载 AXI 配置。",
   "x-how_it_works": "保存 AXI channel 信号映射。",
   "x-when_to_use": "定义后续 AXI 查询对象。",
-  "x-arg_contract_notes": "required: name; also one of: config / config_path"
+  "x-arg_contract_notes": "required: name; also one of: config / config_path",
+  "x-description-zh": "加载 AXI 配置。"
 }

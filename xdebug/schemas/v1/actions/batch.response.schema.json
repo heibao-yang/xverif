@@ -31,14 +31,45 @@
     },
     "summary": {
       "type": "object",
-      "required": ["count", "all_ok", "failed_count", "failed_indexes", "failed_codes", "failed_layers"],
+      "required": [
+        "count",
+        "all_ok",
+        "failed_count",
+        "failed_indexes",
+        "failed_codes",
+        "failed_layers"
+      ],
       "properties": {
-        "count": {"type": "integer", "minimum": 0},
-        "all_ok": {"type": "boolean"},
-        "failed_count": {"type": "integer", "minimum": 0},
-        "failed_indexes": {"type": "array", "items": {"type": "integer", "minimum": 0}},
-        "failed_codes": {"type": "array", "items": {"type": "string"}},
-        "failed_layers": {"type": "array", "items": {"type": "string"}}
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "all_ok": {
+          "type": "boolean"
+        },
+        "failed_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed_indexes": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "failed_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "failed_layers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       },
       "additionalProperties": true
     },
@@ -62,15 +93,30 @@
     },
     "error": {
       "oneOf": [
-        {"type": "null"},
+        {
+          "type": "null"
+        },
         {
           "type": "object",
-          "required": ["code", "message", "recoverable", "error_layer"],
+          "required": [
+            "code",
+            "message",
+            "recoverable",
+            "error_layer"
+          ],
           "properties": {
-            "code": {"type": "string"},
-            "message": {"type": "string"},
-            "recoverable": {"type": "boolean"},
-            "error_layer": {"type": "string"}
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "recoverable": {
+              "type": "boolean"
+            },
+            "error_layer": {
+              "type": "string"
+            }
           }
         }
       ]
@@ -80,6 +126,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "batch response: 批量执行多个 xdebug request。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Execute multiple xdebug requests as one ordered batch.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "批量执行多个 xdebug request。"
 }

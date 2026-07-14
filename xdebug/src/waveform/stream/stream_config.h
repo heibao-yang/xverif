@@ -24,7 +24,7 @@ struct StreamConfig {
     std::string eop;
     std::string data;
     std::map<std::string, std::string> data_fields;
-    std::map<std::string, std::string> stable_fields;
+    std::map<std::string, std::string> packet_stable_fields;
     std::map<std::string, std::string> beat_fields;
     std::string channel_id;
     std::string channel_id_valid = "every_beat";

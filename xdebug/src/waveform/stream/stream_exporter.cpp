@@ -68,8 +68,8 @@ bool write_meta(const std::string& output_file,
     for (const auto& kv : config.beat_fields) {
         meta["fields"].push_back(Json{{"name", kv.first}, {"expr", kv.second}, {"scope", "beat"}});
     }
-    for (const auto& kv : config.stable_fields) {
-        meta["fields"].push_back(Json{{"name", kv.first}, {"expr", kv.second}, {"scope", "stable"}});
+    for (const auto& kv : config.packet_stable_fields) {
+        meta["fields"].push_back(Json{{"name", kv.first}, {"expr", kv.second}, {"scope", "packet_stable"}});
     }
     std::ofstream out(meta_file.c_str());
     if (!out) {
@@ -101,7 +101,7 @@ bool StreamExporter::export_transfer_file(const std::string& output_file,
     if (!config.data.empty()) out << sep << "data";
     for (const auto& kv : config.data_fields) out << sep << kv.first;
     for (const auto& kv : config.beat_fields) out << sep << kv.first;
-    for (const auto& kv : config.stable_fields) out << sep << "stable_" << kv.first;
+    for (const auto& kv : config.packet_stable_fields) out << sep << "packet_stable_" << kv.first;
     out << "\n";
     for (const auto& row : analysis.transfers) {
         out << row.cycle << sep << format_time(row.time) << sep
@@ -118,9 +118,9 @@ bool StreamExporter::export_transfer_file(const std::string& output_file,
             auto it = row.fields.find(kv.first);
             out << sep << (it == row.fields.end() ? "" : cell(it->second));
         }
-        for (const auto& kv : config.stable_fields) {
-            auto it = row.stable_fields.find(kv.first);
-            out << sep << (it == row.stable_fields.end() ? "" : cell(it->second));
+        for (const auto& kv : config.packet_stable_fields) {
+            auto it = row.packet_stable_fields.find(kv.first);
+            out << sep << (it == row.packet_stable_fields.end() ? "" : cell(it->second));
         }
         out << "\n";
     }
@@ -142,8 +142,8 @@ bool StreamExporter::export_packet_file(const std::string& output_file,
     char sep = sep_for(format);
     out << "packet_index" << sep << "channel_id" << sep << "start_time" << sep << "end_time" << sep
         << "start_cycle" << sep << "end_cycle" << sep << "beat_count" << sep << "partial" << sep
-        << "stable_mismatch_count";
-    for (const auto& kv : config.stable_fields) out << sep << "stable_" << kv.first;
+        << "packet_stable_mismatch_count";
+    for (const auto& kv : config.packet_stable_fields) out << sep << "packet_stable_" << kv.first;
     for (const auto& kv : config.data_fields) out << sep << "first_" << kv.first << sep << "last_" << kv.first;
     for (const auto& kv : config.beat_fields) out << sep << "first_" << kv.first << sep << "last_" << kv.first;
     if (!config.data.empty()) out << sep << "first_data" << sep << "last_data";
@@ -153,10 +153,10 @@ bool StreamExporter::export_packet_file(const std::string& output_file,
             << sep << format_time(packet.start_time) << sep << format_time(packet.end_time)
             << sep << packet.start_cycle << sep << packet.end_cycle << sep << packet.beat_count << sep
             << ((packet.partial_begin || packet.partial_end) ? "true" : "false") << sep
-            << packet.stable_mismatches.size();
-        for (const auto& kv : config.stable_fields) {
-            auto it = packet.stable_fields.find(kv.first);
-            out << sep << (it == packet.stable_fields.end() ? "" : cell(it->second));
+            << packet.packet_stable_mismatches.size();
+        for (const auto& kv : config.packet_stable_fields) {
+            auto it = packet.packet_stable_fields.find(kv.first);
+            out << sep << (it == packet.packet_stable_fields.end() ? "" : cell(it->second));
         }
         for (const auto& kv : config.data_fields) {
             auto f = packet.first_fields.find(kv.first);
@@ -199,7 +199,7 @@ bool StreamExporter::export_packet_beats_file(const std::string& output_file,
     if (!config.data.empty()) out << sep << "data";
     for (const auto& kv : config.data_fields) out << sep << kv.first;
     for (const auto& kv : config.beat_fields) out << sep << kv.first;
-    for (const auto& kv : config.stable_fields) out << sep << "stable_" << kv.first;
+    for (const auto& kv : config.packet_stable_fields) out << sep << "packet_stable_" << kv.first;
     out << "\n";
     for (const auto& packet : analysis.packets) {
         for (const auto& beat : packet.beats) {
@@ -217,9 +217,9 @@ bool StreamExporter::export_packet_beats_file(const std::string& output_file,
                 auto it = beat.fields.find(kv.first);
                 out << sep << (it == beat.fields.end() ? "" : cell(it->second));
             }
-            for (const auto& kv : config.stable_fields) {
-                auto it = packet.stable_fields.find(kv.first);
-                out << sep << (it == packet.stable_fields.end() ? "" : cell(it->second));
+            for (const auto& kv : config.packet_stable_fields) {
+                auto it = packet.packet_stable_fields.find(kv.first);
+                out << sep << (it == packet.packet_stable_fields.end() ? "" : cell(it->second));
             }
             out << "\n";
         }

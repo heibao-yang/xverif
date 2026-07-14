@@ -48,6 +48,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "event.config.list response: 列出事件配置。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "List saved event-query configurations.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "列出事件配置。"
 }

@@ -131,7 +131,8 @@ def arg_contract_notes(spec: dict[str, Any]) -> str:
 
 def update_request_schema(schema: dict[str, Any], spec: dict[str, Any], hint: dict[str, str]) -> None:
     name = spec["name"]
-    schema["description"] = f"{name}: {hint['purpose']}"
+    schema["description"] = spec["description_en"]
+    schema["x-description-zh"] = spec["description_zh"]
     schema["x-purpose"] = hint["purpose"]
     schema["x-how_it_works"] = hint["how_it_works"]
     schema["x-when_to_use"] = hint["when_to_use"]
@@ -153,8 +154,8 @@ def update_request_schema(schema: dict[str, Any], spec: dict[str, Any], hint: di
 
 
 def update_response_schema(schema: dict[str, Any], spec: dict[str, Any], hint: dict[str, str]) -> None:
-    name = spec["name"]
-    schema["description"] = f"{name} response: {hint['purpose']}"
+    schema["description"] = spec["description_en"]
+    schema["x-description-zh"] = spec["description_zh"]
     schema["x-output_notes"] = (
         "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
     )

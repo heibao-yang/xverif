@@ -57,18 +57,48 @@
         "active_time": {
           "type": "string"
         },
-        "requested_time": {"type": "string"},
-        "driver_last_change_time": {"type": "string"},
-        "time_semantics": {"type": "object"},
-        "driver_status": {"type": "string"},
-        "termination": {"type": "string"},
-        "termination_detail": {"type": "string"},
-        "evidence_scope": {"type": "string"},
-        "evidence_status": {"type": "string"},
-        "evidence_source": {"type": ["string", "null"]},
-        "static_candidate_count": {"type": "integer", "minimum": 0},
-        "active_check_count": {"type": "integer", "minimum": 0},
-        "trace_node_count": {"type": "integer", "minimum": 0},
+        "requested_time": {
+          "type": "string"
+        },
+        "driver_last_change_time": {
+          "type": "string"
+        },
+        "time_semantics": {
+          "type": "object"
+        },
+        "driver_status": {
+          "type": "string"
+        },
+        "termination": {
+          "type": "string"
+        },
+        "termination_detail": {
+          "type": "string"
+        },
+        "evidence_scope": {
+          "type": "string"
+        },
+        "evidence_status": {
+          "type": "string"
+        },
+        "evidence_source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "static_candidate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "active_check_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "trace_node_count": {
+          "type": "integer",
+          "minimum": 0
+        },
         "path_count": {
           "type": "integer",
           "minimum": 0
@@ -163,6 +193,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "trace.active_driver response: 在指定时间找 active driver。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Find active driver evidence at a specific waveform time.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "在指定时间找 active driver。"
 }

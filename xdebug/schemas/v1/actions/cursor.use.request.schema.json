@@ -72,9 +72,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "cursor.use: 激活游标。",
+  "description": "Activate a named waveform cursor.",
   "x-purpose": "激活游标。",
   "x-how_it_works": "按 name 取游标并设为当前 active。",
   "x-when_to_use": "让后续交互默认围绕该时间点。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name",
+  "x-description-zh": "激活游标。"
 }

@@ -158,7 +158,7 @@ public:
             if (analysis.vld_cycles == 0) add_issue(issues, "WARNING", "VLD_NEVER_TRUE", "vld was never true in validation window");
             if (analysis.transfer_count == 0) add_issue(issues, "WARNING", "NO_TRANSFER", "no transfer observed in validation window");
             if (analysis.ready_bp_conflict_count > 0) add_issue(issues, "WARNING", "READY_BP_CONFLICT", "observed vld=1,rdy=1,bp=1");
-            if (analysis.stable_mismatch_count > 0) add_issue(issues, "WARNING", "STABLE_FIELD_MISMATCH", "observed stable_fields changing within packet");
+            if (analysis.packet_stable_mismatch_count > 0) add_issue(issues, "WARNING", "PACKET_STABLE_FIELD_MISMATCH", "observed packet_stable_fields changing within packet");
             dyn = xdebug_waveform::stream_summary_json(config, analysis);
             dynamic_complete = analysis.analysis_complete;
         }

@@ -49,6 +49,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "list.delete response: 从信号列表删除信号或 index。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Delete a signal or index from a waveform list.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "从信号列表删除信号或 index。"
 }

@@ -6,7 +6,9 @@
     "stream": "req_stream",
     "transfer_count": 128,
     "stall_cycles": 4,
-    "packet_count": 16,
+    "complete_packet_count": 16,
+    "partial_packet_count": 0,
+    "packet_count_status": "exact",
     "truncated": false
   },
   "data": {

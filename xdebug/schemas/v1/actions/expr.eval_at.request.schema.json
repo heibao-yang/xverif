@@ -125,9 +125,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "expr.eval_at: 在指定时间求布尔/表达式值。",
+  "description": "Evaluate an expression at a sampled waveform time.",
   "x-purpose": "在指定时间求布尔/表达式值。",
   "x-how_it_works": "把 signals alias 映射到 FSDB 信号，按 clock/time 采样后交给表达式求值器。",
   "x-when_to_use": "用自然表达式检查组合条件。",
-  "x-arg_contract_notes": "required: expr, time, signals, clock"
+  "x-arg_contract_notes": "required: expr, time, signals, clock",
+  "x-description-zh": "在指定时间求布尔/表达式值。"
 }

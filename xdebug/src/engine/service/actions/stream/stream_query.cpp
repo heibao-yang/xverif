@@ -256,11 +256,11 @@ public:
             match.mask = m.value("mask", std::string());
             match.field_scope = m.value("field_scope", args.value("field_scope", std::string("any")));
             if (match.field_scope.empty()) match.field_scope = "any";
-            if (match.field_scope != "beat" && match.field_scope != "stable" && match.field_scope != "any")
-                return err("INVALID_ENUM", "field_scope must be beat, stable, or any",
+            if (match.field_scope != "beat" && match.field_scope != "packet_stable" && match.field_scope != "any")
+                return err("INVALID_ENUM", "field_scope must be beat, packet_stable, or any",
                            {{"invalid_arg", m.contains("field_scope") ? "args.match.field_scope" : "args.field_scope"},
-                            {"expected", "one of beat, stable, any"},
-                            {"allowed_values", Json::array({"beat", "stable", "any"})},
+                            {"expected", "one of beat, packet_stable, any"},
+                            {"allowed_values", Json::array({"beat", "packet_stable", "any"})},
                             {"correct_example", stream_query_example(config.name, "match_field")},
                             {"example_note", "Example only; put field_scope under args.match for match_field queries."}});
             if (match.field.empty()) {
@@ -273,11 +273,11 @@ public:
                             {"example_note", "Example only; replace opcode/value with a field from stream.show."},
                             {"next_actions", Json::array({"Call stream.show to inspect available fields."})}});
             }
-            if (match.field_scope == "stable") {
+            if (match.field_scope == "packet_stable") {
                 Json packets = Json::array();
                 for (const auto& packet : analysis.packets) {
                     xdebug_waveform::StreamRow pseudo;
-                    pseudo.stable_fields = packet.stable_fields;
+                    pseudo.packet_stable_fields = packet.packet_stable_fields;
                     std::string match_error;
                     if (analyzer.match_row(pseudo, match, match_error)) packets.push_back(xdebug_waveform::stream_packet_json(packet));
                     else if (!match_error.empty())

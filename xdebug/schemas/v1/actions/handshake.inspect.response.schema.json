@@ -48,6 +48,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "handshake.inspect response: 检查 valid/ready 握手。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Inspect valid-ready transfers, stalls, and stability violations.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "检查 valid/ready 握手。"
 }

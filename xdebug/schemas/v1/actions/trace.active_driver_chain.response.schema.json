@@ -82,13 +82,32 @@
         "summary": {
           "type": "object"
         },
-        "requested_time": {"type": "string"},
-        "time_semantics": {"type": "object"},
-        "evidence_scope": {"type": "string"},
-        "evidence_status": {"type": "string"},
-        "evidence_source": {"type": ["string", "null"]},
-        "static_candidate_count": {"type": "integer", "minimum": 0},
-        "active_check_count": {"type": "integer", "minimum": 0},
+        "requested_time": {
+          "type": "string"
+        },
+        "time_semantics": {
+          "type": "object"
+        },
+        "evidence_scope": {
+          "type": "string"
+        },
+        "evidence_status": {
+          "type": "string"
+        },
+        "evidence_source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "static_candidate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "active_check_count": {
+          "type": "integer",
+          "minimum": 0
+        },
         "hops": {
           "type": "array",
           "items": {
@@ -179,6 +198,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "trace.active_driver_chain response: 展开 active driver 链。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Trace an active-driver chain across multiple levels.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "展开 active driver 链。"
 }

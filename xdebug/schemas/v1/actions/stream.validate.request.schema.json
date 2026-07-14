@@ -96,9 +96,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "stream.validate: 验证 stream 配置。",
+  "description": "Validate stream configuration and observed behavior.",
   "x-purpose": "验证 stream 配置。",
   "x-how_it_works": "检查 stream 信号在 FSDB 中是否可解析。",
   "x-when_to_use": "提前发现错误信号路径。",
-  "x-arg_contract_notes": "required: stream"
+  "x-arg_contract_notes": "required: stream",
+  "x-description-zh": "验证 stream 配置。"
 }

@@ -21,7 +21,7 @@ struct ApbContextTransaction {
 };
 
 struct ApbResult {
-    std::vector<ApbTransaction> all;
+    std::vector<const ApbTransaction*> all;
     std::vector<ApbTransaction> writes;
     std::vector<ApbTransaction> reads;
 };
@@ -41,6 +41,17 @@ public:
     // Getters for wr/rd counts
     size_t get_write_count(const std::string& name) const;
     size_t get_read_count(const std::string& name) const;
+    size_t get_count(const std::string& name, int filter) const;
+    bool get_by_addr(const std::string& name, int filter, uint64_t addr,
+                     const ApbTransaction*& out) const;
+    bool get_by_addr_num(const std::string& name, int filter, uint64_t addr,
+                         size_t num, const ApbTransaction*& out) const;
+    bool get_by_addr_last(const std::string& name, int filter, uint64_t addr,
+                          const ApbTransaction*& out) const;
+    bool get_by_num(const std::string& name, int filter, size_t num,
+                    const ApbTransaction*& out) const;
+    bool get_last(const std::string& name, int filter,
+                  const ApbTransaction*& out) const;
 
     // Query write by various filters
     bool get_write_by_addr(const std::string& name, uint64_t addr, const ApbTransaction*& out) const;
@@ -78,7 +89,6 @@ private:
     const ApbResult* get_result(const std::string& name) const;
     ApbResult* get_result_mut(const std::string& name);
     ApbCursor* get_cursor_mut(const std::string& name);
-
     static bool parse_hex_value(const std::string& hex_str, uint64_t& out);
 };
 

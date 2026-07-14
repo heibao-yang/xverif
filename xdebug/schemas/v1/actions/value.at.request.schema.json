@@ -124,9 +124,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "value.at: 读取单个信号在指定时间的值。",
+  "description": "Read one signal value at a sampled waveform time.",
   "x-purpose": "读取单个信号在指定时间的值。",
   "x-how_it_works": "解析 time/clock，定位 FSDB signal handle，读取该时刻值并格式化。",
   "x-when_to_use": "回答某个时间点信号是什么。",
-  "x-arg_contract_notes": "required: signal, time, clock"
+  "x-arg_contract_notes": "required: signal, time, clock",
+  "x-description-zh": "读取单个信号在指定时间的值。"
 }

@@ -72,9 +72,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "list.validate: 验证 list 中信号是否存在。",
+  "description": "Validate signal paths stored in a waveform list.",
   "x-purpose": "验证 list 中信号是否存在。",
   "x-how_it_works": "逐条检查 FSDB signal handle。",
   "x-when_to_use": "发现过期或错误路径。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name",
+  "x-description-zh": "验证 list 中信号是否存在。"
 }

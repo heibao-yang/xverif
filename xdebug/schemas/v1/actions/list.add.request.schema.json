@@ -77,9 +77,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "list.add: 向信号列表追加一个信号。",
+  "description": "Add a signal to a named waveform list.",
   "x-purpose": "向信号列表追加一个信号。",
   "x-how_it_works": "检查 signal 在 FSDB 中存在后写入 ListManager。",
   "x-when_to_use": "逐步构建观察列表。",
-  "x-arg_contract_notes": "required: name, signal"
+  "x-arg_contract_notes": "required: name, signal",
+  "x-description-zh": "向信号列表追加一个信号。"
 }

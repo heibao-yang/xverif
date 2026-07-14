@@ -112,9 +112,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "signal.stability: 检查信号窗口内是否稳定。",
+  "description": "Check whether a signal stays stable in a time range.",
   "x-purpose": "检查信号窗口内是否稳定。",
   "x-how_it_works": "基于 signal.changes 判断是否只有初始值或无变化。",
   "x-when_to_use": "确认控制/状态信号是否保持不变。",
-  "x-arg_contract_notes": "required: signal"
+  "x-arg_contract_notes": "required: signal",
+  "x-description-zh": "检查信号窗口内是否稳定。"
 }

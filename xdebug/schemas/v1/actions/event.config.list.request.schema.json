@@ -84,9 +84,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "event.config.list: 列出事件配置。",
+  "description": "List saved event-query configurations.",
   "x-purpose": "列出事件配置。",
   "x-how_it_works": "读取 EventManager 中保存的配置；args:{} 列全部，args.name 显示单个配置详情。",
   "x-when_to_use": "查看可用事件查询模板。",
-  "x-arg_contract_notes": "args:{} list all; optional name shows one config"
+  "x-arg_contract_notes": "args:{} list all; optional name shows one config",
+  "x-description-zh": "列出事件配置。"
 }

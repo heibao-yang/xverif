@@ -124,9 +124,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "counter.statistics: 统计计数器行为。",
+  "description": "Analyze sampled counter behavior and statistics.",
   "x-purpose": "统计计数器行为。",
   "x-how_it_works": "按 clock/vld/cnt 采样，分析递增、回绕、停顿和异常。",
   "x-when_to_use": "判断计数器是否符合预期。",
-  "x-arg_contract_notes": "required: clock, time_range, vld, cnt"
+  "x-arg_contract_notes": "required: clock, time_range, vld, cnt",
+  "x-description-zh": "统计计数器行为。"
 }

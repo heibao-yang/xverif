@@ -46,3 +46,7 @@ def test_action_schema_coverage_is_complete() -> None:
     assert _module("audit_action_schema_coverage").main(
         ["audit_action_schema_coverage", str(XDEBUG)]
     ) == 0
+
+
+def test_generated_action_metadata_is_synced() -> None:
+    assert _module("sync_action_metadata").main(["--check"]) == 0

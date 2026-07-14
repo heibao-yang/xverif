@@ -99,9 +99,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "list.delete: 从信号列表删除信号或 index。",
+  "description": "Delete a signal or index from a waveform list.",
   "x-purpose": "从信号列表删除信号或 index。",
   "x-how_it_works": "按 name 找 list，再用 signal 或 index 删除条目。",
   "x-when_to_use": "维护已保存观察列表。",
-  "x-arg_contract_notes": "required: name; also one of: signal / index"
+  "x-arg_contract_notes": "required: name; also one of: signal / index",
+  "x-description-zh": "从信号列表删除信号或 index。"
 }

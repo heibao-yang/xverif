@@ -50,6 +50,8 @@ def require_file(path, base):
 def check_spec_shape(specs, xdebug_root):
     valid_status = {"experimental", "stable", "deprecated", "removed"}
     valid_requires = {"none", "design", "waveform", "combined", "any", "session"}
+    valid_purposes = {"discover", "configure", "query", "inspect", "analyze", "trace",
+                      "verify", "export", "manage", "transform", "orchestrate"}
     for name, spec in sorted(specs.items()):
         for key in ("category", "status", "requires", "handler_kind"):
             if not isinstance(spec.get(key), str) or not spec.get(key):
@@ -59,6 +61,17 @@ def check_spec_shape(specs, xdebug_root):
         if spec["requires"] not in valid_requires:
             fail("%s: invalid requires %s" % (name, spec["requires"]))
         if spec["status"] != "removed":
+            for key in ("description_en", "description_zh"):
+                if not isinstance(spec.get(key), str) or not spec[key].strip():
+                    fail("%s: missing %s" % (name, key))
+            for key in ("purposes", "use_for", "do_not_use_for"):
+                value = spec.get(key)
+                if not isinstance(value, list) or not value:
+                    fail("%s: %s must be a non-empty array" % (name, key))
+            if set(spec["purposes"]) - valid_purposes:
+                fail("%s: invalid purposes %s" % (name, spec["purposes"]))
+            if not isinstance(spec.get("preferred_alternative"), dict):
+                fail("%s: preferred_alternative must be an object" % name)
             schemas = spec.get("schemas", {})
             examples = spec.get("examples", {})
             for field in ("request", "response"):
@@ -121,6 +134,10 @@ def check_runtime(specs, runtime, exe):
             if spec[field] != desc.get(runtime_field):
                 fail("%s: %s mismatch spec=%s runtime=%s" %
                      (name, field, spec[field], desc.get(runtime_field)))
+        for field in ("description_en", "description_zh", "purposes", "use_for",
+                      "do_not_use_for", "preferred_alternative"):
+            if spec[field] != desc.get(field):
+                fail("%s: %s metadata mismatch" % (name, field))
         schemas = spec.get("schemas", {})
         if schemas.get("request") != desc.get("request_schema"):
             fail("%s: request_schema mismatch spec=%s runtime=%s" %

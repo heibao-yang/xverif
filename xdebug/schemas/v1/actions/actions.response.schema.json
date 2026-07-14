@@ -31,29 +31,115 @@
     },
     "summary": {
       "type": "object",
-      "required": ["action_count", "removed_count", "verbose"],
+      "required": [
+        "action_count",
+        "total_action_count",
+        "removed_count",
+        "verbose",
+        "filtered"
+      ],
       "properties": {
-        "action_count": {"type": "integer", "minimum": 0},
-        "removed_count": {"type": "integer", "minimum": 0},
-        "verbose": {"type": "boolean"}
+        "action_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_action_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removed_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "verbose": {
+          "type": "boolean"
+        },
+        "filtered": {
+          "type": "boolean"
+        }
       },
       "additionalProperties": true
     },
     "data": {
       "type": "object",
-      "required": ["actions", "removed", "modes"],
+      "required": [
+        "actions",
+        "removed",
+        "modes",
+        "filters"
+      ],
       "properties": {
         "actions": {
           "type": "array",
           "items": {
             "oneOf": [
-              {"type": "string"},
-              {"type": "object", "required": ["name", "category", "status", "requires"]}
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "name",
+                  "category",
+                  "status",
+                  "requires",
+                  "request_schema",
+                  "response_schema",
+                  "handler_kind",
+                  "request_examples",
+                  "response_examples",
+                  "required_args",
+                  "allowed_values",
+                  "description_en",
+                  "description_zh",
+                  "purposes",
+                  "use_for",
+                  "do_not_use_for",
+                  "preferred_alternative"
+                ],
+                "properties": {
+                  "name": {"type": "string"},
+                  "category": {"type": "string"},
+                  "status": {"type": "string"},
+                  "requires": {"type": "string"},
+                  "request_schema": {"type": "string"},
+                  "response_schema": {"type": "string"},
+                  "handler_kind": {"type": "string"},
+                  "request_examples": {"type": "array", "items": {"type": "string"}},
+                  "response_examples": {"type": "array", "items": {"type": "string"}},
+                  "required_args": {"type": "array", "items": {"type": "string"}},
+                  "allowed_values": {"type": "object"},
+                  "description_en": {"type": "string", "minLength": 1},
+                  "description_zh": {"type": "string", "minLength": 1},
+                  "purposes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "enum": ["discover", "configure", "query", "inspect", "analyze", "trace", "verify", "export", "manage", "transform", "orchestrate"]
+                    }
+                  },
+                  "use_for": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+                  "do_not_use_for": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+                  "preferred_alternative": {"type": "object"}
+                },
+                "additionalProperties": false
+              }
             ]
           }
         },
-        "removed": {"type": "array", "items": {"type": "string"}},
-        "modes": {"type": "object"}
+        "removed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "modes": {
+          "type": "object"
+        },
+        "filters": {
+          "type": "object"
+        }
       },
       "additionalProperties": false
     },
@@ -69,6 +155,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "actions response: 列出当前运行时公开 action catalog。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "List the public xdebug action catalog.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "列出当前运行时公开 action catalog。"
 }

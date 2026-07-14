@@ -52,9 +52,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "session.list: 列出当前 session。",
+  "description": "List active debug sessions.",
   "x-purpose": "列出当前 session。",
   "x-how_it_works": "读取 SessionManager 中的活动 session 元数据。",
   "x-when_to_use": "确认已有 session_id 和资源类型。",
-  "x-arg_contract_notes": "none"
+  "x-arg_contract_notes": "none",
+  "x-description-zh": "列出当前 session。"
 }

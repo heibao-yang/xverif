@@ -58,12 +58,15 @@ frontend 不直接承载 NPI 重逻辑；NPI/FSDB/engine 能力集中在内部 e
 - `tools/validate_examples.py`
 - `tools/sync_runtime_request_schemas.py`
 - `tools/sync_action_schema_hints.py`
+- `tools/sync_action_metadata.py`
 - `tools/audit_action_schema_coverage.py`
 - `tools/check_action_contract.py`
 
 职责：
 
-- `actions.yaml` 描述 action inventory、category、requires、handler_kind、schema/example 路径和 required args。
+- `actions.yaml` 描述 action inventory、category、requires、handler_kind、schema/example
+  路径、required args，以及双语描述、purposes、适用/禁用范围和推荐替代；编译期
+  action metadata 由此生成。
 - action-specific schema 是 public request/response contract。
 - runtime validator 在执行前拦截非法 envelope 和非法 action 参数。
 - examples 是可执行合同样例，必须被 schema 校验。

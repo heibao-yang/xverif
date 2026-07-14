@@ -32,20 +32,40 @@
     "summary": {
       "type": "object",
       "properties": {
-        "name": {"type": "string"},
-        "signal_count": {"type": "integer"},
-        "row_count": {"type": "integer"},
-        "format": {"type": "string", "enum": ["u64bin.v1"]},
+        "name": {
+          "type": "string"
+        },
+        "signal_count": {
+          "type": "integer"
+        },
+        "row_count": {
+          "type": "integer"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "u64bin.v1"
+          ]
+        },
         "output": {
           "type": "object",
           "properties": {
-            "path": {"type": "string"},
-            "manifest_path": {"type": "string"}
+            "path": {
+              "type": "string"
+            },
+            "manifest_path": {
+              "type": "string"
+            }
           },
           "additionalProperties": true
         }
       },
-      "required": ["name", "signal_count", "row_count", "format"],
+      "required": [
+        "name",
+        "signal_count",
+        "row_count",
+        "format"
+      ],
       "additionalProperties": true
     },
     "data": {
@@ -54,17 +74,34 @@
         "output": {
           "type": "object",
           "properties": {
-            "path": {"type": "string"},
-            "manifest_path": {"type": "string"}
+            "path": {
+              "type": "string"
+            },
+            "manifest_path": {
+              "type": "string"
+            }
           },
-          "required": ["path", "manifest_path"],
+          "required": [
+            "path",
+            "manifest_path"
+          ],
           "additionalProperties": true
         },
-        "signals": {"type": "array"},
-        "begin": {"type": "string"},
-        "end": {"type": "string"}
+        "signals": {
+          "type": "array"
+        },
+        "begin": {
+          "type": "string"
+        },
+        "end": {
+          "type": "string"
+        }
       },
-      "required": ["signals", "begin", "end"],
+      "required": [
+        "signals",
+        "begin",
+        "end"
+      ],
       "additionalProperties": true
     },
     "warnings": {
@@ -76,6 +113,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "list.export response: 导出 list 数据。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Export waveform-list data.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "导出 list 数据。"
 }

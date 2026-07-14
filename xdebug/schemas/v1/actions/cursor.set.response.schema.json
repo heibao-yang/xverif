@@ -48,6 +48,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "cursor.set response: 保存命名时间游标。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Save a named waveform cursor.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "保存命名时间游标。"
 }

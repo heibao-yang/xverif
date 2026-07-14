@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import json
+import os
+import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 from skill_test_utils import assert_markdown_links
 
@@ -10,9 +15,15 @@ ROOT = Path(__file__).resolve().parents[2]
 SKILL = ROOT / "skills" / "x-npi"
 sys.path.insert(0, str(SKILL / "scripts"))
 
+from x_npi.cli import require_output, sampling_contract  # noqa: E402
 from x_npi.coverage import coverage_summary  # noqa: E402
 from x_npi.jsonio import split_limited  # noqa: E402
-from x_npi.protocol import apb_summary, axi_summary, stream_summary  # noqa: E402
+from x_npi.protocol import (  # noqa: E402
+    ProtocolAnalysisError,
+    apb_summary,
+    axi_summary,
+    stream_summary,
+)
 from x_npi.wave import active, known  # noqa: E402
 
 
@@ -22,59 +33,163 @@ def test_x_npi_links_and_examples_exist() -> None:
     text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
     assert examples
     assert all(name in text for name in examples)
+    assert "$VERDI_HOME/share/NPI/python/pynpi/" in text
+    assert "TimeBasedHandle" in text
+    assert '"rst_n", "valid"' in (SKILL / "scripts/examples/stream_summary.py").read_text(encoding="utf-8")
 
 
-def test_apb_summary_counts_one_completion_per_access() -> None:
-    cfg = {"psel": "sel", "penable": "en", "pready": "rdy", "pwrite": "wr",
-           "paddr": "addr", "pwdata": "wdata", "prdata": "rdata"}
-    rows = [
-        {"time": 1, "values": {"sel": "1", "en": "1", "rdy": "1", "wr": "1",
-                                "addr": "10", "wdata": "aa"}},
-        {"time": 2, "values": {"sel": "1", "en": "1", "rdy": "1", "wr": "1",
-                                "addr": "10", "wdata": "aa"}},
-        {"time": 3, "values": {"sel": "0", "en": "0", "rdy": "1", "wr": "0"}},
-    ]
-    result = apb_summary(rows, cfg)
-    assert result["summary"] == {"total": 1, "writes": 1, "reads": 0, "errors": 0}
+def test_sampling_contract_is_canonical_and_output_is_required() -> None:
+    assert sampling_contract({}) == ("negedge", None)
+    assert sampling_contract({"edge": "posedge", "sample_point": "before"}) == ("posedge", "before")
+    with pytest.raises(ValueError, match="legacy"):
+        sampling_contract({"clock_edge": "negedge"})
+    with pytest.raises(ValueError, match="requires sample_point"):
+        sampling_contract({"edge": "posedge"})
+    with pytest.raises(ValueError, match="--output"):
+        require_output("transactions", None)
 
 
-def test_axi_summary_tracks_write_latency_and_outstanding() -> None:
+def test_json_stdout_quarantine_rejects_delayed_native_pollution() -> None:
+    source = """
+import json, os
+from x_npi.jsonio import print_json
+from x_npi.runtime import json_stdout_quarantine
+with json_stdout_quarantine() as out:
+    print_json({'ok': True}, out)
+    os.write(1, b'native banner\\n')
+"""
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(SKILL / "scripts")
+    proc = subprocess.run([sys.executable, "-c", source], text=True, capture_output=True, env=env, check=False)
+    assert proc.returncode == 0
+    assert json.loads(proc.stdout) == {"ok": True}
+    assert "native banner" in proc.stderr
+
+
+def test_apb_summary_tracks_setup_access_wait_and_error() -> None:
     cfg = {key: key for key in (
-        "awvalid", "awready", "awaddr", "awid", "wvalid", "wready", "wdata",
-        "wlast", "bvalid", "bready", "bid", "bresp",
+        "psel", "penable", "pready", "pslverr", "pwrite", "paddr", "pwdata", "prdata",
     )}
     rows = [
-        {"time": 10, "values": {"awvalid": "1", "awready": "1", "awaddr": "20",
-                                  "awid": "1", "wvalid": "1", "wready": "1",
-                                  "wdata": "ab", "wlast": "1"}},
-        {"time": 14, "values": {"bvalid": "1", "bready": "1", "bid": "1",
-                                  "bresp": "0"}},
+        {"time": 1, "values": {"psel": "1", "penable": "0", "pready": "0", "pslverr": "0",
+                                "pwrite": "1", "paddr": "10", "pwdata": "aa", "prdata": "00"}},
+        {"time": 2, "values": {"psel": "1", "penable": "1", "pready": "0", "pslverr": "0",
+                                "pwrite": "1", "paddr": "10", "pwdata": "aa", "prdata": "00"}},
+        {"time": 3, "values": {"psel": "1", "penable": "1", "pready": "1", "pslverr": "1",
+                                "pwrite": "1", "paddr": "10", "pwdata": "aa", "prdata": "00"}},
+        {"time": 4, "values": {"psel": "0", "penable": "0", "pready": "1", "pslverr": "0",
+                                "pwrite": "0", "paddr": "00", "pwdata": "00", "prdata": "00"}},
     ]
-    result = axi_summary(rows, cfg)
+    result = apb_summary(rows, cfg, detail="full")
+    assert result["summary"]["total"] == 1
     assert result["summary"]["writes"] == 1
-    assert result["summary"]["max_latency"] == 4
-    assert result["summary"]["max_write_outstanding"] == 1
+    assert result["summary"]["errors"] == 1
+    txn = result["data"]["transactions"][0]
+    assert (txn["setup_begin_time"], txn["access_begin_time"], txn["completion_time"]) == (1, 2, 3)
+    assert txn["wait_cycles"] == 1
 
 
-def test_stream_summary_tracks_transfer_stall_and_packet() -> None:
+def test_apb_requires_pready_and_pslverr() -> None:
+    with pytest.raises(ValueError, match="pslverr"):
+        apb_summary([], {"psel": "s", "penable": "e", "pready": "r", "pwrite": "w",
+                         "paddr": "a", "pwdata": "wd", "prdata": "rd"})
+
+
+AXI_CFG = {key: key for key in (
+    "awvalid", "awready", "awaddr", "awid", "awlen",
+    "wvalid", "wready", "wdata", "wstrb", "wlast",
+    "bvalid", "bready", "bid", "bresp",
+    "arvalid", "arready", "araddr", "arid", "arlen",
+    "rvalid", "rready", "rdata", "rresp", "rlast", "rid",
+)}
+
+
+def axi_row(time: int, **updates: str) -> dict:
+    values = {key: "0" for key in AXI_CFG}
+    values.update(updates)
+    return {"time": time, "values": values}
+
+
+def test_axi_supports_w_before_aw_and_phase_evidence() -> None:
+    rows = [
+        axi_row(10, wvalid="1", wready="1", wdata="1010", wlast="1"),
+        axi_row(20, awvalid="1", awready="1", awaddr="100", awid="1", awlen="0"),
+        axi_row(30, bvalid="1", bready="1", bid="1", bresp="0"),
+    ]
+    result = axi_summary(rows, AXI_CFG, detail="transactions")
+    assert result["summary"]["writes"] == 1
+    txn = result["data"]["transactions"]["writes"][0]
+    assert txn["phase_order"] == "w_before_aw"
+    assert txn["first_data_time"] == 10
+    assert txn["addr_time"] == 20
+    assert txn["resp_time"] == 30
+    assert "data" not in txn
+
+
+def test_axi_matches_b_out_of_order_across_ids() -> None:
+    rows = [
+        axi_row(10, awvalid="1", awready="1", awid="0", awaddr="1", awlen="0",
+                wvalid="1", wready="1", wdata="1", wlast="1"),
+        axi_row(20, awvalid="1", awready="1", awid="1", awaddr="2", awlen="0",
+                wvalid="1", wready="1", wdata="2", wlast="1"),
+        axi_row(30, bvalid="1", bready="1", bid="1"),
+        axi_row(40, bvalid="1", bready="1", bid="0"),
+    ]
+    result = axi_summary(rows, AXI_CFG, detail="transactions")
+    assert [txn["id"] for txn in result["data"]["transactions"]["writes"]] == ["1", "0"]
+    assert result["summary"]["final_write_outstanding"] == 0
+
+
+def test_axi_rid_is_strict_and_wid_is_rejected() -> None:
+    with pytest.raises(ValueError, match="WID"):
+        axi_summary([], {**AXI_CFG, "wid": "wid"})
+    rows = [
+        axi_row(10, arvalid="1", arready="1", arid="0", araddr="1", arlen="0"),
+        axi_row(20, rvalid="1", rready="1", rid="1", rdata="1", rlast="1"),
+    ]
+    with pytest.raises(ProtocolAnalysisError) as info:
+        axi_summary(rows, AXI_CFG)
+    assert info.value.code == "AXI_ORPHAN_R"
+
+
+def test_axi_unknown_marks_quality_ambiguous_without_transfer() -> None:
+    result = axi_summary([axi_row(10, awvalid="X", awready="1")], AXI_CFG)
+    assert result["meta"]["analysis_quality"] == "ambiguous"
+    assert result["summary"]["channels"]["AW"]["valid_unknown"] == 1
+
+
+def test_stream_supports_ready_and_bp_and_strict_packets() -> None:
     cfg = {"valid": "v", "ready": "r", "data": "d", "sop": "s", "eop": "e"}
     rows = [
-        {"time": 1, "values": {"v": "1", "r": "0", "d": "a"}},
-        {"time": 2, "values": {"v": "1", "r": "1", "d": "a", "s": "1"}},
-        {"time": 3, "values": {"v": "1", "r": "1", "d": "b", "e": "1"}},
+        {"time": 1, "values": {"v": "1", "r": "0", "d": "a", "s": "0", "e": "0"}},
+        {"time": 2, "values": {"v": "1", "r": "1", "d": "a", "s": "1", "e": "0"}},
+        {"time": 3, "values": {"v": "1", "r": "1", "d": "b", "s": "0", "e": "1"}},
     ]
-    result = stream_summary(rows, cfg)
-    assert result["summary"] == {"transfers": 2, "stalls": 1, "packets": 1}
+    result = stream_summary(rows, cfg, detail="full")
+    assert result["summary"]["transfers"] == 2
+    assert result["summary"]["stall_cycles"] == 1
+    assert result["summary"]["packets"] == 1
+    bp_result = stream_summary([
+        {"time": 1, "values": {"v": "1", "bp": "0"}},
+    ], {"valid": "v", "bp": "bp"})
+    assert bp_result["summary"]["transfers"] == 1
+
+
+def test_stream_rejects_partial_boundary_and_orphan_packet_beat() -> None:
+    with pytest.raises(ValueError, match="both sop and eop"):
+        stream_summary([], {"valid": "v", "ready": "r", "sop": "s"})
+    with pytest.raises(ProtocolAnalysisError) as info:
+        stream_summary([
+            {"time": 1, "values": {"v": "1", "r": "1", "s": "0", "e": "0"}},
+        ], {"valid": "v", "ready": "r", "sop": "s", "eop": "e"})
+    assert info.value.code == "STREAM_ORPHAN_BEAT"
 
 
 def test_coverage_summary_uses_score_rows_and_functional_group_average() -> None:
     rows = [
-        {"metric": "line", "type": "npiCovStmtBin", "covered": 3,
-         "coverable": 4, "missing": 1},
-        {"metric": "functional", "covergroup": "cg", "type": "npiCovCoverpoint",
-         "coverage_pct": 50.0},
-        {"metric": "functional", "covergroup": "cg", "type": "npiCovCross",
-         "coverage_pct": 100.0},
+        {"metric": "line", "type": "npiCovStmtBin", "covered": 3, "coverable": 4, "missing": 1},
+        {"metric": "functional", "covergroup": "cg", "type": "npiCovCoverpoint", "coverage_pct": 50.0},
+        {"metric": "functional", "covergroup": "cg", "type": "npiCovCross", "coverage_pct": 100.0},
     ]
     result = coverage_summary(rows)
     assert result["metrics"][0]["coverage_pct"] == 75.0

@@ -260,7 +260,7 @@ inline 配置示例：
 
 ### 前置条件：加载配置
 
-APB 示例（9 信号）：
+APB 示例（10 信号）：
 
 ```json
 {
@@ -278,7 +278,8 @@ APB 示例（9 信号）：
       "pwrite": "top.u_dut.pwrite",
       "pwdata": "top.u_dut.pwdata",
       "prdata": "top.u_dut.prdata",
-      "pready": "top.u_dut.pready"
+      "pready": "top.u_dut.pready",
+      "pslverr": "top.u_dut.pslverr"
     }
   }
 }

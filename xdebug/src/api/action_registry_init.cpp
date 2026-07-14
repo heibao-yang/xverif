@@ -34,8 +34,13 @@ void add_schema_refs(ActionSpec& spec) {
 
 void apply_arg_contract(ActionSpec& spec);
 
+void apply_action_metadata(ActionSpec& spec) {
+#include "api/generated_action_metadata.inc"
+}
+
 void register_spec(ActionRegistry& r, ActionSpec spec) {
     apply_arg_contract(spec);
+    apply_action_metadata(spec);
     if (spec.status != ActionStatus::Removed) {
         add_schema_refs(spec);
     }
@@ -131,10 +136,13 @@ void apply_arg_contract(ActionSpec& spec) {
     }
 
     const char* direction[] = {"write", "read"};
+    const char* apb_query_direction[] = {"write", "read", "all"};
     const char* cursor_direction[] = {"write", "read", "all"};
     const char* cursor_op[] = {"begin", "next", "prev", "pre", "last"};
     const char* value_format[] = {"h", "hex", "b", "bin", "binary", "d", "dec", "decimal", "array_indexed"};
-    if (spec.name == "apb.query" || spec.name == "axi.query") {
+    if (spec.name == "apb.query") {
+        allow_values(spec, "direction", apb_query_direction);
+    } else if (spec.name == "axi.query") {
         allow_values(spec, "direction", direction);
     } else if (spec.name == "apb.cursor" || spec.name == "axi.cursor") {
         allow_values(spec, "op", cursor_op);

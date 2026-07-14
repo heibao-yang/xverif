@@ -49,6 +49,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "expr.normalize response: 规范化表达式。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Normalize an expression for deterministic processing.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "规范化表达式。"
 }

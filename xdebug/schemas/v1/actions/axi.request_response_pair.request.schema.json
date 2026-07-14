@@ -109,9 +109,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "axi.request_response_pair: 实验性 AXI 请求响应配对。",
+  "description": "Pair AXI requests with their responses.",
   "x-purpose": "实验性 AXI 请求响应配对。",
   "x-how_it_works": "用 ID/address/channel 信息把请求与响应关联。",
   "x-when_to_use": "分析 latency 和缺失响应。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name",
+  "x-description-zh": "实验性 AXI 请求响应配对。"
 }

@@ -149,6 +149,7 @@ def test_apb_vip_real_wait_state_and_error_actions(
         )
         assert loaded["data"]["config"]["pready"] == config["pready"]
         assert loaded["data"]["config"]["pslverr"] == config["pslverr"]
+        assert "assumptions" not in loaded["data"]
 
         listed = _query(
             cli_runner,
@@ -181,6 +182,44 @@ def test_apb_vip_real_wait_state_and_error_actions(
                 extra={"apb_config": config, "simulation_log": log_text},
             )
             assert queried["summary"]["count"] == expected_count
+
+        all_query = _query(
+            cli_runner,
+            {
+                "api_version": "xdebug.v1",
+                "action": "apb.query",
+                "target": target,
+                "args": {"name": "apb0", "query": {"line_limit": 10}},
+            },
+            case_name="apb-vip-query-default-all",
+            artifact_root=artifact_root,
+            manifest=manifest,
+        )
+        assert all_query["summary"]["direction"] == "all"
+        assert all_query["summary"]["count"] == 10
+        transaction_times = [
+            float(item["time"].removesuffix("ns"))
+            for item in all_query["data"]["transactions"]
+        ]
+        assert transaction_times == sorted(transaction_times)
+
+        for missing_signal in ("pready", "pslverr"):
+            incomplete = dict(config)
+            incomplete.pop(missing_signal)
+            rejected_result = cli_runner.run(
+                {
+                    "api_version": "xdebug.v1",
+                    "action": "apb.config.load",
+                    "target": target,
+                    "args": {"name": "apb_missing_" + missing_signal, "config": incomplete},
+                },
+                timeout_sec=120,
+            )
+            rejected = rejected_result.response
+            assert rejected_result.returncode != 0
+            assert isinstance(rejected, dict)
+            assert rejected["ok"] is False
+            assert rejected["error"]["invalid_arg"].startswith("args.config")
 
         error_txn = _query(
             cli_runner,

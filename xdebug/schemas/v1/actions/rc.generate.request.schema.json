@@ -89,9 +89,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "rc.generate: 根据分组生成波形 rc。",
+  "description": "Generate a grouped waveform-view RC file.",
   "x-purpose": "根据分组生成波形 rc。",
   "x-how_it_works": "读取配置并写出 output.path，返回 group/signal 统计。",
   "x-when_to_use": "把调试信号集合导入波形工具。",
-  "x-arg_contract_notes": "required: config_path, output"
+  "x-arg_contract_notes": "required: config_path, output",
+  "x-description-zh": "根据分组生成波形 rc。"
 }

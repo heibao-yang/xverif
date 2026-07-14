@@ -187,9 +187,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "event.export: 导出满足表达式的事件。",
+  "description": "Export sampled events that match an expression.",
   "x-purpose": "导出满足表达式的事件。",
   "x-how_it_works": "与 event.find 同样分析，但按 export 模式返回/写出更多命中数据；表达式支持布尔组合、相等比较和大小比较。",
   "x-when_to_use": "把事件列表交给后处理或报告。",
-  "x-arg_contract_notes": "required: expr; also one of: name / clock + signals"
+  "x-arg_contract_notes": "required: expr; also one of: name / clock + signals",
+  "x-description-zh": "导出满足表达式的事件。"
 }

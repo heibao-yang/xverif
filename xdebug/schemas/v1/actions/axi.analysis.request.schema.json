@@ -116,9 +116,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "axi.analysis: 汇总 AXI 行为。",
+  "description": "Analyze AXI latency, pending transactions, and outstanding activity.",
   "x-purpose": "汇总 AXI 行为。",
   "x-how_it_works": "analysis 取 latency、osd 或 pending，分别统计完成事务延迟、outstanding 变化和扫描结束未闭合事务。",
   "x-when_to_use": "快速判断 AXI 接口健康度。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name",
+  "x-description-zh": "汇总 AXI 行为。"
 }

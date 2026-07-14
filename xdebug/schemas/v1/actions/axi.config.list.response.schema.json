@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "xdebug.axi.config.list.response.v1",
   "title": "axi.config.list response",
-  "description": "axi.config.list response: 列出 AXI 配置。",
+  "description": "List saved AXI interface configurations.",
   "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
   "type": "object",
   "required": [
@@ -688,5 +688,6 @@
       "additionalProperties": false
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "x-description-zh": "列出 AXI 配置。"
 }

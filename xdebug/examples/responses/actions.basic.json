@@ -4,14 +4,25 @@
   "action": "actions",
   "summary": {
     "action_count": 1,
-    "removed_count": 0,
-    "verbose": false
+    "total_action_count": 70,
+    "removed_count": 1,
+    "verbose": false,
+    "filtered": true
   },
   "data": {
     "actions": [
       "schema"
     ],
-    "removed": [],
-    "modes": {}
+    "removed": ["signal.search"],
+    "modes": {
+      "design": [],
+      "waveform": [],
+      "combined": [],
+      "builtin": ["schema"],
+      "session": []
+    },
+    "filters": {
+      "keyword": "schema"
+    }
   }
 }

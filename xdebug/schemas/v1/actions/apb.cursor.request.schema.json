@@ -92,9 +92,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "apb.cursor: 在 APB transfer 间移动游标。",
+  "description": "Move a cursor across APB transfers.",
   "x-purpose": "在 APB transfer 间移动游标。",
   "x-how_it_works": "基于 APB 查询结果按 op/direction 定位 begin/next/prev 等。",
   "x-when_to_use": "交互式浏览 APB 事务。",
-  "x-arg_contract_notes": "required: name, op"
+  "x-arg_contract_notes": "required: name, op",
+  "x-description-zh": "在 APB transfer 间移动游标。"
 }

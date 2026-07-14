@@ -48,6 +48,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "counter.statistics response: 统计计数器行为。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Analyze sampled counter behavior and statistics.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "统计计数器行为。"
 }

@@ -188,9 +188,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "event.find: 查找满足表达式的事件样例。",
+  "description": "Find sampled events that match an expression.",
   "x-purpose": "查找满足表达式的事件样例。",
   "x-how_it_works": "用 name 配置或 inline clock/signals 构建 EventQuery，按 clock sampling 模式扫描表达式命中；表达式支持布尔组合、相等比较和大小比较。",
   "x-when_to_use": "快速找到协议条件发生的时间。",
-  "x-arg_contract_notes": "required: expr; also one of: name / clock + signals"
+  "x-arg_contract_notes": "required: expr; also one of: name / clock + signals",
+  "x-description-zh": "查找满足表达式的事件样例。"
 }

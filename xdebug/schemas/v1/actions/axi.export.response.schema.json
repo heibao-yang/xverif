@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "xdebug.axi.export.response.v1",
   "title": "axi.export response",
-  "description": "axi.export response: 导出 AXI 数据。",
+  "description": "Export AXI transactions for external analysis.",
   "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
   "type": "object",
   "required": [
@@ -651,5 +651,6 @@
       "additionalProperties": false
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "x-description-zh": "导出 AXI 数据。"
 }

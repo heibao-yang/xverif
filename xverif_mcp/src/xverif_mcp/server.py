@@ -248,14 +248,23 @@ async def xverif_batch(batch_file: str, output_file: str) -> dict:
 
 
 @xverif_tool("debug")
-def xverif_debug_list_actions(verbose: bool = False) -> dict:
+def xverif_debug_list_actions(
+    verbose: bool = False,
+    category: Optional[list[str]] = None,
+    requires: Optional[list[str]] = None,
+    purposes: Optional[list[str]] = None,
+    keyword: Optional[str] = None,
+) -> dict:
     """Return the xdebug action catalog.
 
     Call this before xverif_debug_query when you are unsure which action to use.
     Default returns compact action names. Set verbose=true for descriptors,
-    schemas, examples, required args, and usage guidance.
+    schemas, examples, required args, and usage guidance. Optional category,
+    requires, purposes, and keyword filters are combined with AND semantics;
+    values within an array are combined with OR semantics.
     """
-    return debug.actions(verbose=verbose)
+    return debug.actions(verbose=verbose, category=category, requires=requires,
+                         purposes=purposes, keyword=keyword)
 
 
 @xverif_tool("debug")

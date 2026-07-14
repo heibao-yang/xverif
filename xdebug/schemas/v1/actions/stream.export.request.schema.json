@@ -153,9 +153,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "stream.export: 导出 stream 查询结果。",
+  "description": "Export stream transfers or packet data.",
   "x-purpose": "导出 stream 查询结果。",
   "x-how_it_works": "运行 stream query 后按 kind/format 写出；kind 只能是 transfer、packet、packet_beats。",
   "x-when_to_use": "把流数据输出给外部脚本。",
-  "x-arg_contract_notes": "required: stream; kind: transfer / packet / packet_beats; format: tsv / csv / xout; when kind=packet_beats: output"
+  "x-arg_contract_notes": "required: stream; kind: transfer / packet / packet_beats; format: tsv / csv / xout; when kind=packet_beats: output",
+  "x-description-zh": "导出 stream 查询结果。"
 }

@@ -111,9 +111,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "axi.channel_stall: 实验性 AXI stall 分析。",
+  "description": "Inspect AXI channel stall windows.",
   "x-purpose": "实验性 AXI stall 分析。",
   "x-how_it_works": "按 channel 检查 valid 高 ready 低的持续窗口。",
   "x-when_to_use": "定位背压和阻塞。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name",
+  "x-description-zh": "实验性 AXI stall 分析。"
 }

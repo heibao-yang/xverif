@@ -48,6 +48,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "session.gc response: 清理过期 session。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Garbage-collect expired debug sessions.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "清理过期 session。"
 }

@@ -72,9 +72,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "signal.resolve: 解析设计信号。",
+  "description": "Resolve a design signal to canonical candidates.",
   "x-purpose": "解析设计信号。",
   "x-how_it_works": "在设计数据库里查找 signal 并返回候选/规范路径。",
   "x-when_to_use": "消除层次或别名不确定性。",
-  "x-arg_contract_notes": "required: signal"
+  "x-arg_contract_notes": "required: signal",
+  "x-description-zh": "解析设计信号。"
 }

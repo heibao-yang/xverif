@@ -49,6 +49,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "list.show response: 显示信号列表内容。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Show the contents of a waveform signal list.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "显示信号列表内容。"
 }

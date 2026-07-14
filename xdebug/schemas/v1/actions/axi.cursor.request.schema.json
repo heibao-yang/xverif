@@ -92,9 +92,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "axi.cursor: 在 AXI transfer 间移动游标。",
+  "description": "Move a cursor across AXI transactions.",
   "x-purpose": "在 AXI transfer 间移动游标。",
   "x-how_it_works": "基于 AXI 查询结果按 op/direction 定位事务。",
   "x-when_to_use": "交互式浏览 AXI 事务。",
-  "x-arg_contract_notes": "required: name, op"
+  "x-arg_contract_notes": "required: name, op",
+  "x-description-zh": "在 AXI transfer 间移动游标。"
 }

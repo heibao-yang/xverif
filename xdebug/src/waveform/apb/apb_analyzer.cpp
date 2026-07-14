@@ -48,16 +48,11 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
 
     std::vector<std::string> signals = {
         config.rst_n, config.psel, config.penable,
-        config.pwrite, config.paddr, config.pwdata, config.prdata
+        config.pwrite, config.paddr, config.pwdata, config.prdata,
+        config.pready, config.pslverr
     };
-    const int pready_index = config.pready.empty()
-        ? -1
-        : static_cast<int>(signals.size());
-    if (pready_index >= 0) signals.push_back(config.pready);
-    const int pslverr_index = config.pslverr.empty()
-        ? -1
-        : static_cast<int>(signals.size());
-    if (pslverr_index >= 0) signals.push_back(config.pslverr);
+    const int pready_index = 7;
+    const int pslverr_index = 8;
     std::vector<npiFsdbSigHandle> sig_handles;
     sig_handles.reserve(signals.size());
     for (const auto& signal : signals) {
@@ -74,7 +69,7 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
     bool completion_seen = false;
 
     auto process_edge = [&](npiFsdbTime t, const std::vector<std::string>& values) {
-        if (values.size() < 7) return;
+        if (values.size() < 9) return;
 
         const std::string& rst_n_val = values[0];
         const std::string& psel_val = values[1];
@@ -99,15 +94,13 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
             completion_seen = false;
             return;
         }
-        if (pready_index >= 0) {
-            const std::string& pready_val = values[static_cast<size_t>(pready_index)];
-            if (pready_val.empty() || pready_val == "0" ||
-                pready_val == "X" || pready_val == "Z") {
-                return;
-            }
-            if (completion_seen) return;
-            completion_seen = true;
+        const std::string& pready_val = values[static_cast<size_t>(pready_index)];
+        if (pready_val.empty() || pready_val == "0" ||
+            pready_val == "X" || pready_val == "Z") {
+            return;
         }
+        if (completion_seen) return;
+        completion_seen = true;
 
         bool is_write = !(pwrite_val.empty() || pwrite_val == "0" || pwrite_val == "X" || pwrite_val == "Z");
 
@@ -116,14 +109,11 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
         txn.addr = paddr_val;
         txn.data = is_write ? pwdata_val : prdata_val;
         txn.is_write = is_write;
-        if (pslverr_index >= 0) {
-            const std::string& pslverr_val =
-                values[static_cast<size_t>(pslverr_index)];
-            txn.has_error = !(pslverr_val.empty() || pslverr_val == "0" ||
-                              pslverr_val == "X" || pslverr_val == "Z");
-        }
+        const std::string& pslverr_val =
+            values[static_cast<size_t>(pslverr_index)];
+        txn.has_error = !(pslverr_val.empty() || pslverr_val == "0" ||
+                          pslverr_val == "X" || pslverr_val == "Z");
 
-        result.all.push_back(txn);
         if (is_write) {
             result.writes.push_back(txn);
         } else {
@@ -149,9 +139,20 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
     }
     // Sort by time just in case (though VCT should naturally be in order)
     auto cmp = [](const ApbTransaction& a, const ApbTransaction& b) { return a.time < b.time; };
-    std::sort(result.all.begin(), result.all.end(), cmp);
     std::sort(result.writes.begin(), result.writes.end(), cmp);
     std::sort(result.reads.begin(), result.reads.end(), cmp);
+    result.all.reserve(result.writes.size() + result.reads.size());
+    size_t write_index = 0;
+    size_t read_index = 0;
+    while (write_index < result.writes.size() || read_index < result.reads.size()) {
+        if (read_index >= result.reads.size() ||
+            (write_index < result.writes.size() &&
+             result.writes[write_index].time <= result.reads[read_index].time)) {
+            result.all.push_back(&result.writes[write_index++]);
+        } else {
+            result.all.push_back(&result.reads[read_index++]);
+        }
+    }
 
     results_[name] = std::move(result);
     cursors_[name] = ApbCursor();
@@ -166,6 +167,94 @@ size_t ApbAnalyzer::get_write_count(const std::string& name) const {
 size_t ApbAnalyzer::get_read_count(const std::string& name) const {
     const ApbResult* r = get_result(name);
     return r ? r->reads.size() : 0;
+}
+
+namespace {
+
+size_t transaction_count(const ApbResult* result, int filter) {
+    if (!result) return 0;
+    if (filter == 1) return result->writes.size();
+    if (filter == 2) return result->reads.size();
+    return result->all.size();
+}
+
+const ApbTransaction* transaction_at(const ApbResult* result, int filter,
+                                     size_t index) {
+    if (!result || index >= transaction_count(result, filter)) return nullptr;
+    if (filter == 1) return &result->writes[index];
+    if (filter == 2) return &result->reads[index];
+    return result->all[index];
+}
+
+} // namespace
+
+size_t ApbAnalyzer::get_count(const std::string& name, int filter) const {
+    return transaction_count(get_result(name), filter);
+}
+
+bool ApbAnalyzer::get_by_addr(const std::string& name, int filter, uint64_t addr,
+                              const ApbTransaction*& out) const {
+    const ApbResult* result = get_result(name);
+    const size_t count = transaction_count(result, filter);
+    for (size_t index = 0; index < count; ++index) {
+        const ApbTransaction* txn = transaction_at(result, filter, index);
+        uint64_t txn_addr = 0;
+        if (txn && parse_hex_value(txn->addr, txn_addr) && txn_addr == addr) {
+            out = txn;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ApbAnalyzer::get_by_addr_num(const std::string& name, int filter,
+                                  uint64_t addr, size_t num,
+                                  const ApbTransaction*& out) const {
+    const ApbResult* result = get_result(name);
+    if (!result || num == 0) return false;
+    size_t match_count = 0;
+    for (size_t index = 0; index < transaction_count(result, filter); ++index) {
+        const ApbTransaction* txn = transaction_at(result, filter, index);
+        uint64_t txn_addr = 0;
+        if (txn && parse_hex_value(txn->addr, txn_addr) && txn_addr == addr &&
+            ++match_count == num) {
+            out = txn;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ApbAnalyzer::get_by_addr_last(const std::string& name, int filter,
+                                   uint64_t addr,
+                                   const ApbTransaction*& out) const {
+    const ApbResult* result = get_result(name);
+    if (!result) return false;
+    const ApbTransaction* found = nullptr;
+    for (size_t index = 0; index < transaction_count(result, filter); ++index) {
+        const ApbTransaction* txn = transaction_at(result, filter, index);
+        uint64_t txn_addr = 0;
+        if (txn && parse_hex_value(txn->addr, txn_addr) && txn_addr == addr) found = txn;
+    }
+    if (!found) return false;
+    out = found;
+    return true;
+}
+
+bool ApbAnalyzer::get_by_num(const std::string& name, int filter, size_t num,
+                             const ApbTransaction*& out) const {
+    if (num == 0) return false;
+    out = transaction_at(get_result(name), filter, num - 1);
+    return out != nullptr;
+}
+
+bool ApbAnalyzer::get_last(const std::string& name, int filter,
+                           const ApbTransaction*& out) const {
+    const ApbResult* result = get_result(name);
+    const size_t count = transaction_count(result, filter);
+    if (count == 0) return false;
+    out = transaction_at(result, filter, count - 1);
+    return out != nullptr;
 }
 
 bool ApbAnalyzer::get_write_by_addr(const std::string& name, uint64_t addr, const ApbTransaction*& out) const {
@@ -311,7 +400,7 @@ bool ApbAnalyzer::cursor_begin(const std::string& name, int filter, const ApbTra
     } else {
         c->all_idx = 0;
         if (c->all_idx < r->all.size()) {
-            out = &r->all[c->all_idx];
+            out = r->all[c->all_idx];
             return true;
         }
     }
@@ -335,7 +424,7 @@ bool ApbAnalyzer::cursor_next(const std::string& name, int filter, const ApbTran
         }
     } else {
         if (c->all_idx + 1 < r->all.size()) {
-            out = &r->all[++c->all_idx];
+            out = r->all[++c->all_idx];
             return true;
         }
     }
@@ -359,7 +448,7 @@ bool ApbAnalyzer::cursor_prev(const std::string& name, int filter, const ApbTran
         }
     } else {
         if (c->all_idx > 0) {
-            out = &r->all[--c->all_idx];
+            out = r->all[--c->all_idx];
             return true;
         }
     }
@@ -386,7 +475,7 @@ bool ApbAnalyzer::cursor_last(const std::string& name, int filter, const ApbTran
     } else {
         if (!r->all.empty()) {
             c->all_idx = r->all.size() - 1;
-            out = &r->all[c->all_idx];
+            out = r->all[c->all_idx];
             return true;
         }
     }
@@ -422,13 +511,13 @@ bool ApbAnalyzer::get_transactions_in_range(const std::string& name,
     if (!r) return false;
 
     auto it = std::lower_bound(r->all.begin(), r->all.end(), begin,
-        [](const ApbTransaction& txn, npiFsdbTime t) {
-            return txn.time < t;
+        [](const ApbTransaction* txn, npiFsdbTime t) {
+            return txn->time < t;
         });
-    for (; it != r->all.end() && it->time <= end; ++it) {
+    for (; it != r->all.end() && (*it)->time <= end; ++it) {
         if (max_results >= 0 && static_cast<int>(out.size()) >= max_results) break;
         ApbContextTransaction item;
-        item.txn = &(*it);
+        item.txn = *it;
         out.push_back(item);
     }
     return true;

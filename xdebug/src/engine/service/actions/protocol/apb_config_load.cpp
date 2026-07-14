@@ -46,7 +46,8 @@ public:
                     {{"did_you_mean", Json::array({"config.clock", "config.edge", "config.sample_point"})}});
             }
         }
-        const char* reqs[] = {"clock","rst_n","paddr","psel","penable","pwrite","pwdata","prdata",nullptr};
+        const char* reqs[] = {"clock","rst_n","paddr","psel","penable","pready",
+                              "pslverr","pwrite","pwdata","prdata",nullptr};
         for (int i = 0; reqs[i]; ++i) {
             if (!cfg_j.contains(reqs[i]) || !cfg_j[reqs[i]].is_string() ||
                 cfg_j[reqs[i]].get<std::string>().empty())
@@ -95,8 +96,8 @@ public:
         cfg.pwrite = cfg_j["pwrite"].get<std::string>();
         cfg.pwdata = cfg_j["pwdata"].get<std::string>();
         cfg.prdata = cfg_j["prdata"].get<std::string>();
-        cfg.pready = cfg_j.value("pready", "");
-        cfg.pslverr = cfg_j.value("pslverr", "");
+        cfg.pready = cfg_j["pready"].get<std::string>();
+        cfg.pslverr = cfg_j["pslverr"].get<std::string>();
 
         ApbManager am;
         if (!am.create_apb(g_session_id, cfg))

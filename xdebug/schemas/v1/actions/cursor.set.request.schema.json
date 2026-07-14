@@ -77,9 +77,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "cursor.set: 保存命名时间游标。",
+  "description": "Save a named waveform cursor.",
   "x-purpose": "保存命名时间游标。",
   "x-how_it_works": "解析 time/at 为 FSDB 时间，写入 CursorManager，可设 active。",
   "x-when_to_use": "给后续窗口、比较和人工定位复用时间点。",
-  "x-arg_contract_notes": "required: name, time"
+  "x-arg_contract_notes": "required: name, time",
+  "x-description-zh": "保存命名时间游标。"
 }

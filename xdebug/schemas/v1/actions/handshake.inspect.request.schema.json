@@ -151,9 +151,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "handshake.inspect: 检查 valid/ready 握手。",
+  "description": "Inspect valid-ready transfers, stalls, and stability violations.",
   "x-purpose": "检查 valid/ready 握手。",
   "x-how_it_works": "按 clock 采样 valid/ready/data，统计 stall、transfer 和数据稳定性违规。",
   "x-when_to_use": "定位握手停顿和协议风险。",
-  "x-arg_contract_notes": "required: clock, valid, ready"
+  "x-arg_contract_notes": "required: clock, valid, ready",
+  "x-description-zh": "检查 valid/ready 握手。"
 }

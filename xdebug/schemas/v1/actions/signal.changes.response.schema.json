@@ -48,6 +48,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "signal.changes response: 读取信号变化点。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "List raw waveform value changes for a signal.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "读取信号变化点。"
 }

@@ -113,9 +113,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "axi.export: 导出 AXI 数据。",
+  "description": "Export AXI transactions for external analysis.",
   "x-purpose": "导出 AXI 数据。",
   "x-how_it_works": "按 name 和 time_range 查询 AXI，再按 format/output.path 写出。",
   "x-when_to_use": "给外部表格或脚本分析。",
-  "x-arg_contract_notes": "required: name; also one of: time_range"
+  "x-arg_contract_notes": "required: name; also one of: time_range",
+  "x-description-zh": "导出 AXI 数据。"
 }

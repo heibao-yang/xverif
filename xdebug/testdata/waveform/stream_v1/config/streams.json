@@ -80,7 +80,7 @@
       "rdy": "rdy",
       "sop": "sop",
       "eop": "eop",
-      "stable_fields": {
+      "packet_stable_fields": {
         "opcode": "opcode"
       },
       "beat_fields": {
@@ -109,7 +109,7 @@
       "bp": "bp",
       "sop": "sop",
       "eop": "eop",
-      "stable_fields": {
+      "packet_stable_fields": {
         "badstable": "badstable"
       },
       "beat_fields": {
@@ -172,7 +172,7 @@
       "channel_id": "chid",
       "channel_id_valid": "every_beat",
       "allow_interleaving": true,
-      "stable_fields": {
+      "packet_stable_fields": {
         "tag": "tag"
       },
       "beat_fields": {

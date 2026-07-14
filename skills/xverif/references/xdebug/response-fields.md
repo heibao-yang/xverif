@@ -852,7 +852,7 @@ event item 常见字段：
 | `summary.status` | string | load 时为 `loaded` |
 | `data.config` | object | APB config |
 
-APB config 字段：`name`、`paddr`、`pwdata`、`prdata`、`pwrite`、`penable`、`psel`、`clock`、`rst_n`、`edge`、`sample_point`。`sample_point` 仅在 `edge:"posedge"` 或 `edge:"dual"` 时出现。
+APB config 字段：`name`、`paddr`、`pwdata`、`prdata`、`pwrite`、`penable`、`psel`、`pready`、`pslverr`、`clock`、`rst_n`、`edge`、`sample_point`。`pready` 与 `pslverr` 为必需信号；`sample_point` 仅在 `edge:"posedge"` 或 `edge:"dual"` 时出现。
 
 ### `apb.query`
 
@@ -1347,9 +1347,11 @@ stream response schema 当前主要约束 envelope，具体字段以 runtime 和
 | `summary.retained_transfer_count` | number | 为 response 保留的有界 transfer 证据数 |
 | `summary.response_truncated` | boolean | transfer evidence 是否受 `line_limit` 截断；aggregate 仍为完整扫描 |
 | `summary.stall_cycles` | number | stall cycles |
-| `summary.packet_count` | number | packet 数 |
+| `summary.complete_packet_count` | number | 查询窗口内同时观察到 SOP/EOP 的完整 packet 数 |
+| `summary.partial_packet_count` | number | 查询窗口边界或未完成扫描造成的半包数 |
+| `summary.packet_count_status` | string | `exact`、`not_configured` 或 `ambiguous` |
 | `summary.match_count` | number | `match_field` 命中数 |
-| `summary.field_scope` | string | `beat`、`stable` 或 `any` |
+| `summary.field_scope` | string | `beat`、`packet_stable` 或 `any` |
 | `summary.truncated` | boolean | 是否截断 |
 | `data.query` | string | query 类型 |
 | `data.rows[]` | array | transfer/match rows |

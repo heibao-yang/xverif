@@ -102,6 +102,12 @@ public:
         out["streams"] = Json::array();
         for (const auto& stream : streams) out["streams"].push_back(stream.name);
         out["issues"] = validation;
+        out["validation"] = Json::array();
+        for (const auto& stream : streams) {
+            Json item = xdebug_waveform::stream_static_validation_json(g_fsdb_file, stream);
+            item["stream"] = stream.name;
+            out["validation"].push_back(item);
+        }
         return out;
     }
 };

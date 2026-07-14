@@ -11,6 +11,9 @@
       "fsdb": "${stream_fsdb}",
       "daidir": "${stream_daidir}"
     },
+    "apb": {
+      "fsdb": "${apb_vip_fsdb}"
+    },
     "design": {
       "daidir": "${design_daidir}"
     },
@@ -75,11 +78,11 @@
     {"action":"stream.show","family":"stream","requires":"stream","setup_profile":"stream","example":"stream.show.basic.json","mcp_applicable":true},
     {"action":"stream.validate","family":"stream","requires":"stream","setup_profile":"stream","example":"stream.validate.basic.json","mcp_applicable":true},
     {"action":"stream.export","family":"stream","requires":"stream","setup_profile":"stream","example":"stream.export.basic.json","mcp_applicable":true},
-    {"action":"apb.config.list","family":"apb","requires":"waveform","setup_profile":"waveform","example":"apb.config.list.basic.json","mcp_applicable":true},
-    {"action":"apb.config.load","family":"apb","requires":"waveform","setup_profile":"waveform","example":"apb.config.load.basic.json","mcp_applicable":true},
-    {"action":"apb.cursor","family":"apb","requires":"waveform","setup_profile":"waveform","example":"apb.cursor.basic.json","mcp_applicable":true},
-    {"action":"apb.query","family":"apb","requires":"waveform","setup_profile":"waveform","example":"apb.query.basic.json","mcp_applicable":true},
-    {"action":"apb.transfer_window","family":"apb","requires":"waveform","setup_profile":"waveform","example":"apb.transfer_window.basic.json","mcp_applicable":true},
+    {"action":"apb.config.list","family":"apb","requires":"waveform","setup_profile":"apb","example":"apb.config.list.basic.json","mcp_applicable":true},
+    {"action":"apb.config.load","family":"apb","requires":"waveform","setup_profile":"apb","example":"apb.config.load.basic.json","mcp_applicable":true},
+    {"action":"apb.cursor","family":"apb","requires":"waveform","setup_profile":"apb","example":"apb.cursor.basic.json","mcp_applicable":true},
+    {"action":"apb.query","family":"apb","requires":"waveform","setup_profile":"apb","example":"apb.query.basic.json","mcp_applicable":true},
+    {"action":"apb.transfer_window","family":"apb","requires":"waveform","setup_profile":"apb","example":"apb.transfer_window.basic.json","mcp_applicable":true},
     {"action":"axi.config.list","family":"axi","requires":"waveform","setup_profile":"waveform","example":"axi.config.list.basic.json","mcp_applicable":true},
     {"action":"axi.config.load","family":"axi","requires":"waveform","setup_profile":"waveform","example":"axi.config.load.basic.json","mcp_applicable":true},
     {"action":"axi.cursor","family":"axi","requires":"waveform","setup_profile":"waveform","example":"axi.cursor.basic.json","mcp_applicable":true},

@@ -128,9 +128,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "axi.latency_outlier: 实验性 AXI latency 异常。",
+  "description": "Find AXI transactions with abnormal latency.",
   "x-purpose": "实验性 AXI latency 异常。",
   "x-how_it_works": "从配对结果中找超过阈值或分布异常的事务。",
   "x-when_to_use": "定位慢事务。",
-  "x-arg_contract_notes": "required: name"
+  "x-arg_contract_notes": "required: name",
+  "x-description-zh": "实验性 AXI latency 异常。"
 }

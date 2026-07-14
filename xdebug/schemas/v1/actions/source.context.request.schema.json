@@ -99,9 +99,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "source.context: 读取源码上下文。",
+  "description": "Read source code around a file and line.",
   "x-purpose": "读取源码上下文。",
   "x-how_it_works": "按 file/line 读取附近源码并尝试识别 enclosing 结构。",
   "x-when_to_use": "把查询结果锚定到可读源码位置。",
-  "x-arg_contract_notes": "required: file, line"
+  "x-arg_contract_notes": "required: file, line",
+  "x-description-zh": "读取源码上下文。"
 }

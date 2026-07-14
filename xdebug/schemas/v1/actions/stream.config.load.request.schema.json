@@ -28,6 +28,114 @@
       "properties": {
         "config": {
           "type": "object",
+          "required": [
+            "streams"
+          ],
+          "properties": {
+            "streams": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "signals",
+                  "clock",
+                  "vld"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "signals": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "additionalProperties": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "clock": {
+                    "type": "string"
+                  },
+                  "edge": {
+                    "type": "string",
+                    "enum": [
+                      "posedge",
+                      "negedge",
+                      "dual"
+                    ]
+                  },
+                  "sample_point": {
+                    "type": "string",
+                    "enum": [
+                      "before",
+                      "after"
+                    ]
+                  },
+                  "reset": {
+                    "type": "string"
+                  },
+                  "vld": {
+                    "type": "string"
+                  },
+                  "rdy": {
+                    "type": "string"
+                  },
+                  "bp": {
+                    "type": "string"
+                  },
+                  "sop": {
+                    "type": "string"
+                  },
+                  "eop": {
+                    "type": "string"
+                  },
+                  "data": {
+                    "type": "string"
+                  },
+                  "data_fields": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "beat_fields": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "packet_stable_fields": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "channel_id": {
+                    "type": "string"
+                  },
+                  "channel_id_valid": {
+                    "type": "string",
+                    "enum": [
+                      "sop",
+                      "eop",
+                      "every_beat"
+                    ]
+                  },
+                  "allow_interleaving": {
+                    "type": "boolean"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "description": "需要加载的 stream 配置列表。"
+            }
+          },
+          "additionalProperties": false,
           "description": "内联配置对象。"
         },
         "config_path": {
@@ -39,10 +147,112 @@
           "description": "源码文件路径。"
         },
         "mode": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "replace",
+            "append"
+          ]
         },
         "streams": {
           "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "signals",
+              "clock",
+              "vld"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "signals": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "clock": {
+                "type": "string"
+              },
+              "edge": {
+                "type": "string",
+                "enum": [
+                  "posedge",
+                  "negedge",
+                  "dual"
+                ]
+              },
+              "sample_point": {
+                "type": "string",
+                "enum": [
+                  "before",
+                  "after"
+                ]
+              },
+              "reset": {
+                "type": "string"
+              },
+              "vld": {
+                "type": "string"
+              },
+              "rdy": {
+                "type": "string"
+              },
+              "bp": {
+                "type": "string"
+              },
+              "sop": {
+                "type": "string"
+              },
+              "eop": {
+                "type": "string"
+              },
+              "data": {
+                "type": "string"
+              },
+              "data_fields": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "beat_fields": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "packet_stable_fields": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "channel_id": {
+                "type": "string"
+              },
+              "channel_id_valid": {
+                "type": "string",
+                "enum": [
+                  "sop",
+                  "eop",
+                  "every_beat"
+                ]
+              },
+              "allow_interleaving": {
+                "type": "boolean"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
           "description": "需要加载的 stream 配置列表。"
         },
         "time_unit": {
@@ -106,9 +316,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "stream.config.load: 加载 stream 配置。",
+  "description": "Load and validate valid-ready stream configurations.",
   "x-purpose": "加载 stream 配置。",
   "x-how_it_works": "把 stream 定义写入 stream manager。",
   "x-when_to_use": "定义 valid/ready/data 类流接口。",
-  "x-arg_contract_notes": "also one of: streams / config / config_path / file"
+  "x-arg_contract_notes": "also one of: streams / config / config_path / file",
+  "x-description-zh": "加载 stream 配置。"
 }

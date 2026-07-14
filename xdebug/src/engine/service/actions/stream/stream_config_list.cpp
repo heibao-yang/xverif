@@ -77,7 +77,7 @@ public:
                              {"handshake", xdebug_waveform::stream_handshake_text(stream)},
                              {"packet", xdebug_waveform::stream_packet_enabled(stream) ? "sop/eop" : "none"},
                              {"field_count", stream.data_fields.size() + stream.beat_fields.size() +
-                                 stream.stable_fields.size() + (stream.data.empty() ? 0 : 1)},
+                                 stream.packet_stable_fields.size() + (stream.data.empty() ? 0 : 1)},
                              {"channel_id_valid", stream.channel_id_valid},
                              {"allow_interleaving", stream.allow_interleaving}};
                 if (stream.clock_sample.edge != xdebug_waveform::ClockEdgeKind::Negedge)

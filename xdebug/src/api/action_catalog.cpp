@@ -6,6 +6,7 @@
 
 #include <fstream>
 #include <algorithm>
+#include <cctype>
 #include <limits>
 #include <sstream>
 #include <vector>
@@ -15,12 +16,6 @@ namespace xdebug {
 using xdebug_core::DiagnosticErrorBuilder;
 
 namespace {
-
-Json string_array(const std::set<std::string>& values) {
-    Json array = Json::array();
-    for (const auto& value : values) array.push_back(value);
-    return array;
-}
 
 std::set<std::string> actions_for_category(const std::string& category) {
     std::set<std::string> out;
@@ -40,6 +35,73 @@ Json action_name_array(bool include_removed) {
         out.push_back(specs[i].name);
     }
     return out;
+}
+
+std::string lower_ascii(std::string value) {
+    for (char& ch : value) {
+        unsigned char uch = static_cast<unsigned char>(ch);
+        if (uch < 128) ch = static_cast<char>(std::tolower(uch));
+    }
+    return value;
+}
+
+bool string_array_contains(const Json& values, const std::string& candidate) {
+    if (!values.is_array()) return true;
+    for (const auto& value : values)
+        if (value.is_string() && value.get<std::string>() == candidate) return true;
+    return false;
+}
+
+bool purpose_matches(const Json& requested, const std::vector<std::string>& actual) {
+    if (!requested.is_array()) return true;
+    for (const auto& value : requested) {
+        if (!value.is_string()) continue;
+        if (std::find(actual.begin(), actual.end(), value.get<std::string>()) != actual.end())
+            return true;
+    }
+    return false;
+}
+
+bool action_matches_filter(const ActionSpec& spec, const Json& filter) {
+    if (!filter.is_object() || filter.empty()) return true;
+    if (filter.contains("category") &&
+        !string_array_contains(filter["category"], spec.category)) return false;
+    if (filter.contains("requires") &&
+        !string_array_contains(filter["requires"], to_string(spec.resource))) return false;
+    if (filter.contains("purposes") &&
+        !purpose_matches(filter["purposes"], spec.purposes)) return false;
+    if (filter.contains("keyword")) {
+        std::string keyword = lower_ascii(filter.value("keyword", std::string()));
+        std::string name = lower_ascii(spec.name);
+        std::string en = lower_ascii(spec.description_en);
+        std::string zh = lower_ascii(spec.description_zh);
+        if (name.find(keyword) == std::string::npos &&
+            en.find(keyword) == std::string::npos &&
+            zh.find(keyword) == std::string::npos) return false;
+    }
+    return true;
+}
+
+std::vector<ActionSpec> filtered_specs(const Json& filter) {
+    std::vector<ActionSpec> out;
+    for (const auto& spec : default_action_registry().list_specs(false))
+        if (action_matches_filter(spec, filter)) out.push_back(spec);
+    return out;
+}
+
+Json filtered_action_payload(const std::vector<ActionSpec>& specs, bool verbose) {
+    Json out = Json::array();
+    for (const auto& spec : specs)
+        out.push_back(verbose ? action_spec_descriptor(spec) : Json(spec.name));
+    return out;
+}
+
+Json filtered_modes(const std::vector<ActionSpec>& specs) {
+    Json modes = {{"design", Json::array()}, {"waveform", Json::array()},
+                  {"combined", Json::array()}, {"builtin", Json::array()},
+                  {"session", Json::array()}};
+    for (const auto& spec : specs) modes[spec.category].push_back(spec.name);
+    return modes;
 }
 
 std::string schema_root() {
@@ -180,24 +242,22 @@ Json catalog_actions_response(const Json& request) {
     Json args = request.value("args", Json::object());
     Json output = args.value("output", Json::object());
     const bool verbose = output.value("verbose", false);
-    Json actions = verbose ? default_action_registry().list_descriptors(false)
-                           : action_name_array(false);
+    Json filter = args.value("filter", Json::object());
+    std::vector<ActionSpec> specs = filtered_specs(filter);
+    Json actions = filtered_action_payload(specs, verbose);
     Json removed = action_name_array(true);
     response["summary"] = {
         {"action_count", actions.size()},
+        {"total_action_count", default_action_registry().list_specs(false).size()},
         {"removed_count", removed.size()},
-        {"verbose", verbose}
+        {"verbose", verbose},
+        {"filtered", !filter.empty()}
     };
     response["data"] = {
         {"actions", actions},
         {"removed", removed},
-        {"modes", {
-            {"design", string_array(actions_for_category("design"))},
-            {"waveform", string_array(actions_for_category("waveform"))},
-            {"combined", string_array(actions_for_category("combined"))},
-            {"builtin", string_array(actions_for_category("builtin"))},
-            {"session", string_array(actions_for_category("session"))}
-        }}
+        {"modes", filtered_modes(specs)},
+        {"filters", filter}
     };
     return response;
 }

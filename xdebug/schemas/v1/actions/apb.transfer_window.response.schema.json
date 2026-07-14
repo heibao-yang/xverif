@@ -48,6 +48,7 @@
     }
   },
   "additionalProperties": true,
-  "description": "apb.transfer_window response: 实验性 APB 窗口分析。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "description": "Inspect the waveform window around an APB transfer.",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "x-description-zh": "实验性 APB 窗口分析。"
 }

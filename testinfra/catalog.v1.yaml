@@ -197,6 +197,20 @@ suites:
     deterministic: true
     cost: {class: fast, estimate_sec: 3}
 
+  - id: skills.x_npi_real
+    owner: skills/x-npi
+    level: system
+    intent: [contract, semantics]
+    domains: [skill, npi, fsdb, protocol]
+    runner: {kind: pytest, path: skills/tests/test_x_npi_real.py}
+    fixtures: [xdebug.axi_vip, xdebug.apb_vip, xdebug.stream_v1]
+    capabilities: [child_process, npi, fsdb]
+    hermetic: false
+    deterministic: true
+    cost: {class: medium, estimate_sec: 60}
+    resources: {cpu: 1, memory_mb: 2048, tokens: [verdi_npi]}
+    timeouts: {execute_sec: 240, cleanup_sec: 20}
+
   - id: skills.xwiki
     owner: skills/xwiki
     level: unit

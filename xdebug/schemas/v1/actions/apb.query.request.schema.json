@@ -40,7 +40,8 @@
           "type": "string",
           "enum": [
             "write",
-            "read"
+            "read",
+            "all"
           ]
         },
         "last": {
@@ -103,9 +104,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "apb.query: 查询 APB transfer。",
+  "description": "Query APB read and write transfers.",
   "x-purpose": "查询 APB transfer。",
   "x-how_it_works": "按 APB 配置扫描 PSEL/PENABLE/PREADY 等握手和地址数据；第 N 个 transfer 用 1-based query.index，多条用 query.line_limit。",
   "x-when_to_use": "抽取 APB 读写访问。",
-  "x-arg_contract_notes": "required: name; use query.index / query.line_limit; do not use legacy quantity fields"
+  "x-arg_contract_notes": "required: name; use query.index / query.line_limit; do not use legacy quantity fields",
+  "x-description-zh": "查询 APB transfer。"
 }

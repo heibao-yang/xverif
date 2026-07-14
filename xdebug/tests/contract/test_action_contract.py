@@ -82,6 +82,9 @@ def test_runtime_catalog_matches_specs_and_referenced_files(
         assert descriptor["request_schema"] == spec["schemas"]["request"]
         assert descriptor["response_schema"] == spec["schemas"]["response"]
         assert descriptor["request_examples"] == spec["examples"]["request"]
+        for field in ("description_en", "description_zh", "purposes", "use_for",
+                      "do_not_use_for", "preferred_alternative"):
+            assert descriptor[field] == spec[field]
         assert set(spec["examples"]["response"]).issubset(
             descriptor["response_examples"]
         )
@@ -104,9 +107,46 @@ def test_runtime_catalog_default_is_compact_without_duplicate_names(
     )
     assert result.ok, result.response
     assert result.response["summary"]["verbose"] is False
+    assert result.response["summary"]["filtered"] is False
+    assert result.response["summary"]["action_count"] == result.response["summary"]["total_action_count"]
     assert "implemented" not in result.response["data"]
     assert result.response["data"]["actions"]
     assert all(isinstance(name, str) for name in result.response["data"]["actions"])
+
+
+@pytest.mark.contract
+def test_runtime_catalog_filters_and_bilingual_keyword_search(
+    cli_runner: CliRunner,
+) -> None:
+    filtered = cli_runner.run({
+        "api_version": "xdebug.v1", "action": "actions",
+        "args": {"filter": {"category": ["waveform"], "requires": ["waveform"],
+                            "purposes": ["query"], "keyword": "AXI"}},
+    }, output_format="json")
+    assert filtered.ok, filtered.response
+    assert filtered.response["summary"]["filtered"] is True
+    names = filtered.response["data"]["actions"]
+    assert "axi.query" in names
+    assert all(name.startswith("axi.") for name in names)
+
+    chinese = cli_runner.run({
+        "api_version": "xdebug.v1", "action": "actions",
+        "args": {"filter": {"keyword": "握手"}},
+    }, output_format="json")
+    assert chinese.ok, chinese.response
+    assert "handshake.inspect" in chinese.response["data"]["actions"]
+
+
+@pytest.mark.contract
+def test_action_schemas_have_bilingual_descriptions(xdebug_root: Path) -> None:
+    specs = _load_json(xdebug_root / "specs/actions/actions.yaml")["actions"]
+    for spec in specs:
+        if spec["status"] == "removed":
+            continue
+        for kind in ("request", "response"):
+            schema = _load_json(xdebug_root / spec["schemas"][kind])
+            assert schema["description"] == spec["description_en"]
+            assert schema["x-description-zh"] == spec["description_zh"]
 
 
 @pytest.mark.contract
@@ -1034,17 +1074,6 @@ def test_protocol_handler_errors_include_current_entry_examples(
             (
                 {
                     "api_version": "xdebug.v1",
-                    "action": "axi.config.load",
-                    "target": target,
-                    "args": {"name": "bad_axi", "config": {"clk": "top.clk"}},
-                },
-                "INVALID_ARGUMENT",
-                "config.clk",
-                "axi.config.load",
-            ),
-            (
-                {
-                    "api_version": "xdebug.v1",
                     "action": "axi.export",
                     "target": target,
                     "args": {
@@ -1407,11 +1436,64 @@ def test_ai_usability_high_risk_request_shapes_are_strict(
             "action": "apb.query",
             "args": {"name": "apb0", "direction": "read", "query": {"limit": 1}},
         })
+    apb.validate({
+        "api_version": "xdebug.v1",
+        "action": "apb.query",
+        "args": {"name": "apb0", "direction": "all"},
+    })
+
+    apb_load = jsonschema.Draft202012Validator(schema_for("apb.config.load"))
+    required_apb = {
+        key: "top." + key
+        for key in (
+            "clock", "rst_n", "paddr", "psel", "penable", "pready",
+            "pslverr", "pwrite", "pwdata", "prdata",
+        )
+    }
+    apb_load.validate({
+        "api_version": "xdebug.v1", "action": "apb.config.load",
+        "args": {"name": "apb0", "config": required_apb},
+    })
+    for missing in ("pready", "pslverr"):
+        incomplete = dict(required_apb)
+        incomplete.pop(missing)
+        with pytest.raises(jsonschema.ValidationError):
+            apb_load.validate({
+                "api_version": "xdebug.v1", "action": "apb.config.load",
+                "args": {"name": "apb0", "config": incomplete},
+            })
+
+    axi_load = jsonschema.Draft202012Validator(schema_for("axi.config.load"))
     with pytest.raises(jsonschema.ValidationError):
-        apb.validate({
-            "api_version": "xdebug.v1",
-            "action": "apb.query",
-            "args": {"name": "apb0", "direction": "all"},
+        axi_load.validate({
+            "api_version": "xdebug.v1", "action": "axi.config.load",
+            "args": {"name": "axi0", "config": {"clock": "top.clk"}},
+        })
+
+    actions = jsonschema.Draft202012Validator(schema_for("actions"))
+    actions.validate({
+        "api_version": "xdebug.v1", "action": "actions",
+        "args": {"filter": {"category": ["waveform"],
+                            "purposes": ["query", "inspect"], "keyword": "AXI"}},
+    })
+    with pytest.raises(jsonschema.ValidationError):
+        actions.validate({
+            "api_version": "xdebug.v1", "action": "actions",
+            "args": {"filter": {"status": ["stable"]}},
+        })
+    with pytest.raises(jsonschema.ValidationError):
+        actions.validate({
+            "api_version": "xdebug.v1", "action": "actions",
+            "args": {"filter": {"purposes": []}},
+        })
+
+    stream_config = jsonschema.Draft202012Validator(schema_for("stream.config.load"))
+    with pytest.raises(jsonschema.ValidationError):
+        stream_config.validate({
+            "api_version": "xdebug.v1", "action": "stream.config.load",
+            "args": {"streams": [{"name": "s", "signals": {"clk": "top.clk", "v": "top.v"},
+                                  "clock": "clk", "vld": "v",
+                                  "stable_fields": {"opcode": "v"}}]},
         })
 
     axi = jsonschema.Draft202012Validator(schema_for("axi.query"))

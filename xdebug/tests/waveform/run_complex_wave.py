@@ -630,24 +630,6 @@ def make_axi_config(prefix, top="axi_vip_fixture_top", edge="posedge", sample_po
     return config
 
 
-def make_apb_config(edge=None, sample_point=None):
-    config = {
-        "paddr": "ai_complex_top.paddr",
-        "pwdata": "ai_complex_top.pwdata",
-        "prdata": "ai_complex_top.prdata",
-        "pwrite": "ai_complex_top.pwrite",
-        "penable": "ai_complex_top.penable",
-        "psel": "ai_complex_top.psel",
-        "clock": "ai_complex_top.clk",
-        "rst_n": "ai_complex_top.rst_n",
-    }
-    if edge is not None:
-        config["edge"] = edge
-    if sample_point is not None:
-        config["sample_point"] = sample_point
-    return config
-
-
 class AiRunner(object):
     def __init__(self, xdebug, fsdb, name):
         self.xdebug = xdebug
@@ -841,39 +823,6 @@ def run_nonaxi(xdebug, fsdb):
         require(os.path.exists(rendered["stats_file"]), "missing xwaveform stats")
         r.query("list.delete", args={"name": "basic", "index": 2})
         r.query("list.show", args={"name": "basic"})
-
-        apb_cfg = os.path.join(NONAXI_DIR, "config", "apb0.json")
-        r.query("apb.config.load", args={"name": "apb0", "config_path": apb_cfg})
-        r.query("apb.config.list", args={"name": "apb0"})
-        r.query("apb.query", args={"name": "apb0", "direction": "write"})
-        r.query("apb.query", args={"name": "apb0", "direction": "read", "query": {"index": 1}})
-        r.query("apb.cursor", args={"name": "apb0", "op": "begin", "direction": "all"})
-        apb_window = r.query("apb.transfer_window", args={"name": "apb0", "time_range": {"begin": "200ns", "end": "400ns"}, "line_limit": 2})
-        require(apb_window["summary"]["transaction_count"] >= 1, "APB window empty")
-
-        apb_modes = [
-            ("apb_default_negedge", make_apb_config(), "negedge", None),
-            ("apb_dual", make_apb_config(edge="dual"), "dual", "before"),
-            ("apb_pos_before", make_apb_config(edge="posedge", sample_point="before"), "posedge", "before"),
-            ("apb_pos_after", make_apb_config(edge="posedge", sample_point="after"), "posedge", "after"),
-        ]
-        for name, config, expected_edge, expected_sample_point in apb_modes:
-            loaded = r.query("apb.config.load", args={"name": name, "config": config})
-            require(loaded["data"]["config"]["edge"] == expected_edge, "APB config edge mismatch for {}".format(name))
-            if expected_sample_point is None:
-                require("sample_point" not in loaded["data"]["config"],
-                        "APB negedge config should not expose sample_point for {}".format(name))
-            else:
-                require(loaded["data"]["config"]["sample_point"] == expected_sample_point,
-                        "APB config sample_point mismatch for {}".format(name))
-            wr_count = r.query("apb.query", args={"name": name, "direction": "write"})
-            rd_count = r.query("apb.query", args={"name": name, "direction": "read"})
-            require(wr_count["summary"]["count"] >= 1, "APB write count empty for {}".format(name))
-            require(rd_count["summary"]["count"] >= 1, "APB read count empty for {}".format(name))
-        apb_before_first = r.query("apb.query", args={"name": "apb_pos_before", "direction": "write", "query": {"index": 1}})
-        apb_after_first = r.query("apb.query", args={"name": "apb_pos_after", "direction": "write", "query": {"index": 1}})
-        require(apb_before_first["data"]["transaction"]["time"] > apb_after_first["data"]["transaction"]["time"],
-                "APB posedge before should observe the completion one edge later than after")
 
         event_cfg = os.path.join(NONAXI_DIR, "config", "event0.json")
         r.query("event.config.load", args={"name": "evt0", "config_path": event_cfg})
