@@ -6,10 +6,13 @@ import os
 import re
 import selectors
 import shutil
+import statistics
 import subprocess
 import sys
 import tempfile
 import time
+
+import jsonschema
 
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -289,6 +292,9 @@ def parse_axi_handshake_oracle(path):
     current_w_burst = None
     completed = []
     channel_counts = {name: 0 for name in ("AW", "W", "B", "AR", "R")}
+    records = {name: [] for name in channel_counts}
+    w_beat_index = 0
+    r_beat_index_by_id = {}
 
     def drain_w_bursts():
         while completed_w_bursts:
@@ -306,6 +312,18 @@ def parse_axi_handshake_oracle(path):
             rec = json.loads(payload)
             channel = rec["channel"]
             channel_counts[channel] += 1
+            if channel == "W":
+                w_beat_index += 1
+                rec["beat_index"] = w_beat_index
+                if int(rec["last"]):
+                    w_beat_index = 0
+            elif channel == "R":
+                rid = int(rec["id"])
+                r_beat_index_by_id[rid] = r_beat_index_by_id.get(rid, 0) + 1
+                rec["beat_index"] = r_beat_index_by_id[rid]
+                if int(rec["last"]):
+                    del r_beat_index_by_id[rid]
+            records[channel].append(rec)
             if channel == "AW":
                 pending_writes.append({
                     "id": int(rec["id"]),
@@ -348,7 +366,108 @@ def parse_axi_handshake_oracle(path):
     require(current_w_burst is None and not completed_w_bursts and not pending_writes,
             "raw handshake oracle ended with incomplete writes: current={} buffered={} pending={}".format(
                 current_w_burst is not None, len(completed_w_bursts), len(pending_writes)))
-    return {"writes": completed, "channel_counts": channel_counts}
+    require(w_beat_index == 0 and not r_beat_index_by_id,
+            "raw handshake oracle ended with incomplete W/R beat indexing")
+    return {"writes": completed, "channel_counts": channel_counts, "records": records}
+
+
+def require_axi_handshake_queries(r, oracle):
+    def same_time(actual, expected_ps, label):
+        require(duration_fs(actual) == int(expected_ps) * 1000,
+                "{} mismatch: expected {}ps, got {}".format(label, expected_ps, actual))
+
+    def query_record(channel, rec, include_data=False):
+        response = r.query(
+            "axi.query",
+            args={
+                "name": "axi0",
+                "query": {
+                    "channel": channel.lower(),
+                    "handshake_time": "{}ps".format(rec["time_ps"]),
+                },
+                "output": {"include_data": include_data},
+            },
+        )
+        require(response["summary"]["query_mode"] == "handshake" and
+                response["summary"]["found"],
+                "AXI {} exact handshake query did not match".format(channel))
+        match = response["data"]["match"]
+        require(match["channel"] == channel.lower(), "AXI query returned wrong channel")
+        same_time(match["handshake_time"], rec["time_ps"], "{} match time".format(channel))
+        if channel in ("W", "R"):
+            require(match["beat_index"] == rec["beat_index"],
+                    "AXI {} query returned wrong beat index".format(channel))
+        return response["data"]["transaction"]
+
+    records = oracle["records"]
+    aw = records["AW"][0]
+    aw_txn = query_record("AW", aw)
+    same_time(aw_txn["address"]["handshake_time"], aw["time_ps"], "AW handshake")
+    same_time(aw_txn["address"]["valid_begin_time"], aw["valid_begin_time_ps"], "AW valid begin")
+
+    ar = records["AR"][0]
+    ar_txn = query_record("AR", ar)
+    same_time(ar_txn["address"]["handshake_time"], ar["time_ps"], "AR handshake")
+    same_time(ar_txn["address"]["valid_begin_time"], ar["valid_begin_time_ps"], "AR valid begin")
+
+    b = records["B"][0]
+    b_txn = query_record("B", b)
+    same_time(b_txn["response"]["handshake_time"], b["time_ps"], "B handshake")
+
+    for channel in ("W", "R"):
+        channel_records = records[channel]
+        selected = [channel_records[0]]
+        middle = next((item for item in channel_records
+                       if item["beat_index"] > 1 and not int(item["last"])), None)
+        last = next((item for item in channel_records if int(item["last"])), None)
+        if middle is not None:
+            selected.append(middle)
+        if last is not None and last not in selected:
+            selected.append(last)
+        for index, rec in enumerate(selected):
+            txn = query_record(channel, rec, include_data=True)
+            data = txn["data"]
+            beat = data["beats"][rec["beat_index"] - 1]
+            same_time(beat["handshake_time"], rec["time_ps"],
+                      "{} beat handshake".format(channel))
+            require(bool(beat["last"]) == bool(int(rec["last"])),
+                    "AXI {} beat last mismatch".format(channel))
+            if rec["beat_index"] == 1:
+                same_time(data["valid_begin_time"], rec["valid_begin_time_ps"],
+                          "{} first beat valid begin".format(channel))
+
+    not_found = r.query(
+        "axi.query",
+        args={"name": "axi0", "query": {"channel": "aw", "handshake_time": "1ps"}},
+    )
+    require(not_found["summary"]["query_mode"] == "handshake" and
+            not not_found["summary"]["found"] and
+            "transaction" not in not_found["data"],
+            "AXI exact handshake query must not use a nearest-time fallback")
+
+    index_times = []
+    handshake_times = []
+    for _ in range(5):
+        r.query("axi.query", args={"name": "axi0", "direction": "write", "query": {"index": 1}})
+        index_times.append(r.rows[-1][4])
+        r.query(
+            "axi.query",
+            args={
+                "name": "axi0",
+                "query": {"channel": "aw", "handshake_time": "{}ps".format(aw["time_ps"])},
+            },
+        )
+        handshake_times.append(r.rows[-1][4])
+    index_median = statistics.median(index_times)
+    handshake_median = statistics.median(handshake_times)
+    print("AXI_QUERY_PERF_JSON " + json.dumps({
+        "index_median_ms": index_median,
+        "handshake_median_ms": handshake_median,
+        "ratio": handshake_median / max(index_median, 1),
+    }, sort_keys=True), flush=True)
+    require(handshake_median <= 2 * max(index_median, 1),
+            "warm AXI handshake query exceeded 2x index query: index={}ms handshake={}ms".format(
+                index_median, handshake_median))
 
 
 def read_axi_export_table(path):
@@ -575,6 +694,21 @@ class AiRunner(object):
         except Exception:
             raise AssertionError("non-json response for {} rc={} stdout={} stderr={}".format(action, rc, out, err))
         ok = bool(data.get("ok"))
+        if action.startswith("axi."):
+            schema_path = os.path.join(
+                ROOT, "schemas", "v1", "actions", action + ".response.schema.json"
+            )
+            with open(schema_path, "r", encoding="utf-8") as schema_fh:
+                schema = json.load(schema_fh)
+            try:
+                jsonschema.Draft202012Validator(schema).validate(data)
+            except jsonschema.ValidationError as exc:
+                raise AssertionError(
+                    "{} response schema mismatch at {}: {}\n{}".format(
+                        action, list(exc.absolute_path), exc.message,
+                        json.dumps(data, indent=2),
+                    )
+                )
         self.rows.append((self.name, action, rc, ok, elapsed_ms, data.get("meta", {}).get("elapsed_ms")))
         log_progress("{}: query {} done rc={} ok={} elapsed_ms={}".format(self.name, action, rc, ok, elapsed_ms))
         if expect_ok:
@@ -1085,19 +1219,19 @@ def run_axi(xdebug, fsdb, sim_log=AXI_SIM_LOG, handshake_oracle_path=AXI_HANDSHA
             "axi.query",
             args={"name": "axi0", "direction": "write", "query": {"index": 1}},
         )
-        require("data" not in compact_txn["data"]["transaction"],
+        require("beats" not in compact_txn["data"]["transaction"].get("data", {}),
                 "AXI compact transaction must omit beat data")
-        verbose_txn = r.query(
+        detailed_txn = r.query(
             "axi.query",
             args={
                 "name": "axi0",
                 "direction": "write",
                 "query": {"index": 1},
-                "output": {"verbose": True},
+                "output": {"include_data": True},
             },
         )
-        require("data" in verbose_txn["data"]["transaction"],
-                "AXI verbose transaction must include beat data")
+        require("beats" in detailed_txn["data"]["transaction"]["data"],
+                "AXI include_data transaction must include beat data")
 
         axi_modes = [
             ("axi_default_negedge", make_axi_config(prefix, edge=None), "negedge", None),
@@ -1122,7 +1256,7 @@ def run_axi(xdebug, fsdb, sim_log=AXI_SIM_LOG, handshake_oracle_path=AXI_HANDSHA
             args={"name": "axi0", "time_range": tr, "line_limit": 10000},
         )
         require(pair_cold.get("meta", {}).get("truncated", False) is False and
-                pair_cold["data"]["transaction_count"] < 10000,
+                pair_cold["summary"]["transaction_count"] < 10000,
                 "AXI percentile oracle requires the complete transaction set")
         oracle_latencies = sorted(
             duration_fs(txn["latency"])
@@ -1145,41 +1279,48 @@ def run_axi(xdebug, fsdb, sim_log=AXI_SIM_LOG, handshake_oracle_path=AXI_HANDSHA
                 "AXI latency sample count does not match transaction oracle")
         require(latency["summary"]["full_scan_count"] == 1,
                 "canonical AXI analysis must perform exactly one full FSDB scan")
-        require({"time", "response_time", "addr", "id", "is_write"} <= set(latency["data"]["slowest"]),
+        require({"direction", "latency", "address", "response"} <= set(latency["data"]["slowest"]),
                 "AXI latency analysis missing slowest transaction anchor")
         slowest = latency["data"]["slowest"]
-        slowest_latency = duration_fs(slowest["response_time"]) - duration_fs(slowest["time"])
+        slowest_latency = duration_fs(slowest["response"]["handshake_time"]) - duration_fs(slowest["address"]["handshake_time"])
         require(slowest_latency == duration_fs(latency["summary"]["max"]),
                 "AXI slowest transaction latency must equal summary.max")
         require(slowest_latency == oracle_latencies[-1],
                 "AXI slowest transaction must match the transaction oracle maximum")
         r.query("axi.analysis", args={"name": "axi0", "analysis": "osd", "direction": "all"})
+        pending = r.query(
+            "axi.analysis",
+            args={"name": "axi0", "analysis": "pending", "direction": "all"},
+        )
+        require(pending["summary"]["pending_count"] == 0 and
+                pending["data"]["pending_transactions"] == [],
+                "completed AXI VIP run must not leave pending transactions")
 
-        require(pair_cold["data"]["transaction_count"] > 0, "AXI request_response_pair empty")
-        require(all("data" not in txn and "wstrb" not in txn
+        require(pair_cold["summary"]["transaction_count"] > 0, "AXI request_response_pair empty")
+        require(all("beats" not in txn.get("data", {})
                     for txn in pair_cold["data"]["transactions"]),
                 "AXI compact request_response_pair must omit beat payload")
-        pair_verbose = r.query(
+        pair_detailed = r.query(
             "axi.request_response_pair",
             args={"name": "axi0", "time_range": tr, "line_limit": 20,
-                  "output": {"verbose": True}},
+                  "output": {"include_data": True}},
         )
-        require(any("data" in txn for txn in pair_verbose["data"]["transactions"]),
-                "AXI verbose request_response_pair must include beat payload")
+        require(any("beats" in txn.get("data", {}) for txn in pair_detailed["data"]["transactions"]),
+                "AXI include_data request_response_pair must include beat payload")
         pair_cache = r.query("axi.request_response_pair", args={"name": "axi0", "time_range": tr, "line_limit": 20})
-        require(pair_cache["data"]["transaction_count"] > 0, "AXI cached request_response_pair empty")
+        require(pair_cache["summary"]["transaction_count"] > 0, "AXI cached request_response_pair empty")
         lat = r.query("axi.latency_outlier", args={"name": "axi0", "time_range": tr, "line_limit": 5})
         require(lat["data"]["outlier_count"] > 0, "AXI latency_outlier empty")
-        require(all("data" not in txn and "wstrb" not in txn
+        require(all("beats" not in txn.get("data", {})
                     for txn in lat["data"]["outliers"]),
                 "AXI compact latency_outlier must omit beat payload")
-        lat_verbose = r.query(
+        lat_detailed = r.query(
             "axi.latency_outlier",
             args={"name": "axi0", "time_range": tr, "line_limit": 5,
-                  "output": {"verbose": True}},
+                  "output": {"include_data": True}},
         )
-        require(any("data" in txn for txn in lat_verbose["data"]["outliers"]),
-                "AXI verbose latency_outlier must include beat payload")
+        require(any("beats" in txn.get("data", {}) for txn in lat_detailed["data"]["outliers"]),
+                "AXI include_data latency_outlier must include beat payload")
         osd = r.query("axi.outstanding_timeline", args={"name": "axi0", "time_range": tr, "line_limit": 20})
         require(osd["summary"]["sample_count"] > 0, "AXI outstanding_timeline empty")
         stall = r.query("axi.channel_stall", args={"name": "axi0", "channel": "r", "time_range": tr, "rules": {"max_wait_cycles": 2}, "line_limit": 1000000})
@@ -1189,6 +1330,7 @@ def run_axi(xdebug, fsdb, sim_log=AXI_SIM_LOG, handshake_oracle_path=AXI_HANDSHA
         require_axi_delay_matrix(sim_log, expected_count,
                                  min_random_delay, max_random_delay)
         handshake_oracle = parse_axi_handshake_oracle(handshake_oracle_path)
+        require_axi_handshake_queries(r, handshake_oracle)
         export_dir = tempfile.mkdtemp(prefix="xdebug_axi_export_")
         export_prefix = os.path.join(export_dir, "axi0_full")
         exported = r.query(
