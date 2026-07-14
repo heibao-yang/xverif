@@ -225,6 +225,23 @@ int main() {
            text.find("direction: read") != std::string::npos);
     assert(text.find("response:\n  channel       : r") != std::string::npos);
 
+    Json axi_read_detailed = axi_read;
+    axi_read_detailed["data"]["transaction"]["data"] = Json{
+        {"channel", "r"},
+        {"valid_begin_time", "105ns"},
+        {"first_handshake_time", "110ns"},
+        {"last_handshake_time", "130ns"},
+        {"beat_count", 2},
+        {"expected_beat_count", 2},
+        {"beats", Json::array({
+            Json{{"index", 1}, {"handshake_time", "110ns"}, {"data", "11223344"}, {"resp", "0"}, {"last", false}},
+            Json{{"index", 2}, {"handshake_time", "130ns"}, {"data", "55667788"}, {"resp", "0"}, {"last", true}},
+        })},
+    };
+    text = render_xout_response(axi_read_detailed);
+    assert(text.find("data:\n  channel             : r\n  valid_begin_time    : 105ns") != std::string::npos);
+    assert(text.find("beats:\n  index  handshake_time  data      resp  last\n  1      110ns           11223344  0     false\n  2      130ns           55667788  0     true") != std::string::npos);
+
     Json axi_error = {
         {"ok", false}, {"action", "axi.query"},
         {"error", Json{

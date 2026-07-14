@@ -53,6 +53,31 @@ AxiSample b(npiFsdbTime time, const char* id = "1") {
     return s;
 }
 
+AxiSample ar(npiFsdbTime time, const char* id = "1", const char* len = "0") {
+    AxiSample s;
+    s.time = time;
+    s.ar_valid = true;
+    s.ar_handshake = true;
+    s.arid = id;
+    s.araddr = "200";
+    s.arlen = len;
+    s.arsize = "3";
+    s.arburst = "1";
+    return s;
+}
+
+AxiSample r(npiFsdbTime time, const char* id = "1", bool last = true) {
+    AxiSample s;
+    s.time = time;
+    s.r_valid = true;
+    s.r_handshake = true;
+    s.rid = id;
+    s.rdata = "aa";
+    s.rresp = "0";
+    s.rlast = last;
+    return s;
+}
+
 void test_aw_before_w_without_later_aw() {
     AxiTransactionTracker tracker;
     tracker.consume(aw(10));
@@ -91,6 +116,35 @@ void test_valid_begin_stall_and_back_to_back() {
     assert(txn.first_data_valid_begin_time == 40);
     assert(txn.data_handshake_times == std::vector<npiFsdbTime>({60, 70}));
     assert(txn.data_last == std::vector<bool>({false, true}));
+}
+
+void test_read_valid_begin_stall_and_back_to_back() {
+    AxiTransactionTracker tracker;
+    tracker.consume(idle(10, false, false, true));
+    tracker.consume(idle(20, false, false, true));
+    tracker.consume(ar(30, "1", "1"));
+    tracker.consume(ar(40, "2"));
+
+    tracker.consume(idle(50, false, false, false, true));
+    tracker.consume(r(60, "1", false));
+    tracker.consume(r(70, "1", true));
+    tracker.consume(r(80, "2", true));
+
+    AxiResult result = tracker.finish(0, 90);
+    assert(result.reads.size() == 2);
+    assert(result.reads[0].id == "1");
+    assert(result.reads[0].addr_valid_begin_time == 10);
+    assert(result.reads[0].first_data_valid_begin_time == 50);
+    assert(result.reads[0].data_handshake_times ==
+           std::vector<npiFsdbTime>({60, 70}));
+    assert(result.reads[0].data_resp == std::vector<std::string>({"0", "0"}));
+    assert(result.reads[0].data_last == std::vector<bool>({false, true}));
+    assert(result.reads[1].id == "2");
+    assert(result.reads[1].addr_valid_begin_time == 40);
+    assert(result.reads[1].first_data_valid_begin_time == 80);
+    assert(result.reads[1].data_handshake_times ==
+           std::vector<npiFsdbTime>({80}));
+    assert(result.diagnostics.final_read_outstanding == 0);
 }
 
 void test_multiple_w_bursts_before_aw() {
@@ -239,6 +293,7 @@ int main() {
     test_aw_before_w_without_later_aw();
     test_multiple_w_bursts_before_aw();
     test_valid_begin_stall_and_back_to_back();
+    test_read_valid_begin_stall_and_back_to_back();
     test_same_cycle_and_dependency_violation();
     test_multibeat_before_aw_and_pending_diagnostics();
     test_reset_and_orphans();
