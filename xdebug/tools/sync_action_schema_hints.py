@@ -160,7 +160,7 @@ def update_response_schema(schema: dict[str, Any], spec: dict[str, Any], hint: d
     )
 
 
-def sync(check: bool) -> list[str]:
+def sync(check: bool, selected_actions: set[str] | None = None) -> list[str]:
     specs = load_json(SPEC_PATH)["actions"]
     hints = parse_action_reference(action_reference_path())
     errors: list[str] = []
@@ -169,6 +169,8 @@ def sync(check: bool) -> list[str]:
         if spec["status"] == "removed":
             continue
         name = spec["name"]
+        if selected_actions and name not in selected_actions:
+            continue
         hint = hints.get(name)
         if hint is None:
             errors.append(f"{name}: missing action reference row")
@@ -198,9 +200,10 @@ def sync(check: bool) -> list[str]:
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="only check, do not update files")
+    parser.add_argument("--action", action="append", default=[], help="sync only the named action; repeatable")
     args = parser.parse_args(argv)
 
-    errors = sync(check=args.check)
+    errors = sync(check=args.check, selected_actions=set(args.action) or None)
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)

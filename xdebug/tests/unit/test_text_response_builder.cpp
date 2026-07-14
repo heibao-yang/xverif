@@ -19,7 +19,7 @@ int main() {
     out.emit_warning("W", "line1\nline2");
     std::string text = out.str();
     assert(text.find("@xdebug.trace.driver.v1") == 0);
-    assert(text.find("summary:\n  signal: top.u.valid\n  known: true\n  count: 2") != std::string::npos);
+    assert(text.find("summary:\n  signal: top.u.valid\n  known : true\n  count : 2") != std::string::npos);
     assert(text.find("rows:\n  n0 top.u.valid reg with spaces") != std::string::npos);
     assert(text.find("warnings:\n  code  message\n  W     line1\\nline2") != std::string::npos);
     assert(text.find("empty") == std::string::npos);
@@ -37,8 +37,8 @@ int main() {
     };
     text = render_xout_response(response);
     assert(text.find("@xdebug.value.at.v1") == 0);
-    assert(text.find("data:\n  signal: top.clk\n  time: 10ns") != std::string::npos);
-    assert(text.find("value: 'h1") != std::string::npos);
+    assert(text.find("data:\n  signal: top.clk\n  time  : 10ns") != std::string::npos);
+    assert(text.find("value : 'h1") != std::string::npos);
 
     Json sized_value = {
         {"value", "0x4000000c"},
@@ -150,6 +150,96 @@ int main() {
     assert(text.find("\nschema:\n") != std::string::npos);
     assert(text.find("\nrequired:\n") != std::string::npos);
 
+    Json axi_response = {
+        {"api_version", "xdebug.v1"},
+        {"ok", true},
+        {"action", "axi.query"},
+        {"summary", Json{{"name", "axi0"}, {"query_mode", "handshake"}, {"found", true}}},
+        {"data", Json{{"transaction", Json{
+            {"direction", "write"},
+            {"latency", "40ns"},
+            {"response_dependency_violation", false},
+            {"address", Json{
+                {"channel", "aw"},
+                {"valid_begin_time", "90ns"},
+                {"handshake_time", "100ns"},
+                {"addr", 240},
+            }},
+            {"response", Json{
+                {"channel", "b"},
+                {"handshake_time", "140ns"},
+                {"resp", 0},
+            }},
+        }}}}
+    };
+    text = render_xout_response(axi_response);
+    assert(text.find("@xdebug.axi.query.v1") == 0);
+    assert(text.find("summary:\n  name      : axi0\n  query_mode: handshake\n  found     : true") != std::string::npos);
+    assert(text.find("address:\n  channel         : aw\n  valid_begin_time: 90ns\n  handshake_time  : 100ns\n  addr            : 240") != std::string::npos);
+    assert(text.find("response:\n  channel       : b\n  handshake_time: 140ns\n  resp          : 0") != std::string::npos);
+
+    Json axi_detailed = axi_response;
+    axi_detailed["data"]["transaction"]["data"] = Json{
+        {"channel", "w"},
+        {"valid_begin_time", "105ns"},
+        {"first_handshake_time", "110ns"},
+        {"last_handshake_time", "130ns"},
+        {"beat_count", 2},
+        {"expected_beat_count", 2},
+        {"beats", Json::array({
+            Json{{"index", 1}, {"handshake_time", "110ns"}, {"data", "11223344"}, {"wstrb", "f"}, {"last", false}},
+            Json{{"index", 2}, {"handshake_time", "130ns"}, {"data", "55667788"}, {"wstrb", "f"}, {"last", true}},
+        })},
+    };
+    text = render_xout_response(axi_detailed);
+    assert(text.find("data:\n  channel             : w\n  valid_begin_time    : 105ns\n  first_handshake_time: 110ns") != std::string::npos);
+    assert(text.find("beats:\n  index  handshake_time  data      wstrb  last\n  1      110ns           11223344  f      false\n  2      130ns           55667788  f      true") != std::string::npos);
+
+    Json axi_not_found = {
+        {"api_version", "xdebug.v1"}, {"ok", true}, {"action", "axi.query"},
+        {"summary", Json{{"name", "axi0"}, {"query_mode", "handshake"}, {"found", false}}},
+        {"data", Json{{"match", Json{{"channel", "aw"}, {"handshake_time", "1ps"}}}}},
+    };
+    text = render_xout_response(axi_not_found);
+    assert(text.find("summary:\n  name      : axi0\n  query_mode: handshake\n  found     : false") != std::string::npos);
+    assert(text.find("transaction:") == std::string::npos);
+
+    Json axi_pending = {
+        {"api_version", "xdebug.v1"}, {"ok", true}, {"action", "axi.analysis"},
+        {"summary", Json{
+            {"name", "axi0"}, {"analysis", "pending"},
+            {"pending_count", 0}, {"returned_pending_count", 0}, {"truncated", false},
+        }},
+        {"data", Json{{"pending_transactions", Json::array()}}},
+    };
+    text = render_xout_response(axi_pending);
+    assert(text.find("pending_count         : 0\n  returned_pending_count: 0") != std::string::npos);
+    assert(text.find("pending_transactions: [empty]") != std::string::npos);
+
+    Json axi_read = axi_response;
+    axi_read["data"]["transaction"]["direction"] = "read";
+    axi_read["data"]["transaction"]["address"]["channel"] = "ar";
+    axi_read["data"]["transaction"]["response"]["channel"] = "r";
+    text = render_xout_response(axi_read);
+    assert(text.find("direction                    : read") != std::string::npos ||
+           text.find("direction: read") != std::string::npos);
+    assert(text.find("response:\n  channel       : r") != std::string::npos);
+
+    Json axi_error = {
+        {"ok", false}, {"action", "axi.query"},
+        {"error", Json{
+            {"code", "INVALID_ARGUMENT"},
+            {"message", "channel and handshake_time must appear together"},
+            {"recoverable", true},
+            {"error_layer", "handler"},
+            {"invalid_arg", "args.query"},
+        }},
+    };
+    text = render_xout_response(axi_error);
+    assert(text.find("@xdebug.error.v1") == 0);
+    assert(text.find("action     : axi.query") != std::string::npos);
+    assert(text.find("invalid_arg: args.query") != std::string::npos);
+
     Json handler_text = {
         {"ok", true},
         {"action", "any.action"},
@@ -172,11 +262,12 @@ int main() {
     };
     text = render_xout_response(error);
     assert(text.find("@xdebug.error.v1") == 0);
-    assert(text.find("action: trace.driver") != std::string::npos);
-    assert(text.find("code: SIGNAL_NOT_FOUND") != std::string::npos);
-    assert(text.find("message: missing\\nsignal") != std::string::npos);
-    assert(text.find("error_layer: handler") != std::string::npos);
-    assert(text.find("example_note:") != std::string::npos);
+    assert(text.find("action      : trace.driver") != std::string::npos);
+    assert(text.find("code        : SIGNAL_NOT_FOUND") != std::string::npos);
+    assert(text.find("message     : missing\\nsignal") != std::string::npos);
+    assert(text.find("error_layer : handler") != std::string::npos);
+    assert(text.find("example_note:") != std::string::npos ||
+           text.find("example_note :") != std::string::npos);
     assert(text.find("next_actions:") != std::string::npos);
     return 0;
 }

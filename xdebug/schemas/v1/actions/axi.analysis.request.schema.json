@@ -30,17 +30,12 @@
     "args": {
       "type": "object",
       "properties": {
-        "line_limit": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "控制 response/xout 中 item、finding、event、transaction 或 row 的最大返回行数。"
-        },
         "analysis": {
           "type": "string",
           "enum": [
             "latency",
             "osd",
-            "outstanding"
+            "pending"
           ]
         },
         "direction": {
@@ -50,6 +45,11 @@
             "read",
             "all"
           ]
+        },
+        "line_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "控制 response/xout 中 item、finding、event、transaction 或 row 的最大返回行数。"
         },
         "name": {
           "type": "string",
@@ -95,7 +95,7 @@
   "additionalProperties": false,
   "description": "axi.analysis: 汇总 AXI 行为。",
   "x-purpose": "汇总 AXI 行为。",
-  "x-how_it_works": "基于 AXI 解析结果统计 channel、latency、stall 等。",
+  "x-how_it_works": "analysis 取 latency、osd 或 pending，分别统计完成事务延迟、outstanding 变化和扫描结束未闭合事务。",
   "x-when_to_use": "快速判断 AXI 接口健康度。",
   "x-arg_contract_notes": "required: name"
 }

@@ -3,5 +3,16 @@
   "ok": true,
   "action": "axi.latency_outlier",
   "summary": {"name": "if0", "transaction_count": 4, "begin": "0ns", "end": "200ns"},
-  "data": {"method": "top_n", "candidate_count": 4, "matched_outlier_count": 1, "outlier_count": 1, "outliers": [{"addr_time": "100ns", "resp_time": "140ns", "latency": "40ns", "phase_order": "aw_before_w", "addr": "f0", "id": "1", "is_write": true}]}
+  "data": {
+    "method": "top_n", "candidate_count": 4, "matched_outlier_count": 1, "outlier_count": 1,
+    "outliers": [{
+      "direction": "write", "latency": "40ns", "phase_order": "aw_before_w",
+      "response_dependency_violation": false, "match_time": "100ns",
+      "address": {
+        "channel": "aw", "handshake_time": "100ns", "addr": "f0",
+        "id": "1", "len": 0, "size": 2, "burst": 1
+      },
+      "response": {"channel": "b", "handshake_time": "140ns", "resp": 0}
+    }]
+  }
 }

@@ -30,14 +30,18 @@
     "args": {
       "type": "object",
       "properties": {
+        "direction": {
+          "type": "string",
+          "enum": [
+            "write",
+            "read",
+            "all"
+          ]
+        },
         "line_limit": {
           "type": "integer",
           "minimum": 1,
           "description": "控制 response/xout 中 item、finding、event、transaction 或 row 的最大返回行数。"
-        },
-        "direction": {
-          "type": "string",
-          "enum": ["write", "read", "all"]
         },
         "name": {
           "type": "string",
@@ -46,18 +50,13 @@
         "output": {
           "type": "object",
           "properties": {
-            "path": {
-              "type": "string"
-            },
-            "file_format": {
-              "type": "string"
-            },
-            "verbose": {
-              "type": "boolean"
+            "include_data": {
+              "type": "boolean",
+              "default": false
             }
           },
           "additionalProperties": false,
-          "description": "导出配置对象；路径统一使用 output.path。"
+          "description": "AXI payload display controls; beat data is omitted unless include_data is true."
         },
         "time_range": {
           "type": "object",

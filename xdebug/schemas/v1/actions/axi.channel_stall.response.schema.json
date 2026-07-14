@@ -2,6 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "xdebug.axi.channel_stall.response.v1",
   "title": "axi.channel_stall response",
+  "description": "axi.channel_stall response: 实验性 AXI stall 分析。",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
   "type": "object",
   "required": [
     "api_version",
@@ -12,10 +14,7 @@
   ],
   "properties": {
     "api_version": {
-      "type": "string",
-      "enum": [
-        "xdebug.v1"
-      ]
+      "const": "xdebug.v1"
     },
     "request_id": {
       "type": "string"
@@ -24,30 +23,391 @@
       "type": "boolean"
     },
     "action": {
-      "type": "string",
-      "enum": [
-        "axi.channel_stall"
+      "const": "axi.channel_stall"
+    },
+    "tool": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "build_id": {
+          "type": "string"
+        },
+        "git_revision": {
+          "type": "string"
+        },
+        "schema_revision": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "build_id",
+        "git_revision",
+        "schema_revision"
       ]
     },
+    "session": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "daidir": {
+              "type": "string"
+            },
+            "dbdir": {
+              "type": "string"
+            },
+            "dbdir_path": {
+              "type": "string"
+            },
+            "design_file": {
+              "type": "string"
+            },
+            "fsdb": {
+              "type": "string"
+            },
+            "fsdb_file": {
+              "type": "string"
+            },
+            "socket_path": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "string"
+            },
+            "file_dir": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "bind_host": {
+              "type": "string"
+            },
+            "server_host": {
+              "type": "string"
+            },
+            "pid": {
+              "type": "integer"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "server_pid": {
+              "type": "integer"
+            },
+            "created_at": {
+              "type": "integer"
+            },
+            "last_active": {
+              "type": "integer"
+            },
+            "dbdir_mtime": {
+              "type": "integer"
+            },
+            "dbdir_size": {
+              "type": "integer"
+            },
+            "dbdir_dev": {
+              "type": "integer"
+            },
+            "dbdir_inode": {
+              "type": "integer"
+            },
+            "fsdb_mtime": {
+              "type": "integer"
+            },
+            "fsdb_size": {
+              "type": "integer"
+            },
+            "fsdb_dev": {
+              "type": "integer"
+            },
+            "fsdb_inode": {
+              "type": "integer"
+            },
+            "healthy": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
     "summary": {
-      "type": "object",
-      "additionalProperties": true
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "sampling_mode": {
+              "type": "string"
+            },
+            "clock": {
+              "type": "string"
+            },
+            "edge": {
+              "type": "string"
+            },
+            "sample_point": {
+              "type": "string"
+            },
+            "sample_time_semantics": {
+              "type": "string"
+            },
+            "sample_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "full_scan_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "analysis_complete": {
+              "type": "boolean"
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "truncation_scope": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "requested_range": {
+              "type": "object",
+              "properties": {
+                "begin": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                },
+                "end": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                }
+              },
+              "additionalProperties": false
+            },
+            "scanned_range": {
+              "type": "object",
+              "properties": {
+                "begin": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                },
+                "end": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                }
+              },
+              "additionalProperties": false
+            },
+            "channel": {
+              "enum": [
+                "aw",
+                "w",
+                "b",
+                "ar",
+                "r"
+              ]
+            },
+            "transfer_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max_stall_cycles": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ready_without_valid_cycles": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "finding_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "returned_finding_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "first_activity_time": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "规范化时间字符串；无样本时为 null。"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "error"
+            },
+            "error_code": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "error_code"
+          ]
+        }
+      ]
     },
     "data": {
-      "type": "object"
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "findings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "type": "string"
+                  },
+                  "begin": {
+                    "type": "string",
+                    "description": "规范化时间字符串。"
+                  },
+                  "end": {
+                    "type": "string",
+                    "description": "规范化时间字符串。"
+                  },
+                  "cycles": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "open_at_window_end": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "begin",
+                  "end",
+                  "cycles"
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
-    "findings": {
-      "type": "array"
+    "error": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "recoverable": {
+              "type": "boolean"
+            },
+            "error_layer": {
+              "type": "string"
+            },
+            "invalid_arg": {
+              "type": "string"
+            },
+            "expected": {
+              "type": "string"
+            },
+            "received": {},
+            "received_type": {
+              "type": "string"
+            },
+            "allowed_values": {},
+            "available_values": {},
+            "did_you_mean": {},
+            "schema_path": {
+              "type": "string"
+            },
+            "required_any_of": {},
+            "missing_name": {
+              "type": "string"
+            },
+            "missing_resource": {
+              "type": "string"
+            },
+            "next_actions": {},
+            "example_note": {
+              "type": "string"
+            },
+            "correct_example": {},
+            "cause_code": {
+              "type": "string"
+            },
+            "validation": {}
+          },
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "message",
+            "recoverable",
+            "error_layer"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
-    "warnings": {
-      "type": "array"
-    },
-    "error": {},
     "meta": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     }
   },
-  "additionalProperties": true,
-  "description": "axi.channel_stall response: 实验性 AXI stall 分析。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "additionalProperties": false
 }

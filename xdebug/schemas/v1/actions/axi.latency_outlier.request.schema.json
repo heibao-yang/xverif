@@ -30,30 +30,27 @@
     "args": {
       "type": "object",
       "properties": {
+        "direction": {
+          "type": "string",
+          "enum": [
+            "write",
+            "read",
+            "all"
+          ]
+        },
         "line_limit": {
           "type": "integer",
           "minimum": 1,
           "description": "控制 response/xout 中 item、finding、event、transaction 或 row 的最大返回行数。"
         },
-        "direction": {
-          "type": "string",
-          "enum": ["write", "read", "all"]
-        },
         "method": {
           "type": "string",
-          "enum": ["top_n", "threshold"],
+          "enum": [
+            "top_n",
+            "threshold"
+          ],
           "default": "top_n",
           "description": "top_n 返回完整候选集中的最慢事务排名；threshold 返回超过阈值的事务。"
-        },
-        "top_n": {
-          "type": "integer",
-          "minimum": 1,
-          "default": 10,
-          "description": "method=top_n 时，从完整候选集选择的最慢事务数量。"
-        },
-        "threshold": {
-          "type": "string",
-          "description": "method=threshold 时必填的延迟阈值，例如 100ns。"
         },
         "name": {
           "type": "string",
@@ -62,18 +59,17 @@
         "output": {
           "type": "object",
           "properties": {
-            "path": {
-              "type": "string"
-            },
-            "file_format": {
-              "type": "string"
-            },
-            "verbose": {
-              "type": "boolean"
+            "include_data": {
+              "type": "boolean",
+              "default": false
             }
           },
           "additionalProperties": false,
-          "description": "导出配置对象；路径统一使用 output.path。"
+          "description": "AXI payload display controls; beat data is omitted unless include_data is true."
+        },
+        "threshold": {
+          "type": "string",
+          "description": "method=threshold 时必填的延迟阈值，例如 100ns。"
         },
         "time_range": {
           "type": "object",
@@ -99,6 +95,12 @@
             "ms",
             "s"
           ]
+        },
+        "top_n": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10,
+          "description": "method=top_n 时，从完整候选集选择的最慢事务数量。"
         }
       },
       "additionalProperties": false,

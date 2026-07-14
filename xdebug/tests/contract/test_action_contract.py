@@ -231,6 +231,54 @@ def test_runtime_request_schemas_are_strict_and_synced(xdebug_root: Path) -> Non
 
 
 @pytest.mark.contract
+def test_axi_response_schemas_are_strict_and_synced(xdebug_root: Path) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(xdebug_root / "tools" / "sync_axi_response_schemas.py"),
+            "--check",
+        ],
+        cwd=xdebug_root.parent,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    actions = (
+        "axi.analysis", "axi.channel_stall", "axi.config.list", "axi.config.load",
+        "axi.cursor", "axi.export", "axi.latency_outlier",
+        "axi.outstanding_timeline", "axi.query", "axi.request_response_pair",
+    )
+
+    def assert_closed_business_objects(node: Any, path: str) -> None:
+        if isinstance(node, dict):
+            if node.get("type") == "object" or "properties" in node:
+                assert node.get("additionalProperties") is False, path
+            for key, value in node.items():
+                assert_closed_business_objects(value, "%s.%s" % (path, key))
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                assert_closed_business_objects(value, "%s[%d]" % (path, index))
+
+    for action in actions:
+        schema = _load_json(
+            xdebug_root / "schemas" / "v1" / "actions" /
+            ("%s.response.schema.json" % action)
+        )
+        assert schema.get("additionalProperties") is False, action
+        summary = schema["properties"]["summary"]["oneOf"][0]
+        data = schema["properties"]["data"]["oneOf"][0]
+        assert_closed_business_objects(summary, "%s.summary" % action)
+        assert_closed_business_objects(data, "%s.data" % action)
+
+        example = _load_json(
+            xdebug_root / "examples" / "responses" / ("%s.basic.json" % action)
+        )
+        jsonschema.Draft202012Validator(schema).validate(example)
+
+
+@pytest.mark.contract
 def test_waveform_expression_contract_schemas_are_strict(xdebug_root: Path) -> None:
     value_batch_schema = _load_json(
         xdebug_root / "schemas" / "v1" / "actions" / "value.batch_at.request.schema.json"
@@ -1289,6 +1337,15 @@ def test_ai_usability_high_risk_request_shapes_are_strict(
         "action": "axi.query",
         "args": {"name": "axi0", "direction": "write", "query": {"index": 1, "line_limit": 1}},
     })
+    axi.validate({
+        "api_version": "xdebug.v1",
+        "action": "axi.query",
+        "args": {
+            "name": "axi0",
+            "query": {"channel": "w", "handshake_time": "110ns"},
+            "output": {"include_data": True},
+        },
+    })
     with pytest.raises(jsonschema.ValidationError):
         axi.validate({
             "api_version": "xdebug.v1",
@@ -1306,6 +1363,30 @@ def test_ai_usability_high_risk_request_shapes_are_strict(
             "api_version": "xdebug.v1",
             "action": "axi.query",
             "args": {"name": "axi0", "direction": "all"},
+        })
+    with pytest.raises(jsonschema.ValidationError):
+        axi.validate({
+            "api_version": "xdebug.v1",
+            "action": "axi.query",
+            "args": {
+                "name": "axi0", "query": {"index": 1},
+                "output": {"verbose": True},
+            },
+        })
+    with pytest.raises(jsonschema.ValidationError):
+        axi.validate({
+            "api_version": "xdebug.v1",
+            "action": "axi.query",
+            "args": {"name": "axi0", "query": {"channel": "w"}},
+        })
+    with pytest.raises(jsonschema.ValidationError):
+        axi.validate({
+            "api_version": "xdebug.v1",
+            "action": "axi.query",
+            "args": {
+                "name": "axi0", "direction": "write",
+                "query": {"channel": "w", "handshake_time": "110ns"},
+            },
         })
 
     stream_export = jsonschema.Draft202012Validator(schema_for("stream.export"))

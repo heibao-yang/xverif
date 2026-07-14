@@ -2,6 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "xdebug.axi.analysis.response.v1",
   "title": "axi.analysis response",
+  "description": "axi.analysis response: 汇总 AXI 行为。",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
   "type": "object",
   "required": [
     "api_version",
@@ -12,10 +14,7 @@
   ],
   "properties": {
     "api_version": {
-      "type": "string",
-      "enum": [
-        "xdebug.v1"
-      ]
+      "const": "xdebug.v1"
     },
     "request_id": {
       "type": "string"
@@ -24,30 +23,992 @@
       "type": "boolean"
     },
     "action": {
-      "type": "string",
-      "enum": [
-        "axi.analysis"
+      "const": "axi.analysis"
+    },
+    "tool": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "build_id": {
+          "type": "string"
+        },
+        "git_revision": {
+          "type": "string"
+        },
+        "schema_revision": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "build_id",
+        "git_revision",
+        "schema_revision"
       ]
     },
+    "session": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "daidir": {
+              "type": "string"
+            },
+            "dbdir": {
+              "type": "string"
+            },
+            "dbdir_path": {
+              "type": "string"
+            },
+            "design_file": {
+              "type": "string"
+            },
+            "fsdb": {
+              "type": "string"
+            },
+            "fsdb_file": {
+              "type": "string"
+            },
+            "socket_path": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "string"
+            },
+            "file_dir": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "bind_host": {
+              "type": "string"
+            },
+            "server_host": {
+              "type": "string"
+            },
+            "pid": {
+              "type": "integer"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "server_pid": {
+              "type": "integer"
+            },
+            "created_at": {
+              "type": "integer"
+            },
+            "last_active": {
+              "type": "integer"
+            },
+            "dbdir_mtime": {
+              "type": "integer"
+            },
+            "dbdir_size": {
+              "type": "integer"
+            },
+            "dbdir_dev": {
+              "type": "integer"
+            },
+            "dbdir_inode": {
+              "type": "integer"
+            },
+            "fsdb_mtime": {
+              "type": "integer"
+            },
+            "fsdb_size": {
+              "type": "integer"
+            },
+            "fsdb_dev": {
+              "type": "integer"
+            },
+            "fsdb_inode": {
+              "type": "integer"
+            },
+            "healthy": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
     "summary": {
-      "type": "object",
-      "additionalProperties": true
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "sampling_mode": {
+              "type": "string"
+            },
+            "clock": {
+              "type": "string"
+            },
+            "edge": {
+              "type": "string"
+            },
+            "sample_point": {
+              "type": "string"
+            },
+            "sample_time_semantics": {
+              "type": "string"
+            },
+            "sample_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "full_scan_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "analysis_complete": {
+              "type": "boolean"
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "truncation_scope": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "requested_range": {
+              "type": "object",
+              "properties": {
+                "begin": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                },
+                "end": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                }
+              },
+              "additionalProperties": false
+            },
+            "scanned_range": {
+              "type": "object",
+              "properties": {
+                "begin": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                },
+                "end": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                }
+              },
+              "additionalProperties": false
+            },
+            "analysis": {
+              "enum": [
+                "latency",
+                "osd",
+                "pending"
+              ]
+            },
+            "direction": {
+              "enum": [
+                "read",
+                "write",
+                "all"
+              ]
+            },
+            "status": {
+              "type": "string"
+            },
+            "completed_read_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "completed_write_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "incomplete_read_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "incomplete_write_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "buffered_w_beat_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "buffered_w_burst_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "orphan_w_beat_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "orphan_b_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "orphan_r_beat_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "response_dependency_violation_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "channel_handshakes": {
+              "type": "object",
+              "properties": {
+                "aw": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "w": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "b": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "ar": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "r": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            },
+            "min": {
+              "type": [
+                "string",
+                "number",
+                "null"
+              ]
+            },
+            "avg": {
+              "type": [
+                "string",
+                "number",
+                "null"
+              ]
+            },
+            "max": {
+              "type": [
+                "string",
+                "number",
+                "null"
+              ]
+            },
+            "p50": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "规范化时间字符串；无样本时为 null。"
+            },
+            "p95": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "规范化时间字符串；无样本时为 null。"
+            },
+            "p99": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "规范化时间字符串；无样本时为 null。"
+            },
+            "samples": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "pending_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "returned_pending_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "error"
+            },
+            "error_code": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "error_code"
+          ]
+        }
+      ]
     },
     "data": {
-      "type": "object"
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "latency": {
+              "type": "object",
+              "properties": {
+                "read": {
+                  "type": "object",
+                  "properties": {
+                    "samples": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "min": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "规范化时间字符串；无样本时为 null。"
+                    },
+                    "avg": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "规范化时间字符串；无样本时为 null。"
+                    },
+                    "max": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "规范化时间字符串；无样本时为 null。"
+                    },
+                    "p50": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "规范化时间字符串；无样本时为 null。"
+                    },
+                    "p95": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "规范化时间字符串；无样本时为 null。"
+                    },
+                    "p99": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "规范化时间字符串；无样本时为 null。"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "write": {
+                  "type": "object",
+                  "properties": {
+                    "samples": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "min": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "规范化时间字符串；无样本时为 null。"
+                    },
+                    "avg": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "规范化时间字符串；无样本时为 null。"
+                    },
+                    "max": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "规范化时间字符串；无样本时为 null。"
+                    },
+                    "p50": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "规范化时间字符串；无样本时为 null。"
+                    },
+                    "p95": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "规范化时间字符串；无样本时为 null。"
+                    },
+                    "p99": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "规范化时间字符串；无样本时为 null。"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "definitions": {
+                  "type": "object",
+                  "properties": {
+                    "write": {
+                      "type": "string"
+                    },
+                    "read": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "write_phase_order_counts": {
+                  "type": "object",
+                  "properties": {
+                    "aw_before_w": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "same_cycle": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "w_before_aw": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "unknown": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            "osd": {
+              "type": "object",
+              "properties": {
+                "read": {
+                  "type": "object",
+                  "properties": {
+                    "min": {
+                      "type": "number"
+                    },
+                    "avg": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    },
+                    "samples": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "write": {
+                  "type": "object",
+                  "properties": {
+                    "min": {
+                      "type": "number"
+                    },
+                    "avg": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    },
+                    "samples": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "final_read": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "final_write": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "definitions": {
+                  "type": "object",
+                  "properties": {
+                    "read": {
+                      "type": "string"
+                    },
+                    "write": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            "slowest": {
+              "type": "object",
+              "properties": {
+                "direction": {
+                  "enum": [
+                    "write",
+                    "read"
+                  ]
+                },
+                "latency": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                },
+                "phase_order": {
+                  "type": "string"
+                },
+                "response_dependency_violation": {
+                  "type": "boolean"
+                },
+                "match_time": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                },
+                "address": {
+                  "type": "object",
+                  "properties": {
+                    "channel": {
+                      "enum": [
+                        "aw",
+                        "ar"
+                      ]
+                    },
+                    "valid_begin_time": {
+                      "type": "string",
+                      "description": "规范化时间字符串。"
+                    },
+                    "handshake_time": {
+                      "type": "string",
+                      "description": "规范化时间字符串。"
+                    },
+                    "addr": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "id": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "len": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "size": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "burst": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "channel",
+                    "handshake_time",
+                    "addr",
+                    "id",
+                    "len",
+                    "size",
+                    "burst"
+                  ]
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "channel": {
+                      "enum": [
+                        "w",
+                        "r"
+                      ]
+                    },
+                    "valid_begin_time": {
+                      "type": "string",
+                      "description": "规范化时间字符串。"
+                    },
+                    "first_handshake_time": {
+                      "type": "string",
+                      "description": "规范化时间字符串。"
+                    },
+                    "last_handshake_time": {
+                      "type": "string",
+                      "description": "规范化时间字符串。"
+                    },
+                    "beat_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "expected_beat_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "beats": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "index": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "handshake_time": {
+                            "type": "string",
+                            "description": "规范化时间字符串。"
+                          },
+                          "data": {
+                            "oneOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "last": {
+                            "type": "boolean"
+                          },
+                          "wstrb": {
+                            "oneOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "resp": {
+                            "oneOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                          "index",
+                          "handshake_time",
+                          "data",
+                          "last"
+                        ]
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "channel",
+                    "first_handshake_time",
+                    "last_handshake_time",
+                    "beat_count",
+                    "expected_beat_count"
+                  ]
+                },
+                "response": {
+                  "type": "object",
+                  "properties": {
+                    "channel": {
+                      "enum": [
+                        "b",
+                        "r"
+                      ]
+                    },
+                    "handshake_time": {
+                      "type": "string",
+                      "description": "规范化时间字符串。"
+                    },
+                    "resp": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "channel",
+                    "handshake_time",
+                    "resp"
+                  ]
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "direction",
+                "latency",
+                "response_dependency_violation",
+                "address",
+                "response"
+              ]
+            },
+            "pending_transactions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "direction": {
+                    "enum": [
+                      "write",
+                      "read"
+                    ]
+                  },
+                  "id": {
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "addr": {
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "len": {
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "request_time": {
+                    "type": "string",
+                    "description": "规范化时间字符串。"
+                  },
+                  "age": {
+                    "type": "string",
+                    "description": "规范化时间字符串。"
+                  },
+                  "observed_beat_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "expected_beat_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "data_complete": {
+                    "type": "boolean"
+                  },
+                  "phase_order": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "direction",
+                  "id",
+                  "addr",
+                  "len",
+                  "request_time",
+                  "age",
+                  "observed_beat_count",
+                  "expected_beat_count",
+                  "data_complete"
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
-    "findings": {
-      "type": "array"
+    "error": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "recoverable": {
+              "type": "boolean"
+            },
+            "error_layer": {
+              "type": "string"
+            },
+            "invalid_arg": {
+              "type": "string"
+            },
+            "expected": {
+              "type": "string"
+            },
+            "received": {},
+            "received_type": {
+              "type": "string"
+            },
+            "allowed_values": {},
+            "available_values": {},
+            "did_you_mean": {},
+            "schema_path": {
+              "type": "string"
+            },
+            "required_any_of": {},
+            "missing_name": {
+              "type": "string"
+            },
+            "missing_resource": {
+              "type": "string"
+            },
+            "next_actions": {},
+            "example_note": {
+              "type": "string"
+            },
+            "correct_example": {},
+            "cause_code": {
+              "type": "string"
+            },
+            "validation": {}
+          },
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "message",
+            "recoverable",
+            "error_layer"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
-    "warnings": {
-      "type": "array"
-    },
-    "error": {},
     "meta": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     }
   },
-  "additionalProperties": true,
-  "description": "axi.analysis response: 汇总 AXI 行为。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "additionalProperties": false
 }

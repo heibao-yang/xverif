@@ -31,7 +31,9 @@ def test_default_output_is_xout(cli_runner: CliRunner) -> None:
     assert result.returncode == 0
     assert isinstance(result.response, str)
     assert result.response.startswith("@xdebug.actions.v1")
-    assert "action_count:" in result.response
+    assert "summary:\n  action_count :" in result.response
+    assert "removed_count:" in result.response
+    assert "verbose      :" in result.response
 
 
 @pytest.mark.contract

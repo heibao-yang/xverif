@@ -3,5 +3,22 @@
   "ok": true,
   "action": "axi.request_response_pair",
   "summary": {"name": "if0", "transaction_count": 1, "begin": "0ns", "end": "200ns"},
-  "data": {"matched_transaction_count": 1, "returned_transaction_count": 1, "pairing_rule": {"write_data": "AXI4 W bursts bind in AW acceptance order"}, "diagnostics": {"full_scan_count": 1, "incomplete_write_count": 0}, "transactions": [{"addr_time": "100ns", "first_data_time": "90ns", "last_data_time": "110ns", "resp_time": "140ns", "latency": "40ns", "phase_order": "w_before_aw", "addr": "f0", "id": "1", "is_write": true}]}
+  "data": {
+    "matched_transaction_count": 1, "returned_transaction_count": 1,
+    "pairing_rule": {"write_data": "AXI4 W bursts bind in AW acceptance order"},
+    "diagnostics": {"full_scan_count": 1, "incomplete_write_count": 0},
+    "transactions": [{
+      "direction": "write", "latency": "40ns", "phase_order": "w_before_aw",
+      "response_dependency_violation": false, "match_time": "100ns",
+      "address": {
+        "channel": "aw", "handshake_time": "100ns", "addr": "f0",
+        "id": "1", "len": 0, "size": 2, "burst": 1
+      },
+      "data": {
+        "channel": "w", "first_handshake_time": "90ns", "last_handshake_time": "110ns",
+        "beat_count": 1, "expected_beat_count": 1
+      },
+      "response": {"channel": "b", "handshake_time": "140ns", "resp": 0}
+    }]
+  }
 }

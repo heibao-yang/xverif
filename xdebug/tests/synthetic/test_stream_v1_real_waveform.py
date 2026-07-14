@@ -365,10 +365,10 @@ def test_stream_v1_real_waveform_actions(
             case_name="stream-v1-packet-at-xout",
             artifact_root=artifact_root,
         )
-        assert "stable_fields: opcode=8'ha3" in packet_at_xout
-        assert "fields: data=32'h4000000c seq=16'h000c" in packet_at_xout
+        assert "stable_fields    : opcode=8'ha3" in packet_at_xout
+        assert "18     185ns  0           data=32'h4000000c seq=16'h000c" in packet_at_xout
         assert "first_fields: data=32'h4000000c seq=16'h000c" in packet_at_xout
-        assert "last_fields: data=32'h4000000f seq=16'h000f" in packet_at_xout
+        assert "last_fields : data=32'h4000000f seq=16'h000f" in packet_at_xout
         assert "bits:" not in packet_at_xout
         assert "known: true" not in packet_at_xout
 

@@ -2,6 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "xdebug.axi.query.response.v1",
   "title": "axi.query response",
+  "description": "axi.query response: 查询 AXI channel/transaction。",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
   "type": "object",
   "required": [
     "api_version",
@@ -12,10 +14,7 @@
   ],
   "properties": {
     "api_version": {
-      "type": "string",
-      "enum": [
-        "xdebug.v1"
-      ]
+      "const": "xdebug.v1"
     },
     "request_id": {
       "type": "string"
@@ -24,30 +23,790 @@
       "type": "boolean"
     },
     "action": {
-      "type": "string",
-      "enum": [
-        "axi.query"
+      "const": "axi.query"
+    },
+    "tool": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "build_id": {
+          "type": "string"
+        },
+        "git_revision": {
+          "type": "string"
+        },
+        "schema_revision": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "build_id",
+        "git_revision",
+        "schema_revision"
       ]
     },
+    "session": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "daidir": {
+              "type": "string"
+            },
+            "dbdir": {
+              "type": "string"
+            },
+            "dbdir_path": {
+              "type": "string"
+            },
+            "design_file": {
+              "type": "string"
+            },
+            "fsdb": {
+              "type": "string"
+            },
+            "fsdb_file": {
+              "type": "string"
+            },
+            "socket_path": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "string"
+            },
+            "file_dir": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "bind_host": {
+              "type": "string"
+            },
+            "server_host": {
+              "type": "string"
+            },
+            "pid": {
+              "type": "integer"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "server_pid": {
+              "type": "integer"
+            },
+            "created_at": {
+              "type": "integer"
+            },
+            "last_active": {
+              "type": "integer"
+            },
+            "dbdir_mtime": {
+              "type": "integer"
+            },
+            "dbdir_size": {
+              "type": "integer"
+            },
+            "dbdir_dev": {
+              "type": "integer"
+            },
+            "dbdir_inode": {
+              "type": "integer"
+            },
+            "fsdb_mtime": {
+              "type": "integer"
+            },
+            "fsdb_size": {
+              "type": "integer"
+            },
+            "fsdb_dev": {
+              "type": "integer"
+            },
+            "fsdb_inode": {
+              "type": "integer"
+            },
+            "healthy": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
     "summary": {
-      "type": "object",
-      "additionalProperties": true
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "direction": {
+              "enum": [
+                "read",
+                "write",
+                "all"
+              ]
+            },
+            "query_mode": {
+              "enum": [
+                "handshake"
+              ]
+            },
+            "found": {
+              "type": "boolean"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "name"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "error"
+            },
+            "error_code": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "error_code"
+          ]
+        }
+      ]
     },
     "data": {
-      "type": "object"
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "match": {
+              "type": "object",
+              "properties": {
+                "channel": {
+                  "enum": [
+                    "aw",
+                    "w",
+                    "b",
+                    "ar",
+                    "r"
+                  ]
+                },
+                "handshake_time": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                },
+                "direction": {
+                  "enum": [
+                    "read",
+                    "write"
+                  ]
+                },
+                "beat_index": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "channel",
+                "handshake_time"
+              ]
+            },
+            "transaction": {
+              "type": "object",
+              "properties": {
+                "direction": {
+                  "enum": [
+                    "write",
+                    "read"
+                  ]
+                },
+                "latency": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                },
+                "phase_order": {
+                  "type": "string"
+                },
+                "response_dependency_violation": {
+                  "type": "boolean"
+                },
+                "match_time": {
+                  "type": "string",
+                  "description": "规范化时间字符串。"
+                },
+                "address": {
+                  "type": "object",
+                  "properties": {
+                    "channel": {
+                      "enum": [
+                        "aw",
+                        "ar"
+                      ]
+                    },
+                    "valid_begin_time": {
+                      "type": "string",
+                      "description": "规范化时间字符串。"
+                    },
+                    "handshake_time": {
+                      "type": "string",
+                      "description": "规范化时间字符串。"
+                    },
+                    "addr": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "id": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "len": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "size": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "burst": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "channel",
+                    "handshake_time",
+                    "addr",
+                    "id",
+                    "len",
+                    "size",
+                    "burst"
+                  ]
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "channel": {
+                      "enum": [
+                        "w",
+                        "r"
+                      ]
+                    },
+                    "valid_begin_time": {
+                      "type": "string",
+                      "description": "规范化时间字符串。"
+                    },
+                    "first_handshake_time": {
+                      "type": "string",
+                      "description": "规范化时间字符串。"
+                    },
+                    "last_handshake_time": {
+                      "type": "string",
+                      "description": "规范化时间字符串。"
+                    },
+                    "beat_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "expected_beat_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "beats": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "index": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "handshake_time": {
+                            "type": "string",
+                            "description": "规范化时间字符串。"
+                          },
+                          "data": {
+                            "oneOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "last": {
+                            "type": "boolean"
+                          },
+                          "wstrb": {
+                            "oneOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "resp": {
+                            "oneOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                          "index",
+                          "handshake_time",
+                          "data",
+                          "last"
+                        ]
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "channel",
+                    "first_handshake_time",
+                    "last_handshake_time",
+                    "beat_count",
+                    "expected_beat_count"
+                  ]
+                },
+                "response": {
+                  "type": "object",
+                  "properties": {
+                    "channel": {
+                      "enum": [
+                        "b",
+                        "r"
+                      ]
+                    },
+                    "handshake_time": {
+                      "type": "string",
+                      "description": "规范化时间字符串。"
+                    },
+                    "resp": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "channel",
+                    "handshake_time",
+                    "resp"
+                  ]
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "direction",
+                "latency",
+                "response_dependency_violation",
+                "address",
+                "response"
+              ]
+            },
+            "transactions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "direction": {
+                    "enum": [
+                      "write",
+                      "read"
+                    ]
+                  },
+                  "latency": {
+                    "type": "string",
+                    "description": "规范化时间字符串。"
+                  },
+                  "phase_order": {
+                    "type": "string"
+                  },
+                  "response_dependency_violation": {
+                    "type": "boolean"
+                  },
+                  "match_time": {
+                    "type": "string",
+                    "description": "规范化时间字符串。"
+                  },
+                  "address": {
+                    "type": "object",
+                    "properties": {
+                      "channel": {
+                        "enum": [
+                          "aw",
+                          "ar"
+                        ]
+                      },
+                      "valid_begin_time": {
+                        "type": "string",
+                        "description": "规范化时间字符串。"
+                      },
+                      "handshake_time": {
+                        "type": "string",
+                        "description": "规范化时间字符串。"
+                      },
+                      "addr": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "id": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "len": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "size": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "burst": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "channel",
+                      "handshake_time",
+                      "addr",
+                      "id",
+                      "len",
+                      "size",
+                      "burst"
+                    ]
+                  },
+                  "data": {
+                    "type": "object",
+                    "properties": {
+                      "channel": {
+                        "enum": [
+                          "w",
+                          "r"
+                        ]
+                      },
+                      "valid_begin_time": {
+                        "type": "string",
+                        "description": "规范化时间字符串。"
+                      },
+                      "first_handshake_time": {
+                        "type": "string",
+                        "description": "规范化时间字符串。"
+                      },
+                      "last_handshake_time": {
+                        "type": "string",
+                        "description": "规范化时间字符串。"
+                      },
+                      "beat_count": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "expected_beat_count": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "beats": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "index": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "handshake_time": {
+                              "type": "string",
+                              "description": "规范化时间字符串。"
+                            },
+                            "data": {
+                              "oneOf": [
+                                {
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "last": {
+                              "type": "boolean"
+                            },
+                            "wstrb": {
+                              "oneOf": [
+                                {
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "resp": {
+                              "oneOf": [
+                                {
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "index",
+                            "handshake_time",
+                            "data",
+                            "last"
+                          ]
+                        }
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "channel",
+                      "first_handshake_time",
+                      "last_handshake_time",
+                      "beat_count",
+                      "expected_beat_count"
+                    ]
+                  },
+                  "response": {
+                    "type": "object",
+                    "properties": {
+                      "channel": {
+                        "enum": [
+                          "b",
+                          "r"
+                        ]
+                      },
+                      "handshake_time": {
+                        "type": "string",
+                        "description": "规范化时间字符串。"
+                      },
+                      "resp": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "channel",
+                      "handshake_time",
+                      "resp"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "direction",
+                  "latency",
+                  "response_dependency_violation",
+                  "address",
+                  "response"
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
-    "findings": {
-      "type": "array"
+    "error": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "recoverable": {
+              "type": "boolean"
+            },
+            "error_layer": {
+              "type": "string"
+            },
+            "invalid_arg": {
+              "type": "string"
+            },
+            "expected": {
+              "type": "string"
+            },
+            "received": {},
+            "received_type": {
+              "type": "string"
+            },
+            "allowed_values": {},
+            "available_values": {},
+            "did_you_mean": {},
+            "schema_path": {
+              "type": "string"
+            },
+            "required_any_of": {},
+            "missing_name": {
+              "type": "string"
+            },
+            "missing_resource": {
+              "type": "string"
+            },
+            "next_actions": {},
+            "example_note": {
+              "type": "string"
+            },
+            "correct_example": {},
+            "cause_code": {
+              "type": "string"
+            },
+            "validation": {}
+          },
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "message",
+            "recoverable",
+            "error_layer"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
-    "warnings": {
-      "type": "array"
-    },
-    "error": {},
     "meta": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     }
   },
-  "additionalProperties": true,
-  "description": "axi.query response: 查询 AXI channel/transaction。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "additionalProperties": false
 }

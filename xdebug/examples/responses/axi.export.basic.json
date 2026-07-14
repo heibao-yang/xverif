@@ -22,10 +22,5 @@
       "file_format": "tsv"
     }
   },
-  "data": {
-    "begin": "0ns",
-    "end": "1us",
-    "scan_begin": "0ns",
-    "scan_end": "1us"
-  }
+  "data": {}
 }

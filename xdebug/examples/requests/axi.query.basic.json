@@ -6,9 +6,12 @@
   },
   "args": {
     "name": "if0",
-    "direction": "write",
     "query": {
-      "index": 1
+      "channel": "aw",
+      "handshake_time": "100ns"
+    },
+    "output": {
+      "include_data": false
     }
   }
 }

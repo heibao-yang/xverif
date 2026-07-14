@@ -2,6 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "xdebug.axi.config.list.response.v1",
   "title": "axi.config.list response",
+  "description": "axi.config.list response: 列出 AXI 配置。",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
   "type": "object",
   "required": [
     "api_version",
@@ -12,10 +14,7 @@
   ],
   "properties": {
     "api_version": {
-      "type": "string",
-      "enum": [
-        "xdebug.v1"
-      ]
+      "const": "xdebug.v1"
     },
     "request_id": {
       "type": "string"
@@ -24,30 +23,670 @@
       "type": "boolean"
     },
     "action": {
-      "type": "string",
-      "enum": [
-        "axi.config.list"
+      "const": "axi.config.list"
+    },
+    "tool": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "build_id": {
+          "type": "string"
+        },
+        "git_revision": {
+          "type": "string"
+        },
+        "schema_revision": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "build_id",
+        "git_revision",
+        "schema_revision"
       ]
     },
+    "session": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "daidir": {
+              "type": "string"
+            },
+            "dbdir": {
+              "type": "string"
+            },
+            "dbdir_path": {
+              "type": "string"
+            },
+            "design_file": {
+              "type": "string"
+            },
+            "fsdb": {
+              "type": "string"
+            },
+            "fsdb_file": {
+              "type": "string"
+            },
+            "socket_path": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "string"
+            },
+            "file_dir": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "bind_host": {
+              "type": "string"
+            },
+            "server_host": {
+              "type": "string"
+            },
+            "pid": {
+              "type": "integer"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "server_pid": {
+              "type": "integer"
+            },
+            "created_at": {
+              "type": "integer"
+            },
+            "last_active": {
+              "type": "integer"
+            },
+            "dbdir_mtime": {
+              "type": "integer"
+            },
+            "dbdir_size": {
+              "type": "integer"
+            },
+            "dbdir_dev": {
+              "type": "integer"
+            },
+            "dbdir_inode": {
+              "type": "integer"
+            },
+            "fsdb_mtime": {
+              "type": "integer"
+            },
+            "fsdb_size": {
+              "type": "integer"
+            },
+            "fsdb_dev": {
+              "type": "integer"
+            },
+            "fsdb_inode": {
+              "type": "integer"
+            },
+            "healthy": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
     "summary": {
-      "type": "object",
-      "additionalProperties": true
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "name": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "error"
+            },
+            "error_code": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "error_code"
+          ]
+        }
+      ]
     },
     "data": {
-      "type": "object"
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "configs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "sampling_mode": {
+                    "type": "string"
+                  },
+                  "clock": {
+                    "type": "string"
+                  },
+                  "edge": {
+                    "enum": [
+                      "posedge",
+                      "negedge",
+                      "dual"
+                    ]
+                  },
+                  "rst_n": {
+                    "type": "string"
+                  },
+                  "sample_point": {
+                    "type": "string"
+                  },
+                  "channels": {
+                    "type": "object",
+                    "properties": {
+                      "aw": {
+                        "type": "object",
+                        "properties": {
+                          "addr": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "len": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "type": "string"
+                          },
+                          "burst": {
+                            "type": "string"
+                          },
+                          "valid": {
+                            "type": "string"
+                          },
+                          "ready": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                          "addr",
+                          "id",
+                          "len",
+                          "size",
+                          "burst",
+                          "valid",
+                          "ready"
+                        ]
+                      },
+                      "w": {
+                        "type": "object",
+                        "properties": {
+                          "data": {
+                            "type": "string"
+                          },
+                          "strb": {
+                            "type": "string"
+                          },
+                          "last": {
+                            "type": "string"
+                          },
+                          "valid": {
+                            "type": "string"
+                          },
+                          "ready": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                          "data",
+                          "strb",
+                          "last",
+                          "valid",
+                          "ready"
+                        ]
+                      },
+                      "b": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "resp": {
+                            "type": "string"
+                          },
+                          "valid": {
+                            "type": "string"
+                          },
+                          "ready": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "resp",
+                          "valid",
+                          "ready"
+                        ]
+                      },
+                      "ar": {
+                        "type": "object",
+                        "properties": {
+                          "addr": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "len": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "type": "string"
+                          },
+                          "burst": {
+                            "type": "string"
+                          },
+                          "valid": {
+                            "type": "string"
+                          },
+                          "ready": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                          "addr",
+                          "id",
+                          "len",
+                          "size",
+                          "burst",
+                          "valid",
+                          "ready"
+                        ]
+                      },
+                      "r": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "data": {
+                            "type": "string"
+                          },
+                          "resp": {
+                            "type": "string"
+                          },
+                          "last": {
+                            "type": "string"
+                          },
+                          "valid": {
+                            "type": "string"
+                          },
+                          "ready": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "data",
+                          "resp",
+                          "last",
+                          "valid",
+                          "ready"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "aw",
+                      "w",
+                      "b",
+                      "ar",
+                      "r"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "clock",
+                  "edge"
+                ]
+              }
+            },
+            "config": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "sampling_mode": {
+                  "type": "string"
+                },
+                "clock": {
+                  "type": "string"
+                },
+                "edge": {
+                  "enum": [
+                    "posedge",
+                    "negedge",
+                    "dual"
+                  ]
+                },
+                "rst_n": {
+                  "type": "string"
+                },
+                "sample_point": {
+                  "type": "string"
+                },
+                "channels": {
+                  "type": "object",
+                  "properties": {
+                    "aw": {
+                      "type": "object",
+                      "properties": {
+                        "addr": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "len": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "type": "string"
+                        },
+                        "burst": {
+                          "type": "string"
+                        },
+                        "valid": {
+                          "type": "string"
+                        },
+                        "ready": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "addr",
+                        "id",
+                        "len",
+                        "size",
+                        "burst",
+                        "valid",
+                        "ready"
+                      ]
+                    },
+                    "w": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "string"
+                        },
+                        "strb": {
+                          "type": "string"
+                        },
+                        "last": {
+                          "type": "string"
+                        },
+                        "valid": {
+                          "type": "string"
+                        },
+                        "ready": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "data",
+                        "strb",
+                        "last",
+                        "valid",
+                        "ready"
+                      ]
+                    },
+                    "b": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "resp": {
+                          "type": "string"
+                        },
+                        "valid": {
+                          "type": "string"
+                        },
+                        "ready": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "resp",
+                        "valid",
+                        "ready"
+                      ]
+                    },
+                    "ar": {
+                      "type": "object",
+                      "properties": {
+                        "addr": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "len": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "type": "string"
+                        },
+                        "burst": {
+                          "type": "string"
+                        },
+                        "valid": {
+                          "type": "string"
+                        },
+                        "ready": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "addr",
+                        "id",
+                        "len",
+                        "size",
+                        "burst",
+                        "valid",
+                        "ready"
+                      ]
+                    },
+                    "r": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "string"
+                        },
+                        "resp": {
+                          "type": "string"
+                        },
+                        "last": {
+                          "type": "string"
+                        },
+                        "valid": {
+                          "type": "string"
+                        },
+                        "ready": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "data",
+                        "resp",
+                        "last",
+                        "valid",
+                        "ready"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "aw",
+                    "w",
+                    "b",
+                    "ar",
+                    "r"
+                  ]
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "clock",
+                "edge"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
-    "findings": {
-      "type": "array"
+    "error": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "recoverable": {
+              "type": "boolean"
+            },
+            "error_layer": {
+              "type": "string"
+            },
+            "invalid_arg": {
+              "type": "string"
+            },
+            "expected": {
+              "type": "string"
+            },
+            "received": {},
+            "received_type": {
+              "type": "string"
+            },
+            "allowed_values": {},
+            "available_values": {},
+            "did_you_mean": {},
+            "schema_path": {
+              "type": "string"
+            },
+            "required_any_of": {},
+            "missing_name": {
+              "type": "string"
+            },
+            "missing_resource": {
+              "type": "string"
+            },
+            "next_actions": {},
+            "example_note": {
+              "type": "string"
+            },
+            "correct_example": {},
+            "cause_code": {
+              "type": "string"
+            },
+            "validation": {}
+          },
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "message",
+            "recoverable",
+            "error_layer"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
-    "warnings": {
-      "type": "array"
-    },
-    "error": {},
     "meta": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     }
   },
-  "additionalProperties": true,
-  "description": "axi.config.list response: 列出 AXI 配置。",
-  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。"
+  "additionalProperties": false
 }

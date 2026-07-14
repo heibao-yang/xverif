@@ -26,6 +26,10 @@ def test_examples_match_action_schemas() -> None:
     ) == 0
 
 
+def test_axi_response_schemas_are_generated_and_synced() -> None:
+    assert _module("sync_axi_response_schemas").main(["--check"]) == 0
+
+
 def test_clock_sampling_is_consolidated() -> None:
     assert _module("check_clock_sampling_consolidation").main() == 0
 

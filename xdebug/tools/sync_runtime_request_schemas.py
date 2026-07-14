@@ -20,7 +20,7 @@ REQUEST_EXAMPLES = XDEBUG_ROOT / "examples" / "requests"
 
 ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
     "action": {"type": "string"},
-    "analysis": {"type": "string", "enum": ["latency", "osd", "outstanding"]},
+    "analysis": {"type": "string", "enum": ["latency", "osd", "pending"]},
     "address": {"type": "string"},
     "addr": {"type": "string"},
     "aggregate": {"type": "object"},
@@ -46,6 +46,7 @@ ADDITIONAL_ARG_SCHEMAS: dict[str, dict[str, Any]] = {
     "include_parity": {"type": "boolean"},
     "include_preview": {"type": "boolean"},
     "include_statement_only": {"type": "boolean"},
+    "id": {"type": "string"},
     "last": {"type": "boolean"},
     "line_limit": {"type": "integer", "minimum": 1},
     "method": {"type": "string", "enum": ["top_n", "threshold"]},
@@ -127,7 +128,7 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "axi.export": {"output", "time_range"},
     "axi.latency_outlier": {"direction", "line_limit", "method", "output", "threshold", "time_range", "top_n"},
     "axi.outstanding_timeline": {"direction", "line_limit", "time_range"},
-    "axi.query": {"direction", "address", "addr", "query", "last", "output"},
+    "axi.query": {"direction", "address", "addr", "id", "query", "last", "output"},
     "axi.request_response_pair": {"direction", "line_limit", "time_range", "output"},
     "batch": {"mode"},
     "counter.statistics": {"edge", "line_limit", "sample_point"},
@@ -383,6 +384,40 @@ def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[
         selected_props["query"] = copy.deepcopy(arg_schemas["protocol_query"])
         if "direction" in selected_props:
             selected_props["direction"] = {"type": "string", "enum": ["write", "read"]}
+    if action == "axi.analysis" and "analysis" in selected_props:
+        selected_props["analysis"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["analysis"])
+    if action == "axi.query" and "query" in selected_props:
+        selected_props["query"] = {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "line_limit": {"type": "integer", "minimum": 1},
+                        "index": {"type": "integer", "minimum": 1},
+                    },
+                    "additionalProperties": False,
+                },
+                {
+                    "type": "object",
+                    "required": ["channel", "handshake_time"],
+                    "properties": {
+                        "channel": {"type": "string", "enum": ["aw", "w", "b", "ar", "r"]},
+                        "handshake_time": {"type": "string"},
+                    },
+                    "additionalProperties": False,
+                },
+            ],
+            "description": "Select transactions by 1-based index/line_limit, or exactly match an AXI channel handshake time.",
+        }
+    if action in {"axi.query", "axi.request_response_pair", "axi.latency_outlier"} and "output" in selected_props:
+        selected_props["output"] = {
+            "type": "object",
+            "properties": {
+                "include_data": {"type": "boolean", "default": False},
+            },
+            "additionalProperties": False,
+            "description": "AXI payload display controls; beat data is omitted unless include_data is true.",
+        }
     if action == "list.export" and "format" in selected_props:
         selected_props["format"] = {
             "type": "string",
@@ -471,6 +506,25 @@ def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[
         ]
     else:
         args.pop("allOf", None)
+    if action == "axi.query":
+        query_constraints = [
+            {
+                "if": {
+                    "required": ["query"],
+                    "properties": {"query": {"required": ["channel"]}},
+                },
+                "then": {
+                    "not": {
+                        "anyOf": [
+                            {"required": [key]}
+                            for key in ("direction", "address", "addr", "id", "last")
+                        ]
+                    }
+                },
+            },
+            {"not": {"required": ["address", "addr"]}},
+        ]
+        args["allOf"] = list(args.get("allOf", [])) + query_constraints
     updated.pop("anyOf", None)
     updated.pop("allOf", None)
     updated.pop("oneOf", None)
@@ -478,12 +532,14 @@ def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[
     return updated
 
 
-def sync(check: bool) -> list[str]:
+def sync(check: bool, selected_actions: set[str] | None = None) -> list[str]:
     specs = [spec for spec in action_specs() if spec.get("status") != "removed"]
     arg_schemas = collect_arg_schemas(specs)
     errors: list[str] = []
 
     for spec in specs:
+        if selected_actions and spec["name"] not in selected_actions:
+            continue
         path = XDEBUG_ROOT / spec["schemas"]["request"]
         schema = load_json(path)
         try:
@@ -502,9 +558,10 @@ def sync(check: bool) -> list[str]:
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="only check, do not update files")
+    parser.add_argument("--action", action="append", default=[], help="sync only the named action; repeatable")
     args = parser.parse_args(argv)
 
-    errors = sync(check=args.check)
+    errors = sync(check=args.check, selected_actions=set(args.action) or None)
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)

@@ -436,8 +436,12 @@ std::string TextResponseBuilder::str() {
 
 void TextResponseBuilder::flush_kv_block() {
     if (pending_kv_.empty()) return;
+    size_t max_key_width = 0;
+    for (const auto& item : pending_kv_)
+        max_key_width = std::max(max_key_width, item.key.size());
     for (const auto& item : pending_kv_) {
-        write_line(item.indent + item.key + ": " + item.value);
+        write_line(item.indent + item.key +
+                   std::string(max_key_width - item.key.size(), ' ') + ": " + item.value);
     }
     pending_kv_.clear();
 }

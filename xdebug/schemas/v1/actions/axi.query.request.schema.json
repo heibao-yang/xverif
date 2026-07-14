@@ -43,6 +43,9 @@
             "read"
           ]
         },
+        "id": {
+          "type": "string"
+        },
         "last": {
           "type": "boolean"
         },
@@ -53,33 +56,55 @@
         "output": {
           "type": "object",
           "properties": {
-            "path": {
-              "type": "string"
-            },
-            "file_format": {
-              "type": "string"
-            },
-            "verbose": {
-              "type": "boolean"
+            "include_data": {
+              "type": "boolean",
+              "default": false
             }
           },
           "additionalProperties": false,
-          "description": "导出配置对象；路径统一使用 output.path。"
+          "description": "AXI payload display controls; beat data is omitted unless include_data is true."
         },
         "query": {
-          "type": "object",
-          "properties": {
-            "line_limit": {
-              "type": "integer",
-              "minimum": 1
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "line_limit": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "index": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "additionalProperties": false
             },
-            "index": {
-              "type": "integer",
-              "minimum": 1
+            {
+              "type": "object",
+              "required": [
+                "channel",
+                "handshake_time"
+              ],
+              "properties": {
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "aw",
+                    "w",
+                    "b",
+                    "ar",
+                    "r"
+                  ]
+                },
+                "handshake_time": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
-          },
-          "additionalProperties": false,
-          "description": "Protocol query controls; use 1-based query.index and query.line_limit; legacy quantity fields are rejected."
+          ],
+          "description": "Select transactions by 1-based index/line_limit, or exactly match an AXI channel handshake time."
         },
         "time_unit": {
           "type": "string",
@@ -97,6 +122,61 @@
       "additionalProperties": false,
       "required": [
         "name"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "query"
+            ],
+            "properties": {
+              "query": {
+                "required": [
+                  "channel"
+                ]
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "direction"
+                  ]
+                },
+                {
+                  "required": [
+                    "address"
+                  ]
+                },
+                {
+                  "required": [
+                    "addr"
+                  ]
+                },
+                {
+                  "required": [
+                    "id"
+                  ]
+                },
+                {
+                  "required": [
+                    "last"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "address",
+              "addr"
+            ]
+          }
+        }
       ]
     },
     "limits": {
@@ -121,7 +201,7 @@
   "additionalProperties": false,
   "description": "axi.query: 查询 AXI channel/transaction。",
   "x-purpose": "查询 AXI channel/transaction。",
-  "x-how_it_works": "按 AXI 配置扫描 valid/ready 和 channel 字段；第 N 个 transaction 用 1-based query.index，多条用 query.line_limit。",
-  "x-when_to_use": "抽取 AXI beat/transaction。",
-  "x-arg_contract_notes": "required: name; use query.index / query.line_limit; do not use legacy quantity fields"
+  "x-how_it_works": "第 N 个 transaction 用 1-based query.index，多条用 query.line_limit；已知锚点时用 query.channel（AW/W/B/AR/R）与精确 query.handshake_time 反查。逐 beat payload 仅由 output.include_data 展开。",
+  "x-when_to_use": "抽取 AXI beat/transaction 或从握手时间反查整笔事务。",
+  "x-arg_contract_notes": "required: name; channel and handshake_time must appear together; do not mix handshake query with transaction selectors"
 }
