@@ -54,6 +54,10 @@ void AxiTransactionTracker::clear_for_reset() {
     read_outstanding_ = 0;
     write_outstanding_by_id_.clear();
     read_outstanding_by_id_.clear();
+    aw_valid_active_ = false;
+    w_valid_active_ = false;
+    ar_valid_active_ = false;
+    r_valid_active_ = false;
 }
 
 void AxiTransactionTracker::drain_w_beats() {
@@ -63,9 +67,15 @@ void AxiTransactionTracker::drain_w_beats() {
         if (pending == pending_writes_.end()) return;
         WBeat beat = std::move(w_beats_.front());
         w_beats_.pop_front();
-        if (pending->data.empty()) pending->first_data_time = beat.time;
+        if (pending->data.empty()) {
+            pending->first_data_time = beat.time;
+            pending->first_data_valid_begin_time = beat.valid_begin_time;
+            pending->has_first_data_valid_begin_time = beat.has_valid_begin_time;
+        }
         pending->data.push_back(std::move(beat.data));
         pending->wstrb.push_back(std::move(beat.strb));
+        pending->data_handshake_times.push_back(beat.time);
+        pending->data_last.push_back(beat.last);
         pending->last_data_time = beat.time;
         if (beat.last) {
             pending->data_complete = true;
@@ -103,8 +113,15 @@ void AxiTransactionTracker::complete_read(const AxiSample& sample) {
         return;
     }
     AxiTransaction& pending = by_id->second.front();
-    if (pending.data.empty()) pending.first_data_time = sample.time;
+    if (pending.data.empty()) {
+        pending.first_data_time = sample.time;
+        pending.first_data_valid_begin_time = r_valid_begin_time_;
+        pending.has_first_data_valid_begin_time = r_valid_active_;
+    }
     pending.data.push_back(sample.rdata);
+    pending.data_resp.push_back(sample.rresp);
+    pending.data_handshake_times.push_back(sample.time);
+    pending.data_last.push_back(sample.rlast);
     pending.resp = sample.rresp;
     pending.last_data_time = sample.time;
     if (!sample.rlast) return;
@@ -136,11 +153,28 @@ void AxiTransactionTracker::consume(const AxiSample& sample) {
         return;
     }
 
+    auto track_valid_begin = [&](bool valid, bool& active, npiFsdbTime& begin) {
+        if (!valid) {
+            active = false;
+            return;
+        }
+        if (!active) {
+            active = true;
+            begin = sample.time;
+        }
+    };
+    track_valid_begin(sample.aw_valid, aw_valid_active_, aw_valid_begin_time_);
+    track_valid_begin(sample.w_valid, w_valid_active_, w_valid_begin_time_);
+    track_valid_begin(sample.ar_valid, ar_valid_active_, ar_valid_begin_time_);
+    track_valid_begin(sample.r_valid, r_valid_active_, r_valid_begin_time_);
+
     if (sample.aw_handshake) {
         ++result_.diagnostics.handshakes.aw;
         AxiTransaction txn;
         txn.seq = ++next_seq_;
         txn.is_write = true;
+        txn.addr_valid_begin_time = aw_valid_begin_time_;
+        txn.has_addr_valid_begin_time = aw_valid_active_;
         txn.addr_time = sample.time;
         txn.addr = sample.awaddr;
         txn.id = sample.awid;
@@ -155,12 +189,15 @@ void AxiTransactionTracker::consume(const AxiSample& sample) {
             result_.diagnostics.max_write_outstanding_by_id[txn.id],
             write_outstanding_by_id_[txn.id]);
         pending_writes_.push_back(std::move(txn));
+        aw_valid_active_ = false;
     }
     if (sample.ar_handshake) {
         ++result_.diagnostics.handshakes.ar;
         AxiTransaction txn;
         txn.seq = ++next_seq_;
         txn.is_write = false;
+        txn.addr_valid_begin_time = ar_valid_begin_time_;
+        txn.has_addr_valid_begin_time = ar_valid_active_;
         txn.addr_time = sample.time;
         txn.addr = sample.araddr;
         txn.id = sample.arid;
@@ -175,15 +212,19 @@ void AxiTransactionTracker::consume(const AxiSample& sample) {
             result_.diagnostics.max_read_outstanding_by_id[txn.id],
             read_outstanding_by_id_[txn.id]);
         pending_reads_[txn.id].push_back(std::move(txn));
+        ar_valid_active_ = false;
     }
     if (sample.w_handshake) {
         ++result_.diagnostics.handshakes.w;
         WBeat beat;
+        beat.valid_begin_time = w_valid_begin_time_;
         beat.time = sample.time;
+        beat.has_valid_begin_time = w_valid_active_;
         beat.data = sample.wdata;
         beat.strb = sample.wstrb;
         beat.last = sample.wlast;
         w_beats_.push_back(std::move(beat));
+        w_valid_active_ = false;
     }
     drain_w_beats();
 
@@ -194,6 +235,7 @@ void AxiTransactionTracker::consume(const AxiSample& sample) {
     if (sample.r_handshake) {
         ++result_.diagnostics.handshakes.r;
         complete_read(sample);
+        r_valid_active_ = false;
     }
     snapshot(sample.time);
 }

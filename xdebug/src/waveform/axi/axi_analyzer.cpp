@@ -141,6 +141,10 @@ bool AxiAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
             const std::string& rst = values[idx.rst_n];
             sample.reset_active = rst.empty() || rst == "0" || rst == "X" || rst == "Z";
         }
+        sample.aw_valid = idx.awvalid >= 0 && is_active(values[idx.awvalid]);
+        sample.w_valid = idx.wvalid >= 0 && is_active(values[idx.wvalid]);
+        sample.ar_valid = idx.arvalid >= 0 && is_active(values[idx.arvalid]);
+        sample.r_valid = idx.rvalid >= 0 && is_active(values[idx.rvalid]);
         sample.aw_handshake = idx.awvalid >= 0 && idx.awready >= 0 &&
             is_active(values[idx.awvalid]) && is_active(values[idx.awready]);
         sample.w_handshake = idx.wvalid >= 0 && idx.wready >= 0 &&
@@ -762,6 +766,59 @@ bool AxiAnalyzer::get_transactions_in_range(const std::string& name,
         return lhs.match_time < rhs.match_time;
     });
     return true;
+}
+
+const std::vector<AxiAnalyzer::HandshakeIndexEntry>* AxiAnalyzer::handshake_index(
+        const std::string& name, const std::string& channel) const {
+    const AxiResult* result = get_result(name);
+    if (!result) return nullptr;
+    auto& by_channel = handshake_indexes_[name];
+    auto found = by_channel.find(channel);
+    if (found != by_channel.end()) return &found->second;
+
+    std::vector<HandshakeIndexEntry> index;
+    const bool write_channel = channel == "aw" || channel == "w" || channel == "b";
+    const std::vector<AxiTransaction>& txns = write_channel ? result->writes : result->reads;
+    for (const auto& txn : txns) {
+        if (channel == "aw" || channel == "ar") {
+            index.push_back({txn.addr_time, &txn, 0});
+        } else if (channel == "b") {
+            index.push_back({txn.resp_time, &txn, 0});
+        } else if (channel == "w" || channel == "r") {
+            for (size_t i = 0; i < txn.data_handshake_times.size(); ++i)
+                index.push_back({txn.data_handshake_times[i], &txn, i + 1});
+        }
+    }
+    std::sort(index.begin(), index.end(), [](const HandshakeIndexEntry& lhs,
+                                             const HandshakeIndexEntry& rhs) {
+        if (lhs.time != rhs.time) return lhs.time < rhs.time;
+        if (lhs.txn && rhs.txn && lhs.txn->seq != rhs.txn->seq)
+            return lhs.txn->seq < rhs.txn->seq;
+        return lhs.beat_index < rhs.beat_index;
+    });
+    auto inserted = by_channel.emplace(channel, std::move(index));
+    return &inserted.first->second;
+}
+
+bool AxiAnalyzer::get_by_handshake(const std::string& name,
+                                   const std::string& channel,
+                                   npiFsdbTime handshake_time,
+                                   AxiHandshakeMatch& out) const {
+    out = AxiHandshakeMatch();
+    if (channel != "aw" && channel != "w" && channel != "b" &&
+        channel != "ar" && channel != "r") return false;
+    const std::vector<HandshakeIndexEntry>* index = handshake_index(name, channel);
+    if (!index) return false;
+    auto it = std::lower_bound(index->begin(), index->end(), handshake_time,
+        [](const HandshakeIndexEntry& item, npiFsdbTime time) {
+            return item.time < time;
+        });
+    if (it == index->end() || it->time != handshake_time) return false;
+    out.txn = it->txn;
+    out.channel = channel;
+    out.handshake_time = it->time;
+    out.beat_index = it->beat_index;
+    return out.txn != nullptr;
 }
 
 bool AxiAnalyzer::get_outstanding_samples_in_range(const std::string& name,

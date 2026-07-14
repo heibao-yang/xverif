@@ -12,6 +12,7 @@ namespace {
 AxiSample aw(npiFsdbTime time, const char* id = "1", const char* len = "0") {
     AxiSample s;
     s.time = time;
+    s.aw_valid = true;
     s.aw_handshake = true;
     s.awid = id;
     s.awaddr = "100";
@@ -24,10 +25,22 @@ AxiSample aw(npiFsdbTime time, const char* id = "1", const char* len = "0") {
 AxiSample w(npiFsdbTime time, bool last = true) {
     AxiSample s;
     s.time = time;
+    s.w_valid = true;
     s.w_handshake = true;
     s.wlast = last;
     s.wdata = "55";
     s.wstrb = "ff";
+    return s;
+}
+
+AxiSample idle(npiFsdbTime time, bool aw_valid = false, bool w_valid = false,
+               bool ar_valid = false, bool r_valid = false) {
+    AxiSample s;
+    s.time = time;
+    s.aw_valid = aw_valid;
+    s.w_valid = w_valid;
+    s.ar_valid = ar_valid;
+    s.r_valid = r_valid;
     return s;
 }
 
@@ -49,9 +62,35 @@ void test_aw_before_w_without_later_aw() {
     assert(result.writes.size() == 1);
     assert(result.writes[0].phase_order == "aw_before_w");
     assert(result.writes[0].addr_time == 10);
+    assert(result.writes[0].addr_valid_begin_time == 10);
     assert(result.writes[0].first_data_time == 20);
+    assert(result.writes[0].first_data_valid_begin_time == 20);
+    assert(result.writes[0].data_handshake_times == std::vector<npiFsdbTime>({20}));
     assert(result.diagnostics.final_write_outstanding == 0);
     assert(result.diagnostics.incomplete_write_count == 0);
+}
+
+void test_valid_begin_stall_and_back_to_back() {
+    AxiTransactionTracker tracker;
+    tracker.consume(idle(10, true, false));
+    tracker.consume(idle(20, true, false));
+    tracker.consume(aw(30, "1", "1"));
+
+    tracker.consume(idle(40, false, true));
+    tracker.consume(idle(50, false, true));
+    tracker.consume(w(60, false));
+    tracker.consume(w(70, true));
+    tracker.consume(b(80));
+
+    AxiResult result = tracker.finish(0, 90);
+    assert(result.writes.size() == 1);
+    const AxiTransaction& txn = result.writes[0];
+    assert(txn.has_addr_valid_begin_time);
+    assert(txn.addr_valid_begin_time == 10);
+    assert(txn.has_first_data_valid_begin_time);
+    assert(txn.first_data_valid_begin_time == 40);
+    assert(txn.data_handshake_times == std::vector<npiFsdbTime>({60, 70}));
+    assert(txn.data_last == std::vector<bool>({false, true}));
 }
 
 void test_multiple_w_bursts_before_aw() {
@@ -76,6 +115,7 @@ void test_multiple_w_bursts_before_aw() {
 void test_same_cycle_and_dependency_violation() {
     AxiTransactionTracker tracker;
     AxiSample sample = aw(10);
+    sample.w_valid = true;
     sample.w_handshake = true;
     sample.wlast = true;
     sample.wdata = "aa";
@@ -89,6 +129,7 @@ void test_same_cycle_and_dependency_violation() {
 
     AxiTransactionTracker invalid;
     AxiSample all = aw(10);
+    all.w_valid = true;
     all.w_handshake = true;
     all.wlast = true;
     all.wdata = "aa";
@@ -161,6 +202,7 @@ void test_fixed_seed_schedules() {
                 ++expected_aw_first;
             } else if (relation == 1) {
                 AxiSample both = aw(time, id.c_str());
+                both.w_valid = true;
                 both.w_handshake = true;
                 both.wlast = true;
                 both.wdata = "1";
@@ -196,6 +238,7 @@ void test_fixed_seed_schedules() {
 int main() {
     test_aw_before_w_without_later_aw();
     test_multiple_w_bursts_before_aw();
+    test_valid_begin_stall_and_back_to_back();
     test_same_cycle_and_dependency_violation();
     test_multibeat_before_aw_and_pending_diagnostics();
     test_reset_and_orphans();

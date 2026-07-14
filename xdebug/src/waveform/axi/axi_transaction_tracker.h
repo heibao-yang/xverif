@@ -12,7 +12,9 @@ namespace xdebug_waveform {
 
 struct AxiTransaction {
     uint64_t seq = 0;
+    npiFsdbTime addr_valid_begin_time = 0;
     npiFsdbTime addr_time = 0;       // AW/AR handshake time
+    npiFsdbTime first_data_valid_begin_time = 0;
     npiFsdbTime first_data_time = 0; // first W/R beat handshake time
     npiFsdbTime last_data_time = 0;  // WLAST/RLAST handshake time
     npiFsdbTime resp_time = 0;       // B handshake time or RLAST handshake time
@@ -23,8 +25,13 @@ struct AxiTransaction {
     std::string burst;
     std::vector<std::string> data;
     std::vector<std::string> wstrb;
+    std::vector<std::string> data_resp;
+    std::vector<npiFsdbTime> data_handshake_times;
+    std::vector<bool> data_last;
     std::string resp;
     bool is_write = false;
+    bool has_addr_valid_begin_time = false;
+    bool has_first_data_valid_begin_time = false;
     bool is_out_of_order = false;
     bool data_complete = false;
     bool response_dependency_violation = false;
@@ -89,6 +96,10 @@ struct AxiResult {
 struct AxiSample {
     npiFsdbTime time = 0;
     bool reset_active = false;
+    bool aw_valid = false;
+    bool w_valid = false;
+    bool ar_valid = false;
+    bool r_valid = false;
     bool aw_handshake = false;
     bool w_handshake = false;
     bool b_handshake = false;
@@ -123,7 +134,9 @@ public:
 
 private:
     struct WBeat {
+        npiFsdbTime valid_begin_time = 0;
         npiFsdbTime time = 0;
+        bool has_valid_begin_time = false;
         std::string data;
         std::string strb;
         bool last = false;
@@ -144,6 +157,14 @@ private:
     std::map<std::string, int> write_outstanding_by_id_;
     std::map<std::string, int> read_outstanding_by_id_;
     uint64_t next_seq_ = 0;
+    npiFsdbTime aw_valid_begin_time_ = 0;
+    npiFsdbTime w_valid_begin_time_ = 0;
+    npiFsdbTime ar_valid_begin_time_ = 0;
+    npiFsdbTime r_valid_begin_time_ = 0;
+    bool aw_valid_active_ = false;
+    bool w_valid_active_ = false;
+    bool ar_valid_active_ = false;
+    bool r_valid_active_ = false;
     bool finished_ = false;
 };
 

@@ -14,6 +14,13 @@ struct AxiContextTransaction {
     npiFsdbTime match_time = 0;
 };
 
+struct AxiHandshakeMatch {
+    const AxiTransaction* txn = nullptr;
+    std::string channel;
+    npiFsdbTime handshake_time = 0;
+    size_t beat_index = 0;
+};
+
 struct AxiOutstandingSummary {
     size_t sample_count = 0;
     size_t change_point_count = 0;
@@ -106,6 +113,10 @@ public:
                                    npiFsdbTime end,
                                    std::vector<AxiContextTransaction>& out,
                                    int max_results = -1) const;
+    bool get_by_handshake(const std::string& name,
+                          const std::string& channel,
+                          npiFsdbTime handshake_time,
+                          AxiHandshakeMatch& out) const;
 
     bool get_outstanding_samples_in_range(const std::string& name,
                                           npiFsdbTime begin,
@@ -120,14 +131,28 @@ public:
                                         AxiOutstandingSummary& out) const;
 
 private:
+    struct HandshakeIndexEntry {
+        npiFsdbTime time = 0;
+        const AxiTransaction* txn = nullptr;
+        size_t beat_index = 0;
+        HandshakeIndexEntry() = default;
+        HandshakeIndexEntry(npiFsdbTime value_time,
+                            const AxiTransaction* value_txn,
+                            size_t value_beat_index)
+            : time(value_time), txn(value_txn), beat_index(value_beat_index) {}
+    };
     std::map<std::string, AxiResult> results_;
     std::map<std::string, AxiCursor> cursors_;
+    mutable std::map<std::string,
+        std::map<std::string, std::vector<HandshakeIndexEntry>>> handshake_indexes_;
 
     AxiResult* get_result_mut(const std::string& name);
     AxiCursor* get_cursor_mut(const std::string& name);
 
     static bool parse_hex_value(const std::string& hex_str, uint64_t& out);
     static bool id_matches(const std::string& txn_id, const char* id_str);
+    const std::vector<HandshakeIndexEntry>* handshake_index(
+        const std::string& name, const std::string& channel) const;
 };
 
 } // namespace xdebug_waveform
