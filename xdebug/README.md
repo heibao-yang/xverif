@@ -443,7 +443,7 @@ file session 示例：
 
 ### 输出控制
 
-action 默认返回 compact summary/evidence。需要 action schema 明确定义的详细字段时使用 `args.output.verbose:true`；大列表使用 action-specific `line_limit`，完整数据使用对应 export action。top-level `output`、`output.verbosity` 和 public `include_*` 均不受支持。
+action 默认返回 compact summary/evidence。需要 action schema 明确定义的详细字段时使用该 action 的输出参数；大列表使用 action-specific `line_limit`，完整数据使用对应 export action。AXI transaction action 使用 `args.output.include_data:true` 展开逐 beat payload；其它 action 仅在 schema 明确声明时使用 `args.output.verbose:true`。top-level `output` 和 `output.verbosity` 不受支持。
 
 ### 常见意图到 action
 
@@ -461,7 +461,7 @@ action 默认返回 compact summary/evidence。需要 action schema 明确定义
 
 ### 详细输出与限制
 
-只有 action-specific schema 声明 `args.output.verbose` 时才能展开详细字段：
+只有 action-specific schema 声明的输出参数才能展开详细字段。以下是支持 `verbose` 的 action 通用示例；AXI transaction action 改用 `output.include_data`：
 
 ```json
 {
@@ -686,8 +686,26 @@ AXI 的 AW 与 W 是独立通道，`axi.*` 会处理 `aw_before_w`、`same_cycle
 `w_before_aw`，不能假设每个 W handshake 旁边都有 AW handshake。首次
 `axi.query/analysis/pair/timeline/outlier/export` 会为同一 config 建立并缓存唯一
 canonical transaction result，后续 action（包括 export）复用该结果，不再重复扫描
-FSDB。`axi.analysis` 的 `latency`、`osd`、`outstanding` 分别表示完成事务延迟、
+FSDB。`axi.analysis` 的 `latency`、`osd`、`pending` 分别表示完成事务延迟、
 outstanding 统计和扫描结束仍未闭合的事务；`summary.full_scan_count` 应为 1。
+
+`axi.query` 可按 transaction selector 查询，也可用精确握手锚点查询：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "axi.query",
+  "target": {"session_id": "case_a"},
+  "args": {
+    "name": "axi0",
+    "query": {"channel": "w", "handshake_time": "110ns"},
+    "output": {"include_data": false}
+  }
+}
+```
+
+transaction 按 `address/data/response` 分组。address 和 data 返回 `valid_begin_time`；
+data 默认只返回首、末 handshake 时间，`include_data:true` 时才增加逐 beat `beats[]`。
 
 `axi.config.load` 在保存前解析全部信号、检查控制/ID/data-strobe 位宽关系，并确认
 请求的 clock edge 在 FSDB 中存在。写事务同时返回 AW/首末 W/B 时间、
@@ -798,7 +816,7 @@ APB 配置的基础字段为 `paddr/pwdata/prdata/pwrite/penable/psel/clk/rst_n`
 2. 用 `value.batch_at` 取相关握手、状态、数据寄存器。
 3. 用 `trace.driver` 或 `trace.load` 查设计依赖。
 4. 如果两类资源都有，用 `trace.active_driver` 给出当前时间点的生效驱动。
-5. 只有当 compact 证据不足且 schema 支持时，再使用 `args.output.verbose:true`；大结果优先 export。
+5. 只有当 compact 证据不足且 schema 支持时，再使用该 action 的详细输出参数（AXI transaction 为 `args.output.include_data:true`，其它 action 常见为 `verbose:true`）；大结果优先 export。
 
 ## 错误、截断与证据
 

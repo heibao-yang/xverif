@@ -204,7 +204,7 @@ frontend 不直接承载 NPI 重逻辑；NPI/FSDB/engine 能力集中在内部 e
   必须明确给出 binary effective format，不能丢失逐位信息。
 - `edge:"negedge"` 可以携带 `sample_point` 以统一请求形状，但它不改变既有 negedge
   current-value 采样；响应必须给出 requested/effective sampling。
-- 大 payload 默认 compact；只使用 schema 声明的 `args.output.verbose`、action-specific `line_limit` 或 export action 返回细节。
+- 大 payload 默认 compact；只使用 schema 声明的 action-specific 输出参数、`line_limit` 或 export action 返回细节。AXI transaction 的逐 beat payload 统一由 `args.output.include_data` 控制。
 
 ## Combined Active Trace 层
 

@@ -22,7 +22,7 @@
 
 - 默认 compact-first。
 - full/debug 只用于维护工具或排查工具本身。
-- 大列表、timeline、trace、source_text 必须受 action-specific `line_limit`、`args.output.verbose` 或 export action 控制；不要新增 public `include_*` 或裸 `limit`。
+- 大列表、timeline、trace、source_text 必须受 action-specific `line_limit`、schema 明确声明的 `args.output` 参数或 export action 控制；AXI transaction 的逐 beat payload 使用 `output.include_data`，其它 action 不得照抄该参数或新增裸 `limit`。
 - XOUT 与 JSON 输出都要保持结构稳定。
 - 新增错误字段时必须同时检查 JSON response 和 XOUT 渲染；AI 默认看 xout 时也应能直接修正下一次请求。
 

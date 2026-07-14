@@ -182,13 +182,15 @@ inline 配置示例：
 ## AXI latency 异常
 
 1. `axi.analysis(analysis=latency)` 查 read/write 分项、phase-order 和完整性；
-   `analysis=outstanding` 只查扫描结束仍未闭合事务，不能用 `osd` 代替。
+   `analysis=pending` 只查扫描结束仍未闭合事务，不能用 `osd` 代替。
 2. 用 `axi.latency_outlier(method=top_n|threshold)` 从完整候选集筛慢事务，
    `line_limit` 只限制展示。
-3. 对 top abnormal 的 begin/end 设 cursor 或直接用 TimeSpec，再用 `value.batch_at`
-   查 AW/W/B/AR/R valid/ready/id/resp。
+3. 已知握手锚点时优先用 `axi.query(query.channel, query.handshake_time)` 精确反查完整
+   transaction；只有还需旁路信号时，再用 `value.batch_at` 查 AW/W/B/AR/R。
 4. W-first 是合法顺序；检查 `phase_order` 和 B 是否晚于 AW 与 WLAST。需要批量事实用
    `axi.export`，它复用 canonical result，`full_scan_count` 应为 1。
+5. 默认 transaction 只给 address/data/response 的关键时间和信息；只有必须检查逐 beat
+   payload 时才传 `args.output.include_data:true`。
 
 ```json
 {

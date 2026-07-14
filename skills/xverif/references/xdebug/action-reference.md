@@ -61,7 +61,7 @@
 | `apb.cursor` | stable | waveform | 在 APB transfer 间移动游标。 | 基于 APB 查询结果按 op/direction 定位 begin/next/prev 等。 | 交互式浏览 APB 事务。 | required: name, op |
 | `apb.query` | stable | waveform | 查询 APB transfer。 | 按 APB 配置扫描 PSEL/PENABLE/PREADY 等握手和地址数据；第 N 个 transfer 用 1-based `query.index`，多条用 `query.line_limit`。 | 抽取 APB 读写访问。 | required: name<br>use query.index / query.line_limit; do not use legacy quantity fields |
 | `apb.transfer_window` | experimental | waveform | 实验性 APB 窗口分析。 | 围绕指定 APB transfer 返回相关信号窗口。 | 解释单笔 APB 访问现场。 | required: name |
-| `axi.analysis` | stable | waveform | 汇总 AXI 行为。 | 基于 AXI 解析结果统计 channel、latency、stall 等。 | 快速判断 AXI 接口健康度。 | required: name |
+| `axi.analysis` | stable | waveform | 汇总 AXI 行为。 | `analysis` 取 `latency`、`osd` 或 `pending`，分别统计完成事务延迟、outstanding 变化和扫描结束未闭合事务。 | 快速判断 AXI 接口健康度。 | required: name |
 | `axi.export` | stable | waveform | 导出 AXI 数据。 | 按 name 和 time_range 查询 AXI，再按 format/output.path 写出。 | 给外部表格或脚本分析。 | required: name<br>also one of: time_range |
 | `axi.channel_stall` | experimental | waveform | 实验性 AXI stall 分析。 | 按 channel 检查 valid 高 ready 低的持续窗口。 | 定位背压和阻塞。 | required: name |
 | `axi.config.list` | stable | waveform | 列出 AXI 配置。 | 读取 AXI 配置存储；`args:{}` 列全部，`args.name` 显示单个配置详情。 | 查看可用 AXI interface 名称。 | args:{} list all; optional name shows one config |
@@ -69,7 +69,7 @@
 | `axi.cursor` | stable | waveform | 在 AXI transfer 间移动游标。 | 基于 AXI 查询结果按 op/direction 定位事务。 | 交互式浏览 AXI 事务。 | required: name, op |
 | `axi.latency_outlier` | experimental | waveform | 实验性 AXI latency 异常。 | 从配对结果中找超过阈值或分布异常的事务。 | 定位慢事务。 | required: name |
 | `axi.outstanding_timeline` | experimental | waveform | 实验性 AXI outstanding 时间线。 | 跟踪请求和响应，统计未完成事务数量随时间变化。 | 发现 outstanding 积压或乱序风险。 | required: name |
-| `axi.query` | stable | waveform | 查询 AXI channel/transaction。 | 按 AXI 配置扫描 valid/ready 和 channel 字段；第 N 个 transaction 用 1-based `query.index`，多条用 `query.line_limit`。 | 抽取 AXI beat/transaction。 | required: name<br>use query.index / query.line_limit; do not use legacy quantity fields |
+| `axi.query` | stable | waveform | 查询 AXI channel/transaction。 | 第 N 个 transaction 用 1-based `query.index`，多条用 `query.line_limit`；已知锚点时用 `query.channel`（AW/W/B/AR/R）与精确 `query.handshake_time` 反查。逐 beat payload 仅由 `output.include_data` 展开。 | 抽取 AXI beat/transaction 或从握手时间反查整笔事务。 | required: name<br>channel and handshake_time must appear together; do not mix handshake query with transaction selectors |
 | `axi.request_response_pair` | experimental | waveform | 实验性 AXI 请求响应配对。 | 用 ID/address/channel 信息把请求与响应关联。 | 分析 latency 和缺失响应。 | required: name |
 | `counter.statistics` | stable | waveform | 统计计数器行为。 | 按 clock/vld/cnt 采样，分析递增、回绕、停顿和异常。 | 判断计数器是否符合预期。 | required: clock, time_range, vld, cnt |
 | `cursor.delete` | stable | waveform | 删除游标。 | 按 name 从 CursorManager 删除记录。 | 清理不再需要的时间标记。 | required: name |

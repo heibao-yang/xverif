@@ -187,7 +187,7 @@ file transport 是显式例外路径；需要时先读 [xverif-admin transport](
 
 CLI 输出默认优先使用 xout；需要脚本读取 JSON 字段时使用命令行 `--json`。native envelope 顶层不要放输出控制对象，action args 里也不要放旧的输出格式字段。导出文件格式只放在 `args.output.file_format`。
 
-不要使用 `include_*` 参数。需要更多底层字段时，只使用 action-specific `args.output.verbose:true`；如果某个 action schema 没有 `args.output.verbose`，就按默认 compact/xout 读取核心证据或使用对应 export action。
+不要猜测通用 `include_*` 或 `verbose` 参数，只使用 action-specific schema 明确声明的输出参数。AXI transaction action 用 `args.output.include_data:true` 展开逐 beat payload；其它 action 常见为 `args.output.verbose:true`。schema 未声明时按默认 compact/xout 读取核心证据或使用对应 export action。
 
 限制字段要以 action-specific schema 为准。不要把顶层数量字段当成所有 action 的通用字段；例如 APB/AXI query 使用 `args.query.line_limit`，active-driver 链深度使用 top-level `limits.max_depth`。常见形态如下：
 

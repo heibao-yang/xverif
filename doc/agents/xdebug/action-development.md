@@ -94,7 +94,7 @@
 - 在对应 `register_*_handlers.cpp` 注册。
 - handler 接收已校验 request，但仍要检查业务语义，例如 signal 不存在、时间窗口为空、资源不匹配。
 - 错误返回使用稳定 error code，不用自由文本当机器合同。
-- 大数据默认摘要化，详细数据通过 action-specific `line_limit`、`args.output.verbose` 或 export action 控制；不要新增 public `include_*` 或裸 `limit`。
+- 大数据默认摘要化，详细数据通过 action-specific `line_limit`、schema 明确声明的 `args.output` 参数或 export action 控制；AXI transaction 使用 `output.include_data`，其它 action 不得照抄该参数或新增裸 `limit`。
 
 ## 更新 docs 和 skill
 
