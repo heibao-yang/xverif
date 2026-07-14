@@ -1,0 +1,393 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "xdebug.apb.statistics.response.v1",
+  "title": "apb.statistics response",
+  "description": "Count completed APB transactions with optional direction and address filters.",
+  "x-description-zh": "按方向和地址过滤统计已完成 APB 事务。",
+  "x-output_notes": "返回该 action 的 summary/data/error/meta；具体字段以 response schema 和 response example 为准。",
+  "type": "object",
+  "required": [
+    "api_version",
+    "ok",
+    "action",
+    "summary",
+    "data"
+  ],
+  "properties": {
+    "api_version": {
+      "const": "xdebug.v1"
+    },
+    "request_id": {
+      "type": "string"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "action": {
+      "const": "apb.statistics"
+    },
+    "tool": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "build_id": {
+          "type": "string"
+        },
+        "git_revision": {
+          "type": "string"
+        },
+        "schema_revision": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "build_id",
+        "git_revision",
+        "schema_revision"
+      ]
+    },
+    "session": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "daidir": {
+              "type": "string"
+            },
+            "dbdir": {
+              "type": "string"
+            },
+            "dbdir_path": {
+              "type": "string"
+            },
+            "design_file": {
+              "type": "string"
+            },
+            "fsdb": {
+              "type": "string"
+            },
+            "fsdb_file": {
+              "type": "string"
+            },
+            "socket_path": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "string"
+            },
+            "file_dir": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "bind_host": {
+              "type": "string"
+            },
+            "server_host": {
+              "type": "string"
+            },
+            "pid": {
+              "type": "integer"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "server_pid": {
+              "type": "integer"
+            },
+            "created_at": {
+              "type": "integer"
+            },
+            "last_active": {
+              "type": "integer"
+            },
+            "dbdir_mtime": {
+              "type": "integer"
+            },
+            "dbdir_size": {
+              "type": "integer"
+            },
+            "dbdir_dev": {
+              "type": "integer"
+            },
+            "dbdir_inode": {
+              "type": "integer"
+            },
+            "fsdb_mtime": {
+              "type": "integer"
+            },
+            "fsdb_size": {
+              "type": "integer"
+            },
+            "fsdb_dev": {
+              "type": "integer"
+            },
+            "fsdb_inode": {
+              "type": "integer"
+            },
+            "healthy": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "summary": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "scanned_transaction_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "matched_transaction_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "matched_read_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "matched_write_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unresolved_transaction_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "filter_applied": {
+              "type": "boolean"
+            },
+            "analysis_complete": {
+              "type": "boolean"
+            },
+            "analysis_quality": {
+              "enum": [
+                "complete",
+                "ambiguous"
+              ]
+            },
+            "full_scan_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "scanned_transaction_count",
+            "matched_transaction_count",
+            "matched_read_count",
+            "matched_write_count",
+            "unresolved_transaction_count",
+            "filter_applied",
+            "analysis_complete",
+            "analysis_quality",
+            "full_scan_count"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "error"
+            },
+            "error_code": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "error_code"
+          ]
+        }
+      ]
+    },
+    "data": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "object",
+              "properties": {
+                "direction": {
+                  "enum": [
+                    "all",
+                    "read",
+                    "write"
+                  ]
+                },
+                "address": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "enum": [
+                        "exact",
+                        "range",
+                        "mask"
+                      ]
+                    },
+                    "values": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "begin": {
+                      "type": "string"
+                    },
+                    "end": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    },
+                    "mask": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "mode"
+                  ]
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "direction"
+              ]
+            },
+            "notes": {
+              "type": "object",
+              "properties": {
+                "unresolved_transaction_count": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "unresolved_transaction_count"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "filter",
+            "notes"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "error": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "recoverable": {
+              "type": "boolean"
+            },
+            "error_layer": {
+              "type": "string"
+            },
+            "invalid_arg": {
+              "type": "string"
+            },
+            "expected": {
+              "type": "string"
+            },
+            "received": {},
+            "received_type": {
+              "type": "string"
+            },
+            "allowed_values": {},
+            "available_values": {},
+            "did_you_mean": {},
+            "schema_path": {
+              "type": "string"
+            },
+            "required_any_of": {},
+            "missing_name": {
+              "type": "string"
+            },
+            "missing_resource": {
+              "type": "string"
+            },
+            "next_actions": {},
+            "example_note": {
+              "type": "string"
+            },
+            "correct_example": {},
+            "cause_code": {
+              "type": "string"
+            },
+            "validation": {}
+          },
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "message",
+            "recoverable",
+            "error_layer"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

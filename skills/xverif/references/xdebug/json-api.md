@@ -455,3 +455,29 @@ INTERNAL_ERROR
   }
 }
 ```
+
+已完成协议事务计数使用独立 action，不把统计塞进 query：
+
+```json
+{
+  "api_version": "xdebug.v1",
+  "action": "apb.statistics",
+  "target": {
+    "session_id": "case_a"
+  },
+  "args": {
+    "name": "apb0",
+    "filter": {
+      "direction": "write",
+      "address": {
+        "mode": "exact",
+        "values": ["0x0", "0x4"]
+      }
+    }
+  }
+}
+```
+
+AXI 的 `filter.ids` 为非空队列，队列内部取 OR；direction、IDs、address 三类条件取
+AND。address 的 exact/range/mask 只能出现一种。返回中的
+`data.notes.unresolved_transaction_count` 与 XOUT `notes` block 固定解释 unresolved 计数。

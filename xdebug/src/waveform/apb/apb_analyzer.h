@@ -20,10 +20,19 @@ struct ApbContextTransaction {
     const ApbTransaction* txn = nullptr;
 };
 
+struct ApbDiagnostics {
+    size_t sample_count = 0;
+    size_t full_scan_count = 0;
+    bool analysis_complete = true;
+    npiFsdbTime scan_begin = 0;
+    npiFsdbTime scan_end = 0;
+};
+
 struct ApbResult {
     std::vector<const ApbTransaction*> all;
     std::vector<ApbTransaction> writes;
     std::vector<ApbTransaction> reads;
+    ApbDiagnostics diagnostics;
 };
 
 struct ApbCursor {
@@ -37,6 +46,7 @@ public:
     // Analyze and cache result for the given config name.
     // If already cached, returns cached result.
     bool analyze(const std::string& name, npiFsdbFileHandle file, const ApbConfig& config);
+    const ApbResult* get_result(const std::string& name) const;
 
     // Getters for wr/rd counts
     size_t get_write_count(const std::string& name) const;
@@ -86,7 +96,6 @@ private:
     std::map<std::string, ApbResult> results_;
     std::map<std::string, ApbCursor> cursors_;
 
-    const ApbResult* get_result(const std::string& name) const;
     ApbResult* get_result_mut(const std::string& name);
     ApbCursor* get_cursor_mut(const std::string& name);
     static bool parse_hex_value(const std::string& hex_str, uint64_t& out);

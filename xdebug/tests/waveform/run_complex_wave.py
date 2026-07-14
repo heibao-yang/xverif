@@ -1216,6 +1216,80 @@ def run_axi(xdebug, fsdb, sim_log=AXI_SIM_LOG, handshake_oracle_path=AXI_HANDSHA
         wr = r.query("axi.query", args={"name": "axi0", "direction": "write"})
         rd = r.query("axi.query", args={"name": "axi0", "direction": "read"})
         require(wr["summary"].get("count", 0) > 0 and rd["summary"].get("count", 0) > 0, "AXI query count is empty")
+        expected_log = parse_axi_expected_log(sim_log)
+        expected_records = expected_log["WR"] + expected_log["RD"]
+
+        def numeric_value(value):
+            return int(normalize_sv_hex(value)[2:], 16)
+
+        all_statistics = r.query("axi.statistics", args={"name": "axi0"})
+        require(all_statistics["summary"]["scanned_transaction_count"] == 2 * expected_count and
+                all_statistics["summary"]["matched_transaction_count"] == 2 * expected_count and
+                all_statistics["summary"]["matched_read_count"] == expected_count and
+                all_statistics["summary"]["matched_write_count"] == expected_count and
+                all_statistics["summary"]["unresolved_transaction_count"] == 0 and
+                all_statistics["summary"]["full_scan_count"] == 1,
+                "AXI unfiltered statistics mismatch")
+
+        selected_ids = list(range(min(num_ids, 2)))
+        selected_addresses = sorted({numeric_value(row["addr"]) for row in expected_records})[:2]
+        exact_expected = sum(
+            1 for row in expected_log["WR"]
+            if numeric_value(row["id"]) in selected_ids and
+            numeric_value(row["addr"]) in selected_addresses
+        )
+        exact_statistics = r.query("axi.statistics", args={
+            "name": "axi0",
+            "filter": {
+                "direction": "write",
+                "ids": [str(value) for value in selected_ids],
+                "address": {
+                    "mode": "exact",
+                    "values": ["0x{:x}".format(value) for value in selected_addresses],
+                },
+            },
+        })
+        require(exact_statistics["summary"]["matched_transaction_count"] == exact_expected and
+                exact_statistics["summary"]["matched_read_count"] == 0 and
+                exact_statistics["summary"]["matched_write_count"] == exact_expected and
+                exact_statistics["summary"]["full_scan_count"] == 1,
+                "AXI direction/ID/exact-address AND statistics mismatch")
+
+        all_addresses = sorted({numeric_value(row["addr"]) for row in expected_records})
+        range_begin = all_addresses[len(all_addresses) // 4]
+        range_end = all_addresses[(3 * len(all_addresses)) // 4]
+        range_expected = sum(
+            range_begin <= numeric_value(row["addr"]) <= range_end
+            for row in expected_records
+        )
+        range_statistics = r.query("axi.statistics", args={
+            "name": "axi0",
+            "filter": {"address": {"mode": "range",
+                                    "begin": "0x{:x}".format(range_begin),
+                                    "end": "0x{:x}".format(range_end)}},
+        })
+        require(range_statistics["summary"]["matched_transaction_count"] == range_expected and
+                range_statistics["summary"]["full_scan_count"] == 1,
+                "AXI range-address statistics mismatch")
+
+        mask_value = all_addresses[0]
+        mask = 0xff
+        mask_expected = sum(
+            (numeric_value(row["addr"]) & mask) == (mask_value & mask)
+            for row in expected_log["RD"]
+        )
+        mask_statistics = r.query("axi.statistics", args={
+            "name": "axi0",
+            "filter": {"direction": "read",
+                       "address": {"mode": "mask",
+                                   "value": "0x{:x}".format(mask_value),
+                                   "mask": "0x{:x}".format(mask)}},
+        })
+        require(mask_statistics["summary"]["matched_transaction_count"] == mask_expected and
+                mask_statistics["summary"]["matched_read_count"] == mask_expected and
+                mask_statistics["summary"]["matched_write_count"] == 0 and
+                mask_statistics["summary"]["full_scan_count"] == 1,
+                "AXI mask-address statistics mismatch")
         compact_txn = r.query(
             "axi.query",
             args={"name": "axi0", "direction": "write", "query": {"index": 1}},
@@ -1327,7 +1401,6 @@ def run_axi(xdebug, fsdb, sim_log=AXI_SIM_LOG, handshake_oracle_path=AXI_HANDSHA
         stall = r.query("axi.channel_stall", args={"name": "axi0", "channel": "r", "time_range": tr, "rules": {"max_wait_cycles": 2}, "line_limit": 1000000})
         require(stall["summary"]["sample_count"] > 0, "AXI channel_stall did not sample")
 
-        expected_log = parse_axi_expected_log(sim_log)
         require_axi_delay_matrix(sim_log, expected_count,
                                  min_random_delay, max_random_delay)
         handshake_oracle = parse_axi_handshake_oracle(handshake_oracle_path)

@@ -319,6 +319,95 @@ def test_axi_response_schemas_are_strict_and_synced(xdebug_root: Path) -> None:
 
 
 @pytest.mark.contract
+def test_protocol_statistics_response_schemas_are_strict_and_synced(
+    xdebug_root: Path,
+) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(xdebug_root / "tools" / "sync_protocol_statistics_response_schemas.py"),
+            "--check",
+        ],
+        cwd=xdebug_root.parent,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    for action in ("apb.statistics", "axi.statistics"):
+        schema = _load_json(
+            xdebug_root / "schemas" / "v1" / "actions" /
+            ("%s.response.schema.json" % action)
+        )
+        assert schema.get("additionalProperties") is False, action
+        example = _load_json(
+            xdebug_root / "examples" / "responses" / ("%s.basic.json" % action)
+        )
+        jsonschema.Draft202012Validator(schema).validate(example)
+
+
+@pytest.mark.contract
+def test_protocol_statistics_request_filter_contract(xdebug_root: Path) -> None:
+    def validator(action: str) -> jsonschema.Draft202012Validator:
+        return jsonschema.Draft202012Validator(_load_json(
+            xdebug_root / "schemas" / "v1" / "actions" /
+            ("%s.request.schema.json" % action)
+        ))
+
+    target = {"session_id": "case_a"}
+    apb = validator("apb.statistics")
+    axi = validator("axi.statistics")
+    apb.validate({
+        "api_version": "xdebug.v1", "action": "apb.statistics",
+        "target": target, "args": {"name": "apb0"},
+    })
+    for address in (
+        {"mode": "exact", "values": ["0x0", "'h4"]},
+        {"mode": "range", "begin": "0x0", "end": "0xff"},
+        {"mode": "mask", "value": "0x10", "mask": "0xf0"},
+    ):
+        apb.validate({
+            "api_version": "xdebug.v1", "action": "apb.statistics",
+            "target": target,
+            "args": {"name": "apb0", "filter": {"address": address}},
+        })
+    axi.validate({
+        "api_version": "xdebug.v1", "action": "axi.statistics",
+        "target": target,
+        "args": {"name": "axi0", "filter": {
+            "direction": "write", "ids": ["1", "3"],
+            "address": {"mode": "exact", "values": ["0x1000"]},
+        }},
+    })
+
+    invalid_requests = (
+        (apb, {"name": "apb0", "filter": {"ids": ["1"]}}),
+        (apb, {"name": "apb0", "filter": {"address": {
+            "mode": "exact", "values": [],
+        }}}),
+        (axi, {"name": "axi0", "filter": {"ids": []}}),
+        (axi, {"name": "axi0", "filter": {"address": {
+            "mode": "range", "begin": "0", "end": "1", "mask": "1",
+        }}}),
+    )
+    for current_validator, args in invalid_requests:
+        with pytest.raises(jsonschema.ValidationError):
+            current_validator.validate({
+                "api_version": "xdebug.v1",
+                "action": "axi.statistics" if current_validator is axi else "apb.statistics",
+                "target": target,
+                "args": args,
+            })
+
+    with pytest.raises(jsonschema.ValidationError):
+        axi.validate({
+            "api_version": "xdebug.v1", "action": "axi.statistics",
+            "args": {"name": "axi0"},
+        })
+
+
+@pytest.mark.contract
 def test_waveform_expression_contract_schemas_are_strict(xdebug_root: Path) -> None:
     value_batch_schema = _load_json(
         xdebug_root / "schemas" / "v1" / "actions" / "value.batch_at.request.schema.json"

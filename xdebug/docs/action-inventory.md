@@ -73,10 +73,12 @@ example 和 contract test 迁移使用。状态定义：
 | `apb.config.load` | waveform | stable | waveform | waveform engine forward | partial |
 | `apb.config.list` | waveform | stable | waveform | waveform engine forward | partial |
 | `apb.query` | waveform | stable | waveform | waveform engine forward | regression |
+| `apb.statistics` | waveform | stable | waveform | waveform engine forward | regression |
 | `apb.cursor` | waveform | stable | waveform | waveform engine forward | partial |
 | `axi.config.load` | waveform | stable | waveform | waveform engine forward | partial |
 | `axi.config.list` | waveform | stable | waveform | waveform engine forward | partial |
 | `axi.query` | waveform | stable | waveform | waveform engine forward | regression |
+| `axi.statistics` | waveform | stable | waveform | waveform engine forward | regression |
 | `axi.cursor` | waveform | stable | waveform | waveform engine forward | partial |
 | `axi.analysis` | waveform | stable | waveform | waveform engine forward | regression |
 | `axi.export` | waveform | stable | waveform | waveform engine forward | targeted |

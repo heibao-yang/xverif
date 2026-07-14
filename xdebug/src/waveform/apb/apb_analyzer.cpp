@@ -137,6 +137,11 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
         }, scan_error, sample_count, truncated)) {
         return false;
     }
+    result.diagnostics.sample_count = static_cast<size_t>(sample_count);
+    result.diagnostics.full_scan_count = 1;
+    result.diagnostics.analysis_complete = !truncated;
+    result.diagnostics.scan_begin = min_time;
+    result.diagnostics.scan_end = max_time;
     // Sort by time just in case (though VCT should naturally be in order)
     auto cmp = [](const ApbTransaction& a, const ApbTransaction& b) { return a.time < b.time; };
     std::sort(result.writes.begin(), result.writes.end(), cmp);

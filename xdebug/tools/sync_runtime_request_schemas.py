@@ -127,6 +127,7 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "apb.config.list": {"name"},
     "apb.config.load": {"config", "config_path"},
     "apb.query": {"direction", "address", "addr", "query", "last"},
+    "apb.statistics": {"filter"},
     "apb.transfer_window": {"line_limit", "time_range"},
     "axi.analysis": {"analysis", "direction", "line_limit"},
     "axi.channel_stall": {"channel", "line_limit", "rules", "time_range"},
@@ -138,6 +139,7 @@ EXTRA_ARGS_BY_ACTION: dict[str, set[str]] = {
     "axi.outstanding_timeline": {"direction", "line_limit", "time_range"},
     "axi.query": {"direction", "address", "addr", "id", "query", "last", "output"},
     "axi.request_response_pair": {"direction", "line_limit", "time_range", "output"},
+    "axi.statistics": {"filter"},
     "batch": {"mode"},
     "counter.statistics": {"edge", "line_limit", "max_samples", "sample_point"},
     "detect_abnormal": {"line_limit", "time_range", "value_format"},
@@ -292,6 +294,8 @@ def collect_arg_schemas(specs: list[dict[str, Any]]) -> dict[str, dict[str, Any]
             props = schema.get("properties", {}).get("args", {}).get("properties", {})
             if isinstance(props, dict):
                 for key, value in props.items():
+                    if not isinstance(value, dict):
+                        continue
                     if key not in arg_schemas:
                         arg_schemas[key] = copy.deepcopy(value)
     for key, value in ADDITIONAL_ARG_SCHEMAS.items():
@@ -371,12 +375,15 @@ def allowed_args_for_spec(spec: dict[str, Any]) -> set[str]:
 
 
 def protocol_config_schema(required_signals: list[str], description: str) -> dict[str, Any]:
-    properties = {
-        signal: {"type": "string", "minLength": 1}
-        for signal in required_signals
-    }
-    properties["edge"] = {"type": "string", "enum": ["posedge", "negedge", "dual"]}
-    properties["sample_point"] = {"type": "string", "enum": ["before", "after"]}
+    properties: dict[str, Any] = {}
+    for signal in required_signals:
+        properties[signal] = {"type": "string", "minLength": 1}
+        if signal == "rst_n" and "paddr" in required_signals:
+            properties["edge"] = {"type": "string", "enum": ["posedge", "negedge", "dual"]}
+            properties["sample_point"] = {"type": "string", "enum": ["before", "after"]}
+    if "edge" not in properties:
+        properties["edge"] = {"type": "string", "enum": ["posedge", "negedge", "dual"]}
+        properties["sample_point"] = {"type": "string", "enum": ["before", "after"]}
     return {
         "type": "object",
         "description": description,
@@ -386,6 +393,71 @@ def protocol_config_schema(required_signals: list[str], description: str) -> dic
     }
 
 
+def protocol_statistics_filter_schema(allow_ids: bool) -> dict[str, Any]:
+    literal = {
+        "type": "string",
+        "minLength": 1,
+        "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
+        "x-description-zh": "不含 X/Z、宽度不超过 64 bit 的整数、十六进制或 SystemVerilog literal。",
+    }
+    exact = {
+        "type": "object",
+        "required": ["mode", "values"],
+        "properties": {
+            "mode": {"const": "exact"},
+            "values": {
+                "type": "array", "minItems": 1, "uniqueItems": True,
+                "items": copy.deepcopy(literal),
+            },
+        },
+        "additionalProperties": False,
+    }
+    range_filter = {
+        "type": "object",
+        "required": ["mode", "begin", "end"],
+        "properties": {
+            "mode": {"const": "range"},
+            "begin": copy.deepcopy(literal),
+            "end": copy.deepcopy(literal),
+        },
+        "additionalProperties": False,
+    }
+    mask = {
+        "type": "object",
+        "required": ["mode", "value", "mask"],
+        "properties": {
+            "mode": {"const": "mask"},
+            "value": copy.deepcopy(literal),
+            "mask": copy.deepcopy(literal),
+        },
+        "additionalProperties": False,
+    }
+    properties: dict[str, Any] = {
+        "direction": {
+            "type": "string", "enum": ["all", "read", "write"], "default": "all",
+            "description": "Transaction direction filter.",
+            "x-description-zh": "事务方向过滤；默认 all。",
+        },
+        "address": {
+            "oneOf": [exact, range_filter, mask],
+            "description": "Exactly one address filtering mode: exact queue, inclusive range, or value/mask.",
+            "x-description-zh": "地址只能选择精确值队列、闭区间或 value/mask 三种模式之一。",
+        },
+    }
+    if allow_ids:
+        properties["ids"] = {
+            "type": "array", "minItems": 1, "uniqueItems": True,
+            "items": copy.deepcopy(literal),
+            "description": "AXI transaction ID queue; values are ORed within the queue.",
+            "x-description-zh": "AXI ID 队列，队列内部取 OR。",
+        }
+    return {
+        "type": "object",
+        "properties": properties,
+        "additionalProperties": False,
+        "description": "Completed-transaction filters; direction, IDs, and address are combined with AND.",
+        "x-description-zh": "已完成事务过滤；方向、ID 和地址三类条件取 AND。",
+    }
 def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[str, dict[str, Any]]) -> dict[str, Any]:
     action = spec["name"]
     updated = copy.deepcopy(schema)
@@ -403,12 +475,22 @@ def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[
     properties["action"] = {"type": "string", "enum": [action]}
     if spec.get("required_target"):
         updated["required"].append("target")
+        target_properties = {
+            "session_id": {"type": "string", "description": PARAM_DESCRIPTIONS["session_id"]},
+        }
+        # engine_forward requests are enriched by Dispatcher::resolve_target()
+        # before the already-open session receives and validates them.  Keep
+        # that internal routed form inside the same strict schema contract.
+        if spec.get("handler_kind") == "engine_forward":
+            target_properties.update({
+                "daidir": {"type": "string"},
+                "fsdb": {"type": "string"},
+                "mode": {"type": "string", "enum": ["design", "waveform", "combined"]},
+            })
         properties["target"] = {
             "type": "object",
             "required": list(spec["required_target"]),
-            "properties": {
-                "session_id": {"type": "string", "description": PARAM_DESCRIPTIONS["session_id"]},
-            },
+            "properties": target_properties,
             "additionalProperties": False,
         }
     else:
@@ -428,6 +510,10 @@ def sync_schema(schema: dict[str, Any], spec: dict[str, Any], arg_schemas: dict[
         selected_props["query"] = copy.deepcopy(arg_schemas["protocol_query"])
         if action == "axi.query" and "direction" in selected_props:
             selected_props["direction"] = {"type": "string", "enum": ["write", "read"]}
+    if action in ("apb.statistics", "axi.statistics"):
+        selected_props["filter"] = protocol_statistics_filter_schema(
+            allow_ids=action == "axi.statistics"
+        )
     if action == "axi.analysis" and "analysis" in selected_props:
         selected_props["analysis"] = copy.deepcopy(ADDITIONAL_ARG_SCHEMAS["analysis"])
     if action == "apb.config.load" and "config" in selected_props:

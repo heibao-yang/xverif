@@ -209,6 +209,43 @@
       "preferred_alternative": {}
     },
     {
+      "name": "apb.statistics",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/actions/apb.statistics.request.schema.json",
+        "response": "schemas/v1/actions/apb.statistics.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/apb.statistics.basic.json"
+        ],
+        "response": [
+          "examples/responses/apb.statistics.basic.json"
+        ]
+      },
+      "required_args": [
+        "name"
+      ],
+      "required_target": [
+        "session_id"
+      ],
+      "description_en": "Count completed APB transactions with optional direction and address filters.",
+      "description_zh": "按方向和地址过滤统计已完成 APB 事务。",
+      "purposes": [
+        "analyze"
+      ],
+      "use_for": [
+        "Count completed APB read and write transactions after applying protocol filters."
+      ],
+      "do_not_use_for": [
+        "Inspecting individual APB transaction payloads or pending transfers."
+      ],
+      "preferred_alternative": {}
+    },
+    {
       "name": "axi.analysis",
       "category": "waveform",
       "status": "stable",
@@ -556,6 +593,43 @@
       ],
       "do_not_use_for": [
         "Tasks outside this action's documented contract."
+      ],
+      "preferred_alternative": {}
+    },
+    {
+      "name": "axi.statistics",
+      "category": "waveform",
+      "status": "stable",
+      "requires": "waveform",
+      "handler_kind": "engine_forward",
+      "schemas": {
+        "request": "schemas/v1/actions/axi.statistics.request.schema.json",
+        "response": "schemas/v1/actions/axi.statistics.response.schema.json"
+      },
+      "examples": {
+        "request": [
+          "examples/requests/axi.statistics.basic.json"
+        ],
+        "response": [
+          "examples/responses/axi.statistics.basic.json"
+        ]
+      },
+      "required_args": [
+        "name"
+      ],
+      "required_target": [
+        "session_id"
+      ],
+      "description_en": "Count completed AXI transactions with optional direction, ID, and address filters.",
+      "description_zh": "按方向、ID 和地址过滤统计已完成 AXI 事务。",
+      "purposes": [
+        "analyze"
+      ],
+      "use_for": [
+        "Count completed AXI read and write transactions after applying protocol filters."
+      ],
+      "do_not_use_for": [
+        "Inspecting individual AXI payload beats or pending transactions."
       ],
       "preferred_alternative": {}
     },

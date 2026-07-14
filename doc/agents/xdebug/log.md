@@ -1,5 +1,11 @@
 # xdebug 架构说明书维护日志
 
+## 2026-07-14
+
+- 新增 `apb.statistics` / `axi.statistics`，基于 canonical 协议缓存按方向、AXI ID 与
+  exact/range/mask 地址过滤统计 completed transaction；补齐 APB scan diagnostics，
+  XOUT 固定解释 `unresolved_transaction_count`，避免 AI 猜测字段语义。
+
 ## 2026-07-07
 
 - 初始化 `doc/agents/xdebug/` 说明书目录。

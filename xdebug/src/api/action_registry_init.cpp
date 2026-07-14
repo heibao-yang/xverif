@@ -76,6 +76,7 @@ void apply_arg_contract(ActionSpec& spec) {
         {"apb.config.load", {"name"}, 1},
         {"apb.cursor", {"name", "op"}, 2},
         {"apb.query", {"name"}, 1},
+        {"apb.statistics", {"name"}, 1},
         {"apb.transfer_window", {"name"}, 1},
         {"axi.analysis", {"name"}, 1},
         {"axi.export", {"name"}, 1},
@@ -86,6 +87,7 @@ void apply_arg_contract(ActionSpec& spec) {
         {"axi.outstanding_timeline", {"name"}, 1},
         {"axi.query", {"name"}, 1},
         {"axi.request_response_pair", {"name"}, 1},
+        {"axi.statistics", {"name"}, 1},
         {"batch", {"requests"}, 1},
         {"counter.statistics", {"clock", "time_range", "vld", "cnt"}, 4},
         {"cursor.delete", {"name"}, 1},
@@ -140,7 +142,8 @@ void apply_arg_contract(ActionSpec& spec) {
     const char* cursor_direction[] = {"write", "read", "all"};
     const char* cursor_op[] = {"begin", "next", "prev", "pre", "last"};
     const char* value_format[] = {"h", "hex", "b", "bin", "binary", "d", "dec", "decimal", "array_indexed"};
-    if (spec.name == "apb.query") {
+    if (spec.name == "apb.query" || spec.name == "apb.statistics" ||
+        spec.name == "axi.statistics") {
         allow_values(spec, "direction", apb_query_direction);
     } else if (spec.name == "axi.query") {
         allow_values(spec, "direction", direction);
@@ -214,10 +217,12 @@ void register_waveform(ActionRegistry& r) {
         {"apb.config.load", ActionStatus::Stable},
         {"apb.config.list", ActionStatus::Stable},
         {"apb.query", ActionStatus::Stable},
+        {"apb.statistics", ActionStatus::Stable},
         {"apb.cursor", ActionStatus::Stable},
         {"axi.config.load", ActionStatus::Stable},
         {"axi.config.list", ActionStatus::Stable},
         {"axi.query", ActionStatus::Stable},
+        {"axi.statistics", ActionStatus::Stable},
         {"axi.cursor", ActionStatus::Stable},
         {"axi.analysis", ActionStatus::Stable},
         {"axi.export", ActionStatus::Stable},

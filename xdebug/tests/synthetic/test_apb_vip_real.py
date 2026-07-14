@@ -203,6 +203,95 @@ def test_apb_vip_real_wait_state_and_error_actions(
         ]
         assert transaction_times == sorted(transaction_times)
 
+        all_statistics = _query(
+            cli_runner,
+            {
+                "api_version": "xdebug.v1",
+                "action": "apb.statistics",
+                "target": target,
+                "args": {"name": "apb0"},
+            },
+            case_name="apb-vip-statistics-all",
+            artifact_root=artifact_root,
+            manifest=manifest,
+        )
+        assert all_statistics["summary"] == {
+            "name": "apb0",
+            "scanned_transaction_count": 10,
+            "matched_transaction_count": 10,
+            "matched_read_count": 5,
+            "matched_write_count": 5,
+            "unresolved_transaction_count": 0,
+            "filter_applied": False,
+            "analysis_complete": True,
+            "analysis_quality": "complete",
+            "full_scan_count": 1,
+        }
+        assert "含 X/Z 或不可解析" in all_statistics["data"]["notes"][
+            "unresolved_transaction_count"
+        ]
+
+        filtered_statistics = _query(
+            cli_runner,
+            {
+                "api_version": "xdebug.v1",
+                "action": "apb.statistics",
+                "target": target,
+                "args": {
+                    "name": "apb0",
+                    "filter": {
+                        "direction": "write",
+                        "address": {"mode": "exact", "values": ["0x4"]},
+                    },
+                },
+            },
+            case_name="apb-vip-statistics-filtered",
+            artifact_root=artifact_root,
+            manifest=manifest,
+        )
+        assert filtered_statistics["summary"]["matched_transaction_count"] == 2
+        assert filtered_statistics["summary"]["matched_read_count"] == 0
+        assert filtered_statistics["summary"]["matched_write_count"] == 2
+        assert filtered_statistics["summary"]["full_scan_count"] == 1
+
+        range_statistics = _query(
+            cli_runner,
+            {
+                "api_version": "xdebug.v1",
+                "action": "apb.statistics",
+                "target": target,
+                "args": {
+                    "name": "apb0",
+                    "filter": {"address": {"mode": "range",
+                                           "begin": "0x4", "end": "0xc"}},
+                },
+            },
+            case_name="apb-vip-statistics-range",
+            artifact_root=artifact_root,
+            manifest=manifest,
+        )
+        assert range_statistics["summary"]["matched_transaction_count"] == 7
+        assert range_statistics["summary"]["full_scan_count"] == 1
+
+        mask_statistics = _query(
+            cli_runner,
+            {
+                "api_version": "xdebug.v1",
+                "action": "apb.statistics",
+                "target": target,
+                "args": {
+                    "name": "apb0",
+                    "filter": {"address": {"mode": "mask",
+                                           "value": "0x8", "mask": "0x8"}},
+                },
+            },
+            case_name="apb-vip-statistics-mask",
+            artifact_root=artifact_root,
+            manifest=manifest,
+        )
+        assert mask_statistics["summary"]["matched_transaction_count"] == 4
+        assert mask_statistics["summary"]["full_scan_count"] == 1
+
         for missing_signal in ("pready", "pslverr"):
             incomplete = dict(config)
             incomplete.pop(missing_signal)

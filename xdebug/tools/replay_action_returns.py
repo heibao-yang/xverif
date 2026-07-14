@@ -971,7 +971,7 @@ def render_matrix(cases: list[ReplayCase], static_rows: list[dict[str, Any]] | N
     lines = [
         "# xdebug Action Return Replay Matrix（2026-07-09）",
         "",
-        "本矩阵由 `xdebug/tools/replay_action_returns.py --write-matrix` 生成，覆盖 registry 中的 70 个 action。",
+        "本矩阵由 `xdebug/tools/replay_action_returns.py --write-matrix` 生成，覆盖 registry 中的 72 个 action。",
         "",
         "| # | action | family | requires | setup | native JSON | native xout | MCP JSON | MCP xout | L0 static |",
         "|---:|---|---|---|---|---|---|---|---|---|",

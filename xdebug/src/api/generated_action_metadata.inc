@@ -53,6 +53,15 @@ if (spec.name == "apb.transfer_window") {
     spec.preferred_alternative = Json::object();
     return;
 }
+if (spec.name == "apb.statistics") {
+    spec.description_en = "Count completed APB transactions with optional direction and address filters.";
+    spec.description_zh = "按方向和地址过滤统计已完成 APB 事务。";
+    spec.purposes = {"analyze"};
+    spec.use_for = {"Count completed APB read and write transactions after applying protocol filters."};
+    spec.do_not_use_for = {"Inspecting individual APB transaction payloads or pending transfers."};
+    spec.preferred_alternative = Json::object();
+    return;
+}
 if (spec.name == "axi.analysis") {
     spec.description_en = "Analyze AXI latency, pending transactions, and outstanding activity.";
     spec.description_zh = "汇总 AXI 行为。";
@@ -140,6 +149,15 @@ if (spec.name == "axi.request_response_pair") {
     spec.purposes = {"analyze"};
     spec.use_for = {"Pair AXI requests with their responses."};
     spec.do_not_use_for = {"Tasks outside this action's documented contract."};
+    spec.preferred_alternative = Json::object();
+    return;
+}
+if (spec.name == "axi.statistics") {
+    spec.description_en = "Count completed AXI transactions with optional direction, ID, and address filters.";
+    spec.description_zh = "按方向、ID 和地址过滤统计已完成 AXI 事务。";
+    spec.purposes = {"analyze"};
+    spec.use_for = {"Count completed AXI read and write transactions after applying protocol filters."};
+    spec.do_not_use_for = {"Inspecting individual AXI payload beats or pending transactions."};
     spec.preferred_alternative = Json::object();
     return;
 }

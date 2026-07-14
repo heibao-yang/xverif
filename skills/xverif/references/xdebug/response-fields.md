@@ -873,6 +873,22 @@ APB config 字段：`name`、`paddr`、`pwdata`、`prdata`、`pwrite`、`penable
 | `data.addr` | string | 地址，`'h...` |
 | `data.data` | string | 数据，`'h...` |
 
+### `apb.statistics`
+
+只统计 canonical APB 缓存中的已完成事务。`filter.direction` 与 `filter.address` 取 AND，
+address 只能使用 exact 队列、闭区间 range 或 value/mask 一种模式。
+
+| 路径 | 类型 | 含义 |
+| --- | --- | --- |
+| `summary.scanned_transaction_count` | number | 过滤前的 completed transaction 总数 |
+| `summary.matched_transaction_count` | number | 最终匹配数 |
+| `summary.matched_read_count` / `matched_write_count` | number | 匹配的读/写事务数 |
+| `summary.unresolved_transaction_count` | number | 被引用的 address/ID 含 X/Z 或不可解析，导致最终过滤结果无法判断的事务数 |
+| `summary.analysis_quality` | string | `complete` 或 `ambiguous` |
+| `summary.full_scan_count` | number | canonical FSDB 完整扫描次数；同一 config 应保持 1 |
+| `data.filter` | object | 标准化后的有效过滤条件 |
+| `data.notes.unresolved_transaction_count` | string | XOUT/JSON 中固定返回的 unresolved 释义 |
+
 ### `apb.cursor`
 
 `apb.cursor` 使用 `args.op` 选择 `begin`、`next`、`pre`、`last`，返回字段同具体 transaction：
@@ -962,6 +978,12 @@ handshake 后的下一采样点就是新 payload 的 begin。
 | `data.latency.write_phase_order_counts` | object | `aw_before_w/same_cycle/w_before_aw` 计数 |
 | `data.osd.read` / `data.osd.write` | object | outstanding min/max/avg/current/final |
 | `data.pending_transactions[]` | array | `analysis=pending` 的扫描结束未闭合 transaction |
+
+### `axi.statistics`
+
+返回字段与 `apb.statistics` 的统计 summary 相同；额外支持 `data.filter.ids`。ID 队列内部
+取 OR，direction、IDs、address 三类条件取 AND。只统计 completed transaction；pending
+仍使用 `axi.analysis(analysis=pending)`。
 
 ### `axi.export`
 

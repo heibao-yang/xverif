@@ -1,0 +1,94 @@
+#include "service/engine_action_handler.h"
+#include "service/engine_action_registry.h"
+#include "service/engine_globals.h"
+#include "protocol_action_helpers.h"
+#include "protocol_statistics_filter.h"
+
+#include "waveform/apb/apb_analyzer.h"
+#include "waveform/apb/apb_manager.h"
+
+#include <memory>
+
+namespace xdebug_design {
+namespace {
+
+class ApbStatisticsHandler : public EngineActionHandler {
+public:
+    const char* action_name() const override { return "apb.statistics"; }
+    bool needs_design() const override { return false; }
+    bool needs_waveform() const override { return true; }
+
+    Json run(const Json& request, EngineActionContext&) const override {
+        using namespace xdebug_waveform;
+        const Json args = request.value("args", Json::object());
+        const std::string name = args.value("name", std::string());
+        if (name.empty()) return protocol_missing_name_error(action_name(), "apb");
+
+        StatisticsFilter filter;
+        StatisticsFilterError filter_error;
+        if (!parse_statistics_filter(args, false, filter, filter_error))
+            return protocol_invalid_arg_error(
+                action_name(), filter_error.invalid_arg, filter_error.message,
+                filter_error.expected);
+
+        ApbConfig config;
+        ApbManager manager;
+        if (!manager.get_apb(g_session_id, name, config))
+            return protocol_config_not_found_error(action_name(), "apb", name);
+        if (!g_apb_analyzer.analyze(name, g_fsdb_file, config))
+            return protocol_analyze_error(action_name(), "apb", name,
+                                          "Failed to analyze APB: " + name);
+
+        const ApbResult* result = g_apb_analyzer.get_result(name);
+        if (!result)
+            return protocol_analyze_error(action_name(), "apb", name,
+                                          "canonical APB result unavailable");
+
+        size_t matched_read = 0;
+        size_t matched_write = 0;
+        size_t unresolved = 0;
+        for (const ApbTransaction* transaction : result->all) {
+            if (!transaction) continue;
+            const StatisticsMatch match = match_statistics_transaction(
+                filter, {transaction->is_write, transaction->addr, std::string()});
+            if (match == StatisticsMatch::Unresolved) {
+                ++unresolved;
+            } else if (match == StatisticsMatch::Yes) {
+                if (transaction->is_write) ++matched_write;
+                else ++matched_read;
+            }
+        }
+
+        const ApbDiagnostics& diagnostics = result->diagnostics;
+        const bool ambiguous = unresolved > 0 || !diagnostics.analysis_complete;
+        Json out;
+        out["summary"] = {
+            {"name", name},
+            {"scanned_transaction_count", result->all.size()},
+            {"matched_transaction_count", matched_read + matched_write},
+            {"matched_read_count", matched_read},
+            {"matched_write_count", matched_write},
+            {"unresolved_transaction_count", unresolved},
+            {"filter_applied", filter.filter_applied},
+            {"analysis_complete", diagnostics.analysis_complete},
+            {"analysis_quality", ambiguous ? "ambiguous" : "complete"},
+            {"full_scan_count", diagnostics.full_scan_count},
+        };
+        out["filter"] = statistics_filter_json(filter, false);
+        out["notes"] = {{"unresolved_transaction_count",
+                         statistics_unresolved_note()}};
+        return out;
+    }
+
+    std::string render_xout(const Json& response) const override {
+        return render_statistics_xout(action_name(), response);
+    }
+};
+
+}  // namespace
+
+std::unique_ptr<EngineActionHandler> make_apb_statistics_handler() {
+    return std::unique_ptr<EngineActionHandler>(new ApbStatisticsHandler);
+}
+
+}  // namespace xdebug_design

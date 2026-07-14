@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "xdebug.axi.statistics.request.v1",
+  "title": "axi.statistics request",
+  "description": "Count completed AXI transactions with optional direction, ID, and address filters.",
+  "x-description-zh": "按方向、ID 和地址过滤统计已完成 AXI 事务。",
+  "type": "object",
+  "properties": {
+    "api_version": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "axi.statistics"
+      ]
+    },
+    "target": {
+      "type": "object",
+      "required": [
+        "session_id"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "description": "目标 xdebug session 标识。"
+        },
+        "daidir": {
+          "type": "string"
+        },
+        "fsdb": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "design",
+            "waveform",
+            "combined"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "args": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "filter": {
+          "type": "object",
+          "properties": {
+            "direction": {
+              "type": "string",
+              "enum": [
+                "all",
+                "read",
+                "write"
+              ],
+              "default": "all",
+              "description": "Transaction direction filter.",
+              "x-description-zh": "事务方向过滤；默认 all。"
+            },
+            "address": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "mode",
+                    "values"
+                  ],
+                  "properties": {
+                    "mode": {
+                      "const": "exact"
+                    },
+                    "values": {
+                      "type": "array",
+                      "minItems": 1,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
+                        "x-description-zh": "不含 X/Z、宽度不超过 64 bit 的整数、十六进制或 SystemVerilog literal。"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "mode",
+                    "begin",
+                    "end"
+                  ],
+                  "properties": {
+                    "mode": {
+                      "const": "range"
+                    },
+                    "begin": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
+                      "x-description-zh": "不含 X/Z、宽度不超过 64 bit 的整数、十六进制或 SystemVerilog literal。"
+                    },
+                    "end": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
+                      "x-description-zh": "不含 X/Z、宽度不超过 64 bit 的整数、十六进制或 SystemVerilog literal。"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "mode",
+                    "value",
+                    "mask"
+                  ],
+                  "properties": {
+                    "mode": {
+                      "const": "mask"
+                    },
+                    "value": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
+                      "x-description-zh": "不含 X/Z、宽度不超过 64 bit 的整数、十六进制或 SystemVerilog literal。"
+                    },
+                    "mask": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
+                      "x-description-zh": "不含 X/Z、宽度不超过 64 bit 的整数、十六进制或 SystemVerilog literal。"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "Exactly one address filtering mode: exact queue, inclusive range, or value/mask.",
+              "x-description-zh": "地址只能选择精确值队列、闭区间或 value/mask 三种模式之一。"
+            },
+            "ids": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
+                "x-description-zh": "不含 X/Z、宽度不超过 64 bit 的整数、十六进制或 SystemVerilog literal。"
+              },
+              "description": "AXI transaction ID queue; values are ORed within the queue.",
+              "x-description-zh": "AXI ID 队列，队列内部取 OR。"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Completed-transaction filters; direction, IDs, and address are combined with AND.",
+          "x-description-zh": "已完成事务过滤；方向、ID 和地址三类条件取 AND。"
+        },
+        "name": {
+          "type": "string",
+          "description": "已保存配置、游标、列表或接口配置名称。"
+        },
+        "time_unit": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "fs",
+            "ps",
+            "ns",
+            "us",
+            "ms",
+            "s"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "request_id": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "trace_id": {
+      "type": "string"
+    },
+    "span_id": {
+      "type": "string"
+    },
+    "parent_span_id": {
+      "type": "string"
+    },
+    "limits": {
+      "type": "object"
+    },
+    "auth_token": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "action",
+    "args",
+    "target"
+  ],
+  "x-purpose": "统计已完成 AXI 事务。",
+  "x-how_it_works": "复用 canonical AXI 缓存；ID 队列内部取 OR，direction、ID、address 三类条件取 AND。",
+  "x-when_to_use": "按方向、ID 和地址核对 AXI 事务次数。",
+  "x-arg_contract_notes": "required: name; filter direction/ids/address with AND; address mode is exact/range/mask"
+}

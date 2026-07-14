@@ -141,6 +141,19 @@
 - exporter 和 action 只消费 canonical `AxiResult`；禁止再次扫描 FSDB 或建立第二套
   pending queue。
 
+## APB/AXI Statistics Filter
+
+路径：
+
+- `src/engine/service/actions/protocol/protocol_statistics_filter.*`
+
+职责与要求：
+
+- 统一解析 direction、AXI ID 队列和 exact/range/mask 地址过滤，三类条件取 AND。
+- 对 transaction address/ID 使用三态匹配；已知 false 优先于 unresolved。
+- statistics handler 只遍历 canonical completed transaction，不复制匹配列表、不建立
+  per-filter cache，也不重新扫描 FSDB。
+
 ## Transport/File Exchange
 
 路径：
