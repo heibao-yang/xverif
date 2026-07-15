@@ -4,7 +4,7 @@
 
 它回答的问题很窄：
 
-- 这个 `L_XXXXXXXX` 对应哪个文件的哪一行？
+- 这个 `L_XXXXXXXX` 对应哪个源文件？
 - 这段仿真日志里哪些位置报错最多？
 - 这个 loc_id 附近源码是什么样的？
 
@@ -23,12 +23,12 @@ UVM 仿真日志中大量出现这种内容：
 UVM_ERROR <project-root>/tb/env/scoreboard.sv(238) @ 100ns: packet mismatch
 ```
 
-对 LLM 来说，`<project-root>/tb/env/scoreboard.sv(238)` 消耗 token 但大部分时候决策价值很低。
+对 LLM 来说，长文件路径消耗 token；行号则是定位上下文所需的关键信息。
 
 `xloc` 把它变成：
 
 ```text
-UVM_ERROR L_00000001 @ 100ns: packet mismatch
+UVM_ERROR L_00000001(238) @ 100ns: packet mismatch
 ```
 
 当 LLM 需要知道具体位置时，调用 `xloc resolve L_00000001` 还原。
@@ -41,7 +41,7 @@ UVM_ERROR L_00000001 @ 100ns: packet mismatch
 pytest --xverif-gate fast --xverif-suite xloc.unit
 
 # 用一个手动构造的 JSONL 试一下
-echo '{"loc_id":"L_00000001","file":"tb/test.sv","line":42,"msg_id":"ERROR_TEST"}' > /tmp/test.xloc.jsonl
+echo '{"loc_id":"L_00000001","file":"tb/test.sv"}' > /tmp/test.xloc.jsonl
 tools/xloc resolve L_00000001 --map /tmp/test.xloc.jsonl
 tools/xloc resolve L_00000001 --map /tmp/test.xloc.jsonl --json
 ```
@@ -84,17 +84,15 @@ xloc resolve L_00000005 --map out/sim.log.xloc.jsonl
 ```text
 loc_id:  L_00000005
 file:    tb/simple_test.sv
-line:    3
-msg_id:  PKT_MISMATCH
 ```
 
 ### context — 查看源码上下文
 
 ```bash
-xloc context L_00000005 --map out/sim.log.xloc.jsonl --before 5 --after 5
+xloc context L_00000005 --map out/sim.log.xloc.jsonl --line 3 --before 5 --after 5
 ```
 
-先 resolve，再打印目标行附近源码，目标行以 `>>>` 标记。
+行号由压缩日志中的 `L_XXXXXXXX(<line>)` 保留；`context` 必须通过 `--line` 显式提供该值，再打印目标行附近源码并以 `>>>` 标记。
 
 `--before` / `--after` 默认各 20 行。
 
@@ -109,11 +107,11 @@ xloc stats out/sim.log --top 20
 输出：
 
 ```text
-loc_id          count  file                            msg_id
-L_00000001        127  tb/scoreboard.sv                PKT_MISMATCH
-L_00000002         31  tb/monitor.sv                   BAD_PKT
+loc_id          count  file
+L_00000001        127  tb/scoreboard.sv
+L_00000002         31  tb/monitor.sv
 ...
-27 unique locations, 320 total occurrences
+27 unique source files, 320 total occurrences
 ```
 
 ### annotate — 给日志加注释
@@ -125,7 +123,7 @@ xloc annotate out/sim.log --map out/sim.log.xloc.jsonl
 在 log 中每个首次出现的 loc_id 前插入一行：
 
 ```text
-[loc] L_00000001 -> tb/test.sv:42
+[loc] L_00000001 -> tb/test.sv
 ```
 
 输出到 stdout，可重定向到文件。
@@ -150,7 +148,7 @@ end
 
 仿真后产物：
 
-- `sim.log` — 路径已替换为 `L_XXXXXXXX`
+- `sim.log` — 路径已替换为 `L_XXXXXXXX`，原始行号保留为 `L_XXXXXXXX(<line>)`
 - `sim.log.xloc.jsonl` — sidecar 映射文件
 
 可以通过 `set_map_path("custom/path.jsonl")` 自定义 JSONL 输出路径。
@@ -158,12 +156,13 @@ end
 ### 机制
 
 - loc_id 使用递增序列号：`L_%08X`（零碰撞）
-- 通过 static 关联数组去重：同一 file:line:msg_id 只生成一次
+- 通过 static 关联数组去重：同一 file 只生成一次
+- sidecar 每行仅保存 `loc_id` 和 `file`；行号和 msg_id 保留在日志正文中
 - JSONL 逐行追加写入，仿真中断不丢数据
 
 ## Vim / Neovim `gf` 跳转
 
-`xloc` 提供 Vimscript 和 Neovim Lua 插件。打开 `sim.log` 后，将光标放在 `L_XXXXXXXX` 上按 `gf`，即可跳到 `sim.log.xloc.jsonl` 记录的源码 `file:line`。
+`xloc` 提供 Vimscript 和 Neovim Lua 插件。打开 `sim.log` 后，将光标放在 `L_XXXXXXXX(<line>)` 上按 `gf`，插件从 sidecar 还原文件路径，并使用日志中的行号跳转。
 
 安装方式任选一种：
 

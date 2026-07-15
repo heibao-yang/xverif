@@ -15,13 +15,22 @@ def resolve_payload(loc_id: str, map_path: str) -> dict:
     return payload
 
 
-def context_payload(loc_id: str, map_path: str, before: int = 20, after: int = 20) -> dict:
+def context_payload(loc_id: str, map_path: str, line: int,
+                    before: int = 20, after: int = 20) -> dict:
     payload = resolve_payload(loc_id, map_path)
     payload["action"] = "context"
     if not payload.get("ok"):
         return payload
+    if line <= 0:
+        payload["ok"] = False
+        payload["error"] = {
+            "code": "INVALID_LINE",
+            "message": "line must be a positive integer",
+        }
+        return payload
     filepath = payload.get('file', '')
-    line_num = payload.get('line', 0)
+    line_num = line
+    payload["line"] = line_num
     payload["context"] = []
     if not filepath or not os.path.exists(filepath):
         payload["warning"] = f"source file not found: {filepath}"
@@ -45,8 +54,8 @@ def render_payload(payload: dict) -> str:
     out.emit_kv("loc_id", payload.get("loc_id"))
     out.emit_section("summary")
     out.emit_kv("file", payload.get("file"))
-    out.emit_kv("line", payload.get("line"))
-    out.emit_kv("msg_id", payload.get("msg_id"))
+    if payload.get("action") == "context":
+        out.emit_kv("line", payload.get("line"))
     out.emit_section("evidence")
     if payload.get("file") and payload.get("line"):
         out.emit_row(f"{payload.get('file')}:{payload.get('line')}")
@@ -61,7 +70,7 @@ def render_payload(payload: dict) -> str:
 
 
 def cmd_resolve(loc_id: str, map_path: str) -> None:
-    """resolve <loc_id> — print file, line, msg_id for a loc_id."""
+    """resolve <loc_id> — print the source file for a loc_id."""
     payload = resolve_payload(loc_id, map_path)
     if not payload.get("ok"):
         print(payload["error"]["message"], file=sys.stderr)
@@ -69,20 +78,11 @@ def cmd_resolve(loc_id: str, map_path: str) -> None:
     print(render_payload(payload), end="")
 
 
-def cmd_context(loc_id: str, map_path: str, before: int = 20, after: int = 20) -> None:
-    """context <loc_id> — resolve then print surrounding source lines."""
-    payload = context_payload(loc_id, map_path, before, after)
+def cmd_context(loc_id: str, map_path: str, line: int,
+                before: int = 20, after: int = 20) -> None:
+    """context <loc_id> --line <line> — print surrounding source lines."""
+    payload = context_payload(loc_id, map_path, line, before, after)
     if not payload.get("ok"):
         print(payload["error"]["message"], file=sys.stderr)
         sys.exit(1)
     print(render_payload(payload), end="")
-
-
-def _print_entry(loc_id: str, entry: dict) -> None:
-    filepath = entry.get('file', '?')
-    line = entry.get('line', '?')
-    msg_id = entry.get('msg_id', '?')
-    print(f"loc_id:  {loc_id}")
-    print(f"file:    {filepath}")
-    print(f"line:    {line}")
-    print(f"msg_id:  {msg_id}")

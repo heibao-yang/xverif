@@ -16,7 +16,7 @@ def main() -> None:
     sub = parser.add_subparsers(dest='command')
 
     # resolve
-    p_resolve = sub.add_parser('resolve', help='resolve a loc_id to file + line')
+    p_resolve = sub.add_parser('resolve', help='resolve a loc_id to a source file')
     p_resolve.add_argument('loc_id', help='loc_id to resolve (e.g. L_00000001)')
     p_resolve.add_argument('--map', dest='map_path',
                            required=True,
@@ -24,11 +24,13 @@ def main() -> None:
     p_resolve.add_argument('--json', action='store_true', help='emit JSON')
 
     # context
-    p_ctx = sub.add_parser('context', help='resolve a loc_id and show surrounding source')
+    p_ctx = sub.add_parser('context', help='resolve a loc_id and show context at an explicit line')
     p_ctx.add_argument('loc_id', help='loc_id to resolve')
     p_ctx.add_argument('--map', dest='map_path',
                         required=True,
                         help='path to sidecar JSONL map file')
+    p_ctx.add_argument('--line', type=int, required=True,
+                        help='positive source line number preserved in the log')
     p_ctx.add_argument('--before', type=int, default=20,
                         help='lines before target (default: 20)')
     p_ctx.add_argument('--after', type=int, default=20,
@@ -41,7 +43,7 @@ def main() -> None:
     p_stats.add_argument('--map', dest='map_path',
                           help='path to sidecar JSONL map file')
     p_stats.add_argument('--top', type=int, default=20,
-                          help='show top N locations (default: 20)')
+                          help='show top N source files (default: 20)')
     p_stats.add_argument('--json', action='store_true', help='emit JSON')
 
     # annotate
@@ -59,11 +61,13 @@ def main() -> None:
             sys.exit(0 if payload.get("ok") else 1)
         cmd_resolve(args.loc_id, args.map_path)
     elif args.command == 'context':
+        if args.line <= 0:
+            parser.error('context --line must be a positive integer')
         if args.json:
-            payload = context_payload(args.loc_id, args.map_path, args.before, args.after)
+            payload = context_payload(args.loc_id, args.map_path, args.line, args.before, args.after)
             print(dumps(payload))
             sys.exit(0 if payload.get("ok") else 1)
-        cmd_context(args.loc_id, args.map_path, args.before, args.after)
+        cmd_context(args.loc_id, args.map_path, args.line, args.before, args.after)
     elif args.command == 'stats':
         if args.json:
             print(dumps(stats_payload(args.log, args.map_path, args.top)))

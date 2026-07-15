@@ -4,27 +4,25 @@
 class xloc_report_server extends uvm_default_report_server;
 
   static int next_id = 1;
-  static string loc_cache[string];  // "file:line:msg_id" -> "L_XXXXXXXX"
+  static string loc_cache[string];  // "file" -> "L_XXXXXXXX"
   static int map_fd = 0;
 
   protected string map_path = "sim.log.xloc.jsonl";
 
-  function string get_loc_id(string file, int line, string msg_id);
-    string key = $sformatf("%s:%0d:%s", file, line, msg_id);
-    if (!loc_cache.exists(key)) begin
-      loc_cache[key] = $sformatf("L_%08X", next_id);
+  function string get_loc_id(string file);
+    if (!loc_cache.exists(file)) begin
+      loc_cache[file] = $sformatf("L_%08X", next_id);
       next_id++;
-      write_jsonl_entry(loc_cache[key], file, line, msg_id);
+      write_jsonl_entry(loc_cache[file], file);
     end
-    return loc_cache[key];
+    return loc_cache[file];
   endfunction
 
-  function void write_jsonl_entry(string loc_id, string file, int line, string msg_id);
+  function void write_jsonl_entry(string loc_id, string file);
     if (map_fd == 0) begin
       map_fd = $fopen(map_path, "a");
     end
-    $fwrite(map_fd, "{\"loc_id\":\"%s\",\"file\":\"%s\",\"line\":%0d,\"msg_id\":\"%s\"}\n",
-            loc_id, file, line, msg_id);
+    $fwrite(map_fd, "{\"loc_id\":\"%s\",\"file\":\"%s\"}\n", loc_id, file);
     $fflush(map_fd);
   endfunction
 
@@ -57,9 +55,8 @@ class xloc_report_server extends uvm_default_report_server;
     sev_string = l_severity.name();
 
     if (report_message.get_filename() != "") begin
-      filename_line_string = {get_loc_id(report_message.get_filename(),
-                                         report_message.get_line(),
-                                         report_message.get_id()), " "};
+      filename_line_string = {get_loc_id(report_message.get_filename()),
+                              $sformatf("(%0d) ", report_message.get_line())};
     end
 
     //SNPS_ADDED_CODE_BEGIN

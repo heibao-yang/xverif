@@ -19,6 +19,5 @@ def cmd_annotate(log_path: str, map_path=None) -> None:
                     seen.add(loc_id)
                     entry = entries.get(loc_id, {})
                     filepath = entry.get('file', '?')
-                    line_num = entry.get('line', '?')
-                    print(f"[loc] {loc_id} -> {filepath}:{line_num}")
+                    print(f"[loc] {loc_id} -> {filepath}")
             sys.stdout.write(line)

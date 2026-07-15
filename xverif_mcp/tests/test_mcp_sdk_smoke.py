@@ -169,6 +169,18 @@ def test_cov_tools_use_session_id_contract(monkeypatch: pytest.MonkeyPatch):
         assert "name" not in properties
 
 
+def test_loc_context_requires_explicit_log_line(monkeypatch: pytest.MonkeyPatch):
+    server = _server(monkeypatch)
+
+    async def _schema():
+        tools = await server.mcp.list_tools()
+        return next(tool.inputSchema for tool in tools if tool.name == "xverif_loc_context")
+
+    schema = anyio.run(_schema)
+    assert schema["properties"]["line"]["type"] == "integer"
+    assert "line" in schema["required"]
+
+
 def test_session_open_tools_expose_run_manifest_and_forward_it(monkeypatch: pytest.MonkeyPatch):
     server = _server(monkeypatch)
     calls = []

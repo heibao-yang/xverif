@@ -30,16 +30,16 @@ write(absolute_src, { "abs 1", "abs 2", "abs 3" })
 write(relative_src, { "rel 1", "rel 2", "rel 3" })
 write(local_src, { "local 1", "local 2" })
 write(log, {
-  "UVM_ERROR L_00000001",
-  "UVM_ERROR L_00000002",
-  "UVM_ERROR L_00000003",
-  "UVM_ERROR L_00000004",
+  "UVM_ERROR L_00000001(2)",
+  "UVM_ERROR L_00000002(3)",
+  "UVM_ERROR L_00000003(2)",
+  "UVM_ERROR L_00000004(1)",
 })
 write(map, {
-  string.format('{"loc_id":"L_00000001","file":%q,"line":2,"msg_id":"ABS"}', absolute_src),
-  '{"loc_id":"L_00000002","file":"tb/relative_src.sv","line":"3","msg_id":"REL"}',
-  '{"loc_id":"L_00000003","filename":"local_src.sv","line":2,"msg_id":"LOCAL"}',
-  '{"loc_id":"L_00000004","path":"missing.sv","line":"bad","msg_id":"MISSING"}',
+  string.format('{"loc_id":"L_00000001","file":%q}', absolute_src),
+  '{"loc_id":"L_00000002","file":"tb/relative_src.sv"}',
+  '{"loc_id":"L_00000003","file":"local_src.sv"}',
+  '{"loc_id":"L_00000004","file":"missing.sv"}',
 })
 
 vim.g.xloc_repo_root = repo

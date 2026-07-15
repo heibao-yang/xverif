@@ -31,15 +31,14 @@ def _annotate_text(log_path: str, map_path: Optional[str] = None) -> str:
                 seen.add(loc_id)
                 entry = entries.get(loc_id, {})
                 filepath = entry.get("file", "?")
-                line_num = entry.get("line", "?")
-                lines.append(f"[loc] {loc_id} -> {filepath}:{line_num}\n")
+                lines.append(f"[loc] {loc_id} -> {filepath}\n")
             lines.append(line)
     return "".join(lines)
 
 
 def loc_resolve(loc_id: str, map_path: str,
                 output_format: str = "json") -> Any:
-    """Resolve a loc_id (L_XXXXXXXX) to source file:line."""
+    """Resolve a loc_id (L_XXXXXXXX) to a source file."""
     try:
         payload = resolve_payload(loc_id, map_path)
     except Exception as exc:
@@ -49,11 +48,11 @@ def loc_resolve(loc_id: str, map_path: str,
     return render_payload(payload)
 
 
-def loc_context(loc_id: str, map_path: str, before: int = 20,
+def loc_context(loc_id: str, map_path: str, line: int, before: int = 20,
                 after: int = 20, output_format: str = "xout") -> Any:
-    """Resolve a loc_id and show surrounding source lines."""
+    """Resolve a loc_id and show source context at an explicit line."""
     try:
-        payload = context_payload(loc_id, map_path, before, after)
+        payload = context_payload(loc_id, map_path, line, before, after)
     except Exception as exc:
         payload = _error("context", exc)
     if output_format == "json":

@@ -41,8 +41,8 @@ class TestMapFile(unittest.TestCase):
 
     def test_load_and_resolve(self):
         self._write_jsonl([
-            {'loc_id': 'L_00000001', 'file': 'tb/scoreboard.sv', 'line': 238, 'msg_id': 'PKT_MISMATCH'},
-            {'loc_id': 'L_00000002', 'file': 'tb/monitor.sv', 'line': 117, 'msg_id': 'BAD_PKT'},
+            {'loc_id': 'L_00000001', 'file': 'tb/scoreboard.sv'},
+            {'loc_id': 'L_00000002', 'file': 'tb/monitor.sv'},
         ])
         entries = load_map(self.map_path)
         self.assertEqual(len(entries), 2)
@@ -50,7 +50,8 @@ class TestMapFile(unittest.TestCase):
         e = resolve_loc(entries, 'L_00000001')
         self.assertIsNotNone(e)
         self.assertEqual(e['file'], 'tb/scoreboard.sv')
-        self.assertEqual(e['line'], 238)
+        self.assertNotIn('line', e)
+        self.assertNotIn('msg_id', e)
 
         e = resolve_loc(entries, 'L_99999999')
         self.assertIsNone(e)
@@ -58,14 +59,14 @@ class TestMapFile(unittest.TestCase):
     def test_load_skips_malformed(self):
         with open(self.map_path, 'w') as f:
             f.write('not json\n')
-            f.write('{"loc_id":"L_00000001","file":"x.sv","line":1,"msg_id":"X"}\n')
+            f.write('{"loc_id":"L_00000001","file":"x.sv"}\n')
             f.write('\n')
         entries = load_map(self.map_path)
         self.assertEqual(len(entries), 1)
 
     def test_skip_entry_without_loc_id(self):
         self._write_jsonl([
-            {'file': 'x.sv', 'line': 1},
+            {'file': 'x.sv'},
         ])
         entries = load_map(self.map_path)
         self.assertEqual(len(entries), 0)

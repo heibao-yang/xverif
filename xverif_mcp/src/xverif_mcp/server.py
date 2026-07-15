@@ -647,7 +647,7 @@ def xverif_entry_validate(config_path: Optional[str] = None,
 @xverif_tool("loc")
 def xverif_loc_resolve(loc_id: str, map_path: str,
                         output_format: str = "xout") -> Any:
-    """Resolve a compressed loc_id (L_XXXXXXXX) to source file:line.
+    """Resolve a compressed loc_id (L_XXXXXXXX) to a source file.
 
     Args:
         loc_id: The loc_id to resolve (e.g. L_00000001).
@@ -658,18 +658,19 @@ def xverif_loc_resolve(loc_id: str, map_path: str,
 
 
 @xverif_tool("loc")
-def xverif_loc_context(loc_id: str, map_path: str, before: int = 20,
+def xverif_loc_context(loc_id: str, map_path: str, line: int, before: int = 20,
                         after: int = 20, output_format: str = "xout") -> Any:
-    """Resolve a loc_id and show surrounding source code context.
+    """Resolve a loc_id and show source context at an explicit line.
 
     Args:
         loc_id: The loc_id to resolve.
         map_path: Path to JSONL sidecar map file.
+        line: Positive source line number preserved in the log.
         before: Lines to show before the target line.
         after: Lines to show after the target line.
         output_format: "json" or "xout".
     """
-    return loc_context(loc_id, map_path, before=before, after=after,
+    return loc_context(loc_id, map_path, line, before=before, after=after,
                        output_format=output_format)
 
 
@@ -681,7 +682,7 @@ def xverif_loc_stats(log_path: str, map_path: Optional[str] = None,
     Args:
         log_path: Path to simulation log.
         map_path: Optional path to JSONL sidecar map file for resolution.
-        top: Show top N locations (default: 20).
+        top: Show top N source files (default: 20).
         output_format: "json" or "xout".
     """
     return loc_stats(log_path, map_path=map_path, top=top,
@@ -858,10 +859,10 @@ TOOL_CATALOG = [
     # loc
     {"name": "xverif_loc_resolve", "category": "loc", "backend": "xloc",
      "stateful": False, "requires_session": False,
-     "description": "Resolve a loc_id to source file:line."},
+     "description": "Resolve a loc_id to its source file."},
     {"name": "xverif_loc_context", "category": "loc", "backend": "xloc",
      "stateful": False, "requires_session": False,
-     "description": "Resolve a loc_id and show surrounding source context."},
+     "description": "Resolve a loc_id and show source context at an explicit line."},
     {"name": "xverif_loc_stats", "category": "loc", "backend": "xloc",
      "stateful": False, "requires_session": False,
      "description": "Count loc_id frequency in a simulation log."},

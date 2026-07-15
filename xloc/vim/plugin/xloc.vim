@@ -69,22 +69,8 @@ function! s:XlocParseJsonLine(line) abort
   endif
 
   let l:file = matchstr(a:line, '"file"\s*:\s*"\zs[^"]\+\ze"')
-  if l:file ==# ''
-    let l:file = matchstr(a:line, '"path"\s*:\s*"\zs[^"]\+\ze"')
-  endif
-  if l:file ==# ''
-    let l:file = matchstr(a:line, '"filename"\s*:\s*"\zs[^"]\+\ze"')
-  endif
   if l:file !=# ''
     let l:obj.file = l:file
-  endif
-
-  let l:line = matchstr(a:line, '"line"\s*:\s*"\zs[^"]\+\ze"')
-  if l:line ==# ''
-    let l:line = matchstr(a:line, '"line"\s*:\s*\zs\d\+')
-  endif
-  if l:line !=# ''
-    let l:obj.line = l:line
   endif
 
   return l:obj
@@ -196,33 +182,8 @@ function! s:XlocLookupRecord(mapfile, id) abort
   return l:rec
 endfunction
 
-function! s:XlocGetFileFromRecord(rec) abort
-  if has_key(a:rec, 'file')
-    return a:rec.file
-  endif
-  if has_key(a:rec, 'path')
-    return a:rec.path
-  endif
-  if has_key(a:rec, 'filename')
-    return a:rec.filename
-  endif
-  return ''
-endfunction
-
-function! s:XlocLineFromRecord(rec) abort
-  let l:line = get(a:rec, 'line', 1)
-
-  if type(l:line) == type('')
-    let l:line = str2nr(l:line)
-  elseif type(l:line) != type(0)
-    let l:line = 1
-  endif
-
-  if l:line <= 0
-    let l:line = 1
-  endif
-
-  return l:line
+function! s:XlocLineUnderCursor(id) abort
+  return str2nr(matchstr(getline('.'), a:id . '(\zs\d\+\ze)'))
 endfunction
 
 function! s:XlocResolvePath(file, mapfile) abort
@@ -287,15 +248,21 @@ function! XlocGF() abort
     return
   endif
 
-  let l:file = s:XlocGetFileFromRecord(l:rec)
+  let l:file = get(l:rec, 'file', '')
   if l:file ==# ''
     echohl WarningMsg
-    echom 'xloc: record has no file/path/filename field: ' . l:id
+    echom 'xloc: record has no file field: ' . l:id
     echohl None
     return
   endif
 
-  let l:line = s:XlocLineFromRecord(l:rec)
+  let l:line = s:XlocLineUnderCursor(l:id)
+  if l:line <= 0
+    echohl WarningMsg
+    echom 'xloc: log location has no positive line number: ' . l:id
+    echohl None
+    return
+  endif
   let l:path = s:XlocResolvePath(l:file, l:mapfile)
   if !filereadable(l:path)
     echohl WarningMsg

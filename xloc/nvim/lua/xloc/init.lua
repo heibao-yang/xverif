@@ -13,12 +13,12 @@ local function notify(message)
 end
 
 local function location_id_under_cursor()
-  local word = vim.fn.expand("<cWORD>")
-  local id = word:match(loc_id_pattern)
-  if id then
-    return id
+  local line = vim.api.nvim_get_current_line()
+  local id = line:match(loc_id_pattern)
+  if not id then
+    return nil, nil
   end
-  return vim.api.nvim_get_current_line():match(loc_id_pattern)
+  return id, tonumber(line:match(id .. "%((%d+)%)"))
 end
 
 local function map_file()
@@ -65,13 +65,7 @@ local function lookup_record(path, id)
 end
 
 local function record_file(record)
-  local file = record.file or record.path or record.filename
-  return type(file) == "string" and file or nil
-end
-
-local function record_line(record)
-  local line = tonumber(record.line) or 1
-  return math.max(line, 1)
+  return type(record.file) == "string" and record.file or nil
 end
 
 local function absolute_path(path)
@@ -114,9 +108,13 @@ local function native_gf()
 end
 
 function M.gf()
-  local id = location_id_under_cursor()
+  local id, line = location_id_under_cursor()
   if not id then
     native_gf()
+    return
+  end
+  if not line or line <= 0 then
+    notify("log location has no positive line number: " .. id)
     return
   end
 
@@ -134,7 +132,7 @@ function M.gf()
 
   local file = record_file(record)
   if not file then
-    notify("record has no file/path/filename field: " .. id)
+    notify("record has no file field: " .. id)
     return
   end
 
@@ -145,7 +143,7 @@ function M.gf()
   end
 
   vim.cmd.edit(vim.fn.fnameescape(path))
-  vim.api.nvim_win_set_cursor(0, { record_line(record), 0 })
+  vim.api.nvim_win_set_cursor(0, { line, 0 })
   vim.cmd("normal! zz")
 end
 
