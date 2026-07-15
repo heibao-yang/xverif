@@ -47,6 +47,8 @@ def _probe(name: str, repo_root: Path) -> CapabilityStatus:
         return _which(name, "python3")
     if name == "vim":
         return _which(name, "vim")
+    if name == "neovim":
+        return _which(name, "nvim")
     if name == "uds":
         return CapabilityStatus(name, hasattr(socket, "AF_UNIX"), "AF_UNIX support")
     if name == "mcp_process":

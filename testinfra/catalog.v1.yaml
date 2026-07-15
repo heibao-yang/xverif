@@ -53,6 +53,20 @@ suites:
     cost: {class: medium, estimate_sec: 5}
     timeouts: {execute_sec: 30, cleanup_sec: 5}
 
+  - id: xloc.nvim
+    owner: xloc
+    level: component
+    intent: [smoke]
+    domains: [source-location, editor]
+    runner:
+      kind: command
+      argv: [python3, testinfra/leaf/run_xloc_nvim.py]
+    capabilities: [child_process, neovim]
+    hermetic: false
+    deterministic: true
+    cost: {class: medium, estimate_sec: 5}
+    timeouts: {execute_sec: 30, cleanup_sec: 5}
+
   - id: xloc.uvm
     owner: xloc
     level: system

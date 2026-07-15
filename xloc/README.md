@@ -161,9 +161,9 @@ end
 - 通过 static 关联数组去重：同一 file:line:msg_id 只生成一次
 - JSONL 逐行追加写入，仿真中断不丢数据
 
-## Vim gf 跳转
+## Vim / Neovim `gf` 跳转
 
-`xloc` 提供一个 Vim 插件，让你在打开 `sim.log` 时把光标放在 `L_XXXXXXXX` 上直接按 `gf`，跳到 `sim.log.xloc.jsonl` 记录的源码 `file:line`。
+`xloc` 提供 Vimscript 和 Neovim Lua 插件。打开 `sim.log` 后，将光标放在 `L_XXXXXXXX` 上按 `gf`，即可跳到 `sim.log.xloc.jsonl` 记录的源码 `file:line`。
 
 安装方式任选一种：
 
@@ -204,7 +204,21 @@ let g:xloc_auto_enable = 0
 :XlocGF
 ```
 
-查找 map 时插件优先调用 `rg --color=never --max-count 1`，没有 `rg` 时 fallback 到 `grep`，最后才用 Vim `readfile()`。同一个 loc_id 会按 map mtime 缓存，适合几十 MB 以上的大 map 文件。
+Vimscript 版本查找 map 时优先调用 `rg --color=never --max-count 1`，没有 `rg` 时 fallback 到 `grep`，最后才用 Vim `readfile()`。同一个 loc_id 会按 map mtime 缓存，适合几十 MB 以上的大 map 文件。
+
+### Neovim Lua
+
+将 `xloc/nvim` 加入 Neovim runtimepath，然后在 `init.lua` 配置：
+
+```lua
+vim.opt.rtp:append("<xverif-root>/xloc/nvim")
+require("xloc").setup({
+  repo_root = "<project-root>",
+  auto_enable = true,
+})
+```
+
+也可以将整个 `xloc/nvim` 目录安装到 Neovim 的 `pack/*/start/` 下，插件会自动加载。Lua 版本使用 Neovim 原生 JSON 和文件 API，不依赖 `rg` 或 `grep`；它同样只在有 sidecar 的 `*.log` buffer 中建立 buffer-local `gf`，并提供 `:XlocGF`。
 
 ## 内建 UVM 测试环境
 
@@ -230,6 +244,7 @@ XVERIF_TEST_EXECUTION_ENV=host pytest --xverif-gate nightly --xverif-suite xloc.
 make -C xloc          # 语法检查
 pytest --xverif-gate fast --xverif-suite xloc.unit
 XVERIF_TEST_EXECUTION_ENV=host pytest --xverif-gate regression --xverif-suite xloc.vim
+XVERIF_TEST_EXECUTION_ENV=host pytest --xverif-gate regression --xverif-suite xloc.nvim
 pytest --xverif-prepare xloc.uvm
 XVERIF_TEST_EXECUTION_ENV=host pytest --xverif-gate nightly --xverif-suite xloc.uvm
 ```
