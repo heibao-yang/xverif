@@ -38,30 +38,25 @@
       "properties": {
         "clock": {
           "type": "string",
-          "description": "Action-specific clock input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific clock input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific clock input. Its type and accepted values are defined by this schema."
         },
         "cnt": {
           "type": "string",
-          "description": "Action-specific cnt input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific cnt input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific cnt input. Its type and accepted values are defined by this schema."
         },
         "edge": {
           "type": "string",
-          "description": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics.",
-          "x-description-zh": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics."
+          "description": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics."
         },
         "line_limit": {
           "type": "integer",
           "minimum": 1,
-          "description": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well.",
-          "x-description-zh": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well."
+          "description": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well."
         },
         "max_samples": {
           "type": "integer",
           "minimum": 1,
-          "description": "Action-specific max_samples input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific max_samples input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific max_samples input. Its type and accepted values are defined by this schema."
         },
         "sample_point": {
           "type": "string",
@@ -69,26 +64,22 @@
             "before",
             "after"
           ],
-          "description": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range.",
-          "x-description-zh": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range."
+          "description": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range."
         },
         "time_range": {
           "type": "object",
           "properties": {
             "begin": {
               "type": "string",
-              "description": "Action-specific begin input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific begin input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific begin input. Its type and accepted values are defined by this schema."
             },
             "end": {
               "type": "string",
-              "description": "Action-specific end input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific end input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific end input. Its type and accepted values are defined by this schema."
             }
           },
           "additionalProperties": false,
-          "description": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds.",
-          "x-description-zh": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds."
+          "description": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds."
         },
         "time_unit": {
           "type": "string",
@@ -101,24 +92,20 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         },
         "vld": {
           "oneOf": [
             {
               "type": "string",
-              "description": "Signal path or expression defining the valid sampling condition for counter statistics.",
-              "x-description-zh": "Signal path or expression defining the valid sampling condition for counter statistics."
+              "description": "Signal path or expression defining the valid sampling condition for counter statistics."
             },
             {
               "type": "object",
-              "description": "Signal path or expression defining the valid sampling condition for counter statistics.",
-              "x-description-zh": "Signal path or expression defining the valid sampling condition for counter statistics."
+              "description": "Signal path or expression defining the valid sampling condition for counter statistics."
             }
           ],
-          "description": "Signal path or expression defining the valid sampling condition for counter statistics.",
-          "x-description-zh": "Signal path or expression defining the valid sampling condition for counter statistics."
+          "description": "Signal path or expression defining the valid sampling condition for counter statistics."
         }
       },
       "additionalProperties": false

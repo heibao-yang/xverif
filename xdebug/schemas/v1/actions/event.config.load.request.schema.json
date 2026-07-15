@@ -32,13 +32,11 @@
       "properties": {
         "config_path": {
           "type": "string",
-          "description": "Action-specific config_path input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific config_path input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific config_path input. Its type and accepted values are defined by this schema."
         },
         "name": {
           "type": "string",
-          "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs.",
-          "x-description-zh": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
+          "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
         },
         "time_unit": {
           "type": "string",
@@ -51,8 +49,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false,

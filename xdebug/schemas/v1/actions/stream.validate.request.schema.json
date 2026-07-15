@@ -32,42 +32,35 @@
       "properties": {
         "channel": {
           "type": "string",
-          "description": "Action-specific channel input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific channel input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific channel input. Its type and accepted values are defined by this schema."
         },
         "dynamic": {
           "type": "boolean",
-          "description": "Action-specific dynamic input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific dynamic input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific dynamic input. Its type and accepted values are defined by this schema."
         },
         "line_limit": {
           "type": "integer",
           "minimum": 1,
-          "description": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well.",
-          "x-description-zh": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well."
+          "description": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well."
         },
         "stream": {
           "type": "string",
-          "description": "Action-specific stream input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific stream input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific stream input. Its type and accepted values are defined by this schema."
         },
         "time_range": {
           "type": "object",
           "properties": {
             "begin": {
               "type": "string",
-              "description": "Action-specific begin input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific begin input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific begin input. Its type and accepted values are defined by this schema."
             },
             "end": {
               "type": "string",
-              "description": "Action-specific end input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific end input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific end input. Its type and accepted values are defined by this schema."
             }
           },
           "additionalProperties": false,
-          "description": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds.",
-          "x-description-zh": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds."
+          "description": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds."
         },
         "time_unit": {
           "type": "string",
@@ -80,8 +73,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false

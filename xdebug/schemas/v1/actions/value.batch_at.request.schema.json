@@ -32,13 +32,11 @@
       "properties": {
         "clock": {
           "type": "string",
-          "description": "Action-specific clock input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific clock input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific clock input. Its type and accepted values are defined by this schema."
         },
         "edge": {
           "type": "string",
-          "description": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics.",
-          "x-description-zh": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics."
+          "description": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics."
         },
         "format": {
           "type": "string",
@@ -57,8 +55,7 @@
             "csv",
             "u64bin"
           ],
-          "description": "Action-specific format input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific format input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific format input. Its type and accepted values are defined by this schema."
         },
         "sample_point": {
           "type": "string",
@@ -66,28 +63,23 @@
             "before",
             "after"
           ],
-          "description": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range.",
-          "x-description-zh": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range."
+          "description": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range."
         },
         "signals": {
           "type": "array",
           "items": {
             "type": "string",
-            "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-            "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+            "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
           },
-          "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-          "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+          "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
         },
         "slice_hint": {
           "type": "object",
-          "description": "Structured slice_hint configuration. Only the declared properties are accepted.",
-          "x-description-zh": "Structured slice_hint configuration. Only the declared properties are accepted."
+          "description": "Structured slice_hint configuration. Only the declared properties are accepted."
         },
         "time": {
           "type": "string",
-          "description": "Target sample time. Prefer a canonical string with a unit; a bare number is interpreted only with time_unit.",
-          "x-description-zh": "Target sample time. Prefer a canonical string with a unit; a bare number is interpreted only with time_unit."
+          "description": "Target sample time. Prefer a canonical string with a unit; a bare number is interpreted only with time_unit."
         },
         "time_unit": {
           "type": "string",
@@ -100,8 +92,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         },
         "value_format": {
           "type": "string",
@@ -110,8 +101,7 @@
             "bin",
             "dec"
           ],
-          "description": "Action-specific value_format input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific value_format input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific value_format input. Its type and accepted values are defined by this schema."
         }
       },
       "additionalProperties": false,

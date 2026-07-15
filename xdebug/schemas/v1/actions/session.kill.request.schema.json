@@ -42,8 +42,7 @@
       "properties": {
         "session_id": {
           "type": "string",
-          "description": "Action-specific session_id input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific session_id input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific session_id input. Its type and accepted values are defined by this schema."
         }
       },
       "additionalProperties": false,

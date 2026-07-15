@@ -32,40 +32,33 @@
       "properties": {
         "clock": {
           "type": "string",
-          "description": "Action-specific clock input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific clock input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific clock input. Its type and accepted values are defined by this schema."
         },
         "conditions": {
           "type": "array",
           "items": {
             "type": "object",
-            "description": "Structured conditions configuration. Only the declared properties are accepted.",
-            "x-description-zh": "Structured conditions configuration. Only the declared properties are accepted."
+            "description": "Structured conditions configuration. Only the declared properties are accepted."
           },
-          "description": "Ordered conditions entries. Each item must satisfy the declared item contract.",
-          "x-description-zh": "Ordered conditions entries. Each item must satisfy the declared item contract."
+          "description": "Ordered conditions entries. Each item must satisfy the declared item contract."
         },
         "edge": {
           "type": "string",
-          "description": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics.",
-          "x-description-zh": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics."
+          "description": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics."
         },
         "line_limit": {
           "type": "integer",
           "minimum": 1,
-          "description": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well.",
-          "x-description-zh": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well."
+          "description": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well."
         },
         "max_samples": {
           "type": "integer",
           "minimum": 1,
-          "description": "Action-specific max_samples input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific max_samples input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific max_samples input. Its type and accepted values are defined by this schema."
         },
         "mode": {
           "type": "string",
-          "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific.",
-          "x-description-zh": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
+          "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
         },
         "sample_point": {
           "type": "string",
@@ -73,13 +66,11 @@
             "before",
             "after"
           ],
-          "description": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range.",
-          "x-description-zh": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range."
+          "description": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range."
         },
         "signal": {
           "type": "string",
-          "description": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically.",
-          "x-description-zh": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically."
+          "description": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically."
         },
         "signals": {
           "oneOf": [
@@ -87,44 +78,36 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-                "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+                "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
               },
-              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-              "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
             },
             {
               "type": "object",
               "additionalProperties": {
                 "type": "string",
                 "description": "Value for a caller-defined signal alias key. Supply the real signal path or the action-supported expression for that alias.",
-                "x-dynamic-contract": "Each property key is an alias referenced by this action; each value resolves that alias to a signal path or supported expression.",
-                "x-description-zh": "Value for a caller-defined signal alias key. Supply the real signal path or the action-supported expression for that alias."
+                "x-dynamic-contract": "Each property key is an alias referenced by this action; each value resolves that alias to a signal path or supported expression."
               },
-              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-              "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
             }
           ],
-          "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-          "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+          "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
         },
         "time_range": {
           "type": "object",
           "properties": {
             "begin": {
               "type": "string",
-              "description": "Action-specific begin input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific begin input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific begin input. Its type and accepted values are defined by this schema."
             },
             "end": {
               "type": "string",
-              "description": "Action-specific end input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific end input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific end input. Its type and accepted values are defined by this schema."
             }
           },
           "additionalProperties": false,
-          "description": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds.",
-          "x-description-zh": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds."
+          "description": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds."
         },
         "time_unit": {
           "type": "string",
@@ -137,8 +120,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false,

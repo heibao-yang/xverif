@@ -59,8 +59,7 @@
                 "write"
               ],
               "default": "all",
-              "description": "Transaction direction filter.",
-              "x-description-zh": "Transaction direction filter."
+              "description": "Transaction direction filter."
             },
             "address": {
               "oneOf": [
@@ -73,8 +72,7 @@
                   "properties": {
                     "mode": {
                       "const": "exact",
-                      "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific.",
-                      "x-description-zh": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
+                      "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
                     },
                     "values": {
                       "type": "array",
@@ -83,16 +81,13 @@
                       "items": {
                         "type": "string",
                         "minLength": 1,
-                        "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
-                        "x-description-zh": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits."
+                        "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits."
                       },
-                      "description": "Ordered values entries. Each item must satisfy the declared item contract.",
-                      "x-description-zh": "Ordered values entries. Each item must satisfy the declared item contract."
+                      "description": "Ordered values entries. Each item must satisfy the declared item contract."
                     }
                   },
                   "additionalProperties": false,
-                  "description": "Structured address configuration. Only the declared properties are accepted.",
-                  "x-description-zh": "Structured address configuration. Only the declared properties are accepted."
+                  "description": "Structured address configuration. Only the declared properties are accepted."
                 },
                 {
                   "type": "object",
@@ -104,25 +99,21 @@
                   "properties": {
                     "mode": {
                       "const": "range",
-                      "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific.",
-                      "x-description-zh": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
+                      "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
                     },
                     "begin": {
                       "type": "string",
                       "minLength": 1,
-                      "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
-                      "x-description-zh": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits."
+                      "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits."
                     },
                     "end": {
                       "type": "string",
                       "minLength": 1,
-                      "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
-                      "x-description-zh": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits."
+                      "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits."
                     }
                   },
                   "additionalProperties": false,
-                  "description": "Structured address configuration. Only the declared properties are accepted.",
-                  "x-description-zh": "Structured address configuration. Only the declared properties are accepted."
+                  "description": "Structured address configuration. Only the declared properties are accepted."
                 },
                 {
                   "type": "object",
@@ -134,29 +125,24 @@
                   "properties": {
                     "mode": {
                       "const": "mask",
-                      "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific.",
-                      "x-description-zh": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
+                      "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
                     },
                     "value": {
                       "type": "string",
                       "minLength": 1,
-                      "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
-                      "x-description-zh": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits."
+                      "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits."
                     },
                     "mask": {
                       "type": "string",
                       "minLength": 1,
-                      "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
-                      "x-description-zh": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits."
+                      "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits."
                     }
                   },
                   "additionalProperties": false,
-                  "description": "Structured address configuration. Only the declared properties are accepted.",
-                  "x-description-zh": "Structured address configuration. Only the declared properties are accepted."
+                  "description": "Structured address configuration. Only the declared properties are accepted."
                 }
               ],
-              "description": "Exactly one address filtering mode: exact queue, inclusive range, or value/mask.",
-              "x-description-zh": "Exactly one address filtering mode: exact queue, inclusive range, or value/mask."
+              "description": "Exactly one address filtering mode: exact queue, inclusive range, or value/mask."
             },
             "ids": {
               "type": "array",
@@ -165,21 +151,17 @@
               "items": {
                 "type": "string",
                 "minLength": 1,
-                "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits.",
-                "x-description-zh": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits."
+                "description": "Known integer, hexadecimal, or SystemVerilog literal up to 64 bits."
               },
-              "description": "AXI transaction ID queue; values are ORed within the queue.",
-              "x-description-zh": "AXI transaction ID queue; values are ORed within the queue."
+              "description": "AXI transaction ID queue; values are ORed within the queue."
             }
           },
           "additionalProperties": false,
-          "description": "Completed-transaction filters; direction, IDs, and address are combined with AND.",
-          "x-description-zh": "Completed-transaction filters; direction, IDs, and address are combined with AND."
+          "description": "Completed-transaction filters; direction, IDs, and address are combined with AND."
         },
         "name": {
           "type": "string",
-          "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs.",
-          "x-description-zh": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
+          "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
         },
         "time_unit": {
           "type": "string",
@@ -192,8 +174,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false

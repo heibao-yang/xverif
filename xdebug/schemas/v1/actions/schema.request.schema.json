@@ -32,8 +32,7 @@
       "properties": {
         "action": {
           "type": "string",
-          "description": "Action name whose action-specific schema should be returned.",
-          "x-description-zh": "Action name whose action-specific schema should be returned."
+          "description": "Action name whose action-specific schema should be returned."
         },
         "kind": {
           "type": "string",
@@ -42,8 +41,7 @@
             "response"
           ],
           "default": "request",
-          "description": "Action-specific kind input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific kind input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific kind input. Its type and accepted values are defined by this schema."
         }
       },
       "additionalProperties": false,

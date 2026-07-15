@@ -154,7 +154,6 @@ def update_request_schema(schema: dict[str, Any], spec: dict[str, Any], hint: di
         props[key].setdefault("description", PARAM_DESCRIPTIONS.get(
             key, f"{key} parameter for {name}."
         ))
-        props[key].setdefault("x-description-zh", props[key]["description"])
     guidance = guidance_for(name)
     schema["x-agent"] = {
         "use_when": guidance["use_when"],

@@ -43,18 +43,15 @@
       "properties": {
         "clk_period": {
           "type": "string",
-          "description": "Clock period for half-period value comparison, e.g. '10ns' (default '10ns')",
-          "x-description-zh": "Clock period for half-period value comparison, e.g. '10ns' (default '10ns')"
+          "description": "Clock period for half-period value comparison, e.g. '10ns' (default '10ns')"
         },
         "signal": {
           "type": "string",
-          "description": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically.",
-          "x-description-zh": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically."
+          "description": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically."
         },
         "time": {
           "type": "string",
-          "description": "Target sample time. Prefer a canonical string with a unit; a bare number is interpreted only with time_unit.",
-          "x-description-zh": "Target sample time. Prefer a canonical string with a unit; a bare number is interpreted only with time_unit."
+          "description": "Target sample time. Prefer a canonical string with a unit; a bare number is interpreted only with time_unit."
         },
         "time_unit": {
           "type": "string",
@@ -67,8 +64,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false,

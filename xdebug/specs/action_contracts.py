@@ -292,8 +292,6 @@ def apply_argument_contract(action: str, name: str, schema: Json) -> Json:
         result.pop("x-description-zh", None)
     if "description" not in result and name in COMMON_DESCRIPTIONS:
         result["description"] = COMMON_DESCRIPTIONS[name]
-    if "x-description-zh" not in result and "description" in result and name not in COMMON_DESCRIPTIONS:
-        result["x-description-zh"] = result["description"]
     return result
 
 
@@ -305,6 +303,7 @@ def complete_descriptions(schema: Json, path: str) -> Json:
     JSON objects to an agent.
     """
     result = deepcopy(schema)
+    result.pop("x-description-zh", None)
     field = path.rsplit(".", 1)[-1].replace("[]", "")
     semantic = FIELD_DESCRIPTIONS.get(field)
     english_common = COMMON_DESCRIPTIONS.get(field)
@@ -328,8 +327,6 @@ def complete_descriptions(schema: Json, path: str) -> Json:
         result["description"] = f"Action-specific {field} input. Its type and accepted values are defined by this schema."
     elif semantic and "description" not in result:
         result["description"] = f"Action-specific {field} contract."
-    if "description" in result:
-        result["x-description-zh"] = result["description"]
     for key, value in list(result.get("properties", {}).items()):
         if isinstance(value, dict):
             result["properties"][key] = complete_descriptions(value, f"{path}.{key}")

@@ -32,8 +32,7 @@
       "properties": {
         "stream": {
           "type": "string",
-          "description": "Action-specific stream input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific stream input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific stream input. Its type and accepted values are defined by this schema."
         },
         "time_unit": {
           "type": "string",
@@ -46,8 +45,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false

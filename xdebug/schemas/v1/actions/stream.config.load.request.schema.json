@@ -46,8 +46,7 @@
                 "properties": {
                   "name": {
                     "type": "string",
-                    "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs.",
-                    "x-description-zh": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
+                    "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
                   },
                   "signals": {
                     "type": "object",
@@ -56,16 +55,13 @@
                       "type": "string",
                       "minLength": 1,
                       "description": "Value for a caller-defined signal alias key. Supply the real signal path or the action-supported expression for that alias.",
-                      "x-dynamic-contract": "Each property key is an alias referenced by this action; each value resolves that alias to a signal path or supported expression.",
-                      "x-description-zh": "Value for a caller-defined signal alias key. Supply the real signal path or the action-supported expression for that alias."
+                      "x-dynamic-contract": "Each property key is an alias referenced by this action; each value resolves that alias to a signal path or supported expression."
                     },
-                    "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-                    "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+                    "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
                   },
                   "clock": {
                     "type": "string",
-                    "description": "Action-specific clock input. Its type and accepted values are defined by this schema.",
-                    "x-description-zh": "Action-specific clock input. Its type and accepted values are defined by this schema."
+                    "description": "Action-specific clock input. Its type and accepted values are defined by this schema."
                   },
                   "edge": {
                     "type": "string",
@@ -74,8 +70,7 @@
                       "negedge",
                       "dual"
                     ],
-                    "description": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics.",
-                    "x-description-zh": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics."
+                    "description": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics."
                   },
                   "sample_point": {
                     "type": "string",
@@ -83,70 +78,57 @@
                       "before",
                       "after"
                     ],
-                    "description": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range.",
-                    "x-description-zh": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range."
+                    "description": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range."
                   },
                   "reset": {
                     "type": "string",
-                    "description": "Action-specific reset input. Its type and accepted values are defined by this schema.",
-                    "x-description-zh": "Action-specific reset input. Its type and accepted values are defined by this schema."
+                    "description": "Action-specific reset input. Its type and accepted values are defined by this schema."
                   },
                   "vld": {
                     "type": "string",
-                    "description": "Signal path or expression defining the valid sampling condition for counter statistics.",
-                    "x-description-zh": "Signal path or expression defining the valid sampling condition for counter statistics."
+                    "description": "Signal path or expression defining the valid sampling condition for counter statistics."
                   },
                   "rdy": {
                     "type": "string",
-                    "description": "Action-specific rdy input. Its type and accepted values are defined by this schema.",
-                    "x-description-zh": "Action-specific rdy input. Its type and accepted values are defined by this schema."
+                    "description": "Action-specific rdy input. Its type and accepted values are defined by this schema."
                   },
                   "bp": {
                     "type": "string",
-                    "description": "Action-specific bp input. Its type and accepted values are defined by this schema.",
-                    "x-description-zh": "Action-specific bp input. Its type and accepted values are defined by this schema."
+                    "description": "Action-specific bp input. Its type and accepted values are defined by this schema."
                   },
                   "sop": {
                     "type": "string",
-                    "description": "Action-specific sop input. Its type and accepted values are defined by this schema.",
-                    "x-description-zh": "Action-specific sop input. Its type and accepted values are defined by this schema."
+                    "description": "Action-specific sop input. Its type and accepted values are defined by this schema."
                   },
                   "eop": {
                     "type": "string",
-                    "description": "Action-specific eop input. Its type and accepted values are defined by this schema.",
-                    "x-description-zh": "Action-specific eop input. Its type and accepted values are defined by this schema."
+                    "description": "Action-specific eop input. Its type and accepted values are defined by this schema."
                   },
                   "data": {
                     "type": "string",
-                    "description": "Valid-ready or protocol payload signal path. Data-specific checks run only when it is supplied.",
-                    "x-description-zh": "Valid-ready or protocol payload signal path. Data-specific checks run only when it is supplied."
+                    "description": "Valid-ready or protocol payload signal path. Data-specific checks run only when it is supplied."
                   },
                   "beat_fields": {
                     "type": "object",
                     "additionalProperties": {
                       "type": "string",
                       "description": "Value for a caller-defined stream field name. Supply the signal path sampled for that field.",
-                      "x-dynamic-contract": "Each property key is a stream field name and each value is its signal path.",
-                      "x-description-zh": "Value for a caller-defined stream field name. Supply the signal path sampled for that field."
+                      "x-dynamic-contract": "Each property key is a stream field name and each value is its signal path."
                     },
-                    "description": "Structured beat_fields configuration. Only the declared properties are accepted.",
-                    "x-description-zh": "Structured beat_fields configuration. Only the declared properties are accepted."
+                    "description": "Structured beat_fields configuration. Only the declared properties are accepted."
                   },
                   "packet_stable_fields": {
                     "type": "object",
                     "additionalProperties": {
                       "type": "string",
                       "description": "Value for a caller-defined stream field name. Supply the signal path sampled for that field.",
-                      "x-dynamic-contract": "Each property key is a stream field name and each value is its signal path.",
-                      "x-description-zh": "Value for a caller-defined stream field name. Supply the signal path sampled for that field."
+                      "x-dynamic-contract": "Each property key is a stream field name and each value is its signal path."
                     },
-                    "description": "Structured packet_stable_fields configuration. Only the declared properties are accepted.",
-                    "x-description-zh": "Structured packet_stable_fields configuration. Only the declared properties are accepted."
+                    "description": "Structured packet_stable_fields configuration. Only the declared properties are accepted."
                   },
                   "channel_id": {
                     "type": "string",
-                    "description": "Action-specific channel_id input. Its type and accepted values are defined by this schema.",
-                    "x-description-zh": "Action-specific channel_id input. Its type and accepted values are defined by this schema."
+                    "description": "Action-specific channel_id input. Its type and accepted values are defined by this schema."
                   },
                   "channel_id_valid": {
                     "type": "string",
@@ -155,41 +137,33 @@
                       "eop",
                       "every_beat"
                     ],
-                    "description": "Action-specific channel_id_valid input. Its type and accepted values are defined by this schema.",
-                    "x-description-zh": "Action-specific channel_id_valid input. Its type and accepted values are defined by this schema."
+                    "description": "Action-specific channel_id_valid input. Its type and accepted values are defined by this schema."
                   },
                   "allow_interleaving": {
                     "type": "boolean",
-                    "description": "Action-specific allow_interleaving input. Its type and accepted values are defined by this schema.",
-                    "x-description-zh": "Action-specific allow_interleaving input. Its type and accepted values are defined by this schema."
+                    "description": "Action-specific allow_interleaving input. Its type and accepted values are defined by this schema."
                   },
                   "description": {
                     "type": "string",
-                    "description": "Action-specific description input. Its type and accepted values are defined by this schema.",
-                    "x-description-zh": "Action-specific description input. Its type and accepted values are defined by this schema."
+                    "description": "Action-specific description input. Its type and accepted values are defined by this schema."
                   }
                 },
                 "additionalProperties": false,
-                "description": "Structured streams configuration. Only the declared properties are accepted.",
-                "x-description-zh": "Structured streams configuration. Only the declared properties are accepted."
+                "description": "Structured streams configuration. Only the declared properties are accepted."
               },
-              "description": "Ordered streams entries. Each item must satisfy the declared item contract.",
-              "x-description-zh": "Ordered streams entries. Each item must satisfy the declared item contract."
+              "description": "Ordered streams entries. Each item must satisfy the declared item contract."
             }
           },
           "additionalProperties": false,
-          "description": "Structured config configuration. Only the declared properties are accepted.",
-          "x-description-zh": "Structured config configuration. Only the declared properties are accepted."
+          "description": "Structured config configuration. Only the declared properties are accepted."
         },
         "config_path": {
           "type": "string",
-          "description": "Action-specific config_path input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific config_path input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific config_path input. Its type and accepted values are defined by this schema."
         },
         "file": {
           "type": "string",
-          "description": "Action-specific file input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific file input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific file input. Its type and accepted values are defined by this schema."
         },
         "mode": {
           "type": "string",
@@ -197,8 +171,7 @@
             "replace",
             "append"
           ],
-          "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific.",
-          "x-description-zh": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
+          "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
         },
         "streams": {
           "type": "array",
@@ -214,8 +187,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs.",
-                "x-description-zh": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
+                "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
               },
               "signals": {
                 "type": "object",
@@ -224,16 +196,13 @@
                   "type": "string",
                   "minLength": 1,
                   "description": "Value for a caller-defined signal alias key. Supply the real signal path or the action-supported expression for that alias.",
-                  "x-dynamic-contract": "Each property key is an alias referenced by this action; each value resolves that alias to a signal path or supported expression.",
-                  "x-description-zh": "Value for a caller-defined signal alias key. Supply the real signal path or the action-supported expression for that alias."
+                  "x-dynamic-contract": "Each property key is an alias referenced by this action; each value resolves that alias to a signal path or supported expression."
                 },
-                "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-                "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+                "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
               },
               "clock": {
                 "type": "string",
-                "description": "Action-specific clock input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific clock input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific clock input. Its type and accepted values are defined by this schema."
               },
               "edge": {
                 "type": "string",
@@ -242,8 +211,7 @@
                   "negedge",
                   "dual"
                 ],
-                "description": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics.",
-                "x-description-zh": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics."
+                "description": "Clock sampling edge. The schema default is authoritative; negedge often matches monitor semantics."
               },
               "sample_point": {
                 "type": "string",
@@ -251,70 +219,57 @@
                   "before",
                   "after"
                 ],
-                "description": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range.",
-                "x-description-zh": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range."
+                "description": "Before/after observation point for posedge or dual sampling; it does not change the raw waveform range."
               },
               "reset": {
                 "type": "string",
-                "description": "Action-specific reset input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific reset input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific reset input. Its type and accepted values are defined by this schema."
               },
               "vld": {
                 "type": "string",
-                "description": "Signal path or expression defining the valid sampling condition for counter statistics.",
-                "x-description-zh": "Signal path or expression defining the valid sampling condition for counter statistics."
+                "description": "Signal path or expression defining the valid sampling condition for counter statistics."
               },
               "rdy": {
                 "type": "string",
-                "description": "Action-specific rdy input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific rdy input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific rdy input. Its type and accepted values are defined by this schema."
               },
               "bp": {
                 "type": "string",
-                "description": "Action-specific bp input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific bp input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific bp input. Its type and accepted values are defined by this schema."
               },
               "sop": {
                 "type": "string",
-                "description": "Action-specific sop input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific sop input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific sop input. Its type and accepted values are defined by this schema."
               },
               "eop": {
                 "type": "string",
-                "description": "Action-specific eop input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific eop input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific eop input. Its type and accepted values are defined by this schema."
               },
               "data": {
                 "type": "string",
-                "description": "Valid-ready or protocol payload signal path. Data-specific checks run only when it is supplied.",
-                "x-description-zh": "Valid-ready or protocol payload signal path. Data-specific checks run only when it is supplied."
+                "description": "Valid-ready or protocol payload signal path. Data-specific checks run only when it is supplied."
               },
               "beat_fields": {
                 "type": "object",
                 "additionalProperties": {
                   "type": "string",
                   "description": "Value for a caller-defined stream field name. Supply the signal path sampled for that field.",
-                  "x-dynamic-contract": "Each property key is a stream field name and each value is its signal path.",
-                  "x-description-zh": "Value for a caller-defined stream field name. Supply the signal path sampled for that field."
+                  "x-dynamic-contract": "Each property key is a stream field name and each value is its signal path."
                 },
-                "description": "Structured beat_fields configuration. Only the declared properties are accepted.",
-                "x-description-zh": "Structured beat_fields configuration. Only the declared properties are accepted."
+                "description": "Structured beat_fields configuration. Only the declared properties are accepted."
               },
               "packet_stable_fields": {
                 "type": "object",
                 "additionalProperties": {
                   "type": "string",
                   "description": "Value for a caller-defined stream field name. Supply the signal path sampled for that field.",
-                  "x-dynamic-contract": "Each property key is a stream field name and each value is its signal path.",
-                  "x-description-zh": "Value for a caller-defined stream field name. Supply the signal path sampled for that field."
+                  "x-dynamic-contract": "Each property key is a stream field name and each value is its signal path."
                 },
-                "description": "Structured packet_stable_fields configuration. Only the declared properties are accepted.",
-                "x-description-zh": "Structured packet_stable_fields configuration. Only the declared properties are accepted."
+                "description": "Structured packet_stable_fields configuration. Only the declared properties are accepted."
               },
               "channel_id": {
                 "type": "string",
-                "description": "Action-specific channel_id input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific channel_id input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific channel_id input. Its type and accepted values are defined by this schema."
               },
               "channel_id_valid": {
                 "type": "string",
@@ -323,26 +278,21 @@
                   "eop",
                   "every_beat"
                 ],
-                "description": "Action-specific channel_id_valid input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific channel_id_valid input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific channel_id_valid input. Its type and accepted values are defined by this schema."
               },
               "allow_interleaving": {
                 "type": "boolean",
-                "description": "Action-specific allow_interleaving input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific allow_interleaving input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific allow_interleaving input. Its type and accepted values are defined by this schema."
               },
               "description": {
                 "type": "string",
-                "description": "Action-specific description input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific description input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific description input. Its type and accepted values are defined by this schema."
               }
             },
             "additionalProperties": false,
-            "description": "Structured streams configuration. Only the declared properties are accepted.",
-            "x-description-zh": "Structured streams configuration. Only the declared properties are accepted."
+            "description": "Structured streams configuration. Only the declared properties are accepted."
           },
-          "description": "Ordered streams entries. Each item must satisfy the declared item contract.",
-          "x-description-zh": "Ordered streams entries. Each item must satisfy the declared item contract."
+          "description": "Ordered streams entries. Each item must satisfy the declared item contract."
         },
         "time_unit": {
           "type": "string",
@@ -355,8 +305,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false,

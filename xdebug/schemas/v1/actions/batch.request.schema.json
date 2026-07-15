@@ -32,18 +32,15 @@
       "properties": {
         "mode": {
           "type": "string",
-          "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific.",
-          "x-description-zh": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
+          "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
         },
         "requests": {
           "type": "array",
           "items": {
             "type": "object",
-            "description": "Structured requests configuration. Only the declared properties are accepted.",
-            "x-description-zh": "Structured requests configuration. Only the declared properties are accepted."
+            "description": "Structured requests configuration. Only the declared properties are accepted."
           },
-          "description": "Ordered requests entries. Each item must satisfy the declared item contract.",
-          "x-description-zh": "Ordered requests entries. Each item must satisfy the declared item contract."
+          "description": "Ordered requests entries. Each item must satisfy the declared item contract."
         }
       },
       "additionalProperties": false,

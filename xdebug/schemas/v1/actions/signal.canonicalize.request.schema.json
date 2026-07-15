@@ -32,8 +32,7 @@
       "properties": {
         "signal": {
           "type": "string",
-          "description": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically.",
-          "x-description-zh": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically."
+          "description": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically."
         },
         "time_unit": {
           "type": "string",
@@ -46,8 +45,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false,

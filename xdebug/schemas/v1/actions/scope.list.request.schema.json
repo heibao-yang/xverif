@@ -36,28 +36,23 @@
             "scope",
             "signal"
           ],
-          "description": "Action-specific kind input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific kind input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific kind input. Its type and accepted values are defined by this schema."
         },
         "max_depth": {
           "type": "integer",
-          "description": "Action-specific max_depth input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific max_depth input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific max_depth input. Its type and accepted values are defined by this schema."
         },
         "name_pattern": {
           "type": "string",
-          "description": "Action-specific name_pattern input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific name_pattern input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific name_pattern input. Its type and accepted values are defined by this schema."
         },
         "path": {
           "type": "string",
-          "description": "Scope path to list. Empty string or '.' returns top-level scopes.",
-          "x-description-zh": "Scope path to list. Empty string or '.' returns top-level scopes."
+          "description": "Scope path to list. Empty string or '.' returns top-level scopes."
         },
         "recursive": {
           "type": "boolean",
-          "description": "Action-specific recursive input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific recursive input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific recursive input. Its type and accepted values are defined by this schema."
         },
         "time_unit": {
           "type": "string",
@@ -70,8 +65,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false,

@@ -8,14 +8,13 @@
 ## Schema discovery
 
 `xverif_debug_get_schema(action, kind="request", view="mcp")` 默认返回可直接用于 MCP
-query 的投影：中英文 action 总览 `purpose_en`/`purpose_zh`、`args_schema`、`limits_schema`、递归 `parameter_guide`、展开的
-`constraints`、`minimal_call`、内嵌 examples、适用/禁用边界、替代 action 与完整的
-。不要把返回的 schema 再套入
+query 的投影：中英文 action 总览 `purpose_en`/`purpose_zh`、作为唯一字段合同的
+`args_schema`/`limits_schema`、业务 `constraints`、`minimal_call`、无效调用 examples、
+适用/禁用边界与替代 action。不要把返回的 schema 再套入
 `xverif_debug_query.args`，也不需要为 primary response fields 再查询一次 schema。
 
 - `view="mcp"`：默认；用于构造 query tool 的内层 args/limits。
-- `view="args"`：只查看 action-specific args 合同。
-- `kind="response", view="response"`：查看 response schema 和主要字段/完整性解释。
+- `kind="response", view="response"`：查看 response schema。
 - session/transport/LSF/timeout 排障转 `xverif-admin`，不自动 reopen 或 fallback。
 - `run_manifest` 可选；提供时必须是已发布的对应 `*.run-manifest.v1`，资源路径相对
   manifest 文件，校验不匹配会返回 `RESOURCE_PROVENANCE_MISMATCH`，不会启动后端。

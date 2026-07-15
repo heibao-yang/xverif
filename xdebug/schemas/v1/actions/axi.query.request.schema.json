@@ -32,13 +32,11 @@
       "properties": {
         "addr": {
           "type": "string",
-          "description": "Action-specific addr input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific addr input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific addr input. Its type and accepted values are defined by this schema."
         },
         "address": {
           "type": "string",
-          "description": "Action-specific address input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific address input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific address input. Its type and accepted values are defined by this schema."
         },
         "direction": {
           "type": "string",
@@ -46,23 +44,19 @@
             "write",
             "read"
           ],
-          "description": "Action-specific direction input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific direction input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific direction input. Its type and accepted values are defined by this schema."
         },
         "id": {
           "type": "string",
-          "description": "Action-specific id input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific id input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific id input. Its type and accepted values are defined by this schema."
         },
         "last": {
           "type": "boolean",
-          "description": "Action-specific last input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific last input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific last input. Its type and accepted values are defined by this schema."
         },
         "name": {
           "type": "string",
-          "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs.",
-          "x-description-zh": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
+          "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
         },
         "output": {
           "type": "object",
@@ -70,13 +64,11 @@
             "include_data": {
               "type": "boolean",
               "default": false,
-              "description": "Action-specific include_data input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific include_data input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific include_data input. Its type and accepted values are defined by this schema."
             }
           },
           "additionalProperties": false,
-          "description": "Export destination and rendering controls. path, file_format, and verbose are supported only where this action declares them.",
-          "x-description-zh": "Export destination and rendering controls. path, file_format, and verbose are supported only where this action declares them."
+          "description": "Export destination and rendering controls. path, file_format, and verbose are supported only where this action declares them."
         },
         "query": {
           "oneOf": [
@@ -86,19 +78,16 @@
                 "line_limit": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well.",
-                  "x-description-zh": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well."
+                  "description": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well."
                 },
                 "index": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "One-based query, cursor, or list position; the action schema defines its exact reference set.",
-                  "x-description-zh": "One-based query, cursor, or list position; the action schema defines its exact reference set."
+                  "description": "One-based query, cursor, or list position; the action schema defines its exact reference set."
                 }
               },
               "additionalProperties": false,
-              "description": "Action-specific query selector. Do not copy index, channel, or filter forms from another action.",
-              "x-description-zh": "Action-specific query selector. Do not copy index, channel, or filter forms from another action."
+              "description": "Action-specific query selector. Do not copy index, channel, or filter forms from another action."
             },
             {
               "type": "object",
@@ -116,22 +105,18 @@
                     "ar",
                     "r"
                   ],
-                  "description": "Action-specific channel input. Its type and accepted values are defined by this schema.",
-                  "x-description-zh": "Action-specific channel input. Its type and accepted values are defined by this schema."
+                  "description": "Action-specific channel input. Its type and accepted values are defined by this schema."
                 },
                 "handshake_time": {
                   "type": "string",
-                  "description": "Action-specific handshake_time input. Its type and accepted values are defined by this schema.",
-                  "x-description-zh": "Action-specific handshake_time input. Its type and accepted values are defined by this schema."
+                  "description": "Action-specific handshake_time input. Its type and accepted values are defined by this schema."
                 }
               },
               "additionalProperties": false,
-              "description": "Action-specific query selector. Do not copy index, channel, or filter forms from another action.",
-              "x-description-zh": "Action-specific query selector. Do not copy index, channel, or filter forms from another action."
+              "description": "Action-specific query selector. Do not copy index, channel, or filter forms from another action."
             }
           ],
-          "description": "Action-specific query selector. Do not copy index, channel, or filter forms from another action.",
-          "x-description-zh": "Action-specific query selector. Do not copy index, channel, or filter forms from another action."
+          "description": "Action-specific query selector. Do not copy index, channel, or filter forms from another action."
         },
         "time_unit": {
           "type": "string",
@@ -144,8 +129,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false,

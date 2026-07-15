@@ -247,8 +247,8 @@ MCP client 配置示例（direct 模式）：
 - action 统一通过 `xverif_debug_query(session_id, action, args, limits, output_format)` 调用，不暴露快捷别名。
 
 `xverif_debug_get_schema` 默认返回 MCP 投影：结果中的
-`args_schema` 和 `limits_schema` 可直接对应 query tool 的内层同名参数；`parameter_guide`
-递归解释字段，`constraints` 展平条件关系，`minimal_call`/`common_examples` 可直接复制。
+`args_schema` 和 `limits_schema` 是 query tool 内层同名参数的唯一字段合同；
+`constraints` 只补充跨字段业务语义，`minimal_call` 可直接复制。
 无需再查询一次 response schema；
 只查看完整 response schema 时使用 `kind="response", view="response"`。
 

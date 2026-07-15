@@ -38,33 +38,27 @@
       "properties": {
         "bind": {
           "type": "string",
-          "description": "Action-specific bind input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific bind input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific bind input. Its type and accepted values are defined by this schema."
         },
         "bind_host": {
           "type": "string",
-          "description": "Action-specific bind_host input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific bind_host input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific bind_host input. Its type and accepted values are defined by this schema."
         },
         "host": {
           "type": "string",
-          "description": "Action-specific host input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific host input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific host input. Its type and accepted values are defined by this schema."
         },
         "name": {
           "type": "string",
-          "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs.",
-          "x-description-zh": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
+          "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
         },
         "port": {
           "type": "integer",
-          "description": "Action-specific port input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific port input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific port input. Its type and accepted values are defined by this schema."
         },
         "session_id": {
           "type": "string",
-          "description": "Action-specific session_id input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific session_id input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific session_id input. Its type and accepted values are defined by this schema."
         },
         "transport": {
           "type": "string",
@@ -73,8 +67,7 @@
             "tcp",
             "file"
           ],
-          "description": "Action-specific transport input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific transport input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific transport input. Its type and accepted values are defined by this schema."
         }
       },
       "additionalProperties": false,

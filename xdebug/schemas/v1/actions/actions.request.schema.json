@@ -45,11 +45,9 @@
                   "combined",
                   "session"
                 ],
-                "description": "Action-specific category input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific category input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific category input. Its type and accepted values are defined by this schema."
               },
-              "description": "Ordered category entries. Each item must satisfy the declared item contract.",
-              "x-description-zh": "Ordered category entries. Each item must satisfy the declared item contract."
+              "description": "Ordered category entries. Each item must satisfy the declared item contract."
             },
             "requires": {
               "type": "array",
@@ -65,11 +63,9 @@
                   "any",
                   "session"
                 ],
-                "description": "Action-specific requires input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific requires input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific requires input. Its type and accepted values are defined by this schema."
               },
-              "description": "Ordered requires entries. Each item must satisfy the declared item contract.",
-              "x-description-zh": "Ordered requires entries. Each item must satisfy the declared item contract."
+              "description": "Ordered requires entries. Each item must satisfy the declared item contract."
             },
             "purposes": {
               "type": "array",
@@ -90,45 +86,37 @@
                   "transform",
                   "orchestrate"
                 ],
-                "description": "Action-specific purposes input. Its type and accepted values are defined by this schema.",
-                "x-description-zh": "Action-specific purposes input. Its type and accepted values are defined by this schema."
+                "description": "Action-specific purposes input. Its type and accepted values are defined by this schema."
               },
-              "description": "Ordered purposes entries. Each item must satisfy the declared item contract.",
-              "x-description-zh": "Ordered purposes entries. Each item must satisfy the declared item contract."
+              "description": "Ordered purposes entries. Each item must satisfy the declared item contract."
             },
             "keyword": {
               "type": "string",
               "pattern": ".*\\S.*",
-              "description": "Action-specific keyword input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific keyword input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific keyword input. Its type and accepted values are defined by this schema."
             }
           },
           "additionalProperties": false,
-          "description": "Structured filter configuration. Only the declared properties are accepted.",
-          "x-description-zh": "Structured filter configuration. Only the declared properties are accepted."
+          "description": "Structured filter configuration. Only the declared properties are accepted."
         },
         "output": {
           "type": "object",
           "properties": {
             "path": {
               "type": "string",
-              "description": "Action-specific path input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific path input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific path input. Its type and accepted values are defined by this schema."
             },
             "file_format": {
               "type": "string",
-              "description": "Action-specific file_format input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific file_format input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific file_format input. Its type and accepted values are defined by this schema."
             },
             "verbose": {
               "type": "boolean",
-              "description": "Action-specific verbose input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific verbose input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific verbose input. Its type and accepted values are defined by this schema."
             }
           },
           "additionalProperties": false,
-          "description": "Export destination and rendering controls. path, file_format, and verbose are supported only where this action declares them.",
-          "x-description-zh": "Export destination and rendering controls. path, file_format, and verbose are supported only where this action declares them."
+          "description": "Export destination and rendering controls. path, file_format, and verbose are supported only where this action declares them."
         }
       },
       "additionalProperties": false,

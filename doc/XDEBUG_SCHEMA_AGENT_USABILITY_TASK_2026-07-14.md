@@ -29,7 +29,7 @@ xdebug 已具备 action catalog、action-specific request schema、examples 和 
 4. 获得最小可执行调用、常用合法调用、典型非法调用及修正方式；
 5. 知道成功响应的主要字段、时间/unknown 表示、空结果和完整性字段应如何解释。
 
-成功标准：每个 stable action 的 request business field 在 checked-in JSON Schema 与 get-schema `parameter_guide` 中均可独立解释；默认 MCP view 可直接转交 query tool；生成物、examples、skill 文档与静态 audit 一致；正式 MCP smoke 与 schema 回归通过。
+成功标准：每个 stable action 的 request business field 在 checked-in JSON Schema 中可独立解释；默认 MCP view 可直接转交 query tool；生成物、examples、skill 文档与静态 audit 一致；正式 MCP smoke 与 schema 回归通过。
 
 ## 3. 范围、非目标与兼容边界
 
@@ -113,7 +113,7 @@ xverif_debug_get_schema(
 | `native` | 返回当前 CLI/stdio 完整 request/response JSON Schema。 |
 | `response` | 返回 response schema；当 kind 不是 response 时返回 `INVALID_ARGUMENT`。 |
 
-`include_examples=false` 仍返回 minimal call 与 parameter guide，只隐藏 common/invalid examples。`language` 默认 `zh`，只切换人类可读说明；machine schema 和枚举不因语言变化。未知 action、未知 kind/view、kind-view 冲突必须返回稳定 `INVALID_ARGUMENT` 或 `UNKNOWN_ACTION`，并带 suggested action/correct example。
+`include_examples=false` 仍返回 minimal call，只隐藏 invalid examples。未知 action、未知 kind/view、kind-view 冲突必须返回稳定 `INVALID_ARGUMENT` 或 `UNKNOWN_ACTION`，并带 suggested action/correct example。
 
 ### 6.2 默认 MCP 返回形态
 
@@ -123,7 +123,8 @@ xverif_debug_get_schema(
   "kind": "request",
   "view": "mcp",
   "call_with": "xverif_debug_query",
-  "purpose": "读取单个信号在指定采样时间的值。",
+  "purpose_en": "Read one signal value at a sampled waveform time.",
+  "purpose_zh": "读取单个信号在指定采样时间的值。",
   "use_when": ["需要一个最终叶子信号在单一采样时刻的值。"],
   "do_not_use_when": ["需要原始值变化时间线。"],
   "alternatives": [{"action": "signal.changes", "when": "需要每次原始值变化。"}],
@@ -131,15 +132,13 @@ xverif_debug_get_schema(
   "fixed_arguments": {"action": "value.at"},
   "args_schema": {},
   "limits_schema": {},
-  "constraints": ["signal、time、clock 必须同时提供。"],
-  "parameter_guide": [],
+  "constraints": [],
   "minimal_call": {},
-  "common_examples": [],
-  "invalid_examples": [],
+  "invalid_examples": []
 }
 ```
 
-`parameter_guide` 必须递归列出所有 args/limits business path（例如 `args.rules.max_wait_cycles`），并包含 type、required、meaning、accepted values/format、unit、default/effective default、conditional applicability、interactions、dynamic contract 和 result impact。object 项说明其整体组合语义，array 项说明 item 形态。`constraints` 是 JSON Schema `allOf/oneOf/if-then` 的展平版本，agent 无需自行推理 validator 逻辑。
+`args_schema` 与 `limits_schema` 是字段语义、类型、enum、default、required 和嵌套结构的唯一来源。`constraints` 只保留 JSON Schema 之外的跨字段业务语义。
 
 ### 6.3 原生 schema action
 
@@ -153,10 +152,10 @@ xverif_debug_get_schema(
 
 1. stable action contract、request schema、catalog 和 minimal MCP example 完整对应；
 2. business leaf description、array items、object closure/dynamic contract、enum/default/conditional explanation 完整；
-3. `parameter_guide` 覆盖 args/limits schema 中每个业务路径；
+3. `args_schema`/`limits_schema` 覆盖每个业务路径；
 4. MCP `args_schema` 与 native schema 的 `properties.args` 完全等价，limits 同理；
 5. use/do-not-use 不能使用泛化模板；除明确无替代 action 外，至少有一个 alternatives 条目；
-6. 内嵌合法/非法 examples 通过 schema validator，invalid example 的 corrected call 必须通过。
+6. 内嵌 minimal/invalid examples 通过 schema validator，invalid example 必须被拒绝。
 
 同步更新 action reference、MCP surface、generated examples、skill metadata 与项目 xdebug 架构说明；不保留只能靠仓库路径访问的 example 合同。
 

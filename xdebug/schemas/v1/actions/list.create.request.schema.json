@@ -32,8 +32,7 @@
       "properties": {
         "name": {
           "type": "string",
-          "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs.",
-          "x-description-zh": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
+          "description": "Saved-object name in this action namespace; do not assume names are shared by cursors, lists, and protocol configs."
         },
         "signals": {
           "oneOf": [
@@ -41,26 +40,21 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-                "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+                "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
               },
-              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-              "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
             },
             {
               "type": "object",
               "additionalProperties": {
                 "type": "string",
                 "description": "Value for a caller-defined signal alias key. Supply the real signal path or the action-supported expression for that alias.",
-                "x-dynamic-contract": "Each property key is an alias referenced by this action; each value resolves that alias to a signal path or supported expression.",
-                "x-description-zh": "Value for a caller-defined signal alias key. Supply the real signal path or the action-supported expression for that alias."
+                "x-dynamic-contract": "Each property key is an alias referenced by this action; each value resolves that alias to a signal path or supported expression."
               },
-              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-              "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
             }
           ],
-          "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-          "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+          "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
         },
         "time_unit": {
           "type": "string",
@@ -73,8 +67,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false,

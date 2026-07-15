@@ -43,18 +43,15 @@
       "properties": {
         "limits": {
           "type": "object",
-          "description": "Execution resource limits. Use this action's top-level limits properties, never args.limits.",
-          "x-description-zh": "Execution resource limits. Use this action's top-level limits properties, never args.limits."
+          "description": "Execution resource limits. Use this action's top-level limits properties, never args.limits."
         },
         "signal": {
           "type": "string",
-          "description": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically.",
-          "x-description-zh": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically."
+          "description": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically."
         },
         "time": {
           "type": "string",
-          "description": "Target sample time. Prefer a canonical string with a unit; a bare number is interpreted only with time_unit.",
-          "x-description-zh": "Target sample time. Prefer a canonical string with a unit; a bare number is interpreted only with time_unit."
+          "description": "Target sample time. Prefer a canonical string with a unit; a bare number is interpreted only with time_unit."
         },
         "time_unit": {
           "type": "string",
@@ -67,8 +64,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false,

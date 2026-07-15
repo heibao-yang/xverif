@@ -44,12 +44,10 @@
                 "properties": {
                   "type": {
                     "const": "unknown_xz",
-                    "description": "报告区间内出现的 X/Z。",
-                    "x-description-zh": "报告区间内出现的 X/Z。"
+                    "description": "报告区间内出现的 X/Z。"
                   }
                 },
-                "additionalProperties": false,
-                "x-description-zh": "Structured checks configuration. Only the declared properties are accepted."
+                "additionalProperties": false
               },
               {
                 "type": "object",
@@ -61,17 +59,14 @@
                 "properties": {
                   "type": {
                     "const": "glitch",
-                    "description": "选择短脉冲检查。",
-                    "x-description-zh": "选择短脉冲检查。"
+                    "description": "选择短脉冲检查。"
                   },
                   "min_pulse_width": {
                     "type": "string",
-                    "description": "Action-specific min_pulse_width input. Its type and accepted values are defined by this schema.",
-                    "x-description-zh": "Action-specific min_pulse_width input. Its type and accepted values are defined by this schema."
+                    "description": "Action-specific min_pulse_width input. Its type and accepted values are defined by this schema."
                   }
                 },
-                "additionalProperties": false,
-                "x-description-zh": "Structured checks configuration. Only the declared properties are accepted."
+                "additionalProperties": false
               },
               {
                 "type": "object",
@@ -83,30 +78,24 @@
                 "properties": {
                   "type": {
                     "const": "stuck",
-                    "description": "选择长时间不变检查。",
-                    "x-description-zh": "选择长时间不变检查。"
+                    "description": "选择长时间不变检查。"
                   },
                   "min_duration": {
                     "type": "string",
-                    "description": "Action-specific min_duration input. Its type and accepted values are defined by this schema.",
-                    "x-description-zh": "Action-specific min_duration input. Its type and accepted values are defined by this schema."
+                    "description": "Action-specific min_duration input. Its type and accepted values are defined by this schema."
                   }
                 },
-                "additionalProperties": false,
-                "x-description-zh": "Structured checks configuration. Only the declared properties are accepted."
+                "additionalProperties": false
               }
-            ],
-            "x-description-zh": "一项由 type 判别的 abnormal 检查。"
+            ]
           },
           "description": "Ordered checks entries. Each item must satisfy the declared item contract.",
-          "minItems": 1,
-          "x-description-zh": "Ordered checks entries. Each item must satisfy the declared item contract."
+          "minItems": 1
         },
         "line_limit": {
           "type": "integer",
           "minimum": 1,
-          "description": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well.",
-          "x-description-zh": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well."
+          "description": "Limits returned evidence rows only, not scanning, aggregation, or the verdict; read completeness fields as well."
         },
         "signals": {
           "oneOf": [
@@ -114,44 +103,36 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-                "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+                "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
               },
-              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-              "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
             },
             {
               "type": "object",
               "additionalProperties": {
                 "type": "string",
                 "description": "Value for a caller-defined signal alias key. Supply the real signal path or the action-supported expression for that alias.",
-                "x-dynamic-contract": "Each property key is an alias referenced by this action; each value resolves that alias to a signal path or supported expression.",
-                "x-description-zh": "Value for a caller-defined signal alias key. Supply the real signal path or the action-supported expression for that alias."
+                "x-dynamic-contract": "Each property key is an alias referenced by this action; each value resolves that alias to a signal path or supported expression."
               },
-              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-              "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
             }
           ],
-          "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-          "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+          "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
         },
         "time_range": {
           "type": "object",
           "properties": {
             "begin": {
               "type": "string",
-              "description": "Action-specific begin input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific begin input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific begin input. Its type and accepted values are defined by this schema."
             },
             "end": {
               "type": "string",
-              "description": "Action-specific end input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific end input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific end input. Its type and accepted values are defined by this schema."
             }
           },
           "additionalProperties": false,
-          "description": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds.",
-          "x-description-zh": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds."
+          "description": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds."
         },
         "time_unit": {
           "type": "string",
@@ -164,8 +145,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         },
         "value_format": {
           "type": "string",
@@ -174,8 +154,7 @@
             "bin",
             "dec"
           ],
-          "description": "Action-specific value_format input. Its type and accepted values are defined by this schema.",
-          "x-description-zh": "Action-specific value_format input. Its type and accepted values are defined by this schema."
+          "description": "Action-specific value_format input. Its type and accepted values are defined by this schema."
         }
       },
       "additionalProperties": false,

@@ -34,21 +34,17 @@
           "type": "array",
           "items": {
             "type": "object",
-            "description": "Structured conditions configuration. Only the declared properties are accepted.",
-            "x-description-zh": "Structured conditions configuration. Only the declared properties are accepted."
+            "description": "Structured conditions configuration. Only the declared properties are accepted."
           },
-          "description": "Ordered conditions entries. Each item must satisfy the declared item contract.",
-          "x-description-zh": "Ordered conditions entries. Each item must satisfy the declared item contract."
+          "description": "Ordered conditions entries. Each item must satisfy the declared item contract."
         },
         "mode": {
           "type": "string",
-          "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific.",
-          "x-description-zh": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
+          "description": "Action processing or return mode. Its legal values, default, and interactions are action-specific."
         },
         "signal": {
           "type": "string",
-          "description": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically.",
-          "x-description-zh": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically."
+          "description": "Final leaf signal path. Aggregate, array, and struct roots are not expanded automatically."
         },
         "signals": {
           "oneOf": [
@@ -56,44 +52,36 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-                "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+                "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
               },
-              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-              "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
             },
             {
               "type": "object",
               "additionalProperties": {
                 "type": "string",
                 "description": "Value for a caller-defined signal alias key. Supply the real signal path or the action-supported expression for that alias.",
-                "x-dynamic-contract": "Each property key is an alias referenced by this action; each value resolves that alias to a signal path or supported expression.",
-                "x-description-zh": "Value for a caller-defined signal alias key. Supply the real signal path or the action-supported expression for that alias."
+                "x-dynamic-contract": "Each property key is an alias referenced by this action; each value resolves that alias to a signal path or supported expression."
               },
-              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-              "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+              "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
             }
           ],
-          "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths.",
-          "x-description-zh": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
+          "description": "Signal-path list or alias-to-path/expression map. Expressions must reference aliases rather than nested paths."
         },
         "time_range": {
           "type": "object",
           "properties": {
             "begin": {
               "type": "string",
-              "description": "Action-specific begin input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific begin input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific begin input. Its type and accepted values are defined by this schema."
             },
             "end": {
               "type": "string",
-              "description": "Action-specific end input. Its type and accepted values are defined by this schema.",
-              "x-description-zh": "Action-specific end input. Its type and accepted values are defined by this schema."
+              "description": "Action-specific end input. Its type and accepted values are defined by this schema."
             }
           },
           "additionalProperties": false,
-          "description": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds.",
-          "x-description-zh": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds."
+          "description": "Closed analysis interval. begin and end may be omitted independently to use the available waveform bounds."
         },
         "time_unit": {
           "type": "string",
@@ -106,8 +94,7 @@
             "ms",
             "s"
           ],
-          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit.",
-          "x-description-zh": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
+          "description": "Interprets only unitless time numbers; it never overrides a time string that already has a unit."
         }
       },
       "additionalProperties": false,

@@ -275,13 +275,13 @@ def xverif_debug_get_schema(action: str, kind: str = "request", view: str = "mcp
     Args:
         action: The xdebug action name (e.g. "value.at", "trace.drivers").
         kind: "request" for input schema, "response" for output schema.
-        view: "mcp" (default), "args", or "response".
-        include_examples: Include checked-in minimal/common MCP examples.
+        view: "mcp" (default) or "response".
+        include_examples: Include invalid MCP call examples.
     """
     if kind not in ("request", "response"):
         return _tool_error("INVALID_ARGUMENT", "kind must be 'request' or 'response'")
-    if view not in ("mcp", "args", "response"):
-        return _tool_error("INVALID_ARGUMENT", "view must be 'mcp', 'args', or 'response'")
+    if view not in ("mcp", "response"):
+        return _tool_error("INVALID_ARGUMENT", "view must be 'mcp' or 'response'")
     if view == "response" and kind != "response":
         return _tool_error("INVALID_ARGUMENT", "view='response' requires kind='response'")
     if kind == "response" and view != "response":
