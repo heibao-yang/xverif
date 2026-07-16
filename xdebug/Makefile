@@ -186,6 +186,8 @@ WAVEFORM_SRCS = src/waveform/service/action_support.cpp \
                 src/waveform/common/clock_sampling.cpp \
                 src/waveform/common/reset_config.cpp \
                 src/waveform/common/expression.cpp \
+                src/waveform/cache/analysis_probe.cpp \
+                src/waveform/cache/analysis_size_estimator.cpp \
                 src/waveform/apb/apb_manager.cpp \
                 src/waveform/apb/apb_analyzer.cpp \
                 src/waveform/axi/axi_manager.cpp \
@@ -201,6 +203,7 @@ WAVEFORM_SRCS = src/waveform/service/action_support.cpp \
                 src/waveform/stream/stream_expr.cpp \
                 src/waveform/stream/stream_signal_values.cpp \
                 src/waveform/stream/stream_analyzer.cpp \
+                src/waveform/stream/legacy_stream_analyzer_adapter.cpp \
                 src/waveform/stream/stream_exporter.cpp
 
 CORE_OBJS = $(CORE_SRCS:%.cpp=$(BUILD)/%.o)
@@ -251,7 +254,7 @@ $(BUILD)/%.o: %.cpp $(BUILD_INFO)
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -DXDEBUG_INTERNAL_ENGINE -c -o $@ $<
 
-cpp-unit-binaries: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o $(BUILD)/src/waveform/service/rc_generator.o $(BUILD)/src/waveform/value/logic_value.o $(BUILD)/src/waveform/filter/value_filter.o $(BUILD)/src/waveform/event/event_expr.o $(BUILD)/src/waveform/common/expression.o $(BUILD)/src/waveform/common/reset_config.o $(BUILD)/src/waveform/stream/stream_expr.o $(BUILD)/src/waveform/axi/axi_transaction_tracker.o $(BUILD)/src/engine/service/actions/protocol/protocol_statistics_filter.o $(BUILD)/src/session/session_catalog.o
+cpp-unit-binaries: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o $(BUILD)/src/waveform/service/rc_generator.o $(BUILD)/src/waveform/value/logic_value.o $(BUILD)/src/waveform/filter/value_filter.o $(BUILD)/src/waveform/event/event_expr.o $(BUILD)/src/waveform/common/expression.o $(BUILD)/src/waveform/common/reset_config.o $(BUILD)/src/waveform/cache/analysis_probe.o $(BUILD)/src/waveform/stream/stream_expr.o $(BUILD)/src/waveform/axi/axi_transaction_tracker.o $(BUILD)/src/engine/service/actions/protocol/protocol_statistics_filter.o $(BUILD)/src/session/session_catalog.o
 	mkdir -p $(BUILD)/tests
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_core_types tests/unit/test_core_types.cpp $(CORE_OBJS) $(LDFLAGS)
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_env_config tests/unit/test_env_config.cpp $(CORE_OBJS) $(LDFLAGS)
@@ -272,6 +275,7 @@ cpp-unit-binaries: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o 
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_rc_generator tests/unit/test_rc_generator.cpp $(BUILD)/src/waveform/service/rc_generator.o
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_sha256 tests/unit/test_sha256.cpp $(BUILD)/src/core/common/sha256.o
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_axi_transaction_tracker tests/unit/test_axi_transaction_tracker.cpp $(BUILD)/src/waveform/axi/axi_transaction_tracker.o
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_analysis_probe tests/unit/test_analysis_probe.cpp $(BUILD)/src/waveform/cache/analysis_probe.o
 
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_reset_config tests/unit/test_reset_config.cpp $(BUILD)/src/waveform/common/reset_config.o
 

@@ -1,4 +1,6 @@
 #include "axi_analyzer.h"
+#include "../cache/analysis_probe.h"
+#include "../cache/analysis_size_estimator.h"
 #include "../common/clock_sampling.h"
 #include "../server/fsdb_value_reader.h"
 #include "../server/fsdb_scan_utils.h"
@@ -76,8 +78,18 @@ static bool is_active(const std::string& v) {
 
 bool AxiAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const AxiConfig& config) {
     if (get_result(name) != nullptr) {
+        std::size_t resident_bytes = 0;
+        for (const auto& item : results_)
+            resident_bytes += estimate_axi_result_bytes(item.second);
+        analysis_probe().record(
+            "hit", "axi", name,
+            AnalysisProbeMetrics{results_.size(), 0, resident_bytes, 0, 0});
         return true; // already cached
     }
+
+    analysis_probe().record(
+        "miss", "axi", name,
+        AnalysisProbeMetrics{results_.size(), 0, 0, 0, 0});
 
     ClockSampleSpec clock_sample = config.clock_sample;
     std::string normalize_error;
@@ -185,17 +197,30 @@ bool AxiAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
     std::string scan_error;
     int sample_count = 0;
     bool truncated = false;
+    analysis_probe().record(
+        "scan", "axi", name,
+        AnalysisProbeMetrics{results_.size(), 0, 0, 0, 1});
     if (!scanner.scan(sample_signals, min_time, max_time, npiFsdbHexStrVal, '\0', -1,
         [&](const ClockSample& sample) -> bool {
             process_edge(sample.time, sample.values);
             return true;
         }, scan_error, sample_count, truncated)) {
+        analysis_probe().record(
+            "build_failed", "axi", name,
+            AnalysisProbeMetrics{results_.size(), 0, 0, 0, 0});
         return false;
     }
 
     results_[name] = tracker.finish(min_time, max_time, !truncated);
     results_[name].diagnostics.full_scan_count = 1;
     cursors_[name] = AxiCursor();
+    std::size_t resident_bytes = 0;
+    for (const auto& item : results_)
+        resident_bytes += estimate_axi_result_bytes(item.second);
+    analysis_probe().record(
+        "build", "axi", name,
+        AnalysisProbeMetrics{results_.size(), 0, resident_bytes,
+                             estimate_axi_result_bytes(results_[name]), 0});
     return true;
 }
 

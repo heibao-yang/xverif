@@ -11,6 +11,7 @@
 #include "core/schema/runtime_schema_validator.h"
 #include "core/transport/file_exchange.h"
 #include "waveform/value/logic_value.h"
+#include "waveform/cache/analysis_probe.h"
 #include "waveform/common/clock_sampling.h"
 #include "json.hpp"
 
@@ -798,6 +799,8 @@ int server_main(int argc, char** argv) {
         server_debug_log("fsdb_time: min=%llu max=%llu", tmin, tmax);
     }
 
+    xdebug_waveform::analysis_probe().record(
+        "engine_initialized", "engine", g_session_id);
     delete[] npi_argv;
 
     // Set up signal handlers

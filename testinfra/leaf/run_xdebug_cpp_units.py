@@ -26,6 +26,7 @@ BINARIES = (
     "test_reset_config",
     "test_sha256",
     "test_axi_transaction_tracker",
+    "test_analysis_probe",
 )
 
 

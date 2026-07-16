@@ -340,6 +340,7 @@ pytest --xverif-gate regression -n auto
 pytest --xverif-gate nightly -n auto
 pytest --xverif-gate regression --xverif-suite xdebug.contract
 pytest --xverif-gate nightly --xverif-suite xdebug.axi_vip
+pytest --xverif-gate nightly --xverif-suite xdebug.analysis_cache_benchmark
 ```
 
 在 Codex 受限沙箱中，只运行 `fast`。所有涉及 NPI、Verdi/VCS、FSDB、daidir、`session.open`、Unix domain

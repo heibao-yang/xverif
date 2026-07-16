@@ -1,5 +1,7 @@
 #include "stream_analyzer.h"
 
+#include "../cache/analysis_probe.h"
+#include "../cache/analysis_size_estimator.h"
 #include "../server/fsdb_scan_utils.h"
 #include "../server/fsdb_value_reader.h"
 #include "../value/logic_value.h"
@@ -275,6 +277,9 @@ bool StreamAnalyzer::validate_static(npiFsdbFileHandle file, const StreamConfig&
 bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
                              const StreamQueryOptions& options, StreamAnalysis& analysis,
                              std::string& error) {
+    analysis_probe().record(
+        "miss", "stream", config.name,
+        AnalysisProbeMetrics{0, 0, 0, 0, 0});
     analysis = StreamAnalysis();
     analysis.requested_begin = options.begin;
     analysis.requested_end = options.end;
@@ -330,6 +335,9 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
     ClockExpressionSampleScanner scanner(file, clock_sample.edge, clock_sample.sample_point);
     int sample_count = 0;
     bool sample_truncated = false;
+    analysis_probe().record(
+        "scan", "stream", config.name,
+        AnalysisProbeMetrics{0, 0, 0, 0, 1});
     if (!scanner.scan(clock_signals, sample_signals, options.begin, options.end,
         npiFsdbBinStrVal, 'b', -1,
         [&](const std::map<std::string, std::string>& raw_values,
@@ -360,6 +368,9 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
             sampled_edges.push_back(sample);
             return true;
         }, error, sample_count, sample_truncated)) {
+        analysis_probe().record(
+            "build_failed", "stream", config.name,
+            AnalysisProbeMetrics{0, 0, 0, 0, 0});
         return false;
     }
 
@@ -675,6 +686,10 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
                   if (a.start_time != b.start_time) return a.start_time < b.start_time;
                   return a.packet_index < b.packet_index;
               });
+    analysis_probe().record(
+        "build", "stream", config.name,
+        AnalysisProbeMetrics{0, 0, 0,
+                             estimate_stream_analysis_bytes(analysis), 0});
     return true;
 }
 

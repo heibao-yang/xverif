@@ -3,7 +3,7 @@
 #include "service/engine_globals.h"
 
 #include "waveform/common/xdebug_waveform_paths.h"
-#include "waveform/stream/stream_analyzer.h"
+#include "waveform/stream/legacy_stream_analyzer_adapter.h"
 #include "waveform/stream/stream_exporter.h"
 #include "waveform/stream/stream_manager.h"
 #include "waveform/filter/value_filter.h"
@@ -23,7 +23,7 @@ namespace {
 
 using xdebug_waveform::Json;
 using xdebug_waveform::StreamAnalysis;
-using xdebug_waveform::StreamAnalyzer;
+using xdebug_waveform::LegacyStreamAnalyzerAdapter;
 using xdebug_waveform::StreamConfig;
 using xdebug_waveform::StreamExporter;
 using xdebug_waveform::StreamManager;
@@ -243,7 +243,7 @@ public:
                     "args.query");
             }
         }
-        StreamAnalyzer analyzer;
+        LegacyStreamAnalyzerAdapter analyzer;
         StreamAnalysis analysis;
         if (!analyzer.analyze(g_fsdb_file, config, options, analysis, error))
             return stream_analyze_error(error);

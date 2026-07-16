@@ -1,0 +1,15 @@
+#pragma once
+
+#include <cstddef>
+
+namespace xdebug_waveform {
+
+struct ApbResult;
+struct AxiResult;
+struct StreamAnalysis;
+
+std::size_t estimate_apb_result_bytes(const ApbResult& result);
+std::size_t estimate_axi_result_bytes(const AxiResult& result);
+std::size_t estimate_stream_analysis_bytes(const StreamAnalysis& analysis);
+
+}  // namespace xdebug_waveform

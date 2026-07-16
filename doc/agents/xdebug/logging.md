@@ -77,6 +77,21 @@ xdebug 的 log 是工具可观测性合同的一部分。任何 session、transp
 - 结构化 lifecycle/transport 还不够定位时。
 - 需要底层库或子进程输出上下文时。
 
+### Analysis test probe
+
+用途：
+
+- Phase 0/benchmark 记录协议 scanner 次数、entry/index 数、hit/miss/evict、
+  resident/build estimated bytes、engine PID 和单调 access sequence。
+
+启用与边界：
+
+- 仅测试进程显式设置 `XDEBUG_TEST_ANALYSIS_PROBE_PATH`；默认完全禁用。
+- 输出文件为权限 `0600` 的 JSONL，key 只保留摘要。
+- 它不是生产 action/lifecycle log，不是 public API，也不能作为用户清缓存入口。
+- probe 文件写入失败不得影响 action 成败；生产 cache hit/miss/evict 仍应写正常的
+  结构化内部日志。
+
 ## 排障顺序
 
 1. 看 action response 的 error code 和 message。
@@ -113,3 +128,5 @@ xdebug 的 log 是工具可观测性合同的一部分。任何 session、transp
 - session lifecycle 变化：跑 `pytest --xverif-gate regression --xverif-suite xdebug.session`。
 - transport 变化：跑 session/MCP focused tests。
 - 如果测试需要真实 LSF/license/VIP，按根目录 `AGENTS.md` 规则在沙箱外执行。
+- analysis probe/estimator：跑 `xdebug.cpp_unit`；真实 RSS/scanner 基线在沙箱外跑
+  nightly `xdebug.analysis_cache_benchmark`。

@@ -154,6 +154,27 @@
 - statistics handler 只遍历 canonical completed transaction，不复制匹配列表、不建立
   per-filter cache，也不重新扫描 FSDB。
 
+## Analysis Probe 与 Size Estimator
+
+路径：
+
+- `src/waveform/cache/analysis_probe.*`
+- `src/waveform/cache/analysis_size_estimator.*`
+- `src/waveform/stream/legacy_stream_analyzer_adapter.*`
+
+职责与要求：
+
+- probe 只用于 catalog benchmark 和内部差分，必须由
+  `XDEBUG_TEST_ANALYSIS_PROBE_PATH` 显式启用；key 只写摘要，不写完整 signal path。
+- probe event 使用单调 `access_sequence`，并累计 scanner/hit/miss/evict；新增 cache
+  层时复用该组件，不新增 public `cache.status` 或调试 action。
+- size estimator 使用容器 capacity 和动态 string/map 内容形成确定性计量；新增
+  canonical/index 数据结构时必须同步 estimator 和 unit/benchmark。
+- hard-limit 判定后续使用冻结的 safety factor；不能用 RSS 瞬时值作为运行时预算
+  决策，也不能因 probe 写入失败改变 action 结果。
+- legacy adapter 是 stream 列式重构的内部差分 seam；Phase 0 原样委托现有
+  `StreamAnalyzer`，不注册 public bypass。Phase 4A 必须保留旧实现作为逐字段 oracle。
+
 ## Transport/File Exchange
 
 路径：

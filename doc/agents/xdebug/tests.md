@@ -52,6 +52,13 @@ seed 随机 delay。每组必须发布 FSDB、simulation log 和独立 pin-hands
 测试比较 VIP scoreboard、pin oracle 与 xdebug canonical transaction，并检查三种
 AW/W phase order、最终 outstanding、dependency violation 和 `full_scan_count=1`。
 
+`xdebug.analysis_cache_benchmark` 是 nightly 的独立 performance/semantic suite，消费
+APB VIP、AXI VIP 和 stream v1 三个已发布 fixture，不生成数据库。它在三个独立
+engine 上记录 cold/hot P50/P95、scanner、estimated bytes 和 RSS delta，并校验 compact
+stream JSON/XOUT golden。冻结数据与阶段阈值维护在
+`xdebug/tests/benchmark/analysis_cache_thresholds.v1.json`；wall-time 阈值不得复制到
+普通 unit/contract suite。
+
 ## 结果与诊断
 
 每次 gate 写入 `.xverif-test-results/<run>/`：

@@ -1,4 +1,6 @@
 #include "apb_analyzer.h"
+#include "../cache/analysis_probe.h"
+#include "../cache/analysis_size_estimator.h"
 #include "../common/clock_sampling.h"
 #include "../server/fsdb_value_reader.h"
 #include "../server/fsdb_scan_utils.h"
@@ -39,8 +41,18 @@ ApbCursor* ApbAnalyzer::get_cursor_mut(const std::string& name) {
 
 bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const ApbConfig& config) {
     if (get_result(name) != nullptr) {
+        std::size_t resident_bytes = 0;
+        for (const auto& item : results_)
+            resident_bytes += estimate_apb_result_bytes(item.second);
+        analysis_probe().record(
+            "hit", "apb", name,
+            AnalysisProbeMetrics{results_.size(), 0, resident_bytes, 0, 0});
         return true; // already cached
     }
+
+    analysis_probe().record(
+        "miss", "apb", name,
+        AnalysisProbeMetrics{results_.size(), 0, 0, 0, 0});
 
     ClockSampleSpec clock_sample = config.clock_sample;
     std::string normalize_error;
@@ -129,11 +141,17 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
     std::string scan_error;
     int sample_count = 0;
     bool truncated = false;
+    analysis_probe().record(
+        "scan", "apb", name,
+        AnalysisProbeMetrics{results_.size(), 0, 0, 0, 1});
     if (!scanner.scan(sample_signals, min_time, max_time, npiFsdbHexStrVal, '\0', -1,
         [&](const ClockSample& sample) -> bool {
             process_edge(sample.time, sample.values);
             return true;
         }, scan_error, sample_count, truncated)) {
+        analysis_probe().record(
+            "build_failed", "apb", name,
+            AnalysisProbeMetrics{results_.size(), 0, 0, 0, 0});
         return false;
     }
     result.diagnostics.sample_count = static_cast<size_t>(sample_count);
@@ -160,6 +178,13 @@ bool ApbAnalyzer::analyze(const std::string& name, npiFsdbFileHandle file, const
 
     results_[name] = std::move(result);
     cursors_[name] = ApbCursor();
+    std::size_t resident_bytes = 0;
+    for (const auto& item : results_)
+        resident_bytes += estimate_apb_result_bytes(item.second);
+    analysis_probe().record(
+        "build", "apb", name,
+        AnalysisProbeMetrics{results_.size(), 0, resident_bytes,
+                             estimate_apb_result_bytes(results_[name]), 0});
     return true;
 }
 

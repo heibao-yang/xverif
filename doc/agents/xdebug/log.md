@@ -1,5 +1,15 @@
 # xdebug 架构说明书维护日志
 
+## 2026-07-16
+
+- 建立分析缓存 Phase 0 test-only probe、APB/AXI/stream size estimator 与 nightly
+  `xdebug.analysis_cache_benchmark`，固化独立 engine 的 cold/hot、scanner、RSS、
+  estimated bytes 和 stream compact JSON/XOUT golden。
+- 基于 AXI stress 与 20,000-transfer stream 实测冻结 estimator safety factor 2.0、
+  soft 1 GiB、hard 2 GiB，以及后续 repository/columnar/cache 阶段的性能和内存门槛。
+- Phase 0 不改变 public action、schema、扫描范围、排序或输出；AnalysisRepository
+  仍按独立计划后续实施。
+
 ## 2026-07-14
 
 - 新增 `apb.statistics` / `axi.statistics`，基于 canonical 协议缓存按方向、AXI ID 与

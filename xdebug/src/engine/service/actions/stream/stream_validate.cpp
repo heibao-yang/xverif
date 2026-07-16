@@ -3,6 +3,7 @@
 #include "service/engine_globals.h"
 
 #include "waveform/common/xdebug_waveform_paths.h"
+#include "waveform/stream/legacy_stream_analyzer_adapter.h"
 #include "waveform/stream/stream_analyzer.h"
 #include "waveform/stream/stream_exporter.h"
 #include "waveform/stream/stream_manager.h"
@@ -20,6 +21,7 @@ namespace xdebug_design {
 namespace {
 
 using xdebug_waveform::Json;
+using xdebug_waveform::LegacyStreamAnalyzerAdapter;
 using xdebug_waveform::StreamAnalysis;
 using xdebug_waveform::StreamAnalyzer;
 using xdebug_waveform::StreamConfig;
@@ -152,7 +154,8 @@ public:
                 return stream_time_error(error);
             options.limit = args.value("line_limit", 256);
             StreamAnalysis analysis;
-            if (!analyzer.analyze(g_fsdb_file, config, options, analysis, error))
+            LegacyStreamAnalyzerAdapter legacy_analyzer;
+            if (!legacy_analyzer.analyze(g_fsdb_file, config, options, analysis, error))
                 return stream_analyze_error(error);
             if (analysis.vld_cycles == 0) add_issue(issues, "WARNING", "VLD_NEVER_TRUE", "vld was never true in validation window");
             if (analysis.transfer_count == 0) add_issue(issues, "WARNING", "NO_TRANSFER", "no transfer observed in validation window");

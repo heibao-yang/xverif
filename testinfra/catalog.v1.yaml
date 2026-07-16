@@ -585,6 +585,20 @@ suites:
     cost: {class: slow, estimate_sec: 90}
     timeouts: {execute_sec: 420, cleanup_sec: 30}
 
+  - id: xdebug.analysis_cache_benchmark
+    owner: xdebug
+    level: system
+    intent: [benchmark, contract, semantics]
+    domains: [waveform, apb, axi, stream, cache]
+    runner: {kind: pytest, path: xdebug/tests/benchmark/test_analysis_cache_baseline.py}
+    fixtures: [xdebug.apb_vip, xdebug.axi_vip, xdebug.stream_v1]
+    capabilities: [child_process, npi, fsdb]
+    hermetic: false
+    deterministic: true
+    cost: {class: slow, estimate_sec: 180}
+    resources: {cpu: 1, memory_mb: 4096, tokens: [verdi_npi]}
+    timeouts: {execute_sec: 600, cleanup_sec: 30}
+
   - id: xdebug.realdata
     owner: xdebug
     level: system
