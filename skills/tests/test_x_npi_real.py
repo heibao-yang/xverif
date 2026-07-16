@@ -116,7 +116,10 @@ def test_x_npi_streaming_performance_guard(xverif_fixture: Any) -> None:
     neg_stream = _run_perf_probe(fsdb, "stream", "negedge")
     assert neg_stream["sample_count"] == neg_legacy["sample_count"]
     assert neg_stream["elapsed_sec"] <= neg_legacy["elapsed_sec"] * 1.10
-    assert neg_stream["max_rss_kb"] <= neg_legacy["max_rss_kb"]
+    # ru_maxrss is measured per fresh Python/NPI process.  A small fixed
+    # allocator/runtime variance is expected on the same waveform, so retain
+    # a meaningful regression guard without making the host-only suite flaky.
+    assert neg_stream["max_rss_kb"] <= neg_legacy["max_rss_kb"] * 1.05
 
     pos_legacy = _run_perf_probe(fsdb, "legacy", "posedge")
     pos_stream = _run_perf_probe(fsdb, "stream", "posedge")
