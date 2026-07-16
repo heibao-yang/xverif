@@ -4,6 +4,8 @@
 
 namespace xdebug_core {
 
+// Returns a lowercase SHA-256 digest for in-memory bytes.
+std::string sha256_text(const std::string& text);
 // Returns a lowercase SHA-256 digest for a regular file.  The error string is
 // intentionally caller-facing and must not include file contents.
 bool sha256_file(const std::string& path, std::string& digest, std::string& error);

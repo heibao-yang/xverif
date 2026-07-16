@@ -27,6 +27,8 @@ BINARIES = (
     "test_sha256",
     "test_axi_transaction_tracker",
     "test_analysis_probe",
+    "test_analysis_repository",
+    "test_stream_manager",
 )
 
 

@@ -3,6 +3,7 @@
 #include "service/engine_globals.h"
 
 #include "waveform/common/xdebug_waveform_paths.h"
+#include "waveform/cache/analysis_repository.h"
 #include "waveform/stream/stream_analyzer.h"
 #include "waveform/stream/stream_exporter.h"
 #include "waveform/stream/stream_manager.h"
@@ -91,11 +92,27 @@ public:
 
         std::string mode = args.value("mode", std::string("replace"));
         StreamManager manager;
-        if (!manager.load_configs(xdebug_waveform::g_session_id, streams, mode, error))
+        std::vector<xdebug_waveform::StreamConfigChange> changes;
+        if (!manager.load_configs(xdebug_waveform::g_session_id, streams, mode,
+                                  error, &changes)) {
+            if (mode == "replace" || mode == "append")
+                return err("ACTION_FAILED", error, Json::object());
             return err("INVALID_ARGUMENT", error,
                        {{"invalid_arg", "args.mode"},
-                        {"expected", "replace or merge mode accepted by stream config manager"},
+                        {"expected", "replace or append mode accepted by stream config manager"},
                         {"correct_example", stream_config_load_example()}});
+        }
+        if (xdebug_waveform::g_analysis_repository) {
+            std::vector<std::tuple<std::string, std::string, std::string>>
+                fingerprint_changes;
+            for (const auto& change : changes) {
+                fingerprint_changes.emplace_back(
+                    change.name, change.old_semantic_fingerprint,
+                    change.new_semantic_fingerprint);
+            }
+            xdebug_waveform::g_analysis_repository->notify_stream_config_changes(
+                xdebug_waveform::g_session_id, fingerprint_changes);
+        }
         Json out;
         out["summary"] = {{"loaded", streams.size()}, {"mode", mode}};
         out["streams"] = Json::array();

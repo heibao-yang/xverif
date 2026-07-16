@@ -154,16 +154,25 @@
 - statistics handler 只遍历 canonical completed transaction，不复制匹配列表、不建立
   per-filter cache，也不重新扫描 FSDB。
 
-## Analysis Probe 与 Size Estimator
+## AnalysisRepository、Probe 与 Size Estimator
 
 路径：
 
 - `src/waveform/cache/analysis_probe.*`
+- `src/waveform/cache/analysis_repository.*`
 - `src/waveform/cache/analysis_size_estimator.*`
 - `src/waveform/stream/legacy_stream_analyzer_adapter.*`
 
 职责与要求：
 
+- engine 只能有一个 repository；协议 handler 后续分别使用 `ensure_apb`、`ensure_axi`
+  和 `ensure_stream`，analyzer 不持有预算、session 或 LRU 状态。
+- key 必须同时保存 SHA-256 摘要和规范化语义做等值确认；config name、description、
+  JSON 字段顺序和 config 文件路径不进入语义 fingerprint。
+- canonical 发布后不可变；lazy index 独立记账、优先淘汰，canonical 淘汰时释放全部
+  index。building 对象只用于单线程重入保护，任何 failure 必须完整回滚。
+- generation cursor 不 pin entry；soft LRU 淘汰后同 key 重建并沿原 position 续用，
+  config/session invalidation 则清除 cursor。
 - probe 只用于 catalog benchmark 和内部差分，必须由
   `XDEBUG_TEST_ANALYSIS_PROBE_PATH` 显式启用；key 只写摘要，不写完整 signal path。
 - probe event 使用单调 `access_sequence`，并累计 scanner/hit/miss/evict；新增 cache
@@ -174,6 +183,9 @@
   决策，也不能因 probe 写入失败改变 action 结果。
 - legacy adapter 是 stream 列式重构的内部差分 seam；Phase 0 原样委托现有
   `StreamAnalyzer`，不注册 public bypass。Phase 4A 必须保留旧实现作为逐字段 oracle。
+- stream 配置保存使用同目录 temp、完整 write、file `fsync`、atomic rename 和
+  directory `fsync`；只有成功后才按语义 fingerprint 通知 repository。description-only
+  或同语义 replace 复用，写入/rename 失败保留旧文件与旧 cache。
 
 ## Transport/File Exchange
 

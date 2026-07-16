@@ -4,6 +4,7 @@
 // Defined in server.cpp; used by all handler files.
 
 #include "npi_fsdb.h"
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -21,6 +22,7 @@ namespace xdebug_waveform {
 class EventAnalyzer;
 class ApbAnalyzer;
 class AxiAnalyzer;
+class AnalysisRepository;
 struct SignalList;
 
 extern std::string g_session_id;
@@ -29,6 +31,7 @@ extern npiFsdbFileHandle g_fsdb_file;
 extern EventAnalyzer g_event_analyzer;
 extern ApbAnalyzer g_apb_analyzer;
 extern AxiAnalyzer g_axi_analyzer;
+extern std::unique_ptr<AnalysisRepository> g_analysis_repository;
 
 std::string format_time(npiFsdbTime t);
 std::string format_duration(npiFsdbTime t);

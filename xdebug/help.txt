@@ -154,6 +154,15 @@ Session transport
   default; set XDEBUG_FILE_KEEP_HISTORY=0 to discard successful response
   archives.
 
+Analysis cache memory
+---------------------
+  XDEBUG_ANALYSIS_CACHE_MAX_BYTES is the soft budget (default 1073741824;
+  0 disables proactive soft LRU). XDEBUG_ANALYSIS_CACHE_HARD_MAX_BYTES is the
+  mandatory hard limit (default 2147483648; must be positive and >= soft).
+  Both values are parsed strictly once when the engine starts. Empty strings,
+  signs, whitespace/trailing characters, overflow, hard=0, or soft>hard make
+  session startup fail; xdebug does not silently substitute defaults.
+
 Output control
 --------------
   Responses are compact by default. Use action-specific args.output.verbose,

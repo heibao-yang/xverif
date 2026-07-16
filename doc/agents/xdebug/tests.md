@@ -59,6 +59,11 @@ stream JSON/XOUT golden。冻结数据与阶段阈值维护在
 `xdebug/tests/benchmark/analysis_cache_thresholds.v1.json`；wall-time 阈值不得复制到
 普通 unit/contract suite。
 
+`xdebug.cpp_unit` 的 `test_analysis_repository` 用 fake entry 覆盖版本化 key、full/range、
+strict env、building 重入、failure/bad_alloc 回滚、index-first 与跨协议 LRU、soft
+oversize entry/index、hard/saturated accounting、typed ensure 和 generation cursor；
+`test_stream_manager` 覆盖语义 fingerprint、同目录原子 replace 及 write/rename fault。
+
 ## 结果与诊断
 
 每次 gate 写入 `.xverif-test-results/<run>/`：

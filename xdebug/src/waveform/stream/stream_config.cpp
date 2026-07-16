@@ -1,5 +1,7 @@
 #include "stream_config.h"
 
+#include "core/common/sha256.h"
+
 #include <cctype>
 #include <set>
 
@@ -278,6 +280,17 @@ std::string stream_handshake_text(const StreamConfig& c) {
 
 bool stream_packet_enabled(const StreamConfig& c) {
     return !c.sop.empty() && !c.eop.empty();
+}
+
+std::string normalized_stream_config_semantics(const StreamConfig& config) {
+    Json normalized = stream_config_json(config);
+    normalized.erase("name");
+    normalized.erase("description");
+    return normalized.dump();
+}
+
+std::string stream_config_semantic_fingerprint(const StreamConfig& config) {
+    return xdebug_core::sha256_text(normalized_stream_config_semantics(config));
 }
 
 } // namespace xdebug_waveform

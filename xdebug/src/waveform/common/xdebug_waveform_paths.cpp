@@ -195,6 +195,7 @@ bool xdebug_waveform_remove_session_dir(const std::string& session_id) {
     remove_file_if_exists(dir + "/axi.json");
     remove_file_if_exists(dir + "/events.json");
     remove_file_if_exists(dir + "/streams.json");
+    remove_file_if_exists(dir + "/streams.json.lock");
     remove_file_if_exists(dir + "/cursors.json");
     remove_file_if_exists(dir + "/endpoint.json");
     // Preserve debug.log and logs/ for post-failure diagnostics.

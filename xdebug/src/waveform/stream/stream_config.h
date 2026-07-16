@@ -39,5 +39,7 @@ bool parse_stream_config_json(const Json& item, StreamConfig& config, std::strin
 Json stream_config_json(const StreamConfig& config);
 std::string stream_handshake_text(const StreamConfig& config);
 bool stream_packet_enabled(const StreamConfig& config);
+std::string normalized_stream_config_semantics(const StreamConfig& config);
+std::string stream_config_semantic_fingerprint(const StreamConfig& config);
 
 } // namespace xdebug_waveform

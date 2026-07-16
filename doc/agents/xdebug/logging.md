@@ -130,3 +130,11 @@ xdebug 的 log 是工具可观测性合同的一部分。任何 session、transp
 - 如果测试需要真实 LSF/license/VIP，按根目录 `AGENTS.md` 规则在沙箱外执行。
 - analysis probe/estimator：跑 `xdebug.cpp_unit`；真实 RSS/scanner 基线在沙箱外跑
   nightly `xdebug.analysis_cache_benchmark`。
+
+### Analysis cache 生产日志
+
+- engine 启动写 `analysis_cache.initialized`，只记录 soft/hard bytes 与 safety factor。
+- repository 写 `analysis_cache.hit/miss/build/evict/invalidate/index_build/oversize_admitted/build_failed`。
+- 每条只包含 protocol、非敏感 key 摘要、object kind、reason、estimated bytes、
+  generation 和单调 access sequence；不得记录规范化 config 或完整 signal path。
+- `build_failed` 的 action 错误仍由 handler 返回；日志不能触发 scope/backend fallback。

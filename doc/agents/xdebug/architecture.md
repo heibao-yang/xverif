@@ -209,7 +209,7 @@ frontend 不直接承载 NPI 重逻辑；NPI/FSDB/engine 能力集中在内部 e
   current-value 采样；响应必须给出 requested/effective sampling。
 - 大 payload 默认 compact；只使用 schema 声明的 action-specific 输出参数、`line_limit` 或 export action 返回细节。AXI transaction 的逐 beat payload 统一由 `args.output.include_data` 控制。
 
-### Analysis cache Phase 0 测量边界
+### AnalysisRepository 与测量边界
 
 - `src/waveform/cache/analysis_probe.*` 是 test-only 内部 JSONL probe，仅在 engine
   启动时显式设置 `XDEBUG_TEST_ANALYSIS_PROBE_PATH` 才启用；不注册 public action，
@@ -217,9 +217,16 @@ frontend 不直接承载 NPI 重逻辑；NPI/FSDB/engine 能力集中在内部 e
 - `src/waveform/cache/analysis_size_estimator.*` 对当前 APB/AXI canonical result 和
   stream analysis 的动态容器容量做确定性估算。估算不是 allocator/RSS 的替代；
   safety factor 与预算默认值以 nightly benchmark 的 RSS 对照冻结。
-- Phase 0 只记录当前 hit/miss/scan/build 和内存基线，不改变 analyzer 的扫描范围、
-  缓存 ownership、排序或 public diagnostics。engine-owned AnalysisRepository 在后续
-  phase 实现前仍属于计划，不得在本文描述为已实现。
+- `src/waveform/cache/analysis_repository.*` 由每个 engine 唯一持有，统一管理带
+  FSDB identity、版本化语义 fingerprint 和 scope/range 的 key、typed ensure 入口、
+  canonical/index 独立对象、building/ready、generation cursor 及跨协议确定性 LRU。
+- soft/hard 分别由 `XDEBUG_ANALYSIS_CACHE_MAX_BYTES`（默认 1 GiB，0 关闭主动 soft
+  LRU）和 `XDEBUG_ANALYSIS_CACHE_HARD_MAX_BYTES`（默认 2 GiB，必须大于 0）控制；
+  engine 启动时严格解析一次，非法值直接启动失败，不使用默认值兜底。
+- 预算按 estimator bytes 乘冻结 safety factor 2.0 计费；index 先于 canonical 淘汰，
+  单一 oversize entry 或 owner+index 可越过 soft 但不能越过 hard。失败构建不发布对象。
+- Phase 1 只提供 repository/fake-entry 基础设施与 stream config 原子 replace 通知，
+  尚未迁移 APB/AXI/stream canonical；旧 analyzer 的扫描与公共响应仍保持不变。
 
 ## Combined Active Trace 层
 

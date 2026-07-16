@@ -9,6 +9,11 @@
   soft 1 GiB、hard 2 GiB，以及后续 repository/columnar/cache 阶段的性能和内存门槛。
 - Phase 0 不改变 public action、schema、扫描范围、排序或输出；AnalysisRepository
   仍按独立计划后续实施。
+- 完成 Phase 1 engine-owned `AnalysisRepository`：strict soft/hard 环境合同、2.0
+  safety-factor accounting、typed canonical store、独立 lazy index、index-first 纯 LRU、
+  building/ready 回滚、oversize、hard-limit/bad_alloc 和 generation cursor。
+- stream config replace 改为同目录 temp + fsync + atomic rename，并仅在成功后以忽略
+  name/description 的语义 fingerprint 通知 repository；同语义复用，差异语义失效。
 
 ## 2026-07-14
 

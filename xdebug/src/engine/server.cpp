@@ -12,6 +12,7 @@
 #include "core/transport/file_exchange.h"
 #include "waveform/value/logic_value.h"
 #include "waveform/cache/analysis_probe.h"
+#include "waveform/cache/analysis_repository.h"
 #include "waveform/common/clock_sampling.h"
 #include "json.hpp"
 
@@ -42,7 +43,12 @@
 #include "npi_fsdb.h"
 #include "service/engine_action_registry.h"
 
-namespace xdebug_waveform { extern std::string g_session_id; extern npiFsdbFileHandle g_fsdb_file; extern std::string g_fsdb_file_path; }
+namespace xdebug_waveform {
+extern std::string g_session_id;
+extern npiFsdbFileHandle g_fsdb_file;
+extern std::string g_fsdb_file_path;
+std::unique_ptr<AnalysisRepository> g_analysis_repository;
+}
 
 namespace xdebug_design {
 
@@ -74,6 +80,10 @@ std::string g_fsdb_path;
 std::string g_daidir_path;
 
 static void close_fsdb_file() {
+    if (xdebug_waveform::g_analysis_repository) {
+        xdebug_waveform::g_analysis_repository->clear("session_exit");
+        xdebug_waveform::g_analysis_repository.reset();
+    }
     if (!g_fsdb_file) return;
     npi_fsdb_close(g_fsdb_file);
     g_fsdb_file = nullptr;
@@ -687,6 +697,38 @@ int server_main(int argc, char** argv) {
                                          {{"message", timeout_error}});
         return 1;
     }
+    xdebug_waveform::AnalysisCacheConfig cache_config;
+    std::string cache_config_error;
+    if (!xdebug_waveform::analysis_cache_config_from_environment(
+            cache_config, cache_config_error)) {
+        fprintf(stderr, "%s\n", cache_config_error.c_str());
+        xdebug_core::log_lifecycle_event(
+            "engine", g_session_id, "server.invalid_config", false,
+            {{"message", cache_config_error}, {"component", "analysis_cache"}});
+        return 1;
+    }
+    xdebug_waveform::g_analysis_repository.reset(
+        new xdebug_waveform::AnalysisRepository(
+            cache_config, [](const xdebug_waveform::AnalysisCacheEvent& event) {
+                const bool ok = event.event != "build_failed";
+                xdebug_core::log_lifecycle_event(
+                    "engine", event.session_id, "analysis_cache." + event.event,
+                    ok,
+                    {{"protocol", event.protocol},
+                     {"key_summary", event.key_summary},
+                     {"object_kind", event.object_kind},
+                     {"reason", event.reason},
+                     {"estimated_bytes", event.estimated_bytes},
+                     {"resident_estimated_bytes", event.resident_estimated_bytes},
+                     {"build_estimated_bytes", event.build_estimated_bytes},
+                     {"access_sequence", event.access_sequence},
+                     {"generation", event.generation}});
+            }));
+    xdebug_core::log_lifecycle_event(
+        "engine", g_session_id, "analysis_cache.initialized", true,
+        {{"soft_max_bytes", cache_config.soft_max_bytes},
+         {"hard_max_bytes", cache_config.hard_max_bytes},
+         {"estimator_safety_factor", cache_config.estimator_safety_factor}});
     log_environment_snapshot(argc, argv);
     open_crash_marker();
     maybe_run_crash_marker_test_hook();

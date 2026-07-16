@@ -112,6 +112,12 @@ bool update_directory_tree(Sha256& state, const std::string& root, const std::st
 }
 } // namespace
 
+std::string sha256_text(const std::string& text) {
+    Sha256 state;
+    update(state, reinterpret_cast<const unsigned char*>(text.data()), text.size());
+    return finish(state);
+}
+
 bool sha256_file(const std::string& path, std::string& digest, std::string& error) {
     digest.clear(); error.clear();
     Sha256 state;
