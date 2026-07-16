@@ -57,6 +57,7 @@ def main() -> int:
             fp = open_fsdb(args.fsdb)
             try:
                 started = time.perf_counter()
+                cpu_started = time.process_time()
                 if args.mode == "legacy":
                     sample_count = _legacy_rows(fp, cfg["clk"], signals, args.edge)
                 else:
@@ -68,6 +69,7 @@ def main() -> int:
                         )
                     )
                 elapsed = time.perf_counter() - started
+                cpu_elapsed = time.process_time() - cpu_started
             finally:
                 close_fsdb(fp)
         print_json(
@@ -77,6 +79,7 @@ def main() -> int:
                 "edge": args.edge,
                 "sample_count": sample_count,
                 "elapsed_sec": elapsed,
+                "cpu_sec": cpu_elapsed,
                 "max_rss_kb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             },
             json_stream,
