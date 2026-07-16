@@ -52,5 +52,10 @@ def xout_error(response: Json) -> str:
     for key in ("code", "message", "recoverable", "error_layer", "invalid_arg", "expected", "received", "received_type", "allowed_values", "available_values", "missing_name", "missing_resource", "did_you_mean", "example_note"):
         if key in error:
             value = error[key]
-            lines.append(f"{key}: {json.dumps(value, ensure_ascii=False, separators=(',', ':')) if isinstance(value, (dict, list)) else str(value).replace(chr(10), '\\n')}")
+            rendered = (
+                json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+                if isinstance(value, (dict, list))
+                else str(value).replace("\n", "\\n")
+            )
+            lines.append(f"{key}: {rendered}")
     return "\n".join(lines).rstrip() + "\n"
