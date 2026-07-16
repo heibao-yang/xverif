@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xverif-mcp"
+version = "0.1.0"
+description = "MCP server and SDK-free UDS loop runtime for xverif"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "mcp[cli]",
+]
+
+[project.scripts]
+xverif-mcp = "xverif_mcp.server:main"
+xverif-loop-server = "xverif_loop.wrapper:server_main"
+xverif-loop-client = "xverif_loop.wrapper:client_main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["xverif_mcp*", "xverif_loop*"]
+namespaces = false

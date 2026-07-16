@@ -18,8 +18,8 @@ dependencies = [
 xverif = "testinfra.xverif_test.plugin"
 
 [tool.setuptools.packages.find]
-where = [".", "xverif_mcp/src"]
-include = ["testinfra*", "xverif_mcp*", "xverif_loop*"]
+where = ["."]
+include = ["testinfra*"]
 namespaces = false
 
 [tool.pytest.ini_options]

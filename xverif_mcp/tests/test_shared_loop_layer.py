@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import tomllib
 
 
 def test_xverif_loop_imports_without_mcp_sdk() -> None:
@@ -25,3 +26,20 @@ def test_xverif_loop_package_has_no_mcp_sdk_imports() -> None:
             if needle in text:
                 offenders.append(f"{path.relative_to(package_root)}:{needle}")
     assert offenders == []
+
+
+def test_runtime_packaging_is_separate_from_testinfra() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    root_project = tomllib.loads((repo_root / "pyproject.toml").read_text(encoding="utf-8"))
+    runtime_project = tomllib.loads(
+        (repo_root / "xverif_mcp/pyproject.toml").read_text(encoding="utf-8")
+    )
+
+    assert root_project["project"]["name"] == "xverif-testinfra"
+    assert root_project["tool"]["setuptools"]["packages"]["find"]["include"] == ["testinfra*"]
+    assert runtime_project["project"]["name"] == "xverif-mcp"
+    assert runtime_project["project"]["scripts"] == {
+        "xverif-mcp": "xverif_mcp.server:main",
+        "xverif-loop-server": "xverif_loop.wrapper:server_main",
+        "xverif-loop-client": "xverif_loop.wrapper:client_main",
+    }

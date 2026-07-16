@@ -965,8 +965,14 @@ def xverif_tool_help(name: str) -> dict:
 # Entry point
 # ---------------------------------------------------------------------------
 
-if __name__ == "__main__":
+def main() -> int:
+    """Run the MCP stdio server and release all stateful sessions on exit."""
     try:
         mcp.run()
     finally:
         _cleanup_stateful_sessions()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

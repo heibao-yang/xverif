@@ -38,6 +38,12 @@ def test_x_npi_links_and_examples_exist() -> None:
     assert '"rst_n", "valid"' in (SKILL / "scripts/examples/stream_summary.py").read_text(encoding="utf-8")
 
 
+def test_trace_driver_error_has_structured_context() -> None:
+    source = (SKILL / "scripts/examples/trace_driver_summary.py").read_text(encoding="utf-8")
+    for field in ('stage="runtime"', "dbdir=args.dbdir", "signal=args.signal", "mode=args.mode"):
+        assert field in source
+
+
 def test_sampling_contract_is_canonical_and_output_is_required() -> None:
     assert sampling_contract({}) == ("negedge", None)
     assert sampling_contract({"edge": "posedge", "sample_point": "before"}) == ("posedge", "before")

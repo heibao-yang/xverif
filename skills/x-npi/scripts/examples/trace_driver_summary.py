@@ -26,7 +26,14 @@ def main() -> int:
             print_json(ok("trace_driver_summary", {"rows": rows}, {"count": len(rows), "mode": args.mode}), json_stream)
             return 0
         except Exception as exc:
-            print_json(error("trace_driver_summary", "FAILED", str(exc)), json_stream)
+            print_json(
+                error(
+                    "trace_driver_summary", "FAILED", str(exc),
+                    stage="runtime", dbdir=args.dbdir, signal=args.signal,
+                    mode=args.mode,
+                ),
+                json_stream,
+            )
             return 1
 
 
