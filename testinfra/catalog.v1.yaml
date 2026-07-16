@@ -274,6 +274,18 @@ suites:
     cost: {class: medium, estimate_sec: 45}
     timeouts: {execute_sec: 180, cleanup_sec: 20}
 
+  - id: xverif_mcp.runtime_package
+    owner: xverif_mcp
+    level: component
+    intent: [smoke, packaging]
+    domains: [mcp, session, packaging]
+    runner: {kind: pytest, path: xverif_mcp/tests/test_runtime_package_smoke.py}
+    capabilities: [child_process]
+    hermetic: false
+    deterministic: true
+    cost: {class: medium, estimate_sec: 20}
+    timeouts: {execute_sec: 180, cleanup_sec: 20}
+
   - id: xverif_mcp.action_smoke
     owner: xverif_mcp
     level: system
