@@ -243,9 +243,16 @@ frontend 不直接承载 NPI 重逻辑；NPI/FSDB/engine 能力集中在内部 e
 - 预算按 estimator bytes 乘冻结 safety factor 2.0 计费；index 先于 canonical 淘汰，
   单一 oversize entry 或 owner+index 可越过 soft 但不能越过 hard。失败构建不发布对象。
 - Phase 2 已迁移 AXI canonical、address/ID/handshake lazy index 与 cursor；Phase 3
-  已迁移 APB canonical、AddressIndex 与 cursor。stream canonical 仍沿用既有 analyzer，
-  在 Phase 4 迁移。所有 public AXI/APB response 与排序保持不变，hard limit 通过统一
-  handler error 返回，不切换 scope/backend。
+  已迁移 APB canonical、AddressIndex 与 cursor。Phase 4A 已把 stream 单次分析拆为
+  `StreamBaseAnalysis` 与请求级 `StreamQueryView`：所有 sample 只保留时间、控制、
+  stall 和 X/Z 统计元数据，完整 field column 只与 transfer ordinal 对齐；packet 只保存
+  transfer 引用、边界、channel 和 stable mismatch。当前尚未启用 stream 跨请求缓存，
+  每个动态请求仍独立构建 base；Phase 4B 再由 repository 管理 full/range base。
+- `StreamQueryView` 从 base 重建窗口局部 cycle、packet index、stall 边界、partial 标记、
+  filter evidence 与完整 summary；base sample/transfer ID 不进入 public response。
+  query-specific projection 只限制 packet body materialize，不改变完整计数、首末 evidence
+  或 truncation 语义。所有 public APB/AXI/stream response 与排序保持不变，hard limit
+  通过统一 handler error 返回，不切换 scope/backend。
 
 ## Combined Active Trace 层
 

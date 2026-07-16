@@ -106,6 +106,7 @@ def test_stream_v1_real_waveform_actions(
     assert fsdb.is_file() and fsdb.stat().st_size > 0
     assert expected_path.is_file()
     expected = json.loads(expected_path.read_text(encoding="utf-8"))["streams"]
+    cli_runner.base_env["XDEBUG_TEST_STREAM_DIFFERENTIAL"] = "1"
 
     open_response = _query(
         cli_runner,

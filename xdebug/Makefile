@@ -278,6 +278,7 @@ cpp-unit-binaries: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o 
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_axi_transaction_tracker tests/unit/test_axi_transaction_tracker.cpp $(BUILD)/src/waveform/axi/axi_transaction_tracker.o $(BUILD)/src/waveform/cache/analysis_size_estimator.o
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_analysis_probe tests/unit/test_analysis_probe.cpp $(BUILD)/src/waveform/cache/analysis_probe.o
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_analysis_repository tests/unit/test_analysis_repository.cpp $(BUILD)/src/waveform/cache/analysis_repository.o $(BUILD)/src/waveform/cache/analysis_probe.o $(BUILD)/src/core/common/sha256.o
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_stream_base_analysis tests/unit/test_stream_base_analysis.cpp $(BUILD)/src/waveform/cache/analysis_size_estimator.o
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_stream_manager tests/unit/test_stream_manager.cpp $(BUILD)/src/waveform/stream/stream_manager.o $(BUILD)/src/waveform/stream/stream_config.o $(BUILD)/src/waveform/common/xdebug_waveform_paths.o $(BUILD)/src/waveform/common/clock_sampling.o $(BUILD)/src/waveform/common/reset_config.o $(BUILD)/src/waveform/server/fsdb_value_reader.o $(BUILD)/src/waveform/server/fsdb_scan_utils.o $(CORE_OBJS) $(LDFLAGS)
 
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_reset_config tests/unit/test_reset_config.cpp $(BUILD)/src/waveform/common/reset_config.o

@@ -370,4 +370,17 @@ def test_analysis_cache_phase0_baseline(
         apb_target["max_rss_delta_bytes"]
     assert apb_target["hot_scanner_invocations"] == 0
     assert all(total == 1 for total in metrics["apb"]["scanner_invocations"])
+    stream_target = thresholds["phase_targets"]["stream_columnar"]
+    assert metrics["stream"]["cold_p95_ms"] <= \
+        stream_target["cold_p95_ms"]
+    assert metrics["stream"]["max_rss_delta_bytes"] <= \
+        stream_target["max_rss_delta_bytes"]
+    baseline_stream_rss = thresholds["phase0_baseline"]["stream"][
+        "max_rss_delta_bytes"
+    ]
+    rss_reduction_percent = 100.0 * (
+        baseline_stream_rss - metrics["stream"]["max_rss_delta_bytes"]
+    ) / baseline_stream_rss
+    assert rss_reduction_percent >= \
+        stream_target["minimum_rss_reduction_percent"]
     print("ANALYSIS_CACHE_BASELINE=" + json.dumps(metrics, sort_keys=True))

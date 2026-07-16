@@ -23,6 +23,14 @@
   canonical scan；扫描期冻结既有地址解析语义，AddressIndex 独立 lazy build 和记账。
 - APB canonical/index 构建纳入 working-set/hard-limit accounting，soft LRU 后 generation
   cursor 按原 position 续用；APB VIP 与 nightly benchmark 固化单扫描、逐出和硬上限合同。
+- 完成 Phase 4A Stream 列式 base 与单请求 QueryView：所有 sample 保留 summary/stall/XZ
+  最小元数据，完整 beat/stable fields 仅按 transfer column 保存，packet 仅保存 transfer
+  引用、边界、channel 与 stable mismatch。
+- 三个动态 stream action 默认使用新 analyzer；test-only legacy adapter 在正式 stream
+  suite 中逐字段比较 summary、transfer/stall、query packet projection 与 filter evidence，
+  不提供 public bypass。nightly benchmark 固化 cold P95、RSS 上限和至少 25% RSS 降幅。
+- Phase 4A 尚不启用跨请求 cache；stream full/range scope、repository 复用、预算/LRU 与
+  schema/skill 合同留在独立 Phase 4B 实施。
 
 ## 2026-07-14
 

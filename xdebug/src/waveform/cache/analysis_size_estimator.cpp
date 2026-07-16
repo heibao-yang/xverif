@@ -147,4 +147,47 @@ std::size_t estimate_stream_analysis_bytes(const StreamAnalysis& analysis) {
     return bytes;
 }
 
+std::size_t estimate_stream_base_analysis_bytes(
+    const StreamBaseAnalysis& analysis) {
+    std::size_t bytes = sizeof(StreamBaseAnalysis);
+    bytes += analysis.samples.capacity() * sizeof(StreamSampleMetadata);
+    for (const auto& sample : analysis.samples)
+        bytes += sample.stall_reason.capacity();
+    bytes += analysis.transfer_sample_ids.capacity() * sizeof(std::size_t);
+    bytes += analysis.channels.capacity() * sizeof(StreamValue);
+    for (const auto& channel : analysis.channels)
+        bytes += channel.bits.capacity();
+    auto add_schema = [&](const std::vector<std::string>& schema) {
+        bytes += schema.capacity() * sizeof(std::string);
+        for (const auto& name : schema) bytes += name.capacity();
+    };
+    add_schema(analysis.field_schema);
+    add_schema(analysis.packet_stable_field_schema);
+    auto add_columns = [&](const std::map<std::string,
+                                          std::vector<StreamValue>>& columns) {
+        bytes += map_storage_bytes(columns);
+        for (const auto& column : columns) {
+            bytes += column.first.capacity();
+            bytes += column.second.capacity() * sizeof(StreamValue);
+            for (const auto& value : column.second)
+                bytes += value.bits.capacity();
+        }
+    };
+    add_columns(analysis.field_columns);
+    add_columns(analysis.packet_stable_field_columns);
+    bytes += analysis.packets.capacity() * sizeof(StreamBasePacket);
+    for (const auto& packet : analysis.packets) {
+        bytes += packet.transfer_ordinals.capacity() * sizeof(std::size_t);
+        bytes += packet.channel.bits.capacity();
+        bytes += packet.stable_mismatches.capacity() *
+            sizeof(StreamBaseStableMismatch);
+        for (const auto& mismatch : packet.stable_mismatches) {
+            bytes += mismatch.field.capacity();
+            bytes += mismatch.expected.bits.capacity();
+            bytes += mismatch.actual.bits.capacity();
+        }
+    }
+    return bytes;
+}
+
 }  // namespace xdebug_waveform

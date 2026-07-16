@@ -28,6 +28,7 @@ BINARIES = (
     "test_axi_transaction_tracker",
     "test_analysis_probe",
     "test_analysis_repository",
+    "test_stream_base_analysis",
     "test_stream_manager",
 )
 

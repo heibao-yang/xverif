@@ -91,6 +91,9 @@ xdebug 的 log 是工具可观测性合同的一部分。任何 session、transp
 - 它不是生产 action/lifecycle log，不是 public API，也不能作为用户清缓存入口。
 - probe 文件写入失败不得影响 action 成败；生产 cache hit/miss/evict 仍应写正常的
   结构化内部日志。
+- Phase 4A 的 stream `build` estimated bytes 计量列式 `StreamBaseAnalysis`，不计请求级
+  `StreamQueryView`；legacy differential 的第二次 oracle 扫描不写 probe，避免污染正式
+  scanner/build 基线。Phase 4B 启用跨请求 cache 后再由 repository 发布 hit/miss/evict。
 
 ## 排障顺序
 

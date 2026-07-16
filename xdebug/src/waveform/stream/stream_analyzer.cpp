@@ -274,12 +274,699 @@ bool StreamAnalyzer::validate_static(npiFsdbFileHandle file, const StreamConfig&
     return true;
 }
 
-bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
-                             const StreamQueryOptions& options, StreamAnalysis& analysis,
+bool StreamAnalyzer::build_base(npiFsdbFileHandle file,
+                                const StreamConfig& config,
+                                const StreamQueryOptions& options,
+                                StreamBaseAnalysis& base,
+                                std::string& error) {
+    base = StreamBaseAnalysis();
+    base.requested_begin = options.begin;
+    base.requested_end = options.end;
+    ClockSampleSpec clock_sample = config.clock_sample;
+    if (!normalize_clock_sample_spec(file, clock_sample, error)) return false;
+    Compiled compiled;
+    if (!compile(file, config, compiled, nullptr, error)) return false;
+
+    if (!config.data.empty()) base.field_schema.push_back("data");
+    for (const auto& item : config.beat_fields) {
+        if (std::find(base.field_schema.begin(), base.field_schema.end(),
+                      item.first) == base.field_schema.end())
+            base.field_schema.push_back(item.first);
+    }
+    for (const auto& item : config.packet_stable_fields)
+        base.packet_stable_field_schema.push_back(item.first);
+    for (const auto& name : base.field_schema)
+        base.field_columns[name] = std::vector<StreamValue>();
+    for (const auto& name : base.packet_stable_field_schema)
+        base.packet_stable_field_columns[name] = std::vector<StreamValue>();
+
+    std::vector<std::string> deps = sorted_signals(compiled.deps);
+    std::vector<std::string> clock_deps = sorted_signals(compiled.clock.signals());
+    if (clock_deps.empty()) {
+        error = "clock expression has no signal dependency";
+        return false;
+    }
+    std::vector<ClockSampleSignal> clock_signals;
+    for (const auto& sig_name : clock_deps) {
+        auto path_it = compiled.dep_paths.find(sig_name);
+        if (path_it == compiled.dep_paths.end()) {
+            error = "clock dependency alias missing from stream signals: " + sig_name;
+            return false;
+        }
+        npiFsdbSigHandle sig = npi_fsdb_sig_by_name(
+            file, path_it->second.c_str(), NULL);
+        if (!sig) {
+            error = "signal not found for alias " + sig_name + ": " +
+                path_it->second;
+            return false;
+        }
+        clock_signals.push_back({sig_name, path_it->second, sig});
+    }
+    std::vector<ClockSampleSignal> sample_signals;
+    for (const auto& sig_name : deps) {
+        auto path_it = compiled.dep_paths.find(sig_name);
+        if (path_it == compiled.dep_paths.end()) {
+            error = "sample dependency alias missing from stream signals: " + sig_name;
+            return false;
+        }
+        npiFsdbSigHandle sig = npi_fsdb_sig_by_name(
+            file, path_it->second.c_str(), NULL);
+        if (!sig) {
+            error = "signal not found for alias " + sig_name + ": " +
+                path_it->second;
+            return false;
+        }
+        sample_signals.push_back({sig_name, path_it->second, sig});
+    }
+
+    struct PacketBuildState {
+        bool active = false;
+        std::size_t packet_index = 0;
+        std::map<std::string, StreamValue> stable_fields;
+    };
+    PacketBuildState single_packet;
+    std::map<std::string, PacketBuildState> channel_packets;
+    auto finish_packet = [&](PacketBuildState& state, bool partial_end) {
+        if (!state.active) return;
+        base.packets[state.packet_index].partial_end = partial_end;
+        state = PacketBuildState();
+    };
+    auto start_packet = [&](PacketBuildState& state,
+                            const std::map<std::string, StreamValue>& stable,
+                            const StreamValue& channel,
+                            bool partial_begin) {
+        if (state.active) finish_packet(state, true);
+        state.active = true;
+        state.packet_index = base.packets.size();
+        state.stable_fields = stable;
+        StreamBasePacket packet;
+        packet.partial_begin = partial_begin;
+        if (config.channel_id_valid == "sop" ||
+            config.channel_id_valid == "every_beat") {
+            packet.channel = channel;
+        }
+        base.packets.push_back(std::move(packet));
+    };
+    auto append_packet = [&](PacketBuildState& state,
+                             std::size_t transfer_ordinal,
+                             bool eop,
+                             const StreamValue& channel,
+                             const std::map<std::string, StreamValue>& stable) {
+        StreamBasePacket& packet = base.packets[state.packet_index];
+        packet.transfer_ordinals.push_back(transfer_ordinal);
+        if (config.channel_id_valid == "eop" && eop)
+            packet.channel = channel;
+        if (config.channel_id_valid == "every_beat" &&
+            packet.channel.bits.empty()) packet.channel = channel;
+        for (const auto& item : stable) {
+            auto expected = state.stable_fields.find(item.first);
+            if (expected == state.stable_fields.end()) {
+                state.stable_fields[item.first] = item.second;
+                continue;
+            }
+            if (!stream_value_equal(expected->second, item.second)) {
+                StreamBaseStableMismatch mismatch;
+                mismatch.transfer_ordinal = transfer_ordinal;
+                mismatch.field = item.first;
+                mismatch.expected = expected->second;
+                mismatch.actual = item.second;
+                packet.stable_mismatches.push_back(std::move(mismatch));
+            }
+        }
+    };
+
+    ClockExpressionSampleScanner scanner(
+        file, clock_sample.edge, clock_sample.sample_point);
+    int sample_count = 0;
+    bool sample_truncated = false;
+    analysis_probe().record(
+        "scan", "stream", config.name,
+        AnalysisProbeMetrics{0, 0, 0, 0, 1});
+    const bool scan_ok = scanner.scan(
+        clock_signals, sample_signals, options.begin, options.end,
+        npiFsdbBinStrVal, 'b', -1,
+        [&](const std::map<std::string, std::string>& raw_values,
+            bool& known, bool& one, std::string& eval_error) -> bool {
+            std::map<std::string, StreamValue> clock_values;
+            for (const auto& sig_name : clock_deps) {
+                auto it = raw_values.find(sig_name);
+                if (it == raw_values.end()) {
+                    eval_error = "clock dependency missing: " + sig_name;
+                    return false;
+                }
+                const std::string bits = sample_bits_from_raw(it->second);
+                clock_values[sig_name] = StreamValue{
+                    bits, bits.find_first_of("xz") == std::string::npos};
+            }
+            StreamValue clock_value;
+            std::string expr_error;
+            if (!compiled.clock.evaluate(
+                    clock_values, clock_value, expr_error)) {
+                eval_error = "clock evaluate failed: " + expr_error;
+                return false;
+            }
+            known = clock_value.known;
+            one = stream_value_truthy(clock_value, false);
+            return true;
+        },
+        [&](const ClockSample& sample) -> bool {
+            std::map<std::string, StreamValue> values;
+            for (size_t i = 0; i < deps.size(); ++i) {
+                const std::string raw = i < sample.values.size()
+                    ? sample.values[i] : "'bx";
+                const std::string bits = sample_bits_from_raw(raw);
+                values[deps[i]] = StreamValue{
+                    bits, bits.find_first_of("xz") == std::string::npos};
+            }
+            auto eval = [&](StreamExpression& expr,
+                            const std::string& label) -> StreamValue {
+                if (expr.text().empty()) return StreamValue{"0", true};
+                StreamValue out;
+                std::string eval_error;
+                if (!expr.evaluate(values, out, eval_error)) {
+                    error = label + " evaluate failed: " + eval_error;
+                    return x_value();
+                }
+                return out;
+            };
+
+            StreamValue reset_v{"0", true};
+            if (config.has_reset) reset_v = values[kResetDependency];
+            const StreamValue vld_v = eval(compiled.vld, "vld");
+            if (!error.empty()) return false;
+            const StreamValue rdy_v = config.rdy.empty()
+                ? StreamValue{"1", true} : eval(compiled.rdy, "rdy");
+            if (!error.empty()) return false;
+            const StreamValue bp_v = config.bp.empty()
+                ? StreamValue{"0", true} : eval(compiled.bp, "bp");
+            if (!error.empty()) return false;
+            const StreamValue sop_v = config.sop.empty()
+                ? StreamValue{"0", true} : eval(compiled.sop, "sop");
+            if (!error.empty()) return false;
+            const StreamValue eop_v = config.eop.empty()
+                ? StreamValue{"0", true} : eval(compiled.eop, "eop");
+            if (!error.empty()) return false;
+
+            StreamSampleMetadata metadata;
+            metadata.time = sample.time;
+            metadata.reset = config.has_reset &&
+                reset_is_active(config.reset, reset_v.bits);
+            metadata.vld = stream_value_truthy(vld_v, false);
+            metadata.rdy = stream_value_truthy(rdy_v, false);
+            metadata.bp = stream_value_truthy(bp_v, true);
+            metadata.sop = stream_value_truthy(sop_v, false);
+            metadata.eop = stream_value_truthy(eop_v, false);
+            metadata.control_xz_count =
+                (stream_value_has_xz(reset_v) ? 1 : 0) +
+                (stream_value_has_xz(vld_v) ? 1 : 0) +
+                (stream_value_has_xz(rdy_v) ? 1 : 0) +
+                (stream_value_has_xz(bp_v) ? 1 : 0) +
+                (stream_value_has_xz(sop_v) ? 1 : 0) +
+                (stream_value_has_xz(eop_v) ? 1 : 0);
+            bool flow = true;
+            if (!config.rdy.empty()) flow = flow && metadata.rdy;
+            if (!config.bp.empty()) flow = flow && !metadata.bp;
+            metadata.transfer = metadata.vld && flow && !metadata.reset;
+            if (!config.rdy.empty() && !config.bp.empty()) {
+                metadata.stall = metadata.vld &&
+                    (!metadata.rdy || metadata.bp);
+                if (!metadata.rdy && metadata.bp)
+                    metadata.stall_reason = "rdy_low_and_bp_high";
+                else if (!metadata.rdy)
+                    metadata.stall_reason = "rdy_low";
+                else if (metadata.bp)
+                    metadata.stall_reason = "bp_high";
+            } else if (!config.rdy.empty()) {
+                metadata.stall = metadata.vld && !metadata.rdy;
+                if (metadata.stall) metadata.stall_reason = "rdy_low";
+            } else if (!config.bp.empty()) {
+                metadata.stall = metadata.vld && metadata.bp;
+                if (metadata.stall) metadata.stall_reason = "bp_high";
+            }
+
+            std::map<std::string, StreamValue> fields;
+            std::map<std::string, StreamValue> stable_fields;
+            if (!config.data.empty()) {
+                fields["data"] = eval(compiled.data, "data");
+                if (!error.empty()) return false;
+            }
+            for (auto& item : compiled.beat_fields) {
+                fields[item.first] = eval(
+                    item.second, "beat_fields." + item.first);
+                if (!error.empty()) return false;
+            }
+            for (auto& item : compiled.packet_stable_fields) {
+                stable_fields[item.first] = eval(
+                    item.second, "packet_stable_fields." + item.first);
+                if (!error.empty()) return false;
+            }
+            StreamValue channel;
+            if (!config.channel_id.empty()) {
+                channel = eval(compiled.channel, "channel_id");
+                if (!error.empty()) return false;
+            }
+            for (const auto& item : fields)
+                if (stream_value_has_xz(item.second))
+                    ++metadata.data_xz_count;
+            for (const auto& item : stable_fields)
+                if (stream_value_has_xz(item.second))
+                    ++metadata.data_xz_count;
+
+            if (!base.has_scanned_samples) {
+                base.scanned_begin = sample.time;
+                base.has_scanned_samples = true;
+            }
+            base.scanned_end = sample.time;
+            const std::size_t sample_id = base.samples.size();
+            if (metadata.transfer) {
+                const std::size_t ordinal =
+                    base.transfer_sample_ids.size();
+                metadata.transfer_ordinal = static_cast<int>(ordinal);
+                base.transfer_sample_ids.push_back(sample_id);
+                for (const auto& name : base.field_schema)
+                    base.field_columns[name].push_back(fields[name]);
+                for (const auto& name : base.packet_stable_field_schema)
+                    base.packet_stable_field_columns[name].push_back(
+                        stable_fields[name]);
+                base.channels.push_back(channel);
+
+                if (stream_packet_enabled(config)) {
+                    PacketBuildState* state = &single_packet;
+                    if (config.allow_interleaving) {
+                        if (channel.bits.empty() ||
+                            stream_value_has_xz(channel)) {
+                            error = "interleaved packet stream requires known "
+                                    "channel_id on every transfer";
+                            return false;
+                        }
+                        state = &channel_packets[stream_value_key(channel)];
+                    } else if (config.channel_id_valid == "every_beat" &&
+                               single_packet.active &&
+                               !base.packets[single_packet.packet_index]
+                                    .channel.bits.empty() &&
+                               !stream_value_equal(
+                                    base.packets[single_packet.packet_index]
+                                        .channel,
+                                    channel)) {
+                        error = "non-interleaved packet channel_id changed "
+                                "within a packet";
+                        return false;
+                    }
+                    if (metadata.sop)
+                        start_packet(*state, stable_fields, channel, false);
+                    else if (!state->active && metadata.eop)
+                        start_packet(*state, stable_fields, channel, true);
+                    if (state->active) {
+                        append_packet(*state, ordinal, metadata.eop,
+                                      channel, stable_fields);
+                        if (metadata.eop) finish_packet(*state, false);
+                    }
+                }
+            }
+            base.samples.push_back(std::move(metadata));
+            return true;
+        }, error, sample_count, sample_truncated);
+    if (!scan_ok) {
+        analysis_probe().record(
+            "build_failed", "stream", config.name,
+            AnalysisProbeMetrics{0, 0, 0, 0, 0});
+        return false;
+    }
+    finish_packet(single_packet, true);
+    for (auto& item : channel_packets) finish_packet(item.second, true);
+    base.analysis_complete = !sample_truncated;
+    return true;
+}
+
+StreamQueryView::StreamQueryView(const StreamBaseAnalysis& base,
+                                 const StreamConfig& config,
+                                 const StreamQueryOptions& options)
+    : base_(base), config_(config), options_(options) {}
+
+StreamRow StreamQueryView::transfer_row(std::size_t sample_id, int cycle) const {
+    StreamRow row;
+    if (sample_id >= base_.samples.size()) return row;
+    const StreamSampleMetadata& sample = base_.samples[sample_id];
+    row.cycle = cycle;
+    row.time = sample.time;
+    row.reset = sample.reset;
+    row.vld = sample.vld;
+    row.rdy = sample.rdy;
+    row.bp = sample.bp;
+    row.sop = sample.sop;
+    row.eop = sample.eop;
+    row.transfer = sample.transfer;
+    row.stall = sample.stall;
+    row.stall_reason = sample.stall_reason;
+    row.control_xz_count = sample.control_xz_count;
+    row.data_xz_count = sample.data_xz_count;
+    if (sample.transfer_ordinal < 0) return row;
+    const std::size_t ordinal =
+        static_cast<std::size_t>(sample.transfer_ordinal);
+    for (const auto& name : base_.field_schema) {
+        auto column = base_.field_columns.find(name);
+        if (column != base_.field_columns.end() &&
+            ordinal < column->second.size())
+            row.fields[name] = column->second[ordinal];
+    }
+    for (const auto& name : base_.packet_stable_field_schema) {
+        auto column = base_.packet_stable_field_columns.find(name);
+        if (column != base_.packet_stable_field_columns.end() &&
+            ordinal < column->second.size())
+            row.packet_stable_fields[name] = column->second[ordinal];
+    }
+    if (ordinal < base_.channels.size()) row.channel = base_.channels[ordinal];
+    return row;
+}
+
+bool StreamQueryView::materialize(StreamAnalysis& analysis,
+                                  std::string& error) const {
+    analysis = StreamAnalysis();
+    analysis.requested_begin = options_.begin;
+    analysis.requested_end = options_.end;
+    analysis.analysis_complete = base_.analysis_complete;
+    const bool has_channel_filter = !options_.channel_filter.empty();
+    unsigned long long channel_filter_value = 0;
+    if (has_channel_filter) {
+        bool ok = false;
+        channel_filter_value = parse_user_u64(
+            options_.channel_filter, ok, error);
+        if (!ok) {
+            if (error.empty())
+                error = "invalid channel filter: " + options_.channel_filter;
+            return false;
+        }
+    }
+
+    auto begin_it = std::lower_bound(
+        base_.samples.begin(), base_.samples.end(), options_.begin,
+        [](const StreamSampleMetadata& sample, npiFsdbTime time) {
+            return sample.time < time;
+        });
+    auto end_it = std::upper_bound(
+        base_.samples.begin(), base_.samples.end(), options_.end,
+        [](npiFsdbTime time, const StreamSampleMetadata& sample) {
+            return time < sample.time;
+        });
+    const std::size_t begin_index =
+        static_cast<std::size_t>(begin_it - base_.samples.begin());
+    const std::size_t end_index =
+        static_cast<std::size_t>(end_it - base_.samples.begin());
+
+    int packet_index = 0;
+    StreamStallWindow current_stall;
+    bool in_stall = false;
+    struct PacketState {
+        bool active = false;
+        StreamPacket packet;
+    };
+    PacketState single_packet;
+    std::map<std::string, PacketState> channel_packets;
+    auto finish_stall = [&](npiFsdbTime end_time, int end_cycle) {
+        if (!in_stall) return;
+        current_stall.end_time = end_time;
+        current_stall.end_cycle = end_cycle;
+        analysis.stalls.push_back(current_stall);
+        in_stall = false;
+    };
+    auto finish_packet = [&](PacketState& state, bool partial_end) {
+        if (!state.active) return;
+        state.packet.partial_end = partial_end;
+        analysis.packet_stable_mismatch_count +=
+            static_cast<int>(state.packet.packet_stable_mismatches.size());
+        if (state.packet.partial_begin || state.packet.partial_end)
+            ++analysis.partial_packet_count;
+        else
+            ++analysis.complete_packet_count;
+        bool retain = true;
+        if (options_.filter.enabled) {
+            bool channel_ok = true;
+            if (has_channel_filter) {
+                unsigned long long got = 0;
+                channel_ok = value_u64(state.packet.channel, got) &&
+                    got == channel_filter_value;
+            }
+            ValueFilterMatch result = ValueFilterMatch::No;
+            const bool missing_boundary =
+                (options_.filter.position == "sop" &&
+                 state.packet.partial_begin) ||
+                (options_.filter.position == "eop" &&
+                 state.packet.partial_end);
+            if (channel_ok) {
+                if (missing_boundary) {
+                    result = ValueFilterMatch::Unresolved;
+                } else {
+                    const auto& fields = options_.filter.position == "sop"
+                        ? state.packet.first_filter_fields
+                        : state.packet.last_filter_fields;
+                    result = match_filter_fields(fields, options_.filter);
+                }
+            }
+            retain = result == ValueFilterMatch::Yes;
+            if (result == ValueFilterMatch::Unresolved)
+                ++analysis.unresolved_filter_count;
+            if (retain) {
+                ++analysis.matched_packet_count;
+                if (!analysis.has_matched_packet_evidence) {
+                    analysis.first_matched_packet = state.packet;
+                    analysis.has_matched_packet_evidence = true;
+                }
+                analysis.last_matched_packet = state.packet;
+            }
+        }
+        if (retain) {
+            const int retain_limit = options_.retain_limit == 0
+                ? options_.limit : options_.retain_limit;
+            if (options_.filter.enabled &&
+                (retain_limit <= 0 ||
+                 static_cast<int>(analysis.packets.size()) < retain_limit)) {
+                analysis.packets.push_back(state.packet);
+            } else if (options_.filter.enabled) {
+                analysis.truncated = true;
+            } else if (options_.query_kind.empty()) {
+                // Export and other internal callers require the complete
+                // packet table materialized in the request view.
+                analysis.packets.push_back(state.packet);
+            } else if (options_.query_kind == "first_packet") {
+                if (analysis.packets.empty())
+                    analysis.packets.push_back(state.packet);
+            } else if (options_.query_kind == "last_packet") {
+                if (analysis.packets.empty())
+                    analysis.packets.push_back(state.packet);
+                else
+                    analysis.packets.front() = state.packet;
+            } else if (options_.query_kind == "packet_at") {
+                if (state.packet.packet_index == options_.packet_index)
+                    analysis.packets.push_back(state.packet);
+            } else if (options_.query_kind == "packet_window" &&
+                       (retain_limit <= 0 ||
+                        static_cast<int>(analysis.packets.size()) <
+                            retain_limit)) {
+                analysis.packets.push_back(state.packet);
+            }
+        }
+        state = PacketState();
+    };
+    auto start_packet = [&](PacketState& state, const StreamRow& row,
+                            bool partial_begin) {
+        if (state.active) finish_packet(state, true);
+        state.active = true;
+        state.packet = StreamPacket();
+        state.packet.packet_index = packet_index++;
+        state.packet.start_cycle = row.cycle;
+        state.packet.end_cycle = row.cycle;
+        state.packet.start_time = row.time;
+        state.packet.end_time = row.time;
+        state.packet.partial_begin = partial_begin;
+        state.packet.packet_stable_fields = row.packet_stable_fields;
+        if (config_.channel_id_valid == "sop" ||
+            config_.channel_id_valid == "every_beat")
+            state.packet.channel = row.channel;
+    };
+    auto append_packet_beat = [&](PacketState& state, StreamRow& row) {
+        row.packet_index = state.packet.packet_index;
+        row.beat_index = state.packet.beat_count;
+        state.packet.end_cycle = row.cycle;
+        state.packet.end_time = row.time;
+        ++state.packet.beat_count;
+        if (state.packet.first_fields.empty())
+            state.packet.first_fields = row.fields;
+        state.packet.last_fields = row.fields;
+        const auto fields = filter_view(row);
+        if (state.packet.first_filter_fields.empty())
+            state.packet.first_filter_fields = fields;
+        state.packet.last_filter_fields = fields;
+        if (config_.channel_id_valid == "eop" && row.eop)
+            state.packet.channel = row.channel;
+        if (config_.channel_id_valid == "every_beat" &&
+            state.packet.channel.bits.empty())
+            state.packet.channel = row.channel;
+        for (const auto& item : row.packet_stable_fields) {
+            auto expected = state.packet.packet_stable_fields.find(item.first);
+            if (expected == state.packet.packet_stable_fields.end()) {
+                state.packet.packet_stable_fields[item.first] = item.second;
+                continue;
+            }
+            if (!stream_value_equal(expected->second, item.second)) {
+                StreamPacketStableMismatch mismatch;
+                mismatch.field = item.first;
+                mismatch.cycle = row.cycle;
+                mismatch.time = row.time;
+                mismatch.expected = expected->second;
+                mismatch.actual = item.second;
+                state.packet.packet_stable_mismatches.push_back(
+                    std::move(mismatch));
+            }
+        }
+        StreamBeat beat;
+        beat.cycle = row.cycle;
+        beat.time = row.time;
+        beat.beat_index = row.beat_index;
+        beat.fields = row.fields;
+        state.packet.beats.push_back(std::move(beat));
+    };
+
+    int cycle = 0;
+    for (std::size_t sample_id = begin_index;
+         sample_id < end_index; ++sample_id, ++cycle) {
+        const StreamSampleMetadata& sample = base_.samples[sample_id];
+        if (!analysis.has_scanned_samples) {
+            analysis.scanned_begin = sample.time;
+            analysis.has_scanned_samples = true;
+        }
+        analysis.scanned_end = sample.time;
+        ++analysis.clock_edges;
+        if (sample.vld) ++analysis.vld_cycles;
+        if (sample.stall) ++analysis.stall_cycles;
+        if (sample.vld && sample.rdy && sample.bp &&
+            !config_.rdy.empty() && !config_.bp.empty())
+            ++analysis.ready_bp_conflict_count;
+        analysis.control_xz_count += sample.control_xz_count;
+        analysis.data_xz_count += sample.data_xz_count;
+
+        if (sample.stall) {
+            if (!in_stall) {
+                in_stall = true;
+                current_stall = StreamStallWindow();
+                current_stall.start_cycle = cycle;
+                current_stall.start_time = sample.time;
+                current_stall.reason = sample.stall_reason;
+            }
+            ++current_stall.cycles;
+        } else {
+            finish_stall(sample.time, cycle);
+        }
+
+        if (!sample.transfer) continue;
+        StreamRow row = transfer_row(sample_id, cycle);
+        ++analysis.transfer_count;
+        bool channel_ok = !has_channel_filter;
+        if (has_channel_filter) {
+            unsigned long long got = 0;
+            channel_ok = value_u64(row.channel, got) &&
+                got == channel_filter_value;
+        }
+        if (stream_packet_enabled(config_)) {
+            PacketState* state = &single_packet;
+            if (config_.allow_interleaving) {
+                if (row.channel.bits.empty() ||
+                    stream_value_has_xz(row.channel)) {
+                    error = "interleaved packet stream requires known "
+                            "channel_id on every transfer";
+                    return false;
+                }
+                state = &channel_packets[stream_value_key(row.channel)];
+            } else if (config_.channel_id_valid == "every_beat" &&
+                       single_packet.active &&
+                       !single_packet.packet.channel.bits.empty() &&
+                       !stream_value_equal(single_packet.packet.channel,
+                                           row.channel)) {
+                error = "non-interleaved packet channel_id changed within a packet";
+                return false;
+            }
+            if (row.sop) start_packet(*state, row, false);
+            else if (!state->active && row.eop)
+                start_packet(*state, row, true);
+            if (state->active) {
+                append_packet_beat(*state, row);
+                if (row.eop) finish_packet(*state, false);
+            }
+        }
+        bool selected = channel_ok;
+        if (options_.filter.enabled && !stream_packet_enabled(config_)) {
+            const ValueFilterMatch result = channel_ok
+                ? match_filter_fields(filter_view(row), options_.filter)
+                : ValueFilterMatch::No;
+            if (result == ValueFilterMatch::Unresolved)
+                ++analysis.unresolved_filter_count;
+            selected = result == ValueFilterMatch::Yes;
+            if (selected) ++analysis.matched_transfer_count;
+        }
+        if (selected &&
+            (!options_.filter.enabled || !stream_packet_enabled(config_))) {
+            if (!analysis.has_transfer_evidence) {
+                analysis.first_transfer = row;
+                analysis.has_transfer_evidence = true;
+            }
+            analysis.last_transfer = row;
+            const int retain_limit = options_.retain_limit == 0
+                ? options_.limit : options_.retain_limit;
+            if (retain_limit <= 0 ||
+                static_cast<int>(analysis.transfers.size()) < retain_limit)
+                analysis.transfers.push_back(row);
+            else
+                analysis.truncated = true;
+        }
+    }
+    const npiFsdbTime finish_time = begin_index == end_index
+        ? options_.end : base_.samples[end_index - 1].time;
+    finish_stall(finish_time, cycle);
+    finish_packet(single_packet, true);
+    for (auto& item : channel_packets) finish_packet(item.second, true);
+    std::sort(analysis.packets.begin(), analysis.packets.end(),
+              [](const StreamPacket& a, const StreamPacket& b) {
+                  if (a.start_time != b.start_time)
+                      return a.start_time < b.start_time;
+                  return a.packet_index < b.packet_index;
+              });
+    return true;
+}
+
+bool StreamAnalyzer::analyze(npiFsdbFileHandle file,
+                             const StreamConfig& config,
+                             const StreamQueryOptions& options,
+                             StreamAnalysis& analysis,
                              std::string& error) {
     analysis_probe().record(
         "miss", "stream", config.name,
         AnalysisProbeMetrics{0, 0, 0, 0, 0});
+    StreamBaseAnalysis base;
+    if (!build_base(file, config, options, base, error)) return false;
+    StreamQueryView view(base, config, options);
+    if (!view.materialize(analysis, error)) {
+        analysis_probe().record(
+            "build_failed", "stream", config.name,
+            AnalysisProbeMetrics{0, 0, 0, 0, 0});
+        return false;
+    }
+    analysis_probe().record(
+        "build", "stream", config.name,
+        AnalysisProbeMetrics{0, 0, 0,
+            estimate_stream_base_analysis_bytes(base), 0});
+    return true;
+}
+
+bool StreamAnalyzer::analyze_legacy(npiFsdbFileHandle file,
+                                    const StreamConfig& config,
+                                    const StreamQueryOptions& options,
+                                    StreamAnalysis& analysis,
+                                    std::string& error,
+                                    bool record_probe) {
+    if (record_probe) {
+        analysis_probe().record(
+            "miss", "stream", config.name,
+            AnalysisProbeMetrics{0, 0, 0, 0, 0});
+    }
     analysis = StreamAnalysis();
     analysis.requested_begin = options.begin;
     analysis.requested_end = options.end;
@@ -335,9 +1022,11 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
     ClockExpressionSampleScanner scanner(file, clock_sample.edge, clock_sample.sample_point);
     int sample_count = 0;
     bool sample_truncated = false;
-    analysis_probe().record(
-        "scan", "stream", config.name,
-        AnalysisProbeMetrics{0, 0, 0, 0, 1});
+    if (record_probe) {
+        analysis_probe().record(
+            "scan", "stream", config.name,
+            AnalysisProbeMetrics{0, 0, 0, 0, 1});
+    }
     if (!scanner.scan(clock_signals, sample_signals, options.begin, options.end,
         npiFsdbBinStrVal, 'b', -1,
         [&](const std::map<std::string, std::string>& raw_values,
@@ -368,9 +1057,11 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
             sampled_edges.push_back(sample);
             return true;
         }, error, sample_count, sample_truncated)) {
-        analysis_probe().record(
-            "build_failed", "stream", config.name,
-            AnalysisProbeMetrics{0, 0, 0, 0, 0});
+        if (record_probe) {
+            analysis_probe().record(
+                "build_failed", "stream", config.name,
+                AnalysisProbeMetrics{0, 0, 0, 0, 0});
+        }
         return false;
     }
 
@@ -686,10 +1377,12 @@ bool StreamAnalyzer::analyze(npiFsdbFileHandle file, const StreamConfig& config,
                   if (a.start_time != b.start_time) return a.start_time < b.start_time;
                   return a.packet_index < b.packet_index;
               });
-    analysis_probe().record(
-        "build", "stream", config.name,
-        AnalysisProbeMetrics{0, 0, 0,
-                             estimate_stream_analysis_bytes(analysis), 0});
+    if (record_probe) {
+        analysis_probe().record(
+            "build", "stream", config.name,
+            AnalysisProbeMetrics{0, 0, 0,
+                                 estimate_stream_analysis_bytes(analysis), 0});
+    }
     return true;
 }
 

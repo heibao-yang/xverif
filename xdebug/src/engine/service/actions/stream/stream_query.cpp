@@ -23,7 +23,7 @@ namespace {
 
 using xdebug_waveform::Json;
 using xdebug_waveform::StreamAnalysis;
-using xdebug_waveform::LegacyStreamAnalyzerAdapter;
+using xdebug_waveform::analyze_stream_with_legacy_differential;
 using xdebug_waveform::StreamConfig;
 using xdebug_waveform::StreamExporter;
 using xdebug_waveform::StreamManager;
@@ -226,6 +226,8 @@ public:
         if (!range_from_args(args, request.value("limits", Json::object()), options, error))
             return stream_time_error(error);
         std::string query = args.value("query", std::string("summary"));
+        options.query_kind = query;
+        options.packet_index = args.value("packet_index", -1);
         if (args.contains("filter")) {
             std::string invalid_arg;
             if (!parse_stream_filter(args["filter"], config, options, error, invalid_arg))
@@ -243,9 +245,9 @@ public:
                     "args.query");
             }
         }
-        LegacyStreamAnalyzerAdapter analyzer;
         StreamAnalysis analysis;
-        if (!analyzer.analyze(g_fsdb_file, config, options, analysis, error))
+        if (!analyze_stream_with_legacy_differential(
+                g_fsdb_file, config, options, analysis, error))
             return stream_analyze_error(error);
 
         Json out;
@@ -341,7 +343,8 @@ public:
         if (query == "packet_window") {
             out["packets"] = packets_limited(analysis.packets, options.limit);
             const int available_count = options.filter.enabled
-                ? analysis.matched_packet_count : static_cast<int>(analysis.packets.size());
+                ? analysis.matched_packet_count
+                : analysis.complete_packet_count + analysis.partial_packet_count;
             if (available_count > options.limit) {
                 out["summary"]["truncated"] = true;
                 out["summary"]["truncation_scope"] = "response_packets";

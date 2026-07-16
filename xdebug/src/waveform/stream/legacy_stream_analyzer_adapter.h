@@ -17,4 +17,9 @@ private:
     StreamAnalyzer analyzer_;
 };
 
+bool analyze_stream_with_legacy_differential(
+    npiFsdbFileHandle file, const StreamConfig& config,
+    const StreamQueryOptions& options, StreamAnalysis& analysis,
+    std::string& error);
+
 }  // namespace xdebug_waveform

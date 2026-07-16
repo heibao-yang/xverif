@@ -7,6 +7,7 @@
 #include "npi_fsdb.h"
 
 #include <map>
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -131,6 +132,73 @@ struct StreamQueryOptions {
     bool include_fields = true;
     std::string channel_filter;
     StreamFilter filter;
+    // Internal QueryView projection hint. It does not change public request
+    // semantics and is ignored by the frozen legacy analyzer.
+    std::string query_kind;
+    int packet_index = -1;
+};
+
+struct StreamSampleMetadata {
+    npiFsdbTime time = 0;
+    bool reset = false;
+    bool vld = false;
+    bool rdy = true;
+    bool bp = false;
+    bool sop = false;
+    bool eop = false;
+    bool transfer = false;
+    bool stall = false;
+    std::string stall_reason;
+    int control_xz_count = 0;
+    int data_xz_count = 0;
+    int transfer_ordinal = -1;
+};
+
+struct StreamBaseStableMismatch {
+    std::size_t transfer_ordinal = 0;
+    std::string field;
+    StreamValue expected;
+    StreamValue actual;
+};
+
+struct StreamBasePacket {
+    std::vector<std::size_t> transfer_ordinals;
+    bool partial_begin = false;
+    bool partial_end = false;
+    StreamValue channel;
+    std::vector<StreamBaseStableMismatch> stable_mismatches;
+};
+
+struct StreamBaseAnalysis {
+    std::vector<StreamSampleMetadata> samples;
+    std::vector<std::size_t> transfer_sample_ids;
+    std::vector<std::string> field_schema;
+    std::vector<std::string> packet_stable_field_schema;
+    std::map<std::string, std::vector<StreamValue>> field_columns;
+    std::map<std::string, std::vector<StreamValue>> packet_stable_field_columns;
+    std::vector<StreamValue> channels;
+    std::vector<StreamBasePacket> packets;
+    bool analysis_complete = true;
+    npiFsdbTime requested_begin = 0;
+    npiFsdbTime requested_end = 0;
+    npiFsdbTime scanned_begin = 0;
+    npiFsdbTime scanned_end = 0;
+    bool has_scanned_samples = false;
+};
+
+class StreamQueryView {
+public:
+    StreamQueryView(const StreamBaseAnalysis& base,
+                    const StreamConfig& config,
+                    const StreamQueryOptions& options);
+    bool materialize(StreamAnalysis& analysis, std::string& error) const;
+
+private:
+    StreamRow transfer_row(std::size_t sample_id, int cycle) const;
+
+    const StreamBaseAnalysis& base_;
+    const StreamConfig& config_;
+    const StreamQueryOptions& options_;
 };
 
 class StreamAnalyzer {
@@ -141,11 +209,18 @@ public:
     bool analyze(npiFsdbFileHandle file, const StreamConfig& config,
                  const StreamQueryOptions& options, StreamAnalysis& analysis,
                  std::string& error);
+    bool analyze_legacy(npiFsdbFileHandle file, const StreamConfig& config,
+                        const StreamQueryOptions& options,
+                        StreamAnalysis& analysis, std::string& error,
+                        bool record_probe = false);
 
 private:
     struct Compiled;
     bool compile(npiFsdbFileHandle file, const StreamConfig& config, Compiled& compiled,
                  std::vector<StreamValidationIssue>* issues, std::string& error);
+    bool build_base(npiFsdbFileHandle file, const StreamConfig& config,
+                    const StreamQueryOptions& options,
+                    StreamBaseAnalysis& base, std::string& error);
 };
 
 Json stream_row_json(const StreamRow& row);

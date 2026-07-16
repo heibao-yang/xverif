@@ -171,8 +171,10 @@
 
 职责与要求：
 
-- engine 只能有一个 repository；AXI/APB analyzer 已接入 repository，stream 在 Phase 4
-  使用 `ensure_stream`。analyzer 不持有预算或 LRU 状态。
+- engine 只能有一个 repository；AXI/APB analyzer 已接入 repository。Phase 4A 的 stream
+  已使用列式 `StreamBaseAnalysis` 和临时 `StreamQueryView`，但尚未跨请求复用；Phase 4B
+  才通过 `ensure_stream` 把 full/range base 交给 repository。analyzer 不持有预算或 LRU
+  状态。
 - key 必须同时保存 SHA-256 摘要和规范化语义做等值确认；config name、description、
   JSON 字段顺序和 config 文件路径不进入语义 fingerprint。
 - canonical 发布后不可变；lazy index 独立记账、优先淘汰，canonical 淘汰时释放全部
@@ -190,8 +192,15 @@
   三个 canonical view 的 position，并与 canonical 分开记账和淘汰。
 - hard-limit 判定后续使用冻结的 safety factor；不能用 RSS 瞬时值作为运行时预算
   决策，也不能因 probe 写入失败改变 action 结果。
-- legacy adapter 是 stream 列式重构的内部差分 seam；Phase 0 原样委托现有
-  `StreamAnalyzer`，不注册 public bypass。Phase 4A 必须保留旧实现作为逐字段 oracle。
+- `StreamBaseAnalysis` 对每个 sample 只保存 time、reset/flow/boundary、stall reason 和
+  control/data X/Z 计数；完整 beat/stable field value 仅保存在 transfer-aligned columns。
+  `StreamQueryView` 按请求窗口临时重建 row、stall 和 packet，并按 query kind 只保留所需
+  packet body；summary、matched count、首末 evidence 与完整性仍遍历完整窗口。
+- legacy adapter 是 stream 列式重构的 test-only 差分 seam；设置
+  `XDEBUG_TEST_STREAM_DIFFERENTIAL=1` 时，同一 FSDB/config/options 额外执行冻结的
+  `analyze_legacy`，逐字段比较 summary、transfer、stall、当前 query 所需 packet 与 filter
+  evidence。默认生产路径只执行新 analyzer，不注册 public bypass，也不把 oracle 扫描
+  计入 probe。
 - stream 配置保存使用同目录 temp、完整 write、file `fsync`、atomic rename 和
   directory `fsync`；只有成功后才按语义 fingerprint 通知 repository。description-only
   或同语义 replace 复用，写入/rename 失败保留旧文件与旧 cache。

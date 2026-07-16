@@ -21,7 +21,7 @@ namespace {
 
 using xdebug_waveform::Json;
 using xdebug_waveform::StreamAnalysis;
-using xdebug_waveform::LegacyStreamAnalyzerAdapter;
+using xdebug_waveform::analyze_stream_with_legacy_differential;
 using xdebug_waveform::StreamConfig;
 using xdebug_waveform::StreamExporter;
 using xdebug_waveform::StreamManager;
@@ -150,9 +150,9 @@ public:
         if (!range_from_args(args, request.value("limits", Json::object()), options, error))
             return stream_time_error(error);
         options.limit = 0;
-        LegacyStreamAnalyzerAdapter analyzer;
         StreamAnalysis analysis;
-        if (!analyzer.analyze(g_fsdb_file, config, options, analysis, error))
+        if (!analyze_stream_with_legacy_differential(
+                g_fsdb_file, config, options, analysis, error))
             return stream_analyze_error(error);
         std::string kind = args.value("kind", std::string("transfer"));
         Json output_arg = args.value("output", Json::object());

@@ -21,7 +21,7 @@ namespace xdebug_design {
 namespace {
 
 using xdebug_waveform::Json;
-using xdebug_waveform::LegacyStreamAnalyzerAdapter;
+using xdebug_waveform::analyze_stream_with_legacy_differential;
 using xdebug_waveform::StreamAnalysis;
 using xdebug_waveform::StreamAnalyzer;
 using xdebug_waveform::StreamConfig;
@@ -153,9 +153,10 @@ public:
             if (!range_from_args(args, request.value("limits", Json::object()), options, error))
                 return stream_time_error(error);
             options.limit = args.value("line_limit", 256);
+            options.query_kind = "validate";
             StreamAnalysis analysis;
-            LegacyStreamAnalyzerAdapter legacy_analyzer;
-            if (!legacy_analyzer.analyze(g_fsdb_file, config, options, analysis, error))
+            if (!analyze_stream_with_legacy_differential(
+                    g_fsdb_file, config, options, analysis, error))
                 return stream_analyze_error(error);
             if (analysis.vld_cycles == 0) add_issue(issues, "WARNING", "VLD_NEVER_TRUE", "vld was never true in validation window");
             if (analysis.transfer_count == 0) add_issue(issues, "WARNING", "NO_TRANSFER", "no transfer observed in validation window");
