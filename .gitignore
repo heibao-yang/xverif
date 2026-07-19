@@ -65,10 +65,12 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 *.egg-info/
+.conda-xverif/
 .xverif-test-cache/
 .xverif-test-results/
 
 xdebug/build/
+xverif_mcp/build/
 xdebug/xdebug
 xdebug/libexec/
 xdebug/signal.rc

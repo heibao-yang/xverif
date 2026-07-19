@@ -7,6 +7,7 @@ from testinfra.xverif_test.catalog import Catalog
 
 
 ROOT = Path(__file__).resolve().parents[2]
+IGNORED_TREE_PARTS = {".conda-xverif", ".xverif-test-cache", ".xverif-test-results"}
 FORBIDDEN_TARGET = re.compile(
     r"^(?:test|check|full-test|unit-test|smoke|vim-test|pytest-[A-Za-z0-9_.-]+|mcp-[A-Za-z0-9_.-]+|[A-Za-z0-9_.-]+-test):"
 )
@@ -29,7 +30,7 @@ def test_every_collected_python_test_has_catalog_owner() -> None:
     missing: list[str] = []
     for path in sorted(ROOT.rglob("test_*.py")):
         relative = path.relative_to(ROOT)
-        if any(part in {".xverif-test-cache", ".xverif-test-results"} for part in relative.parts):
+        if any(part in IGNORED_TREE_PARTS for part in relative.parts):
             continue
         if not catalog.owners_for_path(path, ROOT) and relative not in leaf_paths:
             missing.append(relative.as_posix())
@@ -53,7 +54,7 @@ def test_makefiles_do_not_reintroduce_public_test_targets() -> None:
     violations: list[str] = []
     for path in sorted(ROOT.rglob("Makefile*")):
         relative = path.relative_to(ROOT)
-        if any(part in {".xverif-test-cache", ".xverif-test-results", "out", "csrc"} for part in relative.parts):
+        if any(part in IGNORED_TREE_PARTS | {"out", "csrc"} for part in relative.parts):
             continue
         for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
             if FORBIDDEN_TARGET.match(line):

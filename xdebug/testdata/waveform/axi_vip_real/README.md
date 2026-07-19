@@ -1,15 +1,15 @@
 # AXI SVT VIP real-wave fixture
 
 本 fixture 用真实 Synopsys SVT AXI VIP、真实 VCS 仿真和真实 FSDB/daidir
-验证 xdebug 的 AXI 查询链路。环境代码来自 `AXI_REFERENCE_ROOT` 指向的
-AXI 参考环境；编译拆分、宏、UVM、KDB 和 FSDB 选项参考 xring 的
-`dv/cfg/Makefile`。
+验证 xdebug 的 AXI 查询链路。仓库内的 pin-level bridge 连接 SVT master/slave
+agent，slave sequence 提供 memory 行为；编译拆分、宏、UVM、KDB 和 FSDB
+选项与 xuvm_gen 生成的 `cfg/Makefile` 保持一致。
 
 ## 依赖
 
-- `AXI_REFERENCE_ROOT`：包含 `tb/` 和 `tests/` 的 AXI 环境根目录。
-- `SVT_VIP_INCDIR`：包含 `svt_axi_if.svi`、`svt_axi.uvm.pkg`。
-- `SVT_VIP_SRCDIR`：SVT VIP 的 VCS SystemVerilog source overlay。
+- `SVT_AMBA_VIP_HOME`：SVT AMBA VIP release 根目录。
+- `SVT_COMMON_HOME`：SVT common release 根目录。
+- `DESIGNWARE_HOME`：包含 `vip/svt` 的 Synopsys VIP 安装根目录。
 - VCS、Verdi/FSDB PLI 和 AXI VIP 运行环境。
 
 仓库不依赖 svtref skill 或其 Python 依赖包；fixture 直接编译并运行真实

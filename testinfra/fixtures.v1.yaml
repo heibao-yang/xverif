@@ -107,8 +107,9 @@ fixtures:
       argv: [make, run, "OUTPUT_ROOT={resources}/out"]
       cwd: "{source}"
       default_env:
-        SVT_VIP_INCDIR: "{home}/axi_test/test/include/sverilog"
-        SVT_VIP_SRCDIR: "{home}/axi_test/test/src/sverilog/vcs"
+        DESIGNWARE_HOME: "/home/EDA/synopsys/vip"
+        SVT_AMBA_VIP_HOME: "/home/EDA/synopsys/vip/vip/svt/amba_svt/X-2025.12"
+        SVT_COMMON_HOME: "/home/EDA/synopsys/vip/vip/svt/common/X-2025.06"
       timeout_sec: 1800
     outputs:
       - {name: fsdb, path: out/regression/test/apb_vip_test/waves.fsdb, kind: file, min_bytes: 1024}
@@ -125,9 +126,9 @@ fixtures:
       argv: [make, run, "OUTPUT_ROOT={resources}/out"]
       cwd: "{source}"
       default_env:
-        AXI_REFERENCE_ROOT: "{home}/axi_test/test"
-        SVT_VIP_INCDIR: "{home}/axi_test/test/include/sverilog"
-        SVT_VIP_SRCDIR: "{home}/axi_test/test/src/sverilog/vcs"
+        DESIGNWARE_HOME: "/home/EDA/synopsys/vip"
+        SVT_AMBA_VIP_HOME: "/home/EDA/synopsys/vip/vip/svt/amba_svt/X-2025.12"
+        SVT_COMMON_HOME: "/home/EDA/synopsys/vip/vip/svt/common/X-2025.06"
       timeout_sec: 2400
     outputs:
       - {name: fsdb, path: out/regression/test/axi_multi_id_test/waves.fsdb, kind: file, min_bytes: 1024}
@@ -266,7 +267,7 @@ fixtures:
       argv: [make, run, "OUT={resources}/out"]
       cwd: "{source}"
       default_env:
-        XIF_AGENT: "{home}/xif_agent"
+        XIF_AGENT: "/home/RD/ryan/work/xuvm_gen/third_party/xif_agent"
       timeout_sec: 1800
     outputs:
       - {name: fsdb, path: out/waves/xif_event_multi_if_test.fsdb, kind: file, min_bytes: 1024}

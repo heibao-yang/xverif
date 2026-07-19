@@ -143,7 +143,6 @@ class axi_multi_id_master_seq extends svt_axi_master_base_sequence;
         data.size() == local::burst_len;
         wstrb.size() == local::burst_len;
         wvalid_delay.size() == local::burst_len;
-        data_user.size() == local::burst_len;
         foreach (wstrb[j]) { wstrb[j] == 8'hFF; }
         if (local::order_profile == 0) {
           // Address handshake, then first write-data handshake four cycles later.
@@ -284,7 +283,6 @@ class axi_multi_id_master_seq extends svt_axi_master_base_sequence;
         data.size() == local::burst_len;
         rresp.size() == local::burst_len;
         rready_delay.size() == local::burst_len;
-        data_user.size() == local::burst_len;
         addr_valid_delay inside {[0:7]};
         foreach (rready_delay[j]) rready_delay[j] == 0;
       };

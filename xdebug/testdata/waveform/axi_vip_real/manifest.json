@@ -1,8 +1,8 @@
 {
   "name": "axi_vip_real",
   "kind": "synthetic-vip",
-  "reference_environment": "<axi-test-root>/test",
-  "compile_reference": "<xring-root>/dv/cfg/Makefile",
+  "reference_environment": "repository-local SVT master/slave bridge",
+  "compile_reference": "<xuvm-gen-root>/output_multi/cfg/Makefile",
   "top": "axi_vip_fixture_top",
   "interface": "axi_vip_fixture_top.axi_vip_if.master_if[0]",
   "testcase": "axi_multi_id_test",
@@ -78,8 +78,8 @@
     "max_delay_cycles": 100
   },
   "required_env": [
-    "AXI_REFERENCE_ROOT",
-    "SVT_VIP_INCDIR",
-    "SVT_VIP_SRCDIR"
+    "DESIGNWARE_HOME",
+    "SVT_AMBA_VIP_HOME",
+    "SVT_COMMON_HOME"
   ]
 }
