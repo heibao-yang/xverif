@@ -1,0 +1,5 @@
+cycle	time	transfer	stall	vld	rdy	bp	sop	eop	pd
+7	80ns	1	0	1	1	0	0	0	24'h508000
+9	100ns	1	0	1	1	0	0	0	24'h518100
+10	110ns	1	0	1	1	0	0	0	24'h528101
+11	120ns	1	0	1	1	0	0	0	24'h538102

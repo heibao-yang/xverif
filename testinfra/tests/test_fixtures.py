@@ -33,6 +33,7 @@ def make_store(root: Path) -> tuple[FixtureStore, FixtureSpec]:
         },
         outputs=(FixtureOutput("text", "out.txt", "file", 1),),
         tool_env=(),
+        build_capabilities=(),
     )
     return FixtureStore(root, FixtureRegistry("xverif-fixture-registry.v1", (spec,))), spec
 

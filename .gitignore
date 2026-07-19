@@ -38,6 +38,16 @@ regression/
 !xverif_mcp/tests/**
 !testinfra/tests/
 !testinfra/tests/**
+!third_party/
+!third_party/xif_agent/
+!third_party/xif_agent/**
+third_party/xif_agent/**/out/
+third_party/xif_agent/**/csrc/
+third_party/xif_agent/**/simv
+third_party/xif_agent/**/simv.daidir/
+third_party/xif_agent/**/*.fsdb
+third_party/xif_agent/**/*.log
+third_party/xif_agent/**/ucli.key
 xdebug/testdata/**/out/
 xdebug/testdata/**/csrc/
 xdebug/testdata/**/ucli.key
@@ -55,6 +65,7 @@ plan.md
 plan*.md
 **/plan.md
 **/plan*.md
+!third_party/xif_agent/plan.md
 NPI_TRACING_KNOWLEDGE.md
 **/NPI_TRACING_KNOWLEDGE.md
 CLAUDE.md

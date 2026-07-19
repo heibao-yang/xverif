@@ -638,6 +638,7 @@ class AiRunner(object):
         self.home = tempfile.mkdtemp(prefix="xdebug_ai_")
         self.env = os.environ.copy()
         self.env["HOME"] = self.home
+        self.env["PYTHON"] = sys.executable
         self.sid = None
         self.rows = []
         self.duplicate_contract_violations = []
@@ -729,6 +730,10 @@ def run_nonaxi(xdebug, fsdb):
         require(scope["meta"]["truncated"] is True, "scope.list did not truncate")
         require("signals_preview" not in scope["data"], "scope.list generated redundant data.signals_preview")
         require("examples" not in scope["data"], "scope.list generated placeholder data.examples")
+        direct_scope = r.query("scope.list", args={"path": "ai_complex_top", "recursive": False}, limits={"max_rows": 100})
+        require("ai_complex_top.sig_a" in direct_scope["data"]["signals"], "non-recursive scope.list omitted sig_a")
+        require("truncated" not in direct_scope.get("summary", {}) and "truncated" not in direct_scope.get("meta", {}),
+                "complete non-recursive scope.list must omit truncated")
 
         v = r.query("value.at", args={"signal": "ai_complex_top.sig_a", "clock": "ai_complex_top.clk", "time": "75ns", "format": "hex"})
         require(v["data"]["value"]["value"] == "'h22" and v["data"]["value"]["known"] is True, "unexpected sig_a value")
@@ -1060,6 +1065,10 @@ def run_nonaxi(xdebug, fsdb):
 
         changes = r.query("signal.changes", args={"signal": "ai_complex_top.sig_a", "time_range": {"begin": "0ns", "end": "120ns"}, "line_limit": 2})
         require(changes["meta"]["truncated"] is True, "signal.changes did not truncate")
+        complete_changes = r.query("signal.changes", args={"signal": "ai_complex_top.sig_a", "time_range": {"begin": "0ns", "end": "120ns"}, "line_limit": 100})
+        require(complete_changes["summary"]["actual_transition_count"] > 0, "signal.changes found no transitions")
+        require("truncated" not in complete_changes.get("summary", {}) and "truncated" not in complete_changes.get("meta", {}),
+                "complete signal.changes must omit truncated")
         stab = r.query("signal.stability", args={"signal": "ai_complex_top.stable_sig", "time_range": {"begin": "0ns", "end": "400ns"}})
         require(stab["summary"]["stable"] is True, "stable_sig should be stable")
         require(stab["summary"]["actual_transition_count"] == 0,

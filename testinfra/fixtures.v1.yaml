@@ -1,6 +1,7 @@
 version: xverif-fixture-registry.v1
 fixtures:
   - id: xdebug.active_driver
+    build_capabilities: [make, vcs, npi]
     source_dir: xdebug/testdata/combined/active_driver
     inputs: [Makefile, "*.sv", "*.tcl"]
     builder:
@@ -15,6 +16,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.active_semantics
+    build_capabilities: [make, vcs, npi]
     source_dir: xdebug/testdata/combined/active_semantics
     inputs: [Makefile, "*.sv", "*.tcl"]
     builder:
@@ -29,6 +31,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.active_zero_evidence
+    build_capabilities: [make, vcs, npi]
     source_dir: xdebug/testdata/combined/active_zero_evidence
     inputs: [Makefile, "*.v", "*.sv", "*.tcl"]
     builder:
@@ -43,6 +46,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.interface_port_root
+    build_capabilities: [make, vcs, npi]
     source_dir: xdebug/testdata/combined/interface_port_root
     inputs: [Makefile, "*.sv", "*.tcl"]
     builder:
@@ -57,6 +61,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.trace_x_xprop
+    build_capabilities: [make, vcs, npi]
     source_dir: xdebug/testdata/combined/trace_x_xprop
     inputs: [Makefile, "*.sv", "*.tcl"]
     builder:
@@ -72,6 +77,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.ai_complex_wave
+    build_capabilities: [make, vcs, npi]
     source_dir: xdebug/testdata/waveform/ai_complex_wave
     inputs: [Makefile, "tb/**/*.sv", "*.tcl"]
     builder:
@@ -86,6 +92,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.stream_v1
+    build_capabilities: [make, vcs, npi]
     source_dir: xdebug/testdata/waveform/stream_v1
     inputs: [Makefile, "tb/**/*.sv", "*.tcl"]
     builder:
@@ -101,6 +108,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.apb_vip
+    build_capabilities: [make, vcs, npi, vip_apb]
     source_dir: xdebug/testdata/waveform/apb_vip_real
     inputs: [Makefile, manifest.json, "**/*.sv", "**/*.svi"]
     builder:
@@ -120,6 +128,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.axi_vip
+    build_capabilities: [make, vcs, npi, vip_axi]
     source_dir: xdebug/testdata/waveform/axi_vip_real
     inputs: [Makefile, manifest.json, "**/*.sv", "**/*.svi"]
     builder:
@@ -152,6 +161,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.design_uart
+    build_capabilities: [vcs, npi]
     source_dir: xdebug/testdata/design/uart
     inputs: [dut.f, "*.sv"]
     builder:
@@ -165,6 +175,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.design_p3
+    build_capabilities: [vcs, npi]
     source_dir: xdebug/testdata/design/p3_semantics
     inputs: [p3_semantics.sv]
     builder:
@@ -178,6 +189,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.active_trace_runner
+    build_capabilities: [make, gxx, npi]
     source_dir: xdebug/tests/active_trace_chain
     inputs: [Makefile, chain_test.cpp, chain_test.h]
     builder:
@@ -191,6 +203,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.active_trace_p0
+    build_capabilities: [child_process, make, vcs, npi]
     source_dir: xdebug/tests/active_trace_chain/p0_composability
     inputs: ["**/*.sv", "**/*.tcl"]
     extra_inputs: [testinfra/leaf/prepare_active_trace.py]
@@ -205,6 +218,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.active_trace_composite
+    build_capabilities: [child_process, make, vcs, npi]
     source_dir: xdebug/tests/active_trace_chain/composite
     inputs: ["**/*.sv", "**/*.tcl"]
     extra_inputs: [testinfra/leaf/prepare_active_trace.py]
@@ -219,6 +233,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.active_trace_timing
+    build_capabilities: [child_process, make, vcs, npi]
     source_dir: xdebug/tests/active_trace_chain/timing
     inputs: ["**/*.sv", "**/*.tcl"]
     extra_inputs: [testinfra/leaf/prepare_active_trace.py]
@@ -233,6 +248,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.active_trace_phase4
+    build_capabilities: [child_process, make, vcs, npi]
     source_dir: xdebug/tests/active_trace_chain/phase4
     inputs: ["**/*.sv", "**/*.tcl"]
     extra_inputs: [testinfra/leaf/prepare_active_trace.py]
@@ -247,6 +263,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.active_trace_phase5
+    build_capabilities: [child_process, make, vcs, npi]
     source_dir: xdebug/tests/active_trace_chain/phase5
     inputs: ["*.sv", "*.tcl"]
     extra_inputs: [testinfra/leaf/prepare_active_trace.py]
@@ -261,13 +278,15 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xdebug.xif_event
+    build_capabilities: [make, vcs, npi, vendored_xif]
     source_dir: xdebug/testdata/waveform/xif_agent_event
     inputs: [Makefile, filelist.f, "tb/**/*.sv", "scripts/*.py", "*.json"]
+    extra_inputs: ["third_party/xif_agent/src/**/*"]
     builder:
       argv: [make, run, "OUT={resources}/out"]
       cwd: "{source}"
       default_env:
-        XIF_AGENT: "/home/RD/ryan/work/xuvm_gen/third_party/xif_agent"
+        XIF_AGENT: "{repo}/third_party/xif_agent"
       timeout_sec: 1800
     outputs:
       - {name: fsdb, path: out/waves/xif_event_multi_if_test.fsdb, kind: file, min_bytes: 1024}
@@ -278,6 +297,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xsva.vcs
+    build_capabilities: [child_process, make, vcs]
     source_dir: xsva/tests/vcs
     inputs: [Makefile, "cases/**/*.sv", "tb/*.sv", "*.tcl"]
     extra_inputs: [testinfra/leaf/prepare_xsva_vcs.py]
@@ -291,6 +311,7 @@ fixtures:
     tool_env: [VERDI_HOME]
 
   - id: xloc.uvm
+    build_capabilities: [make, vcs_uvm]
     source_dir: xloc
     inputs: [Makefile.fixture, "sv/*.sv", "tb/*.sv"]
     builder:

@@ -38,6 +38,7 @@ class FixtureSpec:
     builder: dict[str, Any]
     outputs: tuple[FixtureOutput, ...]
     tool_env: tuple[str, ...]
+    build_capabilities: tuple[str, ...]
     probes: tuple[dict[str, Any], ...] = ()
 
     @classmethod
@@ -58,6 +59,7 @@ class FixtureSpec:
                 for item in data["outputs"]
             ),
             tool_env=tuple(data.get("tool_env", [])),
+            build_capabilities=tuple(data.get("build_capabilities", [])),
             probes=tuple(dict(item) for item in data.get("probes", [])),
         )
 
@@ -129,6 +131,15 @@ class FixtureStore:
             json.dumps(effective_env, sort_keys=True, separators=(",", ":")).encode("utf-8")
         )
         return digest.hexdigest(), tool_identity
+
+    def effective_builder_env(self, spec: FixtureSpec) -> dict[str, str]:
+        values = {"repo": str(self.repo_root), "home": str(Path.home())}
+        env = os.environ.copy()
+        for key, value in spec.builder.get("env", {}).items():
+            env[str(key)] = str(value).format(**values)
+        for key, value in spec.builder.get("default_env", {}).items():
+            env.setdefault(str(key), str(value).format(**values))
+        return env
 
     def resolve(self, fixture_id: str) -> Path:
         spec = self.registry.by_id(fixture_id)
@@ -238,11 +249,7 @@ class FixtureStore:
         }
         argv = [str(value).format(**values) for value in spec.builder["argv"]]
         cwd = Path(str(spec.builder.get("cwd", "{repo}")).format(**values))
-        env = os.environ.copy()
-        for key, value in spec.builder.get("env", {}).items():
-            env[str(key)] = str(value).format(**values)
-        for key, value in spec.builder.get("default_env", {}).items():
-            env.setdefault(str(key), str(value).format(**values))
+        env = self.effective_builder_env(spec)
         log_path = staging / "builder.log"
         with log_path.open("w", encoding="utf-8") as log:
             result = subprocess.run(

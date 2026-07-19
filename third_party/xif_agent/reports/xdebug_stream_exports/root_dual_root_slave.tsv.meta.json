@@ -1,0 +1,90 @@
+{
+  "stream": "root_slave",
+  "kind": "transfer",
+  "clock": "xif_tb_top.clk",
+  "clock_edge": "negedge",
+  "handshake": "vld/rdy",
+  "packet_enabled": false,
+  "row_count": 8,
+  "truncated": false,
+  "summary": {
+    "stream": "root_slave",
+    "clock": "xif_tb_top.clk",
+    "clock_edge": "negedge",
+    "handshake": "vld/rdy",
+    "packet_enabled": false,
+    "clock_edges": 20,
+    "vld_cycles": 10,
+    "transfer_count": 8,
+    "stall_cycles": 2,
+    "stall_windows": 2,
+    "packet_count": 0,
+    "control_xz_count": 0,
+    "data_xz_count": 0,
+    "ready_bp_conflict_count": 0,
+    "stable_mismatch_count": 0,
+    "truncated": false,
+    "first_transfer": {
+      "cycle": 5,
+      "time": "60ns",
+      "vld": true,
+      "rdy": true,
+      "bp": false,
+      "sop": false,
+      "eop": false,
+      "transfer": true,
+      "stall": false,
+      "beat_index": 0,
+      "fields": {
+        "pd": {
+          "value": "24'h007000",
+          "bits": "000000000111000000000000",
+          "known": true,
+          "width": 24
+        }
+      }
+    },
+    "last_transfer": {
+      "cycle": 15,
+      "time": "160ns",
+      "vld": true,
+      "rdy": true,
+      "bp": false,
+      "sop": false,
+      "eop": false,
+      "transfer": true,
+      "stall": false,
+      "beat_index": 0,
+      "fields": {
+        "pd": {
+          "value": "24'hc17031",
+          "bits": "110000010111000000110001",
+          "known": true,
+          "width": 24
+        }
+      }
+    },
+    "first_stall": {
+      "start_cycle": 8,
+      "end_cycle": 9,
+      "start_time": "90ns",
+      "end_time": "100ns",
+      "cycles": 1,
+      "reason": "rdy_low"
+    },
+    "last_stall": {
+      "start_cycle": 12,
+      "end_cycle": 13,
+      "start_time": "130ns",
+      "end_time": "140ns",
+      "cycles": 1,
+      "reason": "rdy_low"
+    }
+  },
+  "fields": [
+    {
+      "name": "pd",
+      "expr": "xif_tb_top.if_slave.pd"
+    }
+  ]
+}

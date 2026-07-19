@@ -56,6 +56,8 @@ def test_makefiles_do_not_reintroduce_public_test_targets() -> None:
         relative = path.relative_to(ROOT)
         if any(part in IGNORED_TREE_PARTS | {"out", "csrc"} for part in relative.parts):
             continue
+        if relative.parts and relative.parts[0] == "third_party":
+            continue
         for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
             if FORBIDDEN_TARGET.match(line):
                 violations.append(f"{relative}:{number}:{line}")

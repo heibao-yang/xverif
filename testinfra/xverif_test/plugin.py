@@ -16,7 +16,13 @@ from .items import ExternalSuiteItem
 from .fixtures import FixtureError, FixtureStore, load_default_registry
 from .reports import ResultManager
 from .resources import apply_xdist_resource_group
-from .environment import probe_capabilities, write_snapshot
+from .environment import write_snapshot
+from .dependencies import (
+    DependencyError,
+    load_default_dependency_registry,
+    probe_dependencies,
+    validate_suite_dependencies,
+)
 
 
 DEFAULT_CATALOG = Path("testinfra/catalog.v1.yaml")
@@ -81,7 +87,10 @@ def _ensure_xverif_state(config: pytest.Config) -> str | None:
         return None
     try:
         catalog = _load_catalog(config)
-    except CatalogError as exc:
+        validate_suite_dependencies(
+            catalog, load_default_dependency_registry(_repo_root(config))
+        )
+    except (CatalogError, DependencyError) as exc:
         raise pytest.UsageError(str(exc)) from exc
     config._xverif_catalog = catalog  # type: ignore[attr-defined]
     root = _repo_root(config)
@@ -124,12 +133,90 @@ def pytest_configure(config: pytest.Config) -> None:
         config._xverif_results = _RESULT_MANAGER  # type: ignore[attr-defined]
         if getattr(config.option, "xmlpath", None) is None:
             config.option.xmlpath = str(_RESULT_MANAGER.run_dir / "junit.xml")
+        _run_gate_preflight(config)
     elif operation == "gate" and hasattr(config, "workerinput"):
         worker_run_dir = config.workerinput.get("xverif_run_dir")  # type: ignore[attr-defined]
         if worker_run_dir:
             config._xverif_results = ResultManager.attach(  # type: ignore[attr-defined]
                 _repo_root(config), Path(worker_run_dir)
             )
+        config._xverif_unavailable = dict(  # type: ignore[attr-defined]
+            config.workerinput.get("xverif_unavailable", {})  # type: ignore[attr-defined]
+        )
+
+
+def _run_gate_preflight(config: pytest.Config) -> None:
+    plan: ExecutionPlan = config._xverif_plan  # type: ignore[attr-defined]
+    root = _repo_root(config)
+    registry = load_default_dependency_registry(root)
+    capabilities = probe_dependencies(
+        (name for selected in plan.suites for name in selected.suite.capabilities),
+        root,
+        registry=registry,
+    )
+    unavailable: dict[str, str] = {}
+    required_errors: list[str] = []
+    host_dependencies = {"npi", "mcp_process", "real_lsf"}
+    requires_host = any(
+        host_dependencies & set(selected.suite.capabilities)
+        for selected in plan.suites
+    )
+    if requires_host and os.environ.get("XVERIF_TEST_EXECUTION_ENV") != "host":
+        required_errors.append(
+            "selected suites require XVERIF_TEST_EXECUTION_ENV=host"
+        )
+    store = FixtureStore(root, load_default_registry(root))
+    for selected in plan.suites:
+        reasons = [
+            f"dependency {name}: {capabilities[name].reason}"
+            for name in selected.suite.capabilities
+            if not capabilities[name].available
+        ]
+        for fixture_id in selected.suite.fixtures:
+            try:
+                store.resolve(fixture_id)
+            except FixtureError as exc:
+                reasons.append(str(exc))
+        if reasons:
+            message = "; ".join(reasons)
+            if selected.required:
+                required_errors.append(f"{selected.suite.id}: {message}")
+            else:
+                unavailable[selected.suite.id] = message
+    config._xverif_unavailable = unavailable  # type: ignore[attr-defined]
+    manager = getattr(config, "_xverif_results", None)
+    if manager is not None:
+        write_snapshot(manager.environment_path(), capabilities)
+    if required_errors:
+        raise pytest.UsageError(
+            "xverif required suite preflight failed:\n  "
+            + "\n  ".join(required_errors)
+        )
+
+
+def _check_fixture_build_dependencies(root: Path, store: FixtureStore, fixture_id: str) -> None:
+    spec = store.registry.by_id(fixture_id)
+    if {"vcs", "vcs_uvm", "npi", "vip_apb", "vip_axi"} & set(
+        spec.build_capabilities
+    ) and os.environ.get("XVERIF_TEST_EXECUTION_ENV") != "host":
+        raise FixtureError(
+            f"fixture {fixture_id} requires XVERIF_TEST_EXECUTION_ENV=host"
+        )
+    statuses = probe_dependencies(
+        spec.build_capabilities,
+        root,
+        effective_env=store.effective_builder_env(spec),
+    )
+    missing = [
+        f"{name}: {status.reason}"
+        for name, status in statuses.items()
+        if not status.available
+    ]
+    if missing:
+        raise FixtureError(
+            f"fixture {fixture_id} build dependencies unavailable: "
+            + "; ".join(missing)
+        )
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -153,6 +240,7 @@ def pytest_cmdline_main(config: pytest.Config) -> int | None:
                     else requested
                 )
                 for fixture_id in fixture_ids:
+                    _check_fixture_build_dependencies(root, store, fixture_id)
                     try:
                         store.resolve(fixture_id)
                         cache_hit = True
@@ -172,6 +260,7 @@ def pytest_cmdline_main(config: pytest.Config) -> int | None:
                 if changed:
                     fixture_ids = list(store.affected_fixture_ids(changed_paths(root, changed)))
                 for fixture_id in fixture_ids:
+                    _check_fixture_build_dependencies(root, store, fixture_id)
                     path = store.prepare(fixture_id, rebuild=True)
                     print(f"validated {fixture_id}: {path.relative_to(root)}")
                 return pytest.ExitCode.OK
@@ -228,38 +317,9 @@ def pytest_collection_modifyitems(
     plan: ExecutionPlan = config._xverif_plan  # type: ignore[attr-defined]
     selected_ids = plan.selected_ids()
     repo_root = _repo_root(config)
-    unavailable: dict[str, str] = {}
-    if not config.getoption("collectonly") and not config.getoption("--xverif-plan"):
-        capabilities = probe_capabilities(
-            (name for selected in plan.suites for name in selected.suite.capabilities),
-            repo_root,
-        )
-        store = FixtureStore(repo_root, load_default_registry(repo_root))
-        required_errors: list[str] = []
-        for selected in plan.suites:
-            reasons = [
-                f"capability {name}: {capabilities[name].reason}"
-                for name in selected.suite.capabilities
-                if not capabilities[name].available
-            ]
-            for fixture_id in selected.suite.fixtures:
-                try:
-                    store.resolve(fixture_id)
-                except FixtureError as exc:
-                    reasons.append(str(exc))
-            if reasons:
-                message = "; ".join(reasons)
-                if selected.required:
-                    required_errors.append(f"{selected.suite.id}: {message}")
-                else:
-                    unavailable[selected.suite.id] = message
-        manager = getattr(config, "_xverif_results", None)
-        if manager is not None:
-            write_snapshot(manager.environment_path(), capabilities)
-        if required_errors:
-            raise pytest.UsageError(
-                "xverif required suite preflight failed:\n  " + "\n  ".join(required_errors)
-            )
+    unavailable: dict[str, str] = dict(
+        getattr(config, "_xverif_unavailable", {})
+    )
     selected_commands = [
         selected.suite
         for selected in plan.suites
@@ -316,6 +376,9 @@ def pytest_runtest_logreport(report: pytest.TestReport) -> None:
 def pytest_configure_node(node: Any) -> None:
     if _RESULT_MANAGER is not None:
         node.workerinput["xverif_run_dir"] = str(_RESULT_MANAGER.run_dir)
+        node.workerinput["xverif_unavailable"] = dict(
+            getattr(node.config, "_xverif_unavailable", {})
+        )
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:

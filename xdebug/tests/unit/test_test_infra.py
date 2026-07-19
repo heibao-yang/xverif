@@ -12,11 +12,9 @@ from runner import (
     CliRunner,
     CommandRunner,
     InvariantError,
-    ManifestError,
     NormalizeOptions,
     StdioLoopRunner,
     assert_invariants,
-    load_manifest,
     normalize_response,
 )
 
@@ -234,33 +232,6 @@ def test_invariant_assertions() -> None:
         assert_invariants(response, {"equals": {"summary.count": 3}})
     with pytest.raises(InvariantError):
         assert_invariants(response, {"absent_paths": ["summary.count"]})
-
-
-@pytest.mark.unit
-def test_manifest_expansion_and_validation(tmp_path: Path) -> None:
-    manifest_path = tmp_path / "case.yaml"
-    manifest_path.write_text(
-        """
-name: demo
-fsdb: ${CASE_ROOT}/waves.fsdb
-top: top
-tags: [smoke]
-timeout_sec: 12
-queries:
-  - action: value.at
-    args: {signal: top.clk, clock: top.clk, time: 0ns}
-    expect:
-      ok: true
-""",
-        encoding="utf-8",
-    )
-    manifest = load_manifest(manifest_path, env={"CASE_ROOT": str(tmp_path)})
-    assert manifest.name == "demo"
-    assert manifest.fsdb == (tmp_path / "waves.fsdb").resolve()
-    assert manifest.queries[0]["action"] == "value.at"
-
-    with pytest.raises(ManifestError):
-        load_manifest(manifest_path, env={})
 
 
 @pytest.mark.unit

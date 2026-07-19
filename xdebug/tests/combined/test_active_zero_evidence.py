@@ -214,6 +214,27 @@ def test_scope_roots_discovers_combined_top(
 @pytest.mark.synthetic
 @pytest.mark.regression
 @pytest.mark.slow
+def test_trace_driver_runs_in_combined_session(
+    cli_runner: CliRunner,
+    active_zero_evidence_session: str,
+    artifact_root: Path,
+) -> None:
+    response = _simple_query(
+        cli_runner,
+        active_zero_evidence_session,
+        "trace.driver",
+        {"signal": "active_zero_evidence_tb.u_input_child.data_q"},
+        artifact_root=artifact_root,
+    )
+    assert isinstance(response, dict)
+    assert response["data"]["paths"]
+    assert response["summary"]["path_count"] == len(response["data"]["paths"])
+
+
+@pytest.mark.combined
+@pytest.mark.synthetic
+@pytest.mark.regression
+@pytest.mark.slow
 def test_scope_roots_supports_source_filters_and_xout(
     cli_runner: CliRunner,
     active_zero_evidence_session: str,

@@ -337,7 +337,7 @@ suites:
     runner:
       kind: command
       argv: [python3, testinfra/leaf/run_xdebug_cpp_units.py]
-    capabilities: [child_process]
+    capabilities: [child_process, make, gxx]
     hermetic: false
     deterministic: true
     cost: {class: medium, estimate_sec: 90}
@@ -610,15 +610,3 @@ suites:
     cost: {class: slow, estimate_sec: 180}
     resources: {cpu: 1, memory_mb: 4096, tokens: [verdi_npi]}
     timeouts: {execute_sec: 600, cleanup_sec: 30}
-
-  - id: xdebug.realdata
-    owner: xdebug
-    level: system
-    intent: [smoke]
-    domains: [realdata, design, waveform]
-    runner: {kind: pytest, path: xdebug/tests/realdata}
-    capabilities: [npi, external_realdata]
-    availability: optional
-    hermetic: false
-    deterministic: false
-    cost: {class: slow, estimate_sec: 120}

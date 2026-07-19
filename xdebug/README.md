@@ -355,7 +355,7 @@ pytest --xverif-prepare all-generated
 pytest --xverif-fixture-validation --xverif-all-fixtures
 ```
 
-nightly 中 realdata 与 real LSF 是 catalog optional suite；能力缺失会在 environment snapshot 和报告中明确 SKIP。required fixture 缺失则在执行前 ERROR，不会 fallback。真实项目资源仍由 `xdebug/tests/realdata/manifests/*.yaml` 描述。
+nightly 中 real LSF 是 catalog optional suite；能力缺失会在 environment snapshot 和报告中明确 SKIP。required fixture 缺失则在执行前 ERROR，不会 fallback。原 xring realdata 资源已不存在，对应 optional suite 已移除；仓库不会用小型 synthetic fixture 冒充真实大规模数据覆盖。
 
 ## Core Concepts
 

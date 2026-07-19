@@ -5,15 +5,20 @@
 ## 门禁
 
 ```bash
+python3 tools/create_python_environment.py
+conda activate ./.conda-xverif
+python3 tools/check_test_environment.py --gate fast
 pytest --xverif-gate fast
 export XVERIF_TEST_EXECUTION_ENV=host  # 仅在已经进入沙箱外 host 后设置
 pytest --xverif-gate regression -n auto
 pytest --xverif-gate nightly -n auto
 ```
 
+依赖以 suite 为检查边界。focused suite 只检查自己的 capability 与 Fixture；普通 gate 消费缓存时不检查 Fixture builder 的 VCS/VIP/XIF 构建依赖。构建依赖只在对应 prepare/validation 前检查。
+
 - `fast`：static/unit/component 中的 hermetic 测试，不启动 NPI、VCS、VIP、MCP 子进程。
 - `regression`：全部 required deterministic fast/medium suite；可读取缓存 FSDB/daidir，但不生成。
-- `nightly`：包含 regression，并增加 VIP、active-trace、xif-event、xsva VCS 和 optional realdata/real LSF。
+- `nightly`：包含 regression，并增加 VIP、active-trace、xif-event、xsva VCS 和 optional real LSF。
 - 裸 `pytest`、未知 suite、互斥操作组合都是 usage error。
 - `XVERIF_TEST_EXECUTION_ENV` 只接受 `host`/`sandbox`；它只写 environment snapshot，不改变真实权限边界。沙箱外 gate 必须显式设为 `host`。
 
@@ -113,7 +118,7 @@ pytest --rerun-failed .xverif-test-results/<run>/report.json
 - 沙箱内：plan/collect、catalog/schema/testinfra、`fast`。
 - 沙箱外：NPI/FSDB/daidir engine、MCP stdio/UDS/process、fake/real LSF、VCS/simv、VIP、fixture prepare/validation。
 - 沙箱内的 EDA/进程失败不能判定为产品回归。
-- realdata 与 real LSF 仅在 nightly 中 optional；缺失会明确 SKIP。其它 required suite 不得自行 skip。
+- real LSF 仅在 nightly 中 optional；缺失会明确 SKIP。其它 required suite 不得自行 skip。失效的 xring realdata suite 已移除。
 
 ## 维护规则
 

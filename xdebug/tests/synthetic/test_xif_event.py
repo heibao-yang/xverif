@@ -12,7 +12,14 @@ def test_xif_event_queries_published_fsdb(xverif_fixture) -> None:
     script = ROOT / "testdata/waveform/xif_agent_event/scripts/check_event_waves.py"
     fsdb = resources / "out/waves/xif_event_multi_if_test.fsdb"
     result = subprocess.run(
-        ["python3", str(script), "--xdebug", str(ROOT / "xdebug"), "--fsdb", str(fsdb)],
+        [
+            "python3",
+            str(script),
+            "--xdebug",
+            str(ROOT.parent / "tools/xdebug"),
+            "--fsdb",
+            str(fsdb),
+        ],
         text=True,
         capture_output=True,
         timeout=300,

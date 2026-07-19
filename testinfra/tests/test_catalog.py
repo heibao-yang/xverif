@@ -42,10 +42,12 @@ def test_gate_selection_is_monotonic() -> None:
     assert "xdebug.cpp_unit" in regression
 
 
-def test_optional_identity_is_preserved_in_nightly() -> None:
+def test_optional_real_lsf_identity_is_preserved_in_nightly() -> None:
     plan = build_plan(load_catalog(), "nightly")
-    realdata = next(item for item in plan.suites if item.suite.id == "xdebug.realdata")
-    assert realdata.required is False
+    optional = {
+        item.suite.id for item in plan.suites if not item.required
+    }
+    assert {"xdebug.mcp_real_lsf", "xverif_mcp.real_lsf_jobid"} <= optional
 
 
 def test_unknown_gate_is_rejected() -> None:

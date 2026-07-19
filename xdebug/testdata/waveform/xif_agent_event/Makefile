@@ -1,6 +1,6 @@
 VCS        ?= vcs
 VERDI_HOME ?= ~/Synopsys/verdi/V-2023.12-SP2
-XIF_AGENT  ?= /home/RD/ryan/work/xuvm_gen/third_party/xif_agent
+XIF_AGENT  ?= $(abspath $(CURDIR)/../../../../third_party/xif_agent)
 SOURCE_DIR := $(abspath .)
 WAVE_TCL   := $(SOURCE_DIR)/wave.tcl
 
