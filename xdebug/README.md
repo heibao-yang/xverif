@@ -1,5 +1,8 @@
 # xdebug
 
+> [!IMPORTANT]
+> `xdebug` 是 source-only wrapper，不随仓库提供或授权 Synopsys Verdi NPI/FSDB Reader。design、waveform 和 combined engine 需要用户自行取得适用的 Synopsys VC Apps license rights，并从其本地合法安装的 `VERDI_HOME` 编译和加载 NPI headers/libraries。请勿把 Synopsys headers、libraries、documentation 或链接这些 proprietary dependencies 的本地 build artifacts 放入源码分发包、GitHub Release、wheel/rpm/deb 或 container image。完整说明见 [`../THIRD_PARTY.md`](../THIRD_PARTY.md)。
+
 xdebug 是 xtrace 与 xwave 合并后的统一调试工具。公开入口使用 JSON request 描述动作，默认输出 `xout` 结构化文本；需要机器解析、schema 校验或回归兼容时显式加 `--json` 获取原 JSON response。旧的 xtrace/xwave 人类 CLI 不再作为主路径维护。
 
 仓库内验证能力的唯一通用入口是 [../skills/xverif/SKILL.md](../skills/xverif/SKILL.md)；MCP、transport、LSF、timeout 和 session 运维见 [../skills/xverif-admin/SKILL.md](../skills/xverif-admin/SKILL.md)。先按任务选择能力，再选择 MCP 或 CLI surface。
@@ -83,9 +86,9 @@ xdebug/examples/responses/<action>.basic.json
 
 `pytest --xverif-gate regression --xverif-suite xdebug.action_runtime_catalog` 会检查 runtime `actions` 输出、`specs/actions/actions.yaml`、schemas 和 examples 是否完全对齐；纯静态 schema/example 合同由 `pytest --xverif-gate fast --xverif-suite xdebug.static` 检查。
 
-推荐通过仓库根目录的 wrapper 调用，它会设置 Verdi/NPI 运行所需环境：
+推荐通过仓库根目录的 wrapper 调用，它会设置 Verdi/NPI 运行所需环境。该设置只负责定位用户本地安装，不授予任何 Synopsys software、API 或 runtime 的 license rights：
 
-> **环境要求**：GCC 5.0+。当前基于 Verdi **V-2023.12-SP2** 开发与测试。NPI API 随 Verdi 版本不同可能存在参数差异——如果使用其他版本遇到编译或运行时 NPI 兼容性问题，可让 AI agent 根据编译错误和 NPI 头文件（`$VERDI_HOME/share/NPI/inc`）进行兼容性修复。
+> **环境与授权要求**：GCC 5.0+。当前基于 Verdi **V-2023.12-SP2** 开发与测试。用户必须自行确认其 Synopsys agreement（包括适用时的 VC Apps Access Program Agreement）允许使用对应 NPI/FSDB interfaces。NPI API 随 Verdi 版本不同可能存在参数差异——如果使用其他版本遇到编译或运行时 NPI 兼容性问题，可让 AI agent 根据编译错误和用户本地 NPI headers（`$VERDI_HOME/share/NPI/inc`）进行兼容性修复；这些 headers 不属于本项目的 MIT License 范围。
 
 ```bash
 tools/xdebug -
