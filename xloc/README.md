@@ -41,9 +41,9 @@ UVM_ERROR L_00000001(238) @ 100ns: packet mismatch
 pytest --xverif-gate fast --xverif-suite xloc.unit
 
 # 用一个手动构造的 JSONL 试一下
-echo '{"loc_id":"L_00000001","file":"tb/test.sv"}' > /tmp/test.xloc.jsonl
-tools/xloc resolve L_00000001 --map /tmp/test.xloc.jsonl
-tools/xloc resolve L_00000001 --map /tmp/test.xloc.jsonl --json
+echo '{"loc_id":"L_00000001","file":"tb/test.sv"}' > <repo>/tmp/test.xloc.jsonl
+tools/xloc resolve L_00000001 --map <repo>/tmp/test.xloc.jsonl
+tools/xloc resolve L_00000001 --map <repo>/tmp/test.xloc.jsonl --json
 ```
 
 ### Shell 命令入口

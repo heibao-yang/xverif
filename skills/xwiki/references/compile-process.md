@@ -8,7 +8,7 @@ xwiki 要求 AI 严格执行 LLM Wiki 的编译过程。
 - Wiki：Markdown 编译产物。它保存稳定概念、验证结论、接口关系、debug 入口、未确认项和 evidence。
 - Schema：由 xwiki skill 规定，包括 frontmatter、index/log、链接、废弃流程和证据规则。
 
-具体仿真产物不能作为 wiki 的长期 evidence 或 citation，包括单次 run 的 FSDB/VCD、simv 产物、临时日志、coverage 临时目录、scratch 报告和 `/tmp` 文件。它们只允许作为当次 debug 的 observation；写入 wiki 时必须转化为稳定结论，并引用可追踪的 spec、RTL、test、脚本、README 或已提交文档。
+具体仿真产物不能作为 wiki 的长期 evidence 或 citation，包括单次 run 的 FSDB/VCD、simv 产物、临时日志、coverage 临时目录、scratch 报告和 `<repo>/tmp` 文件。它们只允许作为当次 debug 的 observation；写入 wiki 时必须转化为稳定结论，并引用可追踪的 spec、RTL、test、脚本、README 或已提交文档。
 
 ## Ingest Or Update
 

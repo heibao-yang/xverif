@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import subprocess
+import os
 from pathlib import Path
 
 
@@ -36,9 +37,12 @@ BINARIES = (
 def main() -> int:
     root = Path(__file__).resolve().parents[2]
     xdebug_root = root / "xdebug"
-    subprocess.run(["make", "-C", "xdebug", "cpp-unit-binaries"], cwd=root, check=True)
+    env = os.environ.copy()
+    env["XVERIF_HOME"] = str(root)
+    env["XVERIF_TEST_TMPDIR"] = str(root / "tmp")
+    subprocess.run(["make", "-C", "xdebug", "cpp-unit-binaries"], cwd=root, env=env, check=True)
     for name in BINARIES:
-        subprocess.run([str(xdebug_root / "build/tests" / name)], cwd=xdebug_root, check=True)
+        subprocess.run([str(xdebug_root / "build/tests" / name)], cwd=xdebug_root, env=env, check=True)
     return 0
 
 

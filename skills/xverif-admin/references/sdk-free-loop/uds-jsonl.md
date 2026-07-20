@@ -3,13 +3,13 @@
 启动 server：
 
 ```bash
-XVERIF_LOOP_SOCKET=/tmp/xverif-loop.sock tools/xverif-loop-server
+XVERIF_LOOP_SOCKET=<repo>/tmp/xverif-loop.sock tools/xverif-loop-server
 ```
 
 发送单个请求：
 
 ```bash
-tools/xverif-loop-client --socket /tmp/xverif-loop.sock --json \
+tools/xverif-loop-client --socket <repo>/tmp/xverif-loop.sock --json \
   '{"id":"1","method":"debug.session.open","params":{"name":"s0","fsdb":"waves.fsdb","run_manifest":"run-manifest.json"}}'
 ```
 

@@ -25,7 +25,7 @@
         "id": "json_after_missing_wave",
         "session_id": "json_after_missing_wave",
         "mode": "waveform",
-        "fsdb": "~/xverif/xdebug/testdata/waveform/ai_complex_wave/out/waves.fsdb",
+        "fsdb": "<xverif-repo>/xdebug/testdata/waveform/ai_complex_wave/out/waves.fsdb",
         "socket_path": "~/.xdebug/engine/sessions/json_after_missi_684029234a189b91/socket",
         "transport": "uds",
         "file_dir": "~/.xdebug/engine/sessions/json_after_missi_684029234a189b91/transport",

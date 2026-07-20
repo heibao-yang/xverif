@@ -6,7 +6,7 @@
       "end": "20us"
     },
     "format": "tsv",
-    "output_prefix": "/tmp/xdebug_action_sampling5/axi"
+    "output_prefix": "<repo>/tmp/xdebug_action_sampling5/axi"
   },
   "response": {
     "api_version": "xdebug.v1",
@@ -29,9 +29,9 @@
       "end": "20us",
       "scan_begin": "0ps",
       "scan_end": "13973275ns",
-      "write_file": "/tmp/xdebug_action_sampling5/axi.write.tsv",
-      "read_file": "/tmp/xdebug_action_sampling5/axi.read.tsv",
-      "meta_file": "/tmp/xdebug_action_sampling5/axi.meta.json"
+      "write_file": "<repo>/tmp/xdebug_action_sampling5/axi.write.tsv",
+      "read_file": "<repo>/tmp/xdebug_action_sampling5/axi.read.tsv",
+      "meta_file": "<repo>/tmp/xdebug_action_sampling5/axi.meta.json"
     },
     "error": null
   },

@@ -531,7 +531,7 @@ static int file_transport_loop(const std::string& file_dir) {
                                                 {"transport", "file"}, {"worker", worker},
                                                 {"updated_at_us", xdebug_core::file_exchange_now_us()}},
                                                xdebug_core::AtomicWriteMode::Replace,
-                                               file_dir + "/tmp");
+                                               file_dir + "/" + "tmp");
         xdebug_core::file_exchange_scan_stale_claims(
             file_dir, agent_id, xdebug_core::file_exchange_claim_timeout_ms(0));
         xdebug_core::FileClaimResult claim = xdebug_core::file_exchange_claim_one(file_dir, agent_id);

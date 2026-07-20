@@ -8,7 +8,7 @@ from pathlib import Path
 
 from xcov.actions import Dispatcher
 from xcov.backend import CoverageBackend
-from xcov.logging import sanitize_for_log
+from xcov.logging import log_root, sanitize_for_log
 from xcov.provenance import resource_sha256
 from xcov.protocol import render_xout
 from xcov.schemas import schema_actions
@@ -16,6 +16,18 @@ from xcov.session import XcovSession
 
 ROOT = Path(__file__).resolve().parents[2]
 XCOV = ROOT / "tools" / "xcov"
+
+
+def test_default_log_root_separates_runtime_and_test(monkeypatch, tmp_path):
+    home = tmp_path / "home"
+    test_tmp = tmp_path / "repo" / "tmp"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("XVERIF_XCOV_LOG_DIR", raising=False)
+    monkeypatch.delenv("XVERIF_TEST_TMPDIR", raising=False)
+    assert log_root() == home / ".xverif" / "xcov"
+
+    monkeypatch.setenv("XVERIF_TEST_TMPDIR", str(test_tmp))
+    assert log_root() == test_tmp / ".xverif" / "xcov"
 
 
 def _run(req: dict) -> dict:

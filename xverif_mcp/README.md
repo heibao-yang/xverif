@@ -194,13 +194,13 @@ session 空闲最长存活时间看 `XDEBUG_SESSION_IDLE_TIMEOUT_SEC`（默认 8
 
 示例：
 ```python
-# 将 code_coverage.holes 响应写入 /tmp/holes.json
+# 将 code_coverage.holes 响应写入 <repo>/tmp/holes.json
 xverif_cov_query(action="code_coverage.holes", args={...},
-                 xverif_output_path="/tmp/holes.json")
+                 xverif_output_path="<repo>/tmp/holes.json")
 
 # 追加模式
 xverif_debug_query(action="value.at", args={...},
-                   xverif_output_path="/tmp/wave.log",
+                   xverif_output_path="<repo>/tmp/wave.log",
                    xverif_output_append=True)
 ```
 
@@ -223,7 +223,7 @@ xverif_debug_query(action="value.at", args={...},
 **1. 生成批量请求文件（bash inline）：**
 
 ```bash
-cat > /tmp/batch_requests.ndjson << 'EOF'
+cat > <repo>/tmp/batch_requests.ndjson << 'EOF'
 {"tool": "xverif_cov_session_open", "args": {"name": "uart0", "vdb": "/path/to/merged.vdb"}}
 {"tool": "xverif_cov_query", "args": {"session_id": "uart0", "action": "code_coverage.holes", "args": {"metrics": ["line"], "limits": {"max_items": 5}}, "output_format": "json"}}
 {"tool": "xverif_cov_query", "args": {"session_id": "uart0", "action": "code_coverage.holes", "args": {"metrics": ["toggle"], "limits": {"max_items": 5}}, "output_format": "json"}}
@@ -241,7 +241,7 @@ requests = [
         "args": {"metrics": ["line"], "limits": {"max_items": 5}}, "output_format": "json"}},
     {"tool": "xverif_cov_session_close", "args": {"session_id": "uart0"}},
 ]
-with open("/tmp/batch_requests.ndjson", "w") as f:
+with open("<repo>/tmp/batch_requests.ndjson", "w") as f:
     for req in requests:
         f.write(json.dumps(req) + "\n")
 ```
@@ -249,14 +249,14 @@ with open("/tmp/batch_requests.ndjson", "w") as f:
 **2. 提交执行：**
 
 ```
-xverif_batch(batch_file="/tmp/batch_requests.ndjson", output_file="/tmp/batch_results.ndjson")
+xverif_batch(batch_file="<repo>/tmp/batch_requests.ndjson", output_file="<repo>/tmp/batch_results.ndjson")
 ```
 
 **3. 查看结果：**
 
 ```python
 import json
-with open("/tmp/batch_results.ndjson") as f:
+with open("<repo>/tmp/batch_results.ndjson") as f:
     for line in f:
         r = json.loads(line)
         status = "OK" if r["ok"] else f"FAIL: {r['error']}"
@@ -320,13 +320,13 @@ JSONL client
 
 ```bash
 XVERIF_LOOP_BACKEND=lsf \
-XVERIF_LOOP_SOCKET=/tmp/xverif-loop.sock \
+XVERIF_LOOP_SOCKET=<repo>/tmp/xverif-loop.sock \
 tools/xverif-loop-server
 
-tools/xverif-loop-client --socket /tmp/xverif-loop.sock --json \
+tools/xverif-loop-client --socket <repo>/tmp/xverif-loop.sock --json \
   '{"id":"1","method":"debug.session.open","params":{"name":"s0","fsdb":"waves.fsdb"}}'
 
-tools/xverif-loop-client --socket /tmp/xverif-loop.sock --json \
+tools/xverif-loop-client --socket <repo>/tmp/xverif-loop.sock --json \
   '{"id":"2","method":"debug.query","params":{"session":"s0","action":"value.at","args":{"signal":"top.clk"},"output_format":"json"}}'
 ```
 
@@ -361,7 +361,7 @@ tools/xverif-loop-client --socket /tmp/xverif-loop.sock --json \
 | `XVERIF_XCOV_LOG=0` | 关闭 xcov 日志 |
 | `XVERIF_MCP_FAKE_LSF=1` | 本地测试用 fake LSF runner |
 | `XVERIF_LOOP_BACKEND` | 非 MCP UDS wrapper backend，`direct`（默认）或 `lsf` |
-| `XVERIF_LOOP_SOCKET` | 非 MCP UDS wrapper socket 路径，默认 `/tmp/xverif-loop-<uid>.sock` |
+| `XVERIF_LOOP_SOCKET` | 非 MCP UDS wrapper socket 路径，默认 `<repo>/tmp/xverif-loop-<uid>.sock` |
 | `XVERIF_LOOP_LOG_DIR` | 非 MCP UDS wrapper structured log 根目录，默认 `~/.xverif/loop-wrapper` |
 | `XVERIF_LOOP_STARTUP_TIMEOUT_SEC` | 非 MCP UDS wrapper session open 超时 |
 | `XVERIF_LOOP_REQUEST_TIMEOUT_SEC` | 非 MCP UDS wrapper query 请求超时 |

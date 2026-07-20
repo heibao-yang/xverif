@@ -82,7 +82,7 @@ std::string event_id() {
 
 std::string xdebug_home() {
     std::string home = env_raw_string("HOME");
-    return (home.empty() ? std::string("/tmp") : home) + "/.xdebug";
+    return (home.empty() ? temporary_dir() : home) + "/.xdebug";
 }
 
 std::string dirname_of(const std::string& path) {

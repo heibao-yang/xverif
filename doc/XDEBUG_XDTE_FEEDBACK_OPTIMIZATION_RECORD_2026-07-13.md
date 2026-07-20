@@ -7,7 +7,7 @@
 
 XDTE 项目在真实 RTL、UVM/RM、SVT AXI monitor 和 FSDB 联合调试中持续使用
 xdebug。反馈原文位于
-[`/home/yian/xdte/doc/xdebug_feedback.md`](/home/yian/xdte/doc/xdebug_feedback.md)。
+`<xdte-repo>/doc/xdebug_feedback.md`。
 
 这不是一次仅基于 API 文档的假设性 review。该反馈覆盖了 COPY/FILL/XOR/CRC
 集成回归、灰盒 RM checkpoint、AXI 五通道 monitor、Request/Completion/Credit

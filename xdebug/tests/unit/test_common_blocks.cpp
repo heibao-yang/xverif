@@ -1,4 +1,5 @@
 #include "core/ai/common_blocks.h"
+#include "test_temp_path.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -11,7 +12,8 @@ using namespace xdebug;
 namespace {
 
 std::string write_temp_config(const std::string& content) {
-    char path[] = "/tmp/xdebug_common_blocks.XXXXXX";
+    std::vector<char> path_storage = test_temp_template("xdebug_common_blocks.XXXXXX");
+    char* path = path_storage.data();
     int fd = mkstemp(path);
     assert(fd >= 0);
     close(fd);

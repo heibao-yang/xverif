@@ -4,9 +4,6 @@ TC               ?= axi_multi_id_test
 VCS              ?= vcs
 VLOGAN           ?= vlogan
 NPROC            ?= 4
-DESIGNWARE_HOME   ?= /home/EDA/synopsys/vip
-SVT_AMBA_VIP_HOME ?= /home/EDA/synopsys/vip/vip/svt/amba_svt/X-2025.12
-SVT_COMMON_HOME   ?= /home/EDA/synopsys/vip/vip/svt/common/X-2025.06
 SVT_VIP_INCDIR    ?= $(SVT_AMBA_VIP_HOME)/sverilog/include
 SVT_VIP_SRCDIR    ?= $(SVT_AMBA_VIP_HOME)/sverilog/src/vcs
 SVT_COMMON_INCDIR ?= $(SVT_COMMON_HOME)/sverilog/include
@@ -64,6 +61,9 @@ SIM_OPTS := +UVM_TESTNAME=$(TC) \
 .PHONY: check-env vlog_com vlog_rtl vlog_tb elab cmp ncrun mrun run run-suite clean
 
 check-env:
+	@test -n "$(DESIGNWARE_HOME)" || { echo "DESIGNWARE_HOME is required"; exit 2; }
+	@test -n "$(SVT_AMBA_VIP_HOME)" || { echo "SVT_AMBA_VIP_HOME is required"; exit 2; }
+	@test -n "$(SVT_COMMON_HOME)" || { echo "SVT_COMMON_HOME is required"; exit 2; }
 	@test -d "$(DESIGNWARE_HOME)/vip/svt" || { echo "DESIGNWARE_HOME must contain vip/svt"; exit 2; }
 	@test -f "$(SVT_VIP_INCDIR)/svt_axi_if.svi" || { echo "SVT_VIP_INCDIR must contain svt_axi_if.svi"; exit 2; }
 	@test -f "$(SVT_VIP_INCDIR)/svt_axi.uvm.pkg" || { echo "SVT_VIP_INCDIR must contain svt_axi.uvm.pkg"; exit 2; }

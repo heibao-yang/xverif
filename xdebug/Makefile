@@ -21,9 +21,6 @@ BUILD    = build
 LIBEXEC  = libexec
 EXE      = xdebug
 PYTHON  ?= python3
-AXI_REFERENCE_ROOT ?= ~/axi_test/test
-SVT_VIP_INCDIR ?= ~/axi_test/test/include/sverilog
-SVT_VIP_SRCDIR ?= ~/axi_test/test/src/sverilog/vcs
 
 CORE_SRCS = src/core/common/tool_config.cpp \
             src/core/common/env_config.cpp \
@@ -264,7 +261,7 @@ cpp-unit-binaries: $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o 
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_action_log tests/unit/test_action_log.cpp $(CORE_OBJS) $(LDFLAGS)
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_file_exchange tests/unit/test_file_exchange.cpp $(CORE_OBJS) $(LDFLAGS)
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_process_runner tests/unit/test_process_runner.cpp $(CORE_OBJS) $(LDFLAGS)
-	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_session_catalog tests/unit/test_session_catalog.cpp $(BUILD)/src/session/session_catalog.o $(BUILD)/src/core/common/env_config.o
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_session_catalog tests/unit/test_session_catalog.cpp $(BUILD)/src/session/session_catalog.o $(BUILD)/src/core/common/path_utils.o $(BUILD)/src/core/common/env_config.o
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_action_registry tests/unit/test_action_registry.cpp $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(LDFLAGS)
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_request_contract tests/unit/test_request_contract.cpp $(CORE_OBJS) $(API_SUPPORT_OBJS) $(BUILD)/src/api/response.o $(LDFLAGS)
 	$(CXX) $(CXXFLAGS) -o $(BUILD)/tests/test_text_response_builder tests/unit/test_text_response_builder.cpp $(BUILD)/src/api/text_response_builder.o $(BUILD)/src/api/xout_renderer.o

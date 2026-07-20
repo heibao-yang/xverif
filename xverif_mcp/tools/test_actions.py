@@ -3,11 +3,10 @@
 
 用法:
     conda activate xverif-mcp
-    PYTHONPATH=xverif_mcp/src python xverif_mcp/tools/test_actions.py
     PYTHONPATH=xverif_mcp/src python xverif_mcp/tools/test_actions.py -c my_config.json
 
 选项:
-    -c, --config      指定 JSON 配置文件（默认 tools/test_config.json）
+    -c, --config      指定 JSON 配置文件（必填）
     --schema-only     只测试 schema（快，不需要 FSDB）
     --level L1|L2|L3  测试级别（默认 all）
 """
@@ -338,9 +337,8 @@ async def discover_signal(session: ClientSession, cfg: dict) -> str | None:
 
 
 async def main():
-    default_config = os.path.join(HERE, "test_config.json")
     parser = argparse.ArgumentParser(description="Test xdebug actions via MCP server")
-    parser.add_argument("-c", "--config", default=default_config, help=f"JSON config file (default: {default_config})")
+    parser.add_argument("-c", "--config", required=True, help="JSON config file")
     parser.add_argument("--schema-only", action="store_true", help="Only run L1 schema tests")
     parser.add_argument("--level", choices=["L1", "L2", "L3", "all"], default="all",
                         help="Test level (default: all)")

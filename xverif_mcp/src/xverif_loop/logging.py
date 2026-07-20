@@ -8,7 +8,6 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
-
 Json = Dict[str, Any]
 
 _COUNTER = 0
@@ -71,7 +70,10 @@ def log_root() -> Path:
     configured = os.environ.get(_LOG_ENV_VAR)
     if configured:
         return Path(configured)
-    return Path(os.environ.get("HOME", "/tmp")) / ".xverif" / _DEFAULT_SUBDIR
+    test_tmp = os.environ.get("XVERIF_TEST_TMPDIR")
+    if test_tmp:
+        return Path(test_tmp) / ".xverif" / _DEFAULT_SUBDIR
+    return Path.home() / ".xverif" / _DEFAULT_SUBDIR
 
 
 def server_log_path() -> Path:

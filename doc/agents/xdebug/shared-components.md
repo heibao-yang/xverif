@@ -234,11 +234,13 @@
 职责：
 
 - 管理子进程启动、timeout、stdout/stderr 捕获和退出状态。
+- executable 含 `/` 时按显式路径执行；不含 `/` 时通过 `PATH` 查找，禁止在调用点硬编码系统工具路径。
 
 要求：
 
 - 所有外部进程调用必须保留错误上下文。
 - stdout/stderr 隔离不可破坏 JSON 输出。
+- 正常运行的临时目录统一通过 `xdebug_core::temporary_dir()` 定位到 `~/.xdebug/tmp`；测试框架显式设置 `XVERIF_TEST_TMPDIR=<repo>/tmp`，且仓库 `tmp/` 由根目录 `.gitignore` 忽略。
 
 ## Session Catalog
 

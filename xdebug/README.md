@@ -301,9 +301,9 @@ PYTHON=python3 tools/xverif-lsf-doctor
 非 MCP UDS wrapper 示例：
 
 ```bash
-XVERIF_LOOP_BACKEND=lsf XVERIF_LOOP_SOCKET=/tmp/xverif-loop.sock tools/xverif-loop-server
+XVERIF_LOOP_BACKEND=lsf XVERIF_LOOP_SOCKET=<repo>/tmp/xverif-loop.sock tools/xverif-loop-server
 
-tools/xverif-loop-client --socket /tmp/xverif-loop.sock --json \
+tools/xverif-loop-client --socket <repo>/tmp/xverif-loop.sock --json \
   '{"id":"1","method":"debug.session.open","params":{"name":"s0","fsdb":"waves.fsdb"}}'
 ```
 

@@ -5,6 +5,7 @@
 #include "api/stdio_loop.h"
 #include "api/xout_renderer.h"
 #include "common/env_config.h"
+#include "common/path_utils.h"
 #include "logging/action_log.h"
 #include "process/process_runner.h"
 
@@ -177,7 +178,7 @@ int run_log_bundle(const std::string& session_id, const std::string& out_path) {
         return 1;
     }
     xdebug::ProcessRequest req;
-    req.executable = "/bin/tar";
+    req.executable = "tar";
     req.argv.push_back("-czf");
     req.argv.push_back(out_path);
     req.argv.push_back("-C");
@@ -218,7 +219,7 @@ bool write_redacted_log_copy(const std::string& source, const std::string& dest)
 int run_redacted_log_bundle(const std::string& session_id, const std::string& out_path) {
     std::string old_mode = xdebug_core::xdebug_log_path_mode();
     setenv("XDEBUG_LOG_PATH_MODE", "hash", 1);
-    std::string tmp = "/tmp/xdebug-log-bundle-" + std::to_string(getpid());
+    std::string tmp = xdebug_core::temporary_dir() + "/xdebug-log-bundle-" + std::to_string(getpid());
     ensure_dir_recursive(tmp);
     xdebug::Json paths = log_paths_for_session(session_id);
     for (const char* name : {"public_actions", "public_stdio", "engine_lifecycle", "engine_transport",
@@ -231,7 +232,7 @@ int run_redacted_log_bundle(const std::string& session_id, const std::string& ou
     else unsetenv("XDEBUG_LOG_PATH_MODE");
 
     xdebug::ProcessRequest req;
-    req.executable = "/bin/tar";
+    req.executable = "tar";
     req.argv.push_back("-czf");
     req.argv.push_back(out_path);
     req.argv.push_back("-C");

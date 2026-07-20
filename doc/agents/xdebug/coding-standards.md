@@ -57,7 +57,7 @@
 
 ## Python 工具风格
 
-- Python 脚本优先使用 `~/miniconda3/bin/python` 运行。
+- Python 脚本优先使用 `python3` 运行。
 - 校验脚本应支持 check 模式，避免无意修改 tracked 文件。
 - 脚本输出要能被 CI/agent 清楚判断成功失败。
 

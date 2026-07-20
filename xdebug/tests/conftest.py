@@ -2,11 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-import signal
 import subprocess
 import sys
-import time
-import uuid
 from pathlib import Path
 
 import pytest
@@ -17,84 +14,9 @@ from runner import ArtifactWriter, CliRunner, CommandRunner
 TESTS_ROOT = Path(__file__).resolve().parent
 XDEBUG_ROOT = TESTS_ROOT.parent
 REPO_ROOT = XDEBUG_ROOT.parent
-ENGINE_BIN = XDEBUG_ROOT / "libexec" / "xdebug-engine"
-_INITIAL_ENGINE_PIDS: set[int] = set()
-_ENGINE_OWNER_TOKEN = ""
 
 if str(TESTS_ROOT) not in sys.path:
     sys.path.insert(0, str(TESTS_ROOT))
-
-
-def _xdebug_engine_pids() -> set[int]:
-    try:
-        proc = subprocess.run(
-            ["ps", "-eo", "pid=,cmd="],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            check=False,
-        )
-    except OSError:
-        return set()
-    marker = str(ENGINE_BIN)
-    pids: set[int] = set()
-    for line in proc.stdout.splitlines():
-        line = line.strip()
-        if marker not in line:
-            continue
-        pid_text = line.split(None, 1)[0]
-        try:
-            pids.add(int(pid_text))
-        except ValueError:
-            continue
-    return pids
-
-
-def _pid_still_matches_engine(pid: int) -> bool:
-    try:
-        proc = subprocess.run(
-            ["ps", "-p", str(pid), "-o", "cmd="],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            check=False,
-        )
-    except OSError:
-        return False
-    return proc.returncode == 0 and str(ENGINE_BIN) in proc.stdout
-
-
-def _pid_has_owner_token(pid: int, token: str) -> bool:
-    if not token:
-        return False
-    try:
-        environ = Path(f"/proc/{pid}/environ").read_bytes().split(b"\0")
-    except OSError:
-        return False
-    expected = f"XDEBUG_TEST_OWNER_TOKEN={token}".encode("utf-8")
-    return expected in environ
-
-
-def _terminate_pids(pids: set[int]) -> None:
-    live = {pid for pid in pids if _pid_still_matches_engine(pid)}
-    for pid in sorted(live):
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-    deadline = time.monotonic() + 2.0
-    while time.monotonic() < deadline:
-        live = {pid for pid in live if _pid_still_matches_engine(pid)}
-        if not live:
-            return
-        time.sleep(0.05)
-    for pid in sorted(live):
-        if not _pid_still_matches_engine(pid):
-            continue
-        try:
-            os.kill(pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
 
 
 def _kill_all_sessions_for_home(xdebug_bin: Path, home: Path) -> None:
@@ -119,24 +41,6 @@ def _kill_all_sessions_for_home(xdebug_bin: Path, home: Path) -> None:
         )
     except (OSError, subprocess.TimeoutExpired):
         pass
-
-
-def pytest_sessionstart(session: pytest.Session) -> None:
-    global _INITIAL_ENGINE_PIDS, _ENGINE_OWNER_TOKEN
-    _INITIAL_ENGINE_PIDS = _xdebug_engine_pids()
-    _ENGINE_OWNER_TOKEN = uuid.uuid4().hex
-    os.environ["XDEBUG_TEST_OWNER_TOKEN"] = _ENGINE_OWNER_TOKEN
-
-
-def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
-    current = _xdebug_engine_pids()
-    owned = {
-        pid
-        for pid in current - _INITIAL_ENGINE_PIDS
-        if _pid_has_owner_token(pid, _ENGINE_OWNER_TOKEN)
-    }
-    _terminate_pids(owned)
-    os.environ.pop("XDEBUG_TEST_OWNER_TOKEN", None)
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

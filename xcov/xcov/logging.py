@@ -31,7 +31,10 @@ def log_root() -> Path:
     override = os.environ.get("XVERIF_XCOV_LOG_DIR")
     if override:
         return Path(override)
-    return Path(os.environ.get("HOME", "/tmp")) / ".xverif" / "xcov"
+    test_tmp = os.environ.get("XVERIF_TEST_TMPDIR")
+    if test_tmp:
+        return Path(test_tmp) / ".xverif" / "xcov"
+    return Path.home() / ".xverif" / "xcov"
 
 
 def _safe_session_id(session_id: str | None) -> str:

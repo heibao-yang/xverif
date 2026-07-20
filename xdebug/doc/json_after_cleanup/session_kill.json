@@ -31,10 +31,10 @@
         "id": "fix3_wave",
         "session_id": "fix3_wave",
         "mode": "waveform",
-        "fsdb": "~/xverif/xdebug/testdata/waveform/ai_complex_wave/out/waves.fsdb",
-        "socket_path": "/tmp/xdebug_action_sampling3/home/.xdebug/engine/sessions/fix3_wave_98a8c8559b4b1b69/socket",
+        "fsdb": "<xverif-repo>/xdebug/testdata/waveform/ai_complex_wave/out/waves.fsdb",
+        "socket_path": "<repo>/tmp/xdebug_action_sampling3/home/.xdebug/engine/sessions/fix3_wave_98a8c8559b4b1b69/socket",
         "transport": "uds",
-        "file_dir": "/tmp/xdebug_action_sampling3/home/.xdebug/engine/sessions/fix3_wave_98a8c8559b4b1b69/transport",
+        "file_dir": "<repo>/tmp/xdebug_action_sampling3/home/.xdebug/engine/sessions/fix3_wave_98a8c8559b4b1b69/transport",
         "server_host": "localhost.localdomain"
       },
       "backends": {

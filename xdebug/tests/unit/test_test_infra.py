@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import stat
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -194,7 +195,7 @@ def test_stdio_loop_reports_child_exit(tmp_path: Path) -> None:
 def test_normalize_replaces_paths_and_sorts_selected_list() -> None:
     value = {
         "elapsed_ms": 3,
-        "path": "/tmp/xdebug-case/a",
+        "path": str(Path(tempfile.gettempdir()) / "xdebug-case/a"),
         "rows": [{"name": "b"}, {"name": "a"}],
     }
     normalized = normalize_response(

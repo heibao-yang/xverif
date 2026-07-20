@@ -118,17 +118,17 @@ xdebug 参数错误有两层：
 修改后运行：
 
 ```bash
-~/miniconda3/bin/python xdebug/tools/sync_runtime_request_schemas.py
-~/miniconda3/bin/python xdebug/tools/sync_action_schema_hints.py
-~/miniconda3/bin/python xdebug/tools/sync_action_metadata.py
+python3 xdebug/tools/sync_runtime_request_schemas.py
+python3 xdebug/tools/sync_action_schema_hints.py
+python3 xdebug/tools/sync_action_metadata.py
 ```
 
 检查模式：
 
 ```bash
-~/miniconda3/bin/python xdebug/tools/sync_runtime_request_schemas.py --check
-~/miniconda3/bin/python xdebug/tools/sync_action_schema_hints.py --check
-~/miniconda3/bin/python xdebug/tools/sync_action_metadata.py --check
+python3 xdebug/tools/sync_runtime_request_schemas.py --check
+python3 xdebug/tools/sync_action_schema_hints.py --check
+python3 xdebug/tools/sync_action_metadata.py --check
 ```
 
 ## 基础校验

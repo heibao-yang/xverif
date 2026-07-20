@@ -4,7 +4,7 @@
 
 ```bash
 XVERIF_LOOP_BACKEND=lsf \
-XVERIF_LOOP_SOCKET=/tmp/xverif-loop.sock \
+XVERIF_LOOP_SOCKET=<repo>/tmp/xverif-loop.sock \
 tools/xverif-loop-server
 ```
 

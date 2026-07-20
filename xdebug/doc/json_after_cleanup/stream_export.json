@@ -14,7 +14,7 @@
       "format": "tsv",
       "start": "0ns",
       "end": "250us",
-      "output_file": "/tmp/xdebug_action_sampling2/stream.tsv"
+      "output_file": "<repo>/tmp/xdebug_action_sampling2/stream.tsv"
     }
   },
   "response": {
@@ -149,8 +149,8 @@
       }
     },
     "data": {
-      "output_file": "/tmp/xdebug_action_sampling2/stream.tsv",
-      "meta_file": "/tmp/xdebug_action_sampling2/stream.tsv.meta.json",
+      "output_file": "<repo>/tmp/xdebug_action_sampling2/stream.tsv",
+      "meta_file": "<repo>/tmp/xdebug_action_sampling2/stream.tsv.meta.json",
       "kind": "transfer",
       "format": "tsv",
       "row_count": 15059

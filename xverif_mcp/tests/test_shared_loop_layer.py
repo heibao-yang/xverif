@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import tomllib
 
@@ -43,3 +44,34 @@ def test_runtime_packaging_is_separate_from_testinfra() -> None:
         "xverif-loop-server": "xverif_loop.wrapper:server_main",
         "xverif-loop-client": "xverif_loop.wrapper:client_main",
     }
+
+
+def test_runtime_defaults_use_user_xverif_home(monkeypatch, tmp_path: Path) -> None:
+    from xverif_loop import logging
+    from xverif_loop.wrapper import default_socket_path
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("XVERIF_TEST_TMPDIR", raising=False)
+    monkeypatch.delenv("XVERIF_MCP_LOG_DIR", raising=False)
+    monkeypatch.delenv("XVERIF_LOOP_SOCKET", raising=False)
+    logging.configure_mcp_logging()
+
+    assert logging.log_root() == home / ".xverif" / "mcp"
+    assert default_socket_path() == str(
+        home / ".xverif" / "loop-wrapper" / f"xverif-loop-{os.getuid()}.sock"
+    )
+
+
+def test_test_runtime_defaults_use_repository_tmp(monkeypatch, tmp_path: Path) -> None:
+    from xverif_loop import logging
+    from xverif_loop.wrapper import default_socket_path
+
+    test_tmp = tmp_path / "repo" / "tmp"
+    monkeypatch.setenv("XVERIF_TEST_TMPDIR", str(test_tmp))
+    monkeypatch.delenv("XVERIF_MCP_LOG_DIR", raising=False)
+    monkeypatch.delenv("XVERIF_LOOP_SOCKET", raising=False)
+    logging.configure_mcp_logging()
+
+    assert logging.log_root() == test_tmp / ".xverif" / "mcp"
+    assert default_socket_path() == str(test_tmp / f"xverif-loop-{os.getuid()}.sock")

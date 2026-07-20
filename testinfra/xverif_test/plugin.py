@@ -17,6 +17,7 @@ from .fixtures import FixtureError, FixtureStore, load_default_registry
 from .reports import ResultManager
 from .resources import apply_xdist_resource_group
 from .environment import write_snapshot
+from .engine_cleanup import EngineProcessGuard, OWNER_ENV
 from .dependencies import (
     DependencyError,
     load_default_dependency_registry,
@@ -28,6 +29,7 @@ from .dependencies import (
 DEFAULT_CATALOG = Path("testinfra/catalog.v1.yaml")
 DEFAULT_SCHEMA = Path("testinfra/schemas/catalog.v1.schema.json")
 _RESULT_MANAGER: ResultManager | None = None
+_ENGINE_GUARD: EngineProcessGuard | None = None
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -113,7 +115,15 @@ def _ensure_xverif_state(config: pytest.Config) -> str | None:
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_configure(config: pytest.Config) -> None:
-    global _RESULT_MANAGER
+    global _RESULT_MANAGER, _ENGINE_GUARD
+    os.environ["XVERIF_TEST_TMPDIR"] = str(_repo_root(config) / "tmp")
+    if hasattr(config, "workerinput"):
+        token = config.workerinput.get("xdebug_engine_owner_token")  # type: ignore[attr-defined]
+        if token:
+            os.environ[OWNER_ENV] = str(token)
+    elif _ENGINE_GUARD is None:
+        _ENGINE_GUARD = EngineProcessGuard(_repo_root(config) / "xdebug/libexec/xdebug-engine")
+        _ENGINE_GUARD.start()
     operation = _ensure_xverif_state(config)
     if operation is None:
         raise pytest.UsageError(
@@ -374,6 +384,8 @@ def pytest_runtest_logreport(report: pytest.TestReport) -> None:
 
 
 def pytest_configure_node(node: Any) -> None:
+    if _ENGINE_GUARD is not None:
+        node.workerinput["xdebug_engine_owner_token"] = _ENGINE_GUARD.token
     if _RESULT_MANAGER is not None:
         node.workerinput["xverif_run_dir"] = str(_RESULT_MANAGER.run_dir)
         node.workerinput["xverif_unavailable"] = dict(
@@ -382,8 +394,13 @@ def pytest_configure_node(node: Any) -> None:
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    if _ENGINE_GUARD is not None and not hasattr(session.config, "workerinput"):
+        survivors = _ENGINE_GUARD.cleanup()
+        if survivors:
+            session.config._xverif_engine_cleanup_survivors = sorted(survivors)  # type: ignore[attr-defined]
+            session.exitstatus = pytest.ExitCode.TESTS_FAILED
     if _RESULT_MANAGER is not None and not hasattr(session.config, "workerinput"):
-        _RESULT_MANAGER.finish(exitstatus)
+        _RESULT_MANAGER.finish(int(session.exitstatus))
 
 
 def pytest_terminal_summary(
@@ -393,4 +410,10 @@ def pytest_terminal_summary(
         terminalreporter.write_line(
             "xverif results: "
             + _RESULT_MANAGER.run_dir.relative_to(_repo_root(config)).as_posix()
+        )
+    survivors = getattr(config, "_xverif_engine_cleanup_survivors", [])
+    if survivors:
+        terminalreporter.write_line(
+            "ERROR: test-owned xdebug engine cleanup failed for pids: "
+            + ", ".join(str(pid) for pid in survivors)
         )

@@ -37,7 +37,7 @@ UDS server 为每个客户端创建 daemon thread，[wrapper.py](../xverif_mcp/s
 
 ### P1-04/05 UDS 默认权限和 socket 路径处理不安全
 
-默认 socket 在 `/tmp/xverif-loop-<uid>.sock`，[wrapper.py](../xverif_mcp/src/xverif_loop/wrapper.py#L111)，bind 后没有 `chmod(0600)` 或 peer credential 验证，[wrapper.py](../xverif_mcp/src/xverif_loop/wrapper.py#L301)。任一能连接的 client 都可无认证执行 `server.shutdown`，[wrapper.py](../xverif_mcp/src/xverif_loop/wrapper.py#L362)。同时启动时只要路径存在就 `unlink()`，[wrapper.py](../xverif_mcp/src/xverif_loop/wrapper.py#L295)；误把 `--socket` 指向普通文件会删除它，也可能抢占另一个 wrapper。
+默认 socket 在 `<repo>/tmp/xverif-loop-<uid>.sock`，[wrapper.py](../xverif_mcp/src/xverif_loop/wrapper.py#L111)，bind 后没有 `chmod(0600)` 或 peer credential 验证，[wrapper.py](../xverif_mcp/src/xverif_loop/wrapper.py#L301)。任一能连接的 client 都可无认证执行 `server.shutdown`，[wrapper.py](../xverif_mcp/src/xverif_loop/wrapper.py#L362)。同时启动时只要路径存在就 `unlink()`，[wrapper.py](../xverif_mcp/src/xverif_loop/wrapper.py#L295)；误把 `--socket` 指向普通文件会删除它，也可能抢占另一个 wrapper。
 
 建议：仅清理当前用户拥有、`lstat` 确认的 stale socket；普通文件、symlink、异主路径、活动 socket 都报 `SOCKET_PATH_UNSAFE`。bind 后显式 `chmod(0600)` 并验证 owner/mode；若产品需要共享，再明确引入 `SO_PEERCRED` allowlist 或认证 token。补 socket mode、普通文件、symlink、活动 socket 和未授权 shutdown 的测试与 skill 文档。
 

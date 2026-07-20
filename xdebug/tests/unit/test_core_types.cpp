@@ -3,6 +3,7 @@
 #include "protocol/core_protocol.h"
 #include "session/session_timeout.h"
 #include "session/session_types.h"
+#include "test_temp_path.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -14,16 +15,16 @@ int main() {
     assert(config.home_dir_name == ".xdebug");
 
     xdebug_core::SessionInfo session;
-    session.dbdir_path = "/tmp/simv.daidir";
+    session.dbdir_path = "fixtures/simv.daidir";
     assert(session.database_kind() == xdebug_core::DatabaseKind::Daidir);
     assert(std::string(xdebug_core::database_kind_name(session.database_kind())) == "daidir");
 
     session.dbdir_path.clear();
-    session.fsdb_file = "/tmp/waves.fsdb";
+    session.fsdb_file = "fixtures/waves.fsdb";
     assert(session.database_kind() == xdebug_core::DatabaseKind::Fsdb);
     assert(std::string(xdebug_core::database_kind_name(session.database_kind())) == "fsdb");
 
-    session.dbdir_path = "/tmp/simv.daidir";
+    session.dbdir_path = "fixtures/simv.daidir";
     assert(session.database_kind() == xdebug_core::DatabaseKind::Combined);
     assert(std::string(xdebug_core::database_kind_name(session.database_kind())) == "combined");
 
@@ -53,12 +54,22 @@ int main() {
     assert(xdebug_core::socket_path(config, "case_a").find(".xdebug/sessions/case_a_") != std::string::npos);
     const char* old_home = std::getenv("HOME");
     const std::string saved_home = old_home ? old_home : "";
-    setenv("HOME",
-           "/tmp/pytest-of-user/pytest-999/test_a_very_long_xdebug_session_home_path/home",
-           1);
+    const std::string long_home = test_temp_root() +
+        "/pytest-of-user/pytest-999/test_a_very_long_xdebug_session_home_path/home";
+    setenv("HOME", long_home.c_str(), 1);
     const std::string short_socket = xdebug_core::socket_path(config, "case_a");
-    assert(short_socket.find("/tmp/xdebug-") == 0);
+    assert(short_socket.find(test_temp_root() + "/xdebug-") == 0);
     assert(short_socket.size() < 104);
+
+    const char* old_test_tmp = std::getenv("XVERIF_TEST_TMPDIR");
+    const std::string saved_test_tmp = old_test_tmp ? old_test_tmp : "";
+    const std::string runtime_home = test_temp_root() + "/runtime_home";
+    mkdir(runtime_home.c_str(), 0700);
+    unsetenv("XVERIF_TEST_TMPDIR");
+    setenv("HOME", runtime_home.c_str(), 1);
+    assert(xdebug_core::temporary_dir() == runtime_home + "/.xdebug/tmp");
+    if (old_test_tmp) setenv("XVERIF_TEST_TMPDIR", saved_test_tmp.c_str(), 1);
+    else unsetenv("XVERIF_TEST_TMPDIR");
     if (old_home) setenv("HOME", saved_home.c_str(), 1);
     else unsetenv("HOME");
 

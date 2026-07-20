@@ -19,7 +19,7 @@
 7. suite 在 `xdebug/tests`、`xverif_mcp/tests`、各组件 `tests/`、`regression/` 和大量 fixture Makefile 中分散；active-trace 单独包含大量 case Makefile。
 8. 当前顶层常规门禁没有统一纳入 `xsva`，全仓“通过”的含义不完整。
 9. 环境缺失有时由 shell `exit 0`、pytest skip 或调用者条件分支处理，required 覆盖可能退化为绿色 SKIP。
-10. full regression 主要把日志放在 `/tmp`；不同 runner 对 timeout、process cleanup、stderr/stdout 和 artifact 路径的处理不一致。
+10. full regression 主要把日志放在 `<repo>/tmp`；不同 runner 对 timeout、process cleanup、stderr/stdout 和 artifact 路径的处理不一致。
 
 ## 2. 已确认的架构原则
 
@@ -236,7 +236,7 @@ pytest --xverif-results-clean
 
 - 自动保留最近 20 个成功 run；FAIL/ERROR run 保留 30 天。
 - results 默认容量上限 10 GiB，按“最旧成功、过期失败”顺序清理；活动 run、被 rerun 引用的父报告和用户显式 pin 的 run 不回收。
-- 达到容量上限但没有可安全回收对象时，新 run 在执行前 ERROR，不删除 fixture、不覆盖旧报告、不改写到 `/tmp` fallback。
+- 达到容量上限但没有可安全回收对象时，新 run 在执行前 ERROR，不删除 fixture、不覆盖旧报告、不改写到 `<repo>/tmp` fallback。
 - fixture cache 默认不自动回收；仅显式 fixture prune/clean 改变已发布资产。
 
 ## 7. 全仓 Suite 迁移台账

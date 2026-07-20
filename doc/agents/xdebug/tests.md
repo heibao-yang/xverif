@@ -126,4 +126,6 @@ pytest --rerun-failed .xverif-test-results/<run>/report.json
 - 测试消费数据库必须声明 Fixture；测试函数不得执行 `make clean run/fixture`。
 - active-trace case 由公共 `testinfra/leaf/prepare_active_trace.py` 和 `cases.v1.yaml` 管理，不恢复逐 case Makefile。
 - C++/Vim/命令测试通过 catalog external item 运行，stdout/stderr 归档并受 process-group timeout/cleanup 管理。
+- 正式 pytest 入口统一设置 `XVERIF_TEST_TMPDIR=<repo>/tmp`，测试进程不得把运行态文件写入用户的 `~/.xdebug` 或 `~/.xverif`。
+- pytest 主进程为本轮测试设置共享 `XDEBUG_TEST_OWNER_TOKEN`；所有 xdist worker 和 external suite 继承该 token。session finish 必须清理带本轮 token 的全部 `xdebug-engine`，先发 `SIGTERM`，超时后发 `SIGKILL` 并等待退出；仍有残留时整轮测试判失败。
 - 修改源码后跑 focused suite；跨层或高风险变更跑 regression/nightly。最终交付必须先 `make clean all`，再跑完整 gate。

@@ -20,6 +20,7 @@ from xverif_loop.config import (
     loop_backend,
     startup_timeout,
     request_timeout,
+    repo_root,
 )
 from xverif_loop.logging import (
     configure_loop_wrapper_logging,
@@ -110,9 +111,11 @@ def validate_method_params(method: str, params: Json) -> None:
 
 
 def default_socket_path() -> str:
+    test_tmp = os.environ.get("XVERIF_TEST_TMPDIR")
+    default_root = Path(test_tmp) if test_tmp else Path.home() / ".xverif" / "loop-wrapper"
     return os.environ.get(
         "XVERIF_LOOP_SOCKET",
-        f"/tmp/xverif-loop-{os.getuid()}.sock",
+        str(default_root / f"xverif-loop-{os.getuid()}.sock"),
     )
 
 

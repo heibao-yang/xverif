@@ -1,4 +1,5 @@
 #include "waveform/cache/analysis_probe.h"
+#include "test_temp_path.h"
 
 #include "json.hpp"
 
@@ -15,7 +16,8 @@ using xdebug_waveform::AnalysisProbeMetrics;
 using Json = nlohmann::ordered_json;
 
 int main() {
-    char path[] = "/tmp/xdebug-analysis-probe.XXXXXX";
+    std::vector<char> path_storage = test_temp_template("xdebug-analysis-probe.XXXXXX");
+    char* path = path_storage.data();
     const int fd = mkstemp(path);
     assert(fd >= 0);
     assert(fchmod(fd, 0644) == 0);

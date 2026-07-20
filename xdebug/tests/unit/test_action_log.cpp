@@ -1,4 +1,5 @@
 #include "logging/action_log.h"
+#include "test_temp_path.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -44,8 +45,8 @@ static bool exists(const std::string& path) {
 }
 
 int main() {
-    char home_template[] = "/tmp/xdebug_action_log_test_XXXXXX";
-    char* home_dir = mkdtemp(home_template);
+    std::vector<char> home_storage = test_temp_template("xdebug_action_log_test_XXXXXX");
+    char* home_dir = mkdtemp(home_storage.data());
     assert(home_dir != nullptr);
     std::string home = home_dir;
     setenv("HOME", home.c_str(), 1);
@@ -56,7 +57,7 @@ int main() {
         {"request_id", "case-a-1"},
         {"span_id", "span-dispatch"},
         {"action", "value.at"},
-        {"target", {{"session_id", "case_a"}, {"daidir", "/tmp/foo.daidir"}}},
+        {"target", {{"session_id", "case_a"}, {"daidir", "fixtures/foo.daidir"}}},
         {"args", {{"signal", "top.u.ready"}, {"time", "75ns"}, {"radix", "hex"},
                   {"include_trace", true}, {"samples", Json::array({1, 2, 3})}}},
         {"output", {{"verbosity", "compact"}}}
@@ -75,12 +76,12 @@ int main() {
     assert(sanitized["data"]["trace"] == "<omitted:large-field>");
     assert(sanitized.value("log_truncated", false));
 
-    xdebug_core::update_public_session_manifest("case_a", "design", "/tmp/foo.daidir", "");
+    xdebug_core::update_public_session_manifest("case_a", "design", "fixtures/foo.daidir", "");
     std::string manifest_path = xdebug_core::public_session_dir("case_a") + "/session.json";
     Json manifest = Json::parse(read_file(manifest_path));
     assert(manifest["session_id"] == "case_a");
     assert(manifest["mode"] == "design");
-    assert(manifest["daidir"] == "/tmp/foo.daidir");
+    assert(manifest["daidir"] == "fixtures/foo.daidir");
     assert(manifest["logs"]["public_actions"] == xdebug_core::public_action_log_path("case_a"));
     assert(manifest["logs"]["public_stdio"] == xdebug_core::public_stdio_log_path("case_a"));
 
@@ -118,7 +119,7 @@ int main() {
     assert(event["elapsed_ms"] == 12);
 
     xdebug_core::log_lifecycle_event("waveform", "case_a", "npi_fsdb_open.failed", false,
-                                     {{"fsdb", "/tmp/a.fsdb"}});
+                                     {{"fsdb", "fixtures/a.fsdb"}});
     Json lifecycle_event = read_last_json_line(xdebug_core::component_log_path("waveform", "case_a", "lifecycle"));
     assert(lifecycle_event["component"] == "waveform");
     assert(lifecycle_event["phase"] == "npi_fsdb_open.failed");

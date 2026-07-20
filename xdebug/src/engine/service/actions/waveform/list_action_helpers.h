@@ -19,7 +19,7 @@ inline Json list_action_example(const std::string& action) {
         args = {{"name", "debug_list"},
                 {"time_range", {{"begin", "0ns"}, {"end", "500ns"}}}};
         if (action == "list.export") {
-            args["output"] = {{"path", "/tmp/xdebug-list-export"}, {"file_format", "u64bin"}};
+            args["output"] = {{"path", "xdebug-list-export"}, {"file_format", "u64bin"}};
         }
     } else {
         args = {{"name", "debug_list"}};

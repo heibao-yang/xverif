@@ -72,7 +72,7 @@ python <xverif-root>/skills/xwiki/scripts/init_xwiki.py --wiki-dir "$XWIKI_DIR" 
 
 根 `index.md` 默认使用 `object_type: dv`；每个目录的 `index.md` 使用该目录对应的 `object_type`，`de_issue/spec/index.md` 和 `de_issue/rtl/index.md` 使用 `object_type: de_issue`。`log.md` 默认使用所在目录对应的 issue 类型：`de/` 下使用 `de_issue`，`dv/` 下使用 `dv_issue`，`de_issue/` 及其子目录使用 `de_issue`，`dv_issue/` 下使用 `dv_issue`。获得写回授权后，debug 完 case fail 时更新 `de_issue` 或 `dv_issue` 页面；根因未完全确认时，也要作为候选 issue 记录 unknown 和下一步证据。
 
-禁止把具体仿真产物作为 wiki evidence 或 citation，例如单次 run 的 FSDB/VCD、simv 产物、临时日志、coverage 临时目录、scratch 报告、`/tmp` 文件。这些不会进入 git，只能作为当次 debug 的 raw observation；写入 wiki 时必须编译成稳定结论，并引用可追踪的 spec、RTL、test、脚本、README 或已提交文档。
+禁止把具体仿真产物作为 wiki evidence 或 citation，例如单次 run 的 FSDB/VCD、simv 产物、临时日志、coverage 临时目录、scratch 报告、`<repo>/tmp` 文件。这些不会进入 git，只能作为当次 debug 的 raw observation；写入 wiki 时必须编译成稳定结论，并引用可追踪的 spec、RTL、test、脚本、README 或已提交文档。
 
 获得写回授权后，case fail debug 结束时写回 wiki：
 

@@ -38,7 +38,7 @@ Json stream_export_example(const std::string& stream = "req_stream",
                 {"target", {{"session_id", "case_a"}}},
                 {"args", {{"stream", stream},
                           {"kind", kind},
-                          {"output", {{"path", "/tmp/stream.tsv"}, {"file_format", "tsv"}}}}}};
+                          {"output", {{"path", "stream.tsv"}, {"file_format", "tsv"}}}}}};
 }
 Json stream_name_error(const std::string& name) {
     Json details = {{"invalid_arg", "args.stream"},

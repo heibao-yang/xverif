@@ -47,11 +47,6 @@ AXI_HANDSHAKE_ORACLE = os.path.join(
     "axi_multi_id_test",
     "axi_handshake.jsonl",
 )
-DEFAULT_AXI_ENV = {
-    "AXI_REFERENCE_ROOT": "~/axi_test/test",
-    "SVT_VIP_INCDIR": "~/axi_test/test/include/sverilog",
-    "SVT_VIP_SRCDIR": "~/axi_test/test/src/sverilog/vcs",
-}
 DEFAULT_QUERY_TIMEOUT_MS = int(os.environ.get("XDEBUG_QUERY_TIMEOUT_MS", "120000"))
 PROGRESS_HEARTBEAT_SEC = int(os.environ.get("XDEBUG_PROGRESS_HEARTBEAT_SEC", "30"))
 
@@ -166,12 +161,6 @@ def run_cmd(cmd, cwd=None, env=None, timeout=120, input_text=None, progress_labe
     )
     elapsed_ms = int((time.time() - start) * 1000)
     return proc.returncode, proc.stdout, proc.stderr, elapsed_ms
-
-
-def apply_axi_env_defaults(env):
-    for name, value in DEFAULT_AXI_ENV.items():
-        env.setdefault(name, value)
-    return env
 
 
 def require(cond, msg):

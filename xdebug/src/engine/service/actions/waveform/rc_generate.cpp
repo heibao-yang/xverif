@@ -52,7 +52,7 @@ public:
                                       {"action", "rc.generate"},
                                       {"target", {{"session_id", "case_a"}}},
                                       {"args", {{"config_path", "xdebug/configs/wave.rc.json"},
-                                                {"output", {{"path", "/tmp/wave.rc"}}}}}}},
+                                                {"output", {{"path", "wave.rc"}}}}}}},
                  {"example_note", "Example only; replace config_path and output.path with project paths."}});
 
         // Read config file

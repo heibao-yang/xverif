@@ -1206,7 +1206,7 @@ def test_rc_and_source_handler_errors_include_repair_hints(
         {
             "api_version": "xdebug.v1",
             "action": "source.context",
-            "args": {"file": "/tmp/xdebug_missing_source_for_contract.sv", "line": 1},
+            "args": {"file": "xdebug_missing_source_for_contract.sv", "line": 1},
         },
         output_format="json",
     )
@@ -1238,7 +1238,7 @@ def test_rc_and_source_handler_errors_include_repair_hints(
                 "api_version": "xdebug.v1",
                 "action": "rc.generate",
                 "target": target,
-                "args": {"config_path": "/tmp/xdebug_missing_rc_config.json", "output": {}},
+                "args": {"config_path": "xdebug_missing_rc_config.json", "output": {}},
             },
             output_format="json",
             timeout_sec=120,
@@ -1828,21 +1828,21 @@ def test_ai_usability_high_risk_request_shapes_are_strict(
         "api_version": "xdebug.v1",
         "action": "stream.export",
         "args": {"stream": "ready_stream", "kind": "packet_beats",
-                 "output": {"path": "/tmp/ready.tsv", "file_format": "tsv"}},
+                 "output": {"path": "artifacts/ready.tsv", "file_format": "tsv"}},
     })
     with pytest.raises(jsonschema.ValidationError):
         stream_export.validate({
             "api_version": "xdebug.v1",
             "action": "stream.export",
             "args": {"stream": "ready_stream", "kind": "packet_beats",
-                     "format": "tsv", "output": {"path": "/tmp/ready.tsv"}},
+                     "format": "tsv", "output": {"path": "artifacts/ready.tsv"}},
         })
     with pytest.raises(jsonschema.ValidationError):
         stream_export.validate({
             "api_version": "xdebug.v1",
             "action": "stream.export",
             "args": {"stream": "ready_stream", "kind": "beats",
-                     "output": {"path": "/tmp/ready.tsv", "file_format": "tsv"}},
+                     "output": {"path": "artifacts/ready.tsv", "file_format": "tsv"}},
         })
 
     stream_config_list = jsonschema.Draft202012Validator(schema_for("stream.config.list"))
@@ -1863,7 +1863,7 @@ def test_ai_usability_high_risk_request_shapes_are_strict(
         "api_version": "xdebug.v1",
         "action": "list.export",
         "args": {"name": "basic", "time_range": {"begin": "0ns", "end": "400ns"},
-                 "output": {"path": "/tmp/basic", "file_format": "u64bin"}},
+                 "output": {"path": "artifacts/basic", "file_format": "u64bin"}},
     })
     with pytest.raises(jsonschema.ValidationError):
         list_export.validate({
@@ -1878,14 +1878,14 @@ def test_ai_usability_high_risk_request_shapes_are_strict(
         "api_version": "xdebug.v1",
         "action": "axi.export",
         "args": {"name": "axi0", "time_range": {"begin": "0ns", "end": "400ns"},
-                 "output": {"path": "/tmp/axi0", "file_format": "tsv"}},
+                 "output": {"path": "artifacts/axi0", "file_format": "tsv"}},
     })
     with pytest.raises(jsonschema.ValidationError):
         axi_export.validate({
             "api_version": "xdebug.v1",
             "action": "axi.export",
             "args": {"name": "axi0", "time_range": {"begin": "0ns", "end": "400ns"},
-                     "format": "tsv", "output": {"path": "/tmp/axi0"}},
+                     "format": "tsv", "output": {"path": "artifacts/axi0"}},
         })
 
     for action in ("apb.config.list", "axi.config.list", "event.config.list", "stream.config.list"):

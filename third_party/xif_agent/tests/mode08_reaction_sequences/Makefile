@@ -1,10 +1,6 @@
 VCS              ?= vcs
-VERDI_HOME       ?= /home/yian/Synopsys/verdi/V-2023.12-SP2
-NOVAS_TAB        := $(VERDI_HOME)/share/PLI/VCS/linux64/novas.tab
-NOVAS_PLI        := $(VERDI_HOME)/share/PLI/VCS/linux64/pli.a
 SIMV             := simv
 TEST             ?= mode08_reaction_sequences_test
-XWAVE            ?= /home/yian/xwave/xwave
 
 SV_SRCS          := $(wildcard ../../src/*.sv *.sv)
 
@@ -19,7 +15,6 @@ VCS_FLAGS := \
 	+vcs+lic+wait \
 	+incdir+../../src \
 	+incdir+. \
-	-P $(NOVAS_TAB) $(NOVAS_PLI) \
 	-f filelist.f \
 	-o $(SIMV)
 
@@ -32,8 +27,6 @@ all: sim
 sim: $(SIMV)
 
 $(SIMV): filelist.f $(SV_SRCS)
-	@test -f "$(NOVAS_TAB)"
-	@test -f "$(NOVAS_PLI)"
 	@mkdir -p logs waves
 	$(VCS) $(VCS_FLAGS) -l logs/compile.log
 

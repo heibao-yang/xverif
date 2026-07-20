@@ -114,10 +114,6 @@ fixtures:
     builder:
       argv: [make, run, "OUTPUT_ROOT={resources}/out"]
       cwd: "{source}"
-      default_env:
-        DESIGNWARE_HOME: "/home/EDA/synopsys/vip"
-        SVT_AMBA_VIP_HOME: "/home/EDA/synopsys/vip/vip/svt/amba_svt/X-2025.12"
-        SVT_COMMON_HOME: "/home/EDA/synopsys/vip/vip/svt/common/X-2025.06"
       timeout_sec: 1800
     outputs:
       - {name: fsdb, path: out/regression/test/apb_vip_test/waves.fsdb, kind: file, min_bytes: 1024}
@@ -134,10 +130,6 @@ fixtures:
     builder:
       argv: [make, run, "OUTPUT_ROOT={resources}/out"]
       cwd: "{source}"
-      default_env:
-        DESIGNWARE_HOME: "/home/EDA/synopsys/vip"
-        SVT_AMBA_VIP_HOME: "/home/EDA/synopsys/vip/vip/svt/amba_svt/X-2025.12"
-        SVT_COMMON_HOME: "/home/EDA/synopsys/vip/vip/svt/common/X-2025.06"
       timeout_sec: 2400
     outputs:
       - {name: fsdb, path: out/regression/test/axi_multi_id_test/waves.fsdb, kind: file, min_bytes: 1024}

@@ -16,7 +16,7 @@ def test_debug_query_rejects_native_session_action() -> None:
 
 
 def test_loop_wrapper_rejects_native_session_action() -> None:
-    service = LoopWrapperService(mode="direct", xdebug_bin="/bin/false", xcov_bin="/bin/false")
+    service = LoopWrapperService(mode="direct", xdebug_bin="false", xcov_bin="false")
     rsp = service.dispatch(
         {
             "id": "q0",
@@ -48,7 +48,7 @@ def test_cov_query_rejects_native_session_action_with_cov_guidance(action: str) 
 
 
 def test_loop_wrapper_cov_query_rejects_native_session_action() -> None:
-    service = LoopWrapperService(mode="direct", xdebug_bin="/bin/false", xcov_bin="/bin/false")
+    service = LoopWrapperService(mode="direct", xdebug_bin="false", xcov_bin="false")
     rsp = service.dispatch(
         {
             "id": "q1",

@@ -1,4 +1,5 @@
 #include "transport/file_exchange.h"
+#include "test_temp_path.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -40,8 +41,8 @@ static Json request_wrapper(const std::string& id, long long deadline_us) {
 }
 
 int main() {
-    char dir_template[] = "/tmp/xdebug_file_exchange_test_XXXXXX";
-    char* dir_path = mkdtemp(dir_template);
+    std::vector<char> dir_storage = test_temp_template("xdebug_file_exchange_test_XXXXXX");
+    char* dir_path = mkdtemp(dir_storage.data());
     assert(dir_path != nullptr);
     std::string dir = dir_path;
     assert(xdebug_core::ensure_file_transport_layout(dir));

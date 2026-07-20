@@ -6,13 +6,10 @@ root="$(cd "$script_dir/.." && pwd)"
 export XVERIF_HOME="${XVERIF_HOME:-$root}"
 export PYTHONPATH="$root/xverif_mcp/src:$root:${PYTHONPATH:-}"
 
-python_bin="${PYTHON:-}"
-if [[ -z "$python_bin" ]]; then
-  if [[ -x ~/miniconda3/bin/python ]]; then
-    python_bin=~/miniconda3/bin/python
-  else
-    python_bin=python3
-  fi
-fi
+python_bin="${PYTHON:-python3}"
+command -v "$python_bin" >/dev/null 2>&1 || {
+  echo "ERROR: Python interpreter not found: $python_bin; set PYTHON" >&2
+  exit 2
+}
 
 "$python_bin" -c 'from xverif_loop.wrapper import client_main; raise SystemExit(client_main())' "$@"

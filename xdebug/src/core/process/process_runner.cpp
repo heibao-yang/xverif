@@ -85,7 +85,11 @@ ProcessResult ProcessRunner::run(const ProcessRequest& request) const {
         }
         cargv.push_back(nullptr);
 
-        execv(request.executable.c_str(), const_cast<char* const*>(cargv.data()));
+        if (request.executable.find('/') == std::string::npos) {
+            execvp(request.executable.c_str(), const_cast<char* const*>(cargv.data()));
+        } else {
+            execv(request.executable.c_str(), const_cast<char* const*>(cargv.data()));
+        }
         dprintf(STDERR_FILENO, "failed to exec %s: %s\n",
                 request.executable.c_str(), std::strerror(errno));
         _exit(127);

@@ -10,8 +10,8 @@
     "session": null,
     "summary": {
       "written": true,
-      "config_path": "/tmp/xdebug_action_sampling6/wave_view.json",
-      "rc_path": "/tmp/xdebug_action_sampling6/signal.rc",
+      "config_path": "<repo>/tmp/xdebug_action_sampling6/wave_view.json",
+      "rc_path": "<repo>/tmp/xdebug_action_sampling6/signal.rc",
       "valid": true,
       "group_count": 1,
       "signal_count": 2

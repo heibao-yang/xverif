@@ -16,10 +16,10 @@ trace 证据语义不清、FSDB run 溯源与 native open 诊断不足、aggrega
 
 ## 2. 不影响现有 xdebug 使用者的硬门禁
 
-另一个项目正在使用主检出 `/home/yian/xverif` 的 xdebug。本修复只允许在：
+另一个项目正在使用主检出 `<xverif-repo>` 的 xdebug。本修复只允许在：
 
 ```text
-worktree: /tmp/xverif-xdebug-xdte-feedback
+worktree: <repo>/tmp/xverif-xdebug-xdte-feedback
 branch:   codex/xdebug-xdte-feedback
 ```
 
@@ -30,7 +30,7 @@ branch:   codex/xdebug-xdte-feedback
 2. 不在主检出执行 build、`make clean`、fixture prepare、skill 安装、session kill/gc
    或会影响共享产物的命令。
 3. worktree 自行编译，只调用其自身的 `tools/xdebug`；build、FSDB 副本、日志、UDS
-   与 session 均放在该 worktree 的 `/tmp` 隔离目录。
+   与 session 均放在该 worktree 的 `<repo>/tmp` 隔离目录。
 4. 真实 host NPI/FSDB 查询使用隔离 `HOME`；不得读取、关闭或 GC 主用户
    `~/.xdebug` 下的任何 session。
 5. fixture 只读消费已发布缓存。cache miss 直接报告阻塞，不自动编译、仿真、重试、

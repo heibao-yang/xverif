@@ -1,4 +1,5 @@
 #include "session/session_catalog.h"
+#include "test_temp_path.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -8,8 +9,8 @@
 #include <unistd.h>
 
 int main() {
-    char temp[] = "/tmp/xdebug-session-catalog.XXXXXX";
-    char* home = mkdtemp(temp);
+    std::vector<char> temp = test_temp_template("xdebug-session-catalog.XXXXXX");
+    char* home = mkdtemp(temp.data());
     assert(home != nullptr);
     assert(setenv("HOME", home, 1) == 0);
 
@@ -24,21 +25,21 @@ int main() {
   "sessions": [
     {
       "session_id": "wave",
-      "fsdb_file": "/tmp/waves.fsdb",
-      "socket_path": "/tmp/wave.sock",
+      "fsdb_file": "fixtures/waves.fsdb",
+      "socket_path": "fixtures/wave.sock",
       "server_pid": 123,
       "created_at": 1000,
       "last_active": 1200
     },
     {
       "session_id": "design",
-      "dbdir_path": "/tmp/simv.daidir",
-      "socket_path": "/tmp/design.sock"
+      "dbdir_path": "fixtures/simv.daidir",
+      "socket_path": "fixtures/design.sock"
     },
     {
       "session_id": "combined",
-      "dbdir_path": "/tmp/simv.daidir",
-      "fsdb_file": "/tmp/waves.fsdb"
+      "dbdir_path": "fixtures/simv.daidir",
+      "fsdb_file": "fixtures/waves.fsdb"
     }
   ]
 })JSON";
@@ -46,7 +47,7 @@ int main() {
 
     // A stale legacy frontend registry must not shadow canonical engine state.
     std::ofstream legacy((xdebug_home + "/registry.json").c_str());
-    legacy << R"JSON([{"id":"stale","mode":"waveform","fsdb":"/tmp/stale.fsdb"}])JSON";
+    legacy << R"JSON([{"id":"stale","mode":"waveform","fsdb":"fixtures/stale.fsdb"}])JSON";
     legacy.close();
 
     xdebug::SessionCatalog catalog;
@@ -56,8 +57,8 @@ int main() {
     xdebug::SessionRecord record;
     assert(catalog.get("wave", record));
     assert(record.mode == "waveform");
-    assert(record.fsdb == "/tmp/waves.fsdb");
-    assert(record.socket_path == "/tmp/wave.sock");
+    assert(record.fsdb == "fixtures/waves.fsdb");
+    assert(record.socket_path == "fixtures/wave.sock");
     assert(record.server_pid == 123);
     assert(record.created_at == 1000);
     assert(record.last_active == 1200);
@@ -68,7 +69,7 @@ int main() {
 
     assert(catalog.get("design", record));
     assert(record.mode == "design");
-    assert(record.daidir == "/tmp/simv.daidir");
+    assert(record.daidir == "fixtures/simv.daidir");
 
     assert(catalog.get("combined", record));
     assert(record.mode == "combined");
@@ -88,18 +89,18 @@ int main() {
     mixed << R"JSON({
   "sessions": [
     "not-an-object",
-    {"session_id": "", "fsdb_file": "/tmp/missing-id.fsdb"},
+    {"session_id": "", "fsdb_file": "fixtures/missing-id.fsdb"},
     {"session_id": "missing-resource"},
-    {"session_id": "legacy-design-file", "design_file": "/tmp/legacy.daidir"},
+    {"session_id": "legacy-design-file", "design_file": "fixtures/legacy.daidir"},
     {
       "session_id": "file-transport",
-      "fsdb_file": "/tmp/file.fsdb",
+      "fsdb_file": "fixtures/file.fsdb",
       "transport": "file",
-      "file_dir": "/tmp/xdebug-file-transport"
+      "file_dir": "fixtures/xdebug-file-transport"
     },
     {
       "session_id": "tcp-transport",
-      "dbdir_path": "/tmp/tcp.daidir",
+      "dbdir_path": "fixtures/tcp.daidir",
       "transport": "tcp",
       "host": "launcher",
       "bind_host": "127.0.0.1",
@@ -115,13 +116,13 @@ int main() {
 
     assert(catalog.get("legacy-design-file", record));
     assert(record.mode == "design");
-    assert(record.daidir == "/tmp/legacy.daidir");
+    assert(record.daidir == "fixtures/legacy.daidir");
     assert(record.transport == "uds");
 
     assert(catalog.get("file-transport", record));
     assert(record.mode == "waveform");
     assert(record.transport == "file");
-    assert(record.file_dir == "/tmp/xdebug-file-transport");
+    assert(record.file_dir == "fixtures/xdebug-file-transport");
 
     assert(catalog.get("tcp-transport", record));
     assert(record.mode == "design");

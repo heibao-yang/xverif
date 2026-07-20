@@ -1,4 +1,5 @@
 #include "service/trace_source_path_formatter.h"
+#include "test_temp_path.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -12,7 +13,8 @@ namespace {
 using Json = nlohmann::ordered_json;
 
 std::string make_source_file() {
-    char path[] = "/tmp/xdebug-trace-source-XXXXXX";
+    std::vector<char> path_storage = test_temp_template("xdebug-trace-source-XXXXXX");
+    char* path = path_storage.data();
     int fd = mkstemp(path);
     assert(fd >= 0);
     close(fd);

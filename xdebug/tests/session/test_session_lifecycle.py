@@ -650,6 +650,10 @@ def test_engine_crash_marker_is_written_by_signal_handler(
     isolated_home: Path,
 ) -> None:
     engine = xdebug_root / "libexec" / "xdebug-engine"
+    fake_eda = isolated_home / "fake-eda"
+    fake_verdi = fake_eda / "verdi"
+    fake_vcs = fake_eda / "vcs"
+    fake_library_path = f"{fake_eda / 'lib'}:{isolated_home / 'project-lib'}"
     env = os.environ.copy()
     env.update(
         {
@@ -658,11 +662,11 @@ def test_engine_crash_marker_is_written_by_signal_handler(
             "XDEBUG_ENGINE_TEST_CRASH_MARKER": "1",
             "XDEBUG_ENGINE_TEST_CRASH_ACTION": "value.at",
             "XDEBUG_ENGINE_TEST_CRASH_REQUEST_ID": "crash-req-1",
-            "VERDI_HOME": "/eda/verdi",
-            "VCS_HOME": "/eda/vcs",
+            "VERDI_HOME": str(fake_verdi),
+            "VCS_HOME": str(fake_vcs),
             "LSB_JOBID": "987654",
             "LSB_QUEUE": "normal",
-            "LD_LIBRARY_PATH": "/eda/lib:/proj/lib",
+            "LD_LIBRARY_PATH": fake_library_path,
         }
     )
 
@@ -690,8 +694,8 @@ def test_engine_crash_marker_is_written_by_signal_handler(
     context = snapshot["context"]
     assert context["argv_count"] == 2
     assert context["cwd_path"] == str(repo_root)
-    assert context["eda"]["verdi_home_path"] == "/eda/verdi"
-    assert context["eda"]["vcs_home_path"] == "/eda/vcs"
+    assert context["eda"]["verdi_home_path"] == str(fake_verdi)
+    assert context["eda"]["vcs_home_path"] == str(fake_vcs)
     assert context["lsf"] == {"job_id": "987654", "queue": "normal"}
     assert context["paths"]["ld_library_path_hash"]
-    assert "/eda/lib" not in json.dumps(context)
+    assert str(fake_eda / "lib") not in json.dumps(context)

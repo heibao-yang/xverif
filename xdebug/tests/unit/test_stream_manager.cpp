@@ -1,5 +1,6 @@
 #include "waveform/common/xdebug_waveform_paths.h"
 #include "waveform/stream/stream_manager.h"
+#include "test_temp_path.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -51,7 +52,8 @@ bool has_temporary(const std::string& directory) {
 }  // namespace
 
 int main() {
-    char root[] = "/tmp/xdebug-stream-manager.XXXXXX";
+    std::vector<char> root_storage = test_temp_template("xdebug-stream-manager.XXXXXX");
+    char* root = root_storage.data();
     assert(mkdtemp(root) != nullptr);
     setenv("HOME", root, 1);
     const std::string session = "StreamAtomic";

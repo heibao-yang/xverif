@@ -13,7 +13,7 @@
       "end": "1us"
     },
     "output": {
-      "path": "/tmp/req_stream.tsv",
+      "path": "artifacts/req_stream.tsv",
       "file_format": "tsv"
     }
   }

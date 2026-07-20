@@ -7,7 +7,34 @@ from testinfra.xverif_test.catalog import Catalog
 
 
 ROOT = Path(__file__).resolve().parents[2]
-IGNORED_TREE_PARTS = {".conda-xverif", ".xverif-test-cache", ".xverif-test-results"}
+IGNORED_TREE_PARTS = {".conda-xverif", ".xverif-test-cache", ".xverif-test-results", "tmp"}
+MACHINE_PATH_SOURCE_SUFFIXES = {
+    ".c",
+    ".cc",
+    ".cpp",
+    ".f",
+    ".h",
+    ".hpp",
+    ".json",
+    ".md",
+    ".py",
+    ".sh",
+    ".sv",
+    ".svh",
+    ".toml",
+    ".yaml",
+    ".yml",
+}
+MACHINE_LOCAL_PATHS = (
+    re.compile(r"(?<![A-Za-z0-9_.$})-])/" + "home/"),
+    re.compile(
+        r"(?<![A-Za-z0-9_.$})-])/(?:" + "root|opt|eda|proj|mnt|data|scratch|work|tools" + r")/"
+    ),
+    re.compile(r"(?<!<repo>)(?<![A-Za-z0-9_.$})-])/tmp/"),
+    re.compile("~" + r"/(?!\.)"),
+    re.compile(r"\$\{HOME\}/mini" + "conda3(?:/|\b)"),
+    re.compile(r"(?<![A-Za-z0-9_.$})-])/bin/" + r"(?:tar|sh|false)(?:\b|/)"),
+)
 FORBIDDEN_TARGET = re.compile(
     r"^(?:test|check|full-test|unit-test|smoke|vim-test|pytest-[A-Za-z0-9_.-]+|mcp-[A-Za-z0-9_.-]+|[A-Za-z0-9_.-]+-test):"
 )
@@ -104,3 +131,31 @@ def test_every_testinfra_leaf_is_declared_by_catalog_or_fixture_registry() -> No
         if path.name != "__init__.py"
     }
     assert all(path in declared for path in leaves)
+
+
+def test_repository_has_no_machine_specific_local_paths() -> None:
+    violations: list[str] = []
+    ignored = IGNORED_TREE_PARTS | {
+        ".git",
+        ".pytest_cache",
+        "artifacts",
+        "build",
+        "csrc",
+        "dist",
+        "npiLog",
+        "out",
+    }
+    for path in sorted(ROOT.rglob("*")):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(ROOT)
+        if any(part in ignored for part in relative.parts):
+            continue
+        if path.name != "Makefile" and path.suffix not in MACHINE_PATH_SOURCE_SUFFIXES:
+            continue
+        for number, line in enumerate(
+            path.read_text(encoding="utf-8", errors="replace").splitlines(), 1
+        ):
+            if any(pattern.search(line) for pattern in MACHINE_LOCAL_PATHS):
+                violations.append(f"{relative}:{number}:{line.strip()}")
+    assert violations == []

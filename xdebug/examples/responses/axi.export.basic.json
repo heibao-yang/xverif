@@ -15,10 +15,10 @@
     "full_scan_count": 1,
     "analysis_complete": true,
     "output": {
-      "path": "/tmp/if0_axi",
-      "write_path": "/tmp/if0_axi.write.tsv",
-      "read_path": "/tmp/if0_axi.read.tsv",
-      "meta_path": "/tmp/if0_axi.meta.json",
+      "path": "artifacts/if0_axi",
+      "write_path": "artifacts/if0_axi.write.tsv",
+      "read_path": "artifacts/if0_axi.read.tsv",
+      "meta_path": "artifacts/if0_axi.meta.json",
       "file_format": "tsv"
     }
   },
