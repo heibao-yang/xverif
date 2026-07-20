@@ -1,6 +1,7 @@
 #include "engine_query.h"
 
 #include "api/response.h"
+#include "core/common/env_config.h"
 
 #include "session/client.h"
 #include "session/session_manager.h"
@@ -161,6 +162,9 @@ std::string ensure_error_code(const SessionEnsureResult& result) {
     if (result.status == "invalid_args") return "INVALID_REQUEST";
     if (result.status == "invalid_transport") return "INVALID_REQUEST";
     if (result.message.find("invalid_config:") != std::string::npos) return "INVALID_CONFIG";
+    if (result.status == "npi_init_failed") return "NPI_INIT_FAILED";
+    if (result.status == "npi_load_design_failed") return "NPI_LOAD_DESIGN_FAILED";
+    if (result.status == "npi_fsdb_open_failed") return "NPI_FSDB_OPEN_FAILED";
     if (result.status == "startup_failed") return "ENGINE_START_FAILED";
     return "SESSION_UNHEALTHY";
 }
@@ -168,11 +172,31 @@ std::string ensure_error_code(const SessionEnsureResult& result) {
 OrderedJson session_open_failure_details(const SessionEnsureResult& result) {
     std::string summary = result.message;
     if (summary.size() > 512) summary.resize(512);
-    std::string reason = "unknown";
+    std::string reason = result.startup_reason.empty() ? "unknown" : result.startup_reason;
     const std::string marker = "Server did not become ready: ";
-    if (summary.compare(0, marker.size(), marker) == 0) reason = summary.substr(marker.size());
-    return {{"failure_kind", result.status == "startup_failed" ? "engine_startup_failed" : "session_open_failed"},
-            {"startup_reason", reason}, {"native_error_summary", summary}};
+    if (reason == "unknown" && summary.compare(0, marker.size(), marker) == 0)
+        reason = summary.substr(marker.size());
+    const bool npi_failure = !result.failure_phase.empty();
+    OrderedJson details = {
+        {"failure_kind", npi_failure ? "npi_startup_failed" :
+            (result.status == "startup_failed" ? "engine_startup_failed" : "session_open_failed")},
+        {"startup_reason", reason},
+        {"native_error_summary", summary}
+    };
+    if (npi_failure) {
+        details["failure_phase"] = result.failure_phase;
+        details["diagnostic_log"] = result.diagnostic_log;
+    }
+    if (result.status == "npi_init_failed" &&
+        xdebug_core::env_raw_string("SNPSLMD_LICENSE_FILE").empty() &&
+        xdebug_core::env_raw_string("LM_LICENSE_FILE").empty()) {
+        details["advisories"] = OrderedJson::array({{
+            {"code", "LICENSE_ENV_NOT_EXPLICIT"},
+            {"severity", "info"},
+            {"message", "SNPSLMD_LICENSE_FILE and LM_LICENSE_FILE are both absent; another licensing mechanism may still be configured"}
+        }});
+    }
+    return details;
 }
 
 std::string health_error_code(SessionHealthStatus status) {

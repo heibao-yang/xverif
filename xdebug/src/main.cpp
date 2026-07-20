@@ -121,6 +121,8 @@ xdebug::Json log_paths_for_session(const std::string& session_id) {
     paths["engine_lifecycle"] = xdebug_core::component_log_path("engine", session_id, "lifecycle");
     paths["engine_transport"] = xdebug_core::component_log_path("engine", session_id, "transport");
     paths["engine_crash_marker"] = xdebug_core::component_log_path("engine", session_id, "crash_marker");
+    paths["engine_npi_startup"] =
+        parent_dir(paths["engine_lifecycle"].get<std::string>()) + "/npi_startup.log";
     paths["engine_log_health"] = parent_dir(paths["engine_lifecycle"].get<std::string>()) + "/log_health.ndjson";
     paths["public_log_health"] = parent_dir(paths["public_actions"].get<std::string>()) + "/log_health.ndjson";
     return paths;
@@ -157,7 +159,8 @@ void print_log_tail_file(const std::string& name, const std::string& path, int l
 
 int run_log_tail(const std::string& session_id, int lines) {
     xdebug::Json paths = log_paths_for_session(session_id);
-    for (const char* name : {"public_actions", "public_stdio", "engine_lifecycle", "engine_transport", "engine_crash_marker"}) {
+    for (const char* name : {"public_actions", "public_stdio", "engine_lifecycle", "engine_transport",
+                             "engine_crash_marker", "engine_npi_startup"}) {
         print_log_tail_file(name, paths[name].get<std::string>(), lines);
     }
     return 0;

@@ -75,6 +75,10 @@ std::string xdebug_design_debug_log_path(const std::string& session_id) {
     return xdebug_core::debug_log_path(tool_config(), session_id);
 }
 
+std::string xdebug_design_npi_startup_log_path(const std::string& session_id) {
+    return xdebug_design_session_dir(session_id) + "/logs/npi_startup.log";
+}
+
 std::string xdebug_design_legacy_registry_path() {
     return xdebug_home_dir() + "/design/legacy.registry";
 }

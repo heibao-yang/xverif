@@ -98,3 +98,12 @@
   `packet_stable_fields` 和 complete/partial packet 计数；`actions` catalog 增加
   category/requires/purposes/双语 keyword 过滤并移除 status 过滤；action 双语描述与
   purposes 统一由 `actions.yaml` 生成。
+
+## 2026-07-20
+
+- engine 在 `npi_init`、`npi_load_design`、`npi_fsdb_open` 启动窗口捕获原始
+  stdout/stderr 到权限为 `0600` 的 `npi_startup.log`，成功与失败 session 均保留。
+- `session.open` 按 NPI 启动阶段返回稳定错误码、`failure_phase` 和 diagnostic log
+  标识；常见 license 变量均缺失时只给 advisory，不提前 hard fail。
+- `env.snapshot` 增加 license environment presence，明确禁止记录 license value；
+  log doctor/tail、schema、xdebug/xverif-admin 文档和回归测试同步更新。

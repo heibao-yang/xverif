@@ -75,12 +75,24 @@ def _engine_transport_events(isolated_home: Path, session_prefix: str) -> list[d
 
 
 def _single_engine_log(isolated_home: Path, session_prefix: str, log_name: str) -> Path:
+    directory_prefix = session_prefix[:16]
     matches = sorted(
         (isolated_home / ".xdebug" / "engine" / "sessions").glob(
-            f"{session_prefix}_*/logs/{log_name}.ndjson"
+            f"{directory_prefix}_*/logs/{log_name}.ndjson"
         )
     )
     assert len(matches) == 1, f"expected one {log_name}.ndjson for {session_prefix}, got {matches}"
+    return matches[0]
+
+
+def _single_npi_startup_log(isolated_home: Path, session_prefix: str) -> Path:
+    directory_prefix = session_prefix[:16]
+    matches = sorted(
+        (isolated_home / ".xdebug" / "engine" / "sessions").glob(
+            f"{directory_prefix}_*/logs/npi_startup.log"
+        )
+    )
+    assert len(matches) == 1, f"expected one npi_startup.log for {session_prefix}, got {matches}"
     return matches[0]
 
 
@@ -667,6 +679,8 @@ def test_engine_crash_marker_is_written_by_signal_handler(
             "LSB_JOBID": "987654",
             "LSB_QUEUE": "normal",
             "LD_LIBRARY_PATH": fake_library_path,
+            "SNPSLMD_LICENSE_FILE": "27000@license.example",
+            "LM_LICENSE_FILE": "27001@license.example",
         }
     )
 
@@ -699,3 +713,82 @@ def test_engine_crash_marker_is_written_by_signal_handler(
     assert context["lsf"] == {"job_id": "987654", "queue": "normal"}
     assert context["paths"]["ld_library_path_hash"]
     assert str(fake_eda / "lib") not in json.dumps(context)
+    assert context["license_env"] == {
+        "snpslmd_license_file_present": True,
+        "lm_license_file_present": True,
+    }
+    assert "27000@license.example" not in json.dumps(context)
+    assert "27001@license.example" not in json.dumps(context)
+
+
+@pytest.mark.session
+@pytest.mark.parametrize(
+    ("phase", "hook", "target_key", "error_code", "marker"),
+    [
+        ("npi_init", "XDEBUG_ENGINE_TEST_NPI_INIT_FAIL", "waveform",
+         "NPI_INIT_FAILED", "XDEBUG_TEST_NPI_INIT_FAIL"),
+        ("npi_load_design", "XDEBUG_ENGINE_TEST_NPI_LOAD_DESIGN_FAIL", "design",
+         "NPI_LOAD_DESIGN_FAILED", "XDEBUG_TEST_NPI_LOAD_DESIGN_FAIL"),
+        ("npi_fsdb_open", "XDEBUG_ENGINE_TEST_NPI_FSDB_OPEN_FAIL", "waveform",
+         "NPI_FSDB_OPEN_FAILED", "XDEBUG_TEST_NPI_FSDB_OPEN_FAIL"),
+    ],
+)
+def test_npi_startup_failure_is_classified_and_captured(
+    phase: str,
+    hook: str,
+    target_key: str,
+    error_code: str,
+    marker: str,
+    resource_targets: dict,
+    cli_runner: CliRunner,
+    isolated_home: Path,
+) -> None:
+    name = f"forced_{phase}"
+    opened = cli_runner.run(
+        _request("session.open", target=resource_targets[target_key], args={"name": name}),
+        env={hook: "1"},
+        timeout_sec=120,
+    )
+
+    assert not opened.ok, opened.stdout_raw + opened.stderr_raw
+    error = opened.response["error"]
+    assert error["code"] == error_code
+    assert error["failure_kind"] == "npi_startup_failed"
+    assert error["failure_phase"] == phase
+    assert error["startup_reason"] == "child_exited"
+    assert error["diagnostic_log"] == "engine_npi_startup"
+
+    startup_log = _single_npi_startup_log(isolated_home, name)
+    assert startup_log.stat().st_mode & 0o777 == 0o600
+    assert marker in startup_log.read_text(encoding="utf-8", errors="replace")
+
+    lifecycle = _read_ndjson(_single_engine_log(isolated_home, name, "lifecycle"))
+    failure = next(event for event in lifecycle if event["phase"] == f"{phase}.failed")
+    assert failure["context"]["failure_phase"] == phase
+    assert failure["context"]["diagnostic_log"] == "engine_npi_startup"
+    assert failure["context"]["diagnostic_log_bytes"] > 0
+
+
+@pytest.mark.session
+def test_npi_init_failure_without_license_env_returns_advisory_and_xout_diagnostics(
+    resource_targets: dict,
+    cli_runner: CliRunner,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("SNPSLMD_LICENSE_FILE", raising=False)
+    monkeypatch.delenv("LM_LICENSE_FILE", raising=False)
+    opened = cli_runner.run(
+        _request(
+            "session.open",
+            target=resource_targets["waveform"],
+            args={"name": "missing_license_env"},
+        ),
+        output_format="xout",
+        timeout_sec=120,
+    )
+
+    assert not opened.ok, opened.stdout_raw + opened.stderr_raw
+    assert "code" in opened.stdout_raw and "NPI_INIT_FAILED" in opened.stdout_raw
+    assert "failure_phase" in opened.stdout_raw and "npi_init" in opened.stdout_raw
+    assert "diagnostic_log" in opened.stdout_raw and "engine_npi_startup" in opened.stdout_raw
+    assert "LICENSE_ENV_NOT_EXPLICIT" in opened.stdout_raw

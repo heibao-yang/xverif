@@ -198,6 +198,18 @@ std::string xdebug_engine_test_crash_request_id() {
     return env_string("XDEBUG_ENGINE_TEST_CRASH_REQUEST_ID");
 }
 
+bool xdebug_engine_test_npi_init_fail_enabled() {
+    return env_bool_or_default("XDEBUG_ENGINE_TEST_NPI_INIT_FAIL", false);
+}
+
+bool xdebug_engine_test_npi_load_design_fail_enabled() {
+    return env_bool_or_default("XDEBUG_ENGINE_TEST_NPI_LOAD_DESIGN_FAIL", false);
+}
+
+bool xdebug_engine_test_npi_fsdb_open_fail_enabled() {
+    return env_bool_or_default("XDEBUG_ENGINE_TEST_NPI_FSDB_OPEN_FAIL", false);
+}
+
 int xdebug_trace_source_context_lines() {
     return env_int_or_default("XDEBUG_TRACE_SOURCE_CONTEXT_LINES", 3, 0, 1000);
 }

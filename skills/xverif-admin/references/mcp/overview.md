@@ -13,6 +13,10 @@
 
 连通性检查使用 `xverif_ping`。它不访问 backend、session、NPI 或 license，适合确认 MCP server 本身是否可调用。
 
+direct backend 使用 NPI 时，MCP server 的显式 `env` 必须包含当前站点所需的
+`VERDI_HOME` 和 license 变量；不要假设 Codex/IDE 会把交互 shell 的环境自动传入。
+本地同机 xdebug transport 显式使用 `XDEBUG_TRANSPORT=uds`。
+
 ## xdebug 入口
 
 - xdebug MCP 不暴露原生 envelope raw request。

@@ -1,5 +1,6 @@
 #include "session_manager.h"
 #include "session_transport.h"
+#include "../server.h"
 #include "../../design/common/xdebug_design_paths.h"
 #include "../../design/protocol/protocol.h"
 #include "common/env_config.h"
@@ -34,6 +35,27 @@ std::string default_transport_from_env() {
 
 bool valid_transport(const std::string& transport) {
     return transport == "uds" || transport == "tcp" || transport == "file";
+}
+
+std::string startup_failure_status(int exit_code) {
+    if (exit_code == static_cast<int>(EngineStartupExitCode::NpiInitFailed))
+        return "npi_init_failed";
+    if (exit_code == static_cast<int>(EngineStartupExitCode::NpiLoadDesignFailed))
+        return "npi_load_design_failed";
+    if (exit_code == static_cast<int>(EngineStartupExitCode::NpiFsdbOpenFailed))
+        return "npi_fsdb_open_failed";
+    return "startup_failed";
+}
+
+std::string startup_failure_message(int exit_code,
+                                    const std::string& reason) {
+    if (exit_code == static_cast<int>(EngineStartupExitCode::NpiInitFailed))
+        return "NPI initialization failed during the initialize phase; inspect engine_npi_startup log";
+    if (exit_code == static_cast<int>(EngineStartupExitCode::NpiLoadDesignFailed))
+        return "NPI design loading failed during the design-load phase; inspect engine_npi_startup log";
+    if (exit_code == static_cast<int>(EngineStartupExitCode::NpiFsdbOpenFailed))
+        return "NPI waveform opening failed during the FSDB-open phase; inspect engine_npi_startup log";
+    return "Server did not become ready: " + reason;
 }
 
 }  // namespace
@@ -352,12 +374,19 @@ WaitForServerResult SessionManager::wait_for_server(const std::string& session_i
         if (waitpid(pid, &status, WNOHANG) > 0) {
             result.child_exited = true;
             result.child_status = status;
+            if (WIFEXITED(status)) {
+                result.child_exit_code = WEXITSTATUS(status);
+                result.failure_phase =
+                    xdebug_design::engine_startup_failure_phase(result.child_exit_code);
+            }
             result.reason = "child_exited";
             debug_log("wait_for_server: child_exited status=%d elapsed_ms=%ld socket_exists=%d connect_ok=%d ping_ok=%d",
                       status, result.elapsed_ms, result.socket_exists ? 1 : 0,
                       result.connect_ok ? 1 : 0, result.ping_ok ? 1 : 0);
             xdebug_core::log_lifecycle_event("engine", session_id, "wait_for_server.child_exited", false,
                                              {{"elapsed_ms", result.elapsed_ms}, {"child_status", status},
+                                              {"child_exit_code", result.child_exit_code},
+                                              {"failure_phase", result.failure_phase},
                                               {"socket_exists", result.socket_exists}, {"connect_ok", result.connect_ok},
                                               {"ping_ok", result.ping_ok}});
             return result;
@@ -488,8 +517,11 @@ SessionEnsureResult SessionManager::ensure_session(const std::vector<std::string
         kill(pid, SIGTERM);
         unlink(sock_path);
         xdebug_design_remove_session_dir(session_id);
-        result.status = "startup_failed";
-        result.message = "Server did not become ready: " + wait.reason;
+        result.status = startup_failure_status(wait.child_exit_code);
+        result.message = startup_failure_message(wait.child_exit_code, wait.reason);
+        result.startup_reason = wait.reason;
+        result.failure_phase = wait.failure_phase;
+        if (!wait.failure_phase.empty()) result.diagnostic_log = "engine_npi_startup";
         debug_log("ensure_session: reason=%s elapsed_ms=%ld child_exited=%d child_status=%d socket_exists=%d connect_ok=%d ping_ok=%d",
                   wait.reason.c_str(), wait.elapsed_ms, wait.child_exited ? 1 : 0,
                   wait.child_status, wait.socket_exists ? 1 : 0,
@@ -497,6 +529,9 @@ SessionEnsureResult SessionManager::ensure_session(const std::vector<std::string
         xdebug_core::log_lifecycle_event("engine", session_id, "ensure_session.startup_failed", false,
                                          {{"reason", wait.reason}, {"elapsed_ms", wait.elapsed_ms},
                                           {"child_exited", wait.child_exited}, {"child_status", wait.child_status},
+                                          {"child_exit_code", wait.child_exit_code},
+                                          {"failure_phase", wait.failure_phase},
+                                          {"diagnostic_log", result.diagnostic_log},
                                           {"socket_exists", wait.socket_exists}, {"connect_ok", wait.connect_ok},
                                           {"ping_ok", wait.ping_ok}});
         return result;

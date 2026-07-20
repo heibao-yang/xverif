@@ -13,6 +13,7 @@ std::string xdebug_design_session_json_path(const std::string& session_id);
 std::string xdebug_design_socket_path(const std::string& session_id);
 std::string xdebug_design_endpoint_path(const std::string& session_id);
 std::string xdebug_design_debug_log_path(const std::string& session_id);
+std::string xdebug_design_npi_startup_log_path(const std::string& session_id);
 std::string xdebug_design_legacy_registry_path();
 
 bool xdebug_design_ensure_home();

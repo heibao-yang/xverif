@@ -899,6 +899,7 @@ xdebug 默认静默记录结构化日志。日志只写文件，不打印到 std
 - engine lifecycle：`~/.xdebug/engine/sessions/<hashed-session>/logs/lifecycle.ndjson`
 - engine transport：`~/.xdebug/engine/sessions/<hashed-session>/logs/transport.ndjson`
 - engine crash marker：`~/.xdebug/engine/sessions/<hashed-session>/logs/crash_marker.ndjson`
+- NPI startup diagnostic：`~/.xdebug/engine/sessions/<hashed-session>/logs/npi_startup.log`
 - log health：各 `logs/` 目录下的 `log_health.ndjson`
 - MCP session：`~/.xverif/mcp/sessions/<alias>/session.ndjson`
 - MCP stdio：`~/.xverif/mcp/sessions/<alias>/stdio.ndjson`
@@ -906,7 +907,7 @@ xdebug 默认静默记录结构化日志。日志只写文件，不打印到 std
 
 每行都是一个 JSON event，常见字段包括 `ts`、`event_id`、`trace_id`、`request_id`、`layer`、`component`、`session_id`、`action`、`phase`、`elapsed_ms`、`ok`、`context`。成功 action 默认只记录摘要、路由、耗时和 `summary/meta`；失败 action 会额外记录裁剪后的 request/response。超大 compact payload 会写入 `logs/*_payload/` sidecar，主日志保留路径和 hash。
 
-engine 启动时会在 `lifecycle.ndjson` 写入 `env.snapshot`，记录 hostname、cwd、argv0、构建时间、EDA/LSF 环境摘要，以及 `LD_LIBRARY_PATH` hash；路径字段受 `XDEBUG_LOG_PATH_MODE` / `XDEBUG_LOG_REDACT` 控制。
+engine 启动时会在 `lifecycle.ndjson` 写入 `env.snapshot`，记录 hostname、cwd、argv0、构建时间、EDA/LSF 环境摘要，以及 `LD_LIBRARY_PATH` hash；路径字段受 `XDEBUG_LOG_PATH_MODE` / `XDEBUG_LOG_REDACT` 控制。license 只记录 `SNPSLMD_LICENSE_FILE`、`LM_LICENSE_FILE` 的 presence，不记录值。`npi_init()`、`npi_load_design()`、`npi_fsdb_open()` 启动阶段的 stdout/stderr 写入权限为 `0600` 的 `npi_startup.log`；失败分别返回 `NPI_INIT_FAILED`、`NPI_LOAD_DESIGN_FAILED`、`NPI_FSDB_OPEN_FAILED` 和对应 `failure_phase`。普通 log bundle 包含该原始日志，redacted bundle 将其排除。
 
 辅助命令：
 
@@ -938,7 +939,7 @@ xdebug log bundle --session <id> --out debug_bundle.redacted.tgz --redact
 
 1. 先看 public `actions.ndjson`，确认 action、session、路由和最终 error。
 2. 如果 stdout 协议、ready 前退出、invalid JSON 或 MCP envelope 异常，看 `stdio.ndjson`。
-3. 如果是 `session.open`、`SESSION_UNHEALTHY` 或 `INTERNAL_ENGINE_FAILED`，再看 engine `lifecycle.ndjson`。
+3. 如果是 `session.open`、`SESSION_UNHEALTHY` 或 `INTERNAL_ENGINE_FAILED`，再看 engine `lifecycle.ndjson`；NPI init/load/open 失败继续查看 `npi_startup.log`。
 4. 如果怀疑 socket/TCP/ping/daemon 连接问题，看 `transport.ndjson`。
 5. 如果是 MCP/LSF 启动、ready timeout、stdout pollution 或 cleanup 问题，看 `~/.xverif/mcp/sessions/<alias>/*.ndjson`。
 6. 如果是非 MCP UDS wrapper 的请求解析、socket、LSF 或 cleanup 问题，看 `~/.xverif/loop-wrapper/logs/uds.ndjson` 和 `~/.xverif/loop-wrapper/sessions/<alias>/*.ndjson`。

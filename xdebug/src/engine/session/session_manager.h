@@ -6,6 +6,13 @@
 
 namespace xdebug_engine {
 
+enum class EngineStartupExitCode {
+    GenericFailure = 1,
+    NpiInitFailed = 20,
+    NpiLoadDesignFailed = 21,
+    NpiFsdbOpenFailed = 22
+};
+
 enum class SessionHealthStatus {
     Healthy,
     RegistryMissing,
@@ -33,6 +40,9 @@ struct SessionEnsureResult {
     bool reused = false;
     std::string status;
     std::string message;
+    std::string startup_reason;
+    std::string failure_phase;
+    std::string diagnostic_log;
     SessionInfo info;
 };
 
@@ -49,6 +59,8 @@ struct WaitForServerResult {
     long elapsed_ms = 0;
     bool child_exited = false;
     int child_status = 0;
+    int child_exit_code = -1;
+    std::string failure_phase;
     bool socket_exists = false;
     bool connect_ok = false;
     bool ping_ok = false;

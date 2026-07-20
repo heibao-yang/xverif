@@ -2,6 +2,7 @@
 #include "../design/common/xdebug_design_paths.h"
 #include "../design/protocol/protocol.h"
 #include "session/session_registry.h"
+#include "session/session_manager.h"
 #include "session/session_transport.h"
 #include "core/common/env_config.h"
 #include "core/diagnostic_error.h"
@@ -73,6 +74,7 @@ static int g_port = 0;
 static std::string g_auth_token;
 static int g_idle_timeout_sec = 86400;
 static FILE* g_debug_log = nullptr;
+static std::string g_npi_startup_log_path;
 static int g_crash_fd = -1;
 static char g_crash_prefix[512] = {};
 static char g_current_action[128] = {};
@@ -84,6 +86,20 @@ bool g_has_waveform = false;
 npiFsdbFileHandle g_fsdb_file = nullptr;
 std::string g_fsdb_path;
 std::string g_daidir_path;
+
+const char* engine_startup_failure_phase(int exit_code) {
+    switch (static_cast<xdebug_engine::EngineStartupExitCode>(exit_code)) {
+        case xdebug_engine::EngineStartupExitCode::NpiInitFailed:
+            return "npi_init";
+        case xdebug_engine::EngineStartupExitCode::NpiLoadDesignFailed:
+            return "npi_load_design";
+        case xdebug_engine::EngineStartupExitCode::NpiFsdbOpenFailed:
+            return "npi_fsdb_open";
+        case xdebug_engine::EngineStartupExitCode::GenericFailure:
+            break;
+    }
+    return "";
+}
 
 static void close_fsdb_file() {
     if (xdebug_waveform::g_analysis_repository) {
@@ -284,6 +300,10 @@ static void log_environment_snapshot(int argc, char** argv) {
     if (!ld_library_path.empty()) {
         context["paths"] = {{"ld_library_path_hash", hash_string_hex(ld_library_path)}};
     }
+    context["license_env"] = {
+        {"snpslmd_license_file_present", !getenv_string("SNPSLMD_LICENSE_FILE").empty()},
+        {"lm_license_file_present", !getenv_string("LM_LICENSE_FILE").empty()}
+    };
     xdebug_core::log_lifecycle_event("engine", g_session_id, "env.snapshot", true, context);
 }
 
@@ -310,6 +330,61 @@ static void daemonize_io() {
         dup2(devnull, STDERR_FILENO);
         close(devnull);
     }
+}
+
+static bool begin_npi_startup_capture() {
+    int devnull = open("/dev/null", O_RDWR);
+    if (devnull >= 0) {
+        dup2(devnull, STDIN_FILENO);
+        close(devnull);
+    }
+
+    g_npi_startup_log_path = xdebug_design_npi_startup_log_path(g_session_id);
+    int fd = open(g_npi_startup_log_path.c_str(),
+                  O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
+    if (fd < 0) {
+        xdebug_core::log_lifecycle_event(
+            "engine", g_session_id, "npi_startup.capture_failed", false,
+            {{"diagnostic_log_path", g_npi_startup_log_path},
+             {"errno", errno}, {"message", strerror(errno)}});
+        daemonize_io();
+        return false;
+    }
+    chmod(g_npi_startup_log_path.c_str(), 0600);
+    dprintf(fd, "=== xdebug NPI startup diagnostics session=%s ===\n", g_session_id.c_str());
+    fflush(stdout);
+    fflush(stderr);
+    dup2(fd, STDOUT_FILENO);
+    dup2(fd, STDERR_FILENO);
+    close(fd);
+    return true;
+}
+
+static long long npi_startup_log_bytes() {
+    struct stat st;
+    if (g_npi_startup_log_path.empty() ||
+        stat(g_npi_startup_log_path.c_str(), &st) != 0) return -1;
+    return static_cast<long long>(st.st_size);
+}
+
+static Json npi_startup_context(const std::string& failure_phase) {
+    Json context = {
+        {"failure_phase", failure_phase},
+        {"diagnostic_log", "engine_npi_startup"},
+        {"diagnostic_log_path", g_npi_startup_log_path},
+        {"diagnostic_log_bytes", npi_startup_log_bytes()}
+    };
+    context["license_env"] = {
+        {"snpslmd_license_file_present", !getenv_string("SNPSLMD_LICENSE_FILE").empty()},
+        {"lm_license_file_present", !getenv_string("LM_LICENSE_FILE").empty()}
+    };
+    return context;
+}
+
+static void end_npi_startup_capture() {
+    fflush(stdout);
+    fflush(stderr);
+    daemonize_io();
 }
 
 static bool send_all(int fd, const char* buf, size_t len) {
@@ -798,17 +873,27 @@ int server_main(int argc, char** argv) {
         npi_argv[npi_idx++] = const_cast<char*>(fsdb_arg.c_str());
     }
 
-    daemonize_io();
+    begin_npi_startup_capture();
 
     // ── npi_init (always; once per session) ──
     server_debug_log("npi_init: begin argc=%d", npi_argc);
     xdebug_core::log_lifecycle_event("engine", g_session_id, "npi_init.begin", true,
                                      {{"argc", npi_argc}});
-    int result = npi_init(npi_argc, npi_argv);
+    int result = 0;
+    if (xdebug_core::xdebug_engine_test_npi_init_fail_enabled()) {
+        fprintf(stderr, "XDEBUG_TEST_NPI_INIT_FAIL: forced npi_init failure\n");
+    } else {
+        result = npi_init(npi_argc, npi_argv);
+    }
     if (result == 0) {
         server_debug_log("npi_init: failed");
-        xdebug_core::log_lifecycle_event("engine", g_session_id, "npi_init.failed", false);
-        delete[] npi_argv; return 1;
+        fflush(stdout);
+        fflush(stderr);
+        xdebug_core::log_lifecycle_event("engine", g_session_id, "npi_init.failed", false,
+                                         npi_startup_context("npi_init"));
+        end_npi_startup_capture();
+        delete[] npi_argv;
+        return static_cast<int>(xdebug_engine::EngineStartupExitCode::NpiInitFailed);
     }
     server_debug_log("npi_init: ok");
     xdebug_core::log_lifecycle_event("engine", g_session_id, "npi_init.ok", true);
@@ -817,11 +902,24 @@ int server_main(int argc, char** argv) {
     if (has_daidir) {
         server_debug_log("npi_load_design: begin");
         xdebug_core::log_lifecycle_event("engine", g_session_id, "npi_load_design.begin", true);
-        if (npi_load_design(npi_argc, npi_argv) == 0) {
+        int load_result = 0;
+        if (xdebug_core::xdebug_engine_test_npi_load_design_fail_enabled()) {
+            fprintf(stderr, "XDEBUG_TEST_NPI_LOAD_DESIGN_FAIL: forced npi_load_design failure\n");
+        } else {
+            load_result = npi_load_design(npi_argc, npi_argv);
+        }
+        if (load_result == 0) {
             server_debug_log("npi_load_design: failed");
-            xdebug_core::log_lifecycle_event("engine", g_session_id, "npi_load_design.failed", false);
+            fflush(stdout);
+            fflush(stderr);
+            xdebug_core::log_lifecycle_event(
+                "engine", g_session_id, "npi_load_design.failed", false,
+                npi_startup_context("npi_load_design"));
             close_fsdb_file();
-            npi_end(); delete[] npi_argv; return 1;
+            npi_end();
+            end_npi_startup_capture();
+            delete[] npi_argv;
+            return static_cast<int>(xdebug_engine::EngineStartupExitCode::NpiLoadDesignFailed);
         }
         g_has_design = true;
         server_debug_log("npi_load_design: ok");
@@ -834,12 +932,24 @@ int server_main(int argc, char** argv) {
         server_debug_log("npi_fsdb_open: begin fsdb=%s", g_fsdb_path.c_str());
         xdebug_core::log_lifecycle_event("engine", g_session_id, "npi_fsdb_open.begin", true,
                                          {{"fsdb", g_fsdb_path}});
-        g_fsdb_file = npi_fsdb_open(g_fsdb_path.c_str());
+        if (xdebug_core::xdebug_engine_test_npi_fsdb_open_fail_enabled()) {
+            fprintf(stderr, "XDEBUG_TEST_NPI_FSDB_OPEN_FAIL: forced npi_fsdb_open failure\n");
+            g_fsdb_file = nullptr;
+        } else {
+            g_fsdb_file = npi_fsdb_open(g_fsdb_path.c_str());
+        }
         if (!g_fsdb_file) {
             server_debug_log("npi_fsdb_open: failed");
-            xdebug_core::log_lifecycle_event("engine", g_session_id, "npi_fsdb_open.failed", false);
+            fflush(stdout);
+            fflush(stderr);
+            xdebug_core::log_lifecycle_event(
+                "engine", g_session_id, "npi_fsdb_open.failed", false,
+                npi_startup_context("npi_fsdb_open"));
             close_fsdb_file();
-            npi_end(); delete[] npi_argv; return 1;
+            npi_end();
+            end_npi_startup_capture();
+            delete[] npi_argv;
+            return static_cast<int>(xdebug_engine::EngineStartupExitCode::NpiFsdbOpenFailed);
         }
         g_has_waveform = true;
         xdebug_waveform::g_fsdb_file = g_fsdb_file;
@@ -853,7 +963,10 @@ int server_main(int argc, char** argv) {
                 "engine", g_session_id, "analysis_cache.fsdb_identity_failed",
                 false, {{"message", identity_error}});
             close_fsdb_file();
-            npi_end(); delete[] npi_argv; return 1;
+            npi_end();
+            end_npi_startup_capture();
+            delete[] npi_argv;
+            return static_cast<int>(xdebug_engine::EngineStartupExitCode::GenericFailure);
         }
         xdebug_waveform::g_axi_analyzer.configure_repository(
             xdebug_waveform::g_analysis_repository.get(), g_session_id,
@@ -872,6 +985,13 @@ int server_main(int argc, char** argv) {
         npi_fsdb_max_time(g_fsdb_file, &tmax);
         server_debug_log("fsdb_time: min=%llu max=%llu", tmin, tmax);
     }
+
+    fflush(stdout);
+    fflush(stderr);
+    xdebug_core::log_lifecycle_event(
+        "engine", g_session_id, "npi_startup.capture_complete", true,
+        npi_startup_context("ready"));
+    end_npi_startup_capture();
 
     xdebug_waveform::analysis_probe().record(
         "engine_initialized", "engine", g_session_id);

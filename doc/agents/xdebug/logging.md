@@ -77,6 +77,17 @@ xdebug 的 log 是工具可观测性合同的一部分。任何 session、transp
 - 结构化 lifecycle/transport 还不够定位时。
 - 需要底层库或子进程输出上下文时。
 
+### NPI startup diagnostic log
+
+用途：保存 `npi_init()`、`npi_load_design()` 和 `npi_fsdb_open()` 启动窗口内的
+stdout/stderr，包括 NPI、license 和 FSDB compatibility diagnostic。
+
+位置：`~/.xdebug/engine/sessions/<hashed-session>/logs/npi_startup.log`。
+
+- 文件权限固定为 `0600`，成功和失败 session 都保留。
+- `env.snapshot` 只记录 `SNPSLMD_LICENSE_FILE`、`LM_LICENSE_FILE` 是否存在，不记录值。
+- 普通 log bundle 包含原始文件；redacted bundle 排除原始文本，只保留 lifecycle 摘要。
+
 ### Analysis test probe
 
 用途：
@@ -101,7 +112,8 @@ xdebug 的 log 是工具可观测性合同的一部分。任何 session、transp
 
 1. 看 action response 的 error code 和 message。
 2. 查 action log，确认 request envelope、action、target、session、耗时。
-3. 查 lifecycle log，确认 engine 是否启动、ready、crash。
+3. 查 lifecycle log，确认 engine 是否启动、ready、crash；若失败阶段是
+   `npi_init`、`npi_load_design` 或 `npi_fsdb_open`，继续查看 `npi_startup.log`。
 4. 查 transport log，确认 bind/connect/ping/query 阶段。
 5. 查 daemon debug log，补充底层细节。
 6. 若涉及沙箱、网络、license、文件系统，做 sandbox-vs-host 对照。

@@ -415,6 +415,12 @@ void TextResponseBuilder::emit_error(const Json& error) {
     if (error.contains("required_any_of")) emit_kv("required_any_of", error["required_any_of"]);
     if (error.contains("did_you_mean")) emit_kv("did_you_mean", error["did_you_mean"]);
     if (error.contains("cause_code")) emit_kv("cause_code", error["cause_code"]);
+    if (error.contains("failure_kind")) emit_kv("failure_kind", error["failure_kind"]);
+    if (error.contains("failure_phase")) emit_kv("failure_phase", error["failure_phase"]);
+    if (error.contains("startup_reason")) emit_kv("startup_reason", error["startup_reason"]);
+    if (error.contains("diagnostic_log")) emit_kv("diagnostic_log", error["diagnostic_log"]);
+    if (error.contains("native_error_summary"))
+        emit_kv("native_error_summary", error["native_error_summary"]);
     if (error.contains("example_note")) emit_kv("example_note", error["example_note"]);
     if (error.contains("correct_example")) {
         emit_section("correct_example");
@@ -423,6 +429,11 @@ void TextResponseBuilder::emit_error(const Json& error) {
     if (error.contains("next_actions") && error["next_actions"].is_array()) {
         emit_section("next_actions");
         for (const auto& action : error["next_actions"]) emit_row({json_to_xout_value(action)});
+    }
+    if (error.contains("advisories") && error["advisories"].is_array()) {
+        emit_section("advisories");
+        for (const auto& advisory : error["advisories"])
+            emit_row({json_to_xout_value(advisory)});
     }
 }
 

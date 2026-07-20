@@ -49,6 +49,9 @@ bool xdebug_log_redact_enabled();
 bool xdebug_engine_test_crash_marker_enabled();
 std::string xdebug_engine_test_crash_action();
 std::string xdebug_engine_test_crash_request_id();
+bool xdebug_engine_test_npi_init_fail_enabled();
+bool xdebug_engine_test_npi_load_design_fail_enabled();
+bool xdebug_engine_test_npi_fsdb_open_fail_enabled();
 
 int xdebug_trace_source_context_lines();
 int xdebug_trace_source_merge_threshold_lines();

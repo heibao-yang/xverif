@@ -79,6 +79,19 @@ backend session：
 - 不要自动切换 file transport。
 - 先关闭旧 session、换新名字重开，或把错误上下文返回给用户。
 
+## NPI startup failures
+
+`session.open` 会把统一 engine 启动阶段细分为：
+
+- `NPI_INIT_FAILED` / `failure_phase=npi_init`
+- `NPI_LOAD_DESIGN_FAILED` / `failure_phase=npi_load_design`
+- `NPI_FSDB_OPEN_FAILED` / `failure_phase=npi_fsdb_open`
+
+三类错误都返回 `diagnostic_log=engine_npi_startup`，对应 engine session 的
+`logs/npi_startup.log`。若 `npi_init` 失败且 `SNPSLMD_LICENSE_FILE`、
+`LM_LICENSE_FILE` 均未显式设置，`error.advisories` 包含
+`LICENSE_ENV_NOT_EXPLICIT`；该 advisory 不替代 NPI 结果，也不会提前 hard fail。
+
 ## SESSION_TRANSPORT_FAILED
 
 常见原因：
